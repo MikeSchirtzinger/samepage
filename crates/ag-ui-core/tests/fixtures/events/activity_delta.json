@@ -1,0 +1,8 @@
+{
+  "type": "ACTIVITY_DELTA",
+  "messageId": "00000000-0000-0000-0000-000000000003",
+  "activityType": "code-diff",
+  "patch": [
+    { "op": "replace", "path": "/diff", "value": "+2 -1" }
+  ]
+}

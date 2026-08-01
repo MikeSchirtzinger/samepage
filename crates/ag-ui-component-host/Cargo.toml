@@ -1,0 +1,22 @@
+[package]
+name = "ag-ui-component-host"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Wasmtime host adapter for portable AG-UI extension components."
+
+[dependencies]
+ag-ui-component = { workspace = true }
+ag-ui-surface = { workspace = true }
+jsonschema = { version = "0.47", default-features = false }
+parking_lot = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+wasmtime = { version = "46.0.1", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
+wasmtime-wasi = { version = "46.0.1", default-features = false, features = ["p2"] }
+
+[lints]
+workspace = true

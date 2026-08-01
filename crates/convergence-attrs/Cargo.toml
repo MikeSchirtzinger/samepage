@@ -1,0 +1,16 @@
+[package]
+name = "convergence-attrs"
+version = "0.0.0-stub"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "No-op shim of brevity's convergence-attrs proc macros, so types annotated with #[substrate(...)] compile outside the brevity workspace."
+
+[lib]
+proc-macro = true
+
+[dependencies]
+
+[lints]
+workspace = true

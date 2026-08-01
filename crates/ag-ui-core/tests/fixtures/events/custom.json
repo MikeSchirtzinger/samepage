@@ -1,0 +1,5 @@
+{
+  "type": "CUSTOM",
+  "name": "progress",
+  "value": { "pct": 50 }
+}

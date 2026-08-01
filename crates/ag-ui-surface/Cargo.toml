@@ -1,0 +1,44 @@
+[package]
+name = "ag-ui-surface"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The reusable shell for putting an agent in your browser: transport, provider-agnostic agent loop, and shared-state sync above the AG-UI protocol (ag-ui-core). See docs/ag-ui-surface-spec.md."
+
+[dependencies]
+ag-ui-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+toml = "0.8"
+jsonschema = { version = "0.47", default-features = false }
+tracing = "0.1"
+# M2 Phase C: the generic turn loop (ACP subprocess + OpenAI-compatible
+# backends), lifted from teaching-canvas's acp.rs/openai.rs.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "process", "io-util"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+futures-util = "0.3"
+base64 = "0.22"
+uuid = { workspace = true }
+# M2 Phase D: `App::serve()` binds the actual HTTP/WS/SSE router — the
+# transport + turn-protocol chrome every Surface gets "for free" (spec §5).
+# Lifted from teaching-canvas's `main.rs` router, generic over `Surface`.
+axum = { version = "0.8", features = ["ws"] }
+# A server-rendered surface (`RouteBody::Html`) puts real <form> elements on the
+# page, and those post form-encoded. Already in the tree via axum; named here so
+# the decode is a deliberate capability rather than a transitive accident.
+form_urlencoded = "1"
+tower-http = { version = "0.6", features = ["fs", "set-header"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+
+[target.'cfg(unix)'.dependencies]
+# ACP adapters are commonly launched through wrappers (`npx` -> Node -> native
+# adapter). Signal the adapter's entire process group so those descendants do
+# not survive provider switches or server shutdown.
+libc = "0.2"
+
+[lints]
+workspace = true

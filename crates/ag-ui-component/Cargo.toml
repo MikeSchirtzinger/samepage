@@ -1,0 +1,19 @@
+[package]
+name = "ag-ui-component"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Portable component descriptors, capability grants, and resource policy for AG-UI extension hosts."
+
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+wit-parser = "0.244"
+
+[lints]
+workspace = true

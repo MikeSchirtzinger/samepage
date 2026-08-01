@@ -1,0 +1,7 @@
+{
+  "type": "TEXT_MESSAGE_START",
+  "timestamp": 1752700000000.0,
+  "messageId": "00000000-0000-0000-0000-000000000001",
+  "role": "assistant",
+  "name": "Ada"
+}

@@ -1,0 +1,31 @@
+[package]
+name = "ag-ui-canvas-server"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Transport-only demo server for the AG-UI shared canvas: static hosting, WS scene sync, and SSE event relay."
+publish = false
+
+[dependencies]
+ag-ui-core = { workspace = true }
+ag-ui-canvas = { workspace = true }
+# `sync` adds Send/Sync bounds on yrs types so the Scene can live behind
+# Arc<Mutex> inside axum's Send futures. Native-only crate, so this feature
+# never leaks into wasm builds.
+yrs = { workspace = true, features = ["sync"] }
+axum = { version = "0.8", features = ["ws"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal"] }
+tower-http = { version = "0.6", features = ["fs"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytemuck = { workspace = true }
+parking_lot = { workspace = true }
+futures-util = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[lints]
+workspace = true

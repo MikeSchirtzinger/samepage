@@ -1,0 +1,66 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/samepage",
+  "crates/convergence-attrs",
+  "crates/ag-ui-eval",
+  "crates/ag-ui-core",
+  "crates/ag-ui-component",
+  "crates/ag-ui-component-host",
+  "crates/ag-ui-wasm-client",
+  "crates/ag-ui-canvas",
+  "crates/ag-ui-canvas-render",
+  "crates/ag-ui-canvas-web",
+  "crates/ag-ui-canvas-server",
+  "crates/ag-ui-surface",
+  "examples/same-page-room",
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.95"
+license = "MIT"
+repository = "https://github.com/MikeSchirtzinger/samepage"
+
+[workspace.dependencies]
+convergence-attrs = { version = "0.0.0-stub", path = "crates/convergence-attrs" }
+ag-ui-core = { version = "=0.1.0-brevity-extracted", path = "crates/ag-ui-core" }
+ag-ui-component = { version = "=0.1.0", path = "crates/ag-ui-component" }
+ag-ui-component-host = { version = "=0.1.0", path = "crates/ag-ui-component-host" }
+ag-ui-wasm-client = { version = "=0.1.0", path = "crates/ag-ui-wasm-client" }
+ag-ui-canvas = { version = "=0.1.0", path = "crates/ag-ui-canvas" }
+ag-ui-canvas-render = { version = "=0.1.0", path = "crates/ag-ui-canvas-render" }
+ag-ui-surface = { version = "=0.1.0", path = "crates/ag-ui-surface" }
+# Mike's DOM-free text layout/line-breaking engine — drives on-canvas label
+# wrapping + per-glyph placement (its `gpu_layout` emits world-anchored glyph
+# instances the renderer's atlas pipeline draws). Rev-pinned for clean checkouts.
+pretext = { git = "https://github.com/MikeSchirtzinger/pretext-rs.git", rev = "1678350e3a5db2fc89ce1ebb05e1daed35f0e0ed" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "v5", "serde"] }
+# Canvas stack — versions verified against crates.io 2026-06-06.
+yrs = "0.27"
+bytemuck = { version = "1", features = ["derive"] }
+glam = { version = "0.33", features = ["bytemuck"] }
+log = "0.4"
+parking_lot = "0.12"
+wait-timeout = "0.2"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = "0.3"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true

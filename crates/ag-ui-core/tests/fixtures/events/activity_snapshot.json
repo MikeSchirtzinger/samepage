@@ -1,0 +1,7 @@
+{
+  "type": "ACTIVITY_SNAPSHOT",
+  "messageId": "00000000-0000-0000-0000-000000000003",
+  "activityType": "code-diff",
+  "content": { "path": "src/main.rs", "diff": "+1 -0" },
+  "replace": true
+}

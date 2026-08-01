@@ -1,0 +1,150 @@
+.agui-semantic-overlay {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  border: 2px solid #73e6c8;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 3px rgb(115 230 200 / 16%),
+    0 0 32px rgb(115 230 200 / 28%);
+  animation: agui-semantic-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.agui-semantic-overlay[hidden] {
+  display: none;
+}
+
+/* The agent's phrase is a sentence, not a chip. It used to be `nowrap` with
+   an ellipsis, which cut every explanation off mid-clause and left the human
+   with the half that carried no information. It wraps now, and only gives up
+   after six lines — at which point the phrase, not the box, is the problem. */
+.agui-semantic-overlay-label {
+  position: absolute;
+  left: 8px;
+  bottom: calc(100% + 7px);
+  width: max-content;
+  max-width: min(460px, 74vw);
+  padding: 6px 9px;
+  border: 1px solid rgb(115 230 200 / 45%);
+  border-radius: 7px;
+  background: rgb(10 19 29 / 96%);
+  color: #d9fff5;
+  font: 600 12px/1.35 ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+/* Near the top of the window there is no room above the ring for the label,
+   so it hangs underneath instead of off the edge of the screen. */
+.agui-semantic-overlay.label-below .agui-semantic-overlay-label {
+  bottom: auto;
+  top: calc(100% + 7px);
+}
+
+/* The target is scrolled or panned out of its own pane: there is nothing
+   truthful to ring, so only the label survives, pinned to the pane edge with
+   the direction back to the thing being pointed at. */
+.agui-semantic-overlay.offscreen {
+  border-color: transparent;
+  box-shadow: none;
+  animation: none;
+}
+.agui-semantic-overlay.offscreen .agui-semantic-overlay-label {
+  bottom: auto;
+  top: 0;
+  left: 0;
+  transform: translateY(-50%);
+}
+
+/* Pinned to the right edge of its pane: grow left, back over the surface the
+   target belongs to, instead of across the neighbouring column. */
+.agui-semantic-overlay.offscreen.from-right .agui-semantic-overlay-label {
+  left: auto;
+  right: 0;
+}
+.agui-semantic-overlay.offscreen.from-left .agui-semantic-overlay-label {
+  left: 0;
+  right: auto;
+}
+
+/* The overlay never takes the pointer; this one label does, because it is the
+   way back to a target the human cannot currently see. */
+.agui-semantic-overlay-label.actionable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.agui-semantic-overlay-label.actionable:hover {
+  border-color: rgb(115 230 200 / 85%);
+}
+
+.agui-semantic-presence {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 79;
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.agui-semantic-presence[hidden] {
+  display: none;
+}
+
+.agui-semantic-participant {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid rgb(139 159 184 / 25%);
+  border-radius: 999px;
+  background: rgb(10 19 29 / 88%);
+  color: #9eafc2;
+  font: 600 11px/1 ui-sans-serif, system-ui, sans-serif;
+  backdrop-filter: blur(8px);
+}
+
+.agui-semantic-participant.active {
+  border-color: rgb(115 230 200 / 45%);
+  color: #d9fff5;
+}
+
+/* Which chip is yours, without reading the text. */
+.agui-semantic-participant.me {
+  border-color: rgb(158 175 194 / 55%);
+  color: #cfdaea;
+}
+
+.agui-semantic-participant-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64758a;
+}
+
+.agui-semantic-participant.active .agui-semantic-participant-dot {
+  background: #73e6c8;
+  box-shadow: 0 0 8px rgb(115 230 200 / 70%);
+}
+
+@keyframes agui-semantic-pulse {
+  from {
+    box-shadow:
+      0 0 0 3px rgb(115 230 200 / 12%),
+      0 0 20px rgb(115 230 200 / 18%);
+  }
+  to {
+    box-shadow:
+      0 0 0 5px rgb(115 230 200 / 20%),
+      0 0 36px rgb(115 230 200 / 34%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agui-semantic-overlay {
+    animation: none;
+  }
+}

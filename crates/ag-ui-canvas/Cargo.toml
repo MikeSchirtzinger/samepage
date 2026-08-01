@@ -1,0 +1,31 @@
+[package]
+name = "ag-ui-canvas"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CRDT scene graph (yrs) + aligned binary frame codec for the AG-UI shared canvas. Compiles native and wasm32."
+
+[dependencies]
+ag-ui-core = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+yrs = { workspace = true }
+bytemuck = { workspace = true }
+
+# yrs seeds Doc client ids via fastrand; on wasm the `js` feature is required
+# for real entropy — without it client ids could collide across sessions.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+fastrand = { version = "2", features = ["js"] }
+
+[dev-dependencies]
+criterion = "0.8"
+json-patch = "4"
+
+[[bench]]
+name = "apply_cost"
+harness = false
+
+[lints]
+workspace = true

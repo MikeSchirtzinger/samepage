@@ -1,0 +1,7 @@
+{
+  "type": "RUN_FINISHED",
+  "threadId": "00000000-0000-0000-0000-00000000000a",
+  "runId": "00000000-0000-0000-0000-00000000000b",
+  "result": { "answer": 42 },
+  "outcome": { "type": "success" }
+}

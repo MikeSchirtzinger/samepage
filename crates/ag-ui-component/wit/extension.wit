@@ -1,0 +1,80 @@
+package agui:component@0.1.0;
+
+interface types {
+  enum execution-target {
+    browser-wasm,
+    wasi,
+    native,
+  }
+
+  record scope-entry {
+    key: string,
+    values: list<string>,
+  }
+
+  record capability-request {
+    name: string,
+    required: bool,
+    scope: list<scope-entry>,
+  }
+
+  record action-descriptor {
+    name: string,
+    description: string,
+    kind: action-kind,
+    input-schema-json: string,
+    output-schema-json: option<string>,
+  }
+
+  enum action-kind {
+    query,
+    mutate,
+  }
+
+  record component-descriptor {
+    schema-version: u32,
+    id: string,
+    version: string,
+    world-id: string,
+    targets: list<execution-target>,
+    capabilities: list<capability-request>,
+    actions: list<action-descriptor>,
+  }
+
+  record invocation {
+    action: string,
+    arguments-json: string,
+    context-json: string,
+  }
+
+  record success {
+    result-json: string,
+    events-json: string,
+  }
+
+  record action-error {
+    code: string,
+    message: string,
+  }
+
+  variant outcome {
+    success(success),
+    rejected(action-error),
+    failed(action-error),
+  }
+}
+
+interface extension {
+  use types.{component-descriptor, invocation, outcome};
+
+  describe: func() -> result<component-descriptor, string>;
+  invoke: func(request: invocation) -> outcome;
+  describe-state: func() -> result<string, string>;
+  snapshot: func() -> result<list<u8>, string>;
+  restore: func(state: list<u8>) -> result<_, string>;
+}
+
+world extension-component {
+  export types;
+  export extension;
+}
