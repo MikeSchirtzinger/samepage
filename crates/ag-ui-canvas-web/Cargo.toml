@@ -1,0 +1,56 @@
+[package]
+name = "ag-ui-canvas-web"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Browser glue for the AG-UI shared canvas: WebSocket sync + blob frames, wgpu render loop, pointer interaction, HUD."
+# Depends on the sibling Pretext checkout, whose current 0.2 release is not on
+# crates.io. Keep this package private until that publication dependency exists.
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# Same workaround as ag-ui-wasm-client: wasm-pack's bundled wasm-opt predates
+# Rust 1.95 bulk-memory ops and binaryen isn't installed.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[dependencies]
+ag-ui-canvas = { workspace = true }
+ag-ui-canvas-render = { workspace = true }
+ag-ui-wasm-client = { workspace = true }
+ag-ui-core = { workspace = true }
+pretext = { workspace = true }
+serde_json = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+js-sys = { workspace = true }
+console_error_panic_hook = "0.1"
+
+[dependencies.web-sys]
+workspace = true
+features = [
+  "Window",
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "HtmlElement",
+  "WebSocket",
+  "BinaryType",
+  "MessageEvent",
+  "Event",
+  "EventTarget",
+  "CloseEvent",
+  "PointerEvent",
+  "MouseEvent",
+  "WheelEvent",
+  "DomRect",
+  "Performance",
+  "console",
+]
+
+[lints]
+workspace = true

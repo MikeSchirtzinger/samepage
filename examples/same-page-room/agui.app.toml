@@ -1,0 +1,15 @@
+schema_version = 1
+
+[app]
+id = "same-page-room"
+profile = "web"
+
+# One extension on purpose. The room's flexibility is meant to come from what a
+# pane can *be*, not from how many extensions are pinned — adding a capability
+# here should be a considered decision, not the default way to change the room.
+[[extensions]]
+id = "room"
+version = "0.1.0"
+enabled = true
+required = true
+capabilities = ["dom", "local-state", "embed-web"]

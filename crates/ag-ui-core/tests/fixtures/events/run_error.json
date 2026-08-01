@@ -1,0 +1,5 @@
+{
+  "type": "RUN_ERROR",
+  "message": "boom",
+  "code": "E_TOOL"
+}

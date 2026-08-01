@@ -1,0 +1,5 @@
+{
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_1",
+  "delta": "{\"q\":\"weather\"}"
+}

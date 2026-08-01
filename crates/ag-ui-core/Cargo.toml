@@ -1,0 +1,22 @@
+[package]
+name = "ag-ui-core"
+version = "0.1.0-brevity-extracted"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Core type library for the AG-UI protocol — standalone extraction of brevity's ag-ui-core, no convergence-protocol or compat dependencies."
+
+[dependencies]
+convergence-attrs = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+
+# wasm32 targets need uuid's `js` feature (it pulls in the JS-backed RNG).
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+uuid = { workspace = true, features = ["js"] }
+
+[lints]
+workspace = true

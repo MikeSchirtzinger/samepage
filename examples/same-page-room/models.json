@@ -1,0 +1,11 @@
+{
+  "_comment": "Terminal-first: `none` is a placeholder that spawns nothing and answers nothing — the room is driven by agents attaching over /mcp. Point AGUI_ROOM_PROVIDER at a real id (codex, claude-max, …) to give the room an in-page agent again; the runtime adds locally available managed ACP agents to the registry either way.",
+  "providers": [
+    {
+      "id": "none",
+      "label": "No in-page agent — attach from a terminal over /mcp",
+      "base_url": "http://127.0.0.1:9",
+      "model": "none"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "id": "fixture-skipped-provider",
+  "layer": "agent_eval",
+  "subject": {
+    "kind": "extension",
+    "id": "runner-fixture",
+    "capability": "A real provider produces one observable extension outcome"
+  },
+  "provider": {
+    "adapter": "fixture",
+    "name": "unavailable-provider",
+    "model": "unavailable-model"
+  },
+  "execution": {
+    "command": "sh",
+    "args": [
+      "-c",
+      "printf '%s' '{\"skip_reason\":\"provider unavailable in explicit fixture\"}'; exit 75"
+    ],
+    "timeout_seconds": 10,
+    "required_commands": [
+      "sh"
+    ],
+    "skip_exit_codes": [
+      75
+    ],
+    "skip_reason_pointer": "/skip_reason"
+  },
+  "scorers": [
+    {
+      "id": "process-succeeds",
+      "source": {
+        "kind": "exit_code"
+      },
+      "threshold": {
+        "op": "eq",
+        "value": 0
+      }
+    }
+  ]
+}

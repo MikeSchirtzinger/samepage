@@ -1,0 +1,25 @@
+[package]
+name = "same-page-room"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "A room to meet an agent in: panes of agent-authored UI over a declarative view vocabulary, with nothing about the subject decided in advance."
+publish = false
+
+[[bin]]
+name = "same-page-room"
+path = "src/main.rs"
+
+[dependencies]
+ag-ui-surface = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+parking_lot = { workspace = true }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[lints]
+workspace = true

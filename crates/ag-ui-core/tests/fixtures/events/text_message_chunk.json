@@ -1,0 +1,7 @@
+{
+  "type": "TEXT_MESSAGE_CHUNK",
+  "messageId": "00000000-0000-0000-0000-000000000001",
+  "role": "assistant",
+  "delta": "Hi",
+  "name": "Ada"
+}

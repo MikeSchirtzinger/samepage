@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AG-UI Shared Canvas</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #0b0d12; color: #e8ecf2;
+      font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    #c { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block;
+      touch-action: none; }
+    .overlay { position: fixed; z-index: 2; background: rgba(10, 13, 20, 0.78);
+      border: 1px solid #2a3242; border-radius: 8px; padding: 10px 14px;
+      backdrop-filter: blur(4px); }
+    #title { top: 14px; left: 14px; }
+    #title h1 { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #74d4ff; }
+    #title p { margin: 0; color: #8b95a7; font-size: 12px; }
+    #hud { top: 14px; right: 14px; white-space: pre; color: #9fe8c0;
+      font-size: 12px; min-width: 340px; }
+    #events { bottom: 14px; left: 14px; right: 14px; white-space: pre;
+      overflow: hidden; color: #c8b2ff; font-size: 11px; max-height: 168px; }
+    #error { display: none; top: 40%; left: 50%; transform: translate(-50%, -50%);
+      color: #ff6b7a; max-width: 520px; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div class="overlay" id="title">
+    <h1>AG-UI Shared Canvas</h1>
+    <p>drag the shapes &middot; scroll to zoom &middot; drag empty space to pan<br>
+       transport only &middot; no agent provider &middot; no synthetic traffic</p>
+  </div>
+  <pre class="overlay" id="hud">connecting&hellip;</pre>
+  <pre class="overlay" id="events"></pre>
+  <div class="overlay" id="error"></div>
+
+  <script type="module">
+    const fail = (msg) => {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    };
+
+    if (!navigator.gpu) {
+      fail('WebGPU is not available in this browser. The demo needs Chrome (or another WebGPU-enabled browser).');
+    } else {
+      try {
+        const { default: init, start } = await import('./pkg/ag_ui_canvas_web.js');
+        await init();
+        await start('c', `ws://${location.host}/ws`, '/events', '/semantic');
+      } catch (e) {
+        console.error(e);
+        fail(`Failed to start: ${e}`);
+      }
+    }
+  </script>
+</body>
+</html>

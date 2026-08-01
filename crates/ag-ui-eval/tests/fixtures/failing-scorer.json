@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "id": "fixture-failing-scorer",
+  "layer": "conformance",
+  "subject": {
+    "kind": "protocol",
+    "id": "runner-fixture",
+    "capability": "A numeric observation reaches the configured acceptance threshold"
+  },
+  "execution": {
+    "command": "sh",
+    "args": [
+      "-c",
+      "printf '%s' '{\"score\":0.4}'"
+    ],
+    "timeout_seconds": 10,
+    "required_commands": [
+      "sh"
+    ]
+  },
+  "scorers": [
+    {
+      "id": "process-succeeds",
+      "source": {
+        "kind": "exit_code"
+      },
+      "threshold": {
+        "op": "eq",
+        "value": 0
+      }
+    },
+    {
+      "id": "score-reaches-floor",
+      "source": {
+        "kind": "stdout_json",
+        "pointer": "/score"
+      },
+      "threshold": {
+        "op": "gte",
+        "value": 0.9
+      }
+    }
+  ]
+}

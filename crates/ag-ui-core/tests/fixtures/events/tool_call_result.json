@@ -1,0 +1,7 @@
+{
+  "type": "TOOL_CALL_RESULT",
+  "messageId": "00000000-0000-0000-0000-000000000002",
+  "toolCallId": "call_1",
+  "content": "72F and sunny",
+  "role": "tool"
+}

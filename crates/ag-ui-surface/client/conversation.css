@@ -1,0 +1,128 @@
+/* `<agui-conversation>` — see conversation.js.
+ *
+ * Every colour is a `--ac-*` custom property with a dark default, so an app
+ * themes the panel from outside the shadow root by setting the ones it cares
+ * about. Custom properties inherit through a shadow boundary; that is the whole
+ * mechanism, and it is the same one `<agui-provider-settings>` uses. */
+
+:host {
+  --ac-bg: transparent;
+  --ac-panel: #111726;
+  --ac-panel-2: #16203a;
+  --ac-border: #24304a;
+  --ac-text: #e6ecf7;
+  --ac-muted: #8a97b0;
+  --ac-accent: #6ea8ff;
+  --ac-agent: #6ee7c7;
+  --ac-danger: #ff7a7a;
+  --ac-radius: 10px;
+  --ac-docked-input-height: 44px;
+
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ac-bg);
+  color: var(--ac-text);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* The default is intentionally roomy for a floating/side-pane conversation.
+   A host that allocates a hard grid row or rail slot opts into `docked`.
+   Containment is the important contract: neither transcript nor composer may
+   paint over the application region next to that slot. */
+:host([layout="docked"]) {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  contain: layout paint;
+  isolation: isolate;
+}
+
+* { box-sizing: border-box; }
+button, input, textarea { font: inherit; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── transcript ─────────────────────────────────────────────────────────── */
+
+.transcript {
+  flex: 1; min-height: 0; overflow: auto;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  overscroll-behavior: contain;
+}
+
+.hint { margin: 0; color: var(--ac-muted); font-size: 12.5px; }
+.hint[hidden] { display: none; }
+
+.message {
+  border: 1px solid var(--ac-border); border-radius: var(--ac-radius);
+  background: var(--ac-panel); padding: 8px 10px;
+}
+/* The person's own turns are tinted, so a glance down the column separates
+   what was asked from what was answered without reading either. */
+.message.you { background: var(--ac-panel-2); }
+.message.error { border-color: var(--ac-danger); }
+
+.meta {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--ac-muted); margin-bottom: 3px;
+}
+.message.agent .meta { color: var(--ac-agent); }
+
+/* `pre-wrap` because a model's newlines are part of what it said, and
+   `anywhere` because one unbroken path or id must not widen the panel. */
+.body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+
+/* ── composer ───────────────────────────────────────────────────────────── */
+
+.composer {
+  border-top: 1px solid var(--ac-border);
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+}
+:host([layout="docked"]) .composer { flex: 0 0 auto; }
+
+.anchor {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 12px; color: var(--ac-agent);
+  background: color-mix(in srgb, var(--ac-agent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ac-agent) 35%, transparent);
+  border-radius: 8px; padding: 4px 6px 4px 10px;
+}
+.anchor[hidden] { display: none; }
+.anchor-clear {
+  border: none; background: none; color: var(--ac-muted);
+  font-size: 18px; line-height: 1; padding: 2px 6px; cursor: pointer;
+}
+.anchor-clear:hover { color: var(--ac-text); }
+
+textarea {
+  width: 100%; min-width: 0; resize: vertical; padding: 8px 10px;
+  background: var(--ac-panel); color: var(--ac-text);
+  border: 1px solid var(--ac-border); border-radius: 8px;
+}
+:host([layout="docked"]) textarea {
+  height: var(--ac-docked-input-height);
+  min-height: var(--ac-docked-input-height);
+  max-height: var(--ac-docked-input-height);
+  resize: none;
+}
+textarea:focus-visible, .send:focus-visible, .anchor-clear:focus-visible {
+  outline: 2px solid var(--ac-accent); outline-offset: 1px;
+}
+
+.footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.status { font-size: 11.5px; color: var(--ac-muted); }
+:host(.failed) .status { color: var(--ac-danger); }
+
+.send {
+  padding: 7px 14px; border-radius: 8px; cursor: pointer;
+  background: var(--ac-accent); color: #05080f;
+  border: 1px solid transparent; font-weight: 600;
+}
+.send:disabled { opacity: .5; cursor: progress; }

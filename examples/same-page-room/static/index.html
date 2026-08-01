@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" data-surface="ink" data-density="cozy">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- `frame-src` is the one opening in this policy, and it is the whole point
+       of the `embed` node: a site can be framed here. It is framed without
+       `allow-same-origin`, so it cannot reach this origin. Nothing else is
+       relaxed — no inline script, no remote script, no remote image. -->
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src http: https:"
+  >
+  <title>Same Page Room · AG-UI</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/shell.js"></script>
+</head>
+<body class="terminal-first">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">◱</span>
+      <div class="brand-text">
+        <strong>Same Page Room</strong>
+        <label class="sr-only" for="intent-input">What this room is for right now</label>
+        <input id="intent-input" class="intent" maxlength="600" spellcheck="false"
+               placeholder="what are we doing here?">
+      </div>
+    </div>
+
+    <div class="presence-strip" id="presence-strip" aria-label="Who is on this page"></div>
+
+    <div class="header-spacer"></div>
+
+    <button class="quiet-button" id="add-note" type="button" title="Put your own pane up">
+      + your pane
+    </button>
+    <button class="quiet-button" id="appearance-button" type="button"
+            aria-haspopup="dialog" title="Change how the room looks">
+      Appearance
+    </button>
+    <div class="runtime-state" role="status" aria-live="polite">
+      <span class="connection-dot" id="connection-dot"></span>
+      <span id="runtime-state">connecting</span>
+    </div>
+    <agui-provider-settings></agui-provider-settings>
+  </header>
+
+  <main class="page-grid">
+    <section class="room-pane" aria-label="The shared room">
+      <div id="room-view" class="room-mount">
+        <div class="extension-loading" role="status">Opening the room…</div>
+      </div>
+    </section>
+
+    <aside class="side-pane">
+      <section class="conversation" aria-labelledby="conversation-title">
+        <header class="side-head">
+          <p class="eyebrow">Conversation</p>
+          <h2 id="conversation-title">About what's on the page</h2>
+        </header>
+        <div class="transcript" id="transcript" aria-live="polite">
+          <div class="conversation-empty" id="conversation-empty">
+            <p>The room starts almost empty on purpose.</p>
+            <p>Try: <em>“Let's get on the same page about this repo — put up whatever
+              you think I should be looking at, and tell me why that.”</em></p>
+          </div>
+        </div>
+        <form class="composer" id="ask-form">
+          <div class="anchor-bar" id="anchor-bar" hidden>
+            <span>pointing at <strong id="anchor-label"></strong></span>
+            <button class="icon-button" id="clear-anchor" type="button" aria-label="Stop pointing">×</button>
+          </div>
+          <label class="sr-only" for="ask-input">Message the agent</label>
+          <textarea id="ask-input" rows="3" maxlength="12000"
+                    placeholder="Ask for anything — a pane, a file, a site, a different look…"></textarea>
+          <div class="composer-footer">
+            <span id="composer-status" role="status" aria-live="polite">Shift + Enter for a new line</span>
+            <button class="send-button" id="send-button" type="submit">Send</button>
+          </div>
+        </form>
+      </section>
+    </aside>
+  </main>
+
+  <dialog class="sheet" id="appearance-sheet" aria-labelledby="appearance-title">
+    <header>
+      <h2 id="appearance-title">How the room looks</h2>
+      <button class="icon-button" id="close-appearance" type="button" aria-label="Close">×</button>
+    </header>
+    <p class="muted">
+      These are the only appearance controls that exist. The agent has exactly the
+      same set and no more — it cannot send CSS, so a pane can never restyle the
+      page around it.
+    </p>
+    <div class="sheet-grid">
+      <label>Surface
+        <select id="theme-surface">
+          <option value="ink">ink</option>
+          <option value="slate">slate</option>
+          <option value="warm">warm</option>
+          <option value="paper">paper (light)</option>
+        </select>
+      </label>
+      <label>Density
+        <select id="theme-density">
+          <option value="compact">compact</option>
+          <option value="cozy">cozy</option>
+          <option value="roomy">roomy</option>
+        </select>
+      </label>
+      <label>Accent
+        <input id="theme-accent" type="color">
+      </label>
+      <label>Corner radius <output id="radius-value"></output>
+        <input id="theme-radius" type="range" min="0" max="24" step="1">
+      </label>
+      <label>Text scale <output id="scale-value"></output>
+        <input id="theme-scale" type="range" min="0.8" max="1.4" step="0.05">
+      </label>
+    </div>
+    <p class="sheet-error" id="appearance-error" role="status"></p>
+  </dialog>
+
+  <dialog class="sheet" id="note-sheet" aria-labelledby="note-title">
+    <header>
+      <h2 id="note-title">Put your own pane up</h2>
+      <button class="icon-button" id="close-note" type="button" aria-label="Close">×</button>
+    </header>
+    <p class="muted">Plain text. It goes to the top of the room, attributed to you.</p>
+    <label class="sr-only" for="note-title-input">Pane title</label>
+    <input id="note-title-input" maxlength="120" placeholder="title">
+    <label class="sr-only" for="note-body-input">Pane text</label>
+    <textarea id="note-body-input" rows="6" maxlength="8000" placeholder="what you want on the page…"></textarea>
+    <div class="sheet-actions">
+      <button class="send-button" id="note-submit" type="button">Put it up</button>
+    </div>
+    <p class="sheet-error" id="note-error" role="status"></p>
+  </dialog>
+</body>
+</html>

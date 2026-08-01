@@ -1,0 +1,42 @@
+[package]
+name = "ag-ui-canvas-render"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "wgpu renderer for the AG-UI shared canvas. Pure wgpu — no web-sys — compiles native (headless tests) and wasm32."
+
+[dependencies]
+bytemuck = { workspace = true }
+glam = { workspace = true }
+log = { workspace = true }
+# Pure-Rust font parser and outline rasterizer used to build the ASCII atlas at
+# renderer init. Both compile natively and on wasm32.
+skrifa = { version = "0.44", default-features = false, features = ["std"] }
+zeno = { version = "0.3.3", default-features = false, features = ["std", "eval"] }
+
+# `default-features = false` drops unused native backends; `std` must come back
+# explicitly. Per-target so the wasm build never pulls Metal and vice versa.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version = "29", default-features = false, features = [
+  "std",
+  "wgsl",
+  "webgpu",
+  "fragile-send-sync-non-atomic-wasm",
+] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wgpu = { version = "29", default-features = false, features = [
+  "std",
+  "parking_lot",
+  "wgsl",
+  "metal",
+] }
+
+[dev-dependencies]
+pollster = "0.4"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[lints]
+workspace = true

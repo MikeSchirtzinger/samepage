@@ -1,0 +1,22 @@
+{
+  "type": "MESSAGES_SNAPSHOT",
+  "messages": [
+    {
+      "role": "user",
+      "id": "00000000-0000-0000-0000-000000000001",
+      "content": "What's 2+2?"
+    },
+    {
+      "role": "assistant",
+      "id": "00000000-0000-0000-0000-000000000002",
+      "content": "It's 4.",
+      "toolCalls": [
+        {
+          "id": "call_1",
+          "type": "function",
+          "function": { "name": "calculator", "arguments": "{\"a\":2,\"b\":2}" }
+        }
+      ]
+    }
+  ]
+}

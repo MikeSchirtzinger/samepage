@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# Rust build output
+/target
+target/
+
+# Node / Bun sidecar deps
+node_modules/
+
+# scratch
+tmp/
+
+# Provider credentials. Every surface app writes its own BYOK store here via
+# `ag_ui_surface::auth`; these hold live API keys and must never be committed.
+auth.json
+
+# Per-app runtime state. Each app also ignores this locally; belt and braces so
+# a new app can never leak its session store before it adds its own .gitignore.
+.local/
+
+# Local harness settings, not shared configuration
+.claude/settings.local.json
+
+# Colab visual-decision store: generated baselines, captures and diffs
+.colab/
+
+# SurrealQL shell scratch
+examples/teaching-canvas/history.txt
+
+# Runtime-owned external source screenshots
+examples/shared-site-review/static/captures/
+
+# Govern local state and generated receipts
+.govern/config.toml
+.govern/space.toml
+.govern/store.db*
+.govern/INTENT_SUMMARY.md
+.govern/last-check.json
