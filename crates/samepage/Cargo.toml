@@ -5,4 +5,5 @@ edition = "2021"
 description = "Name reserved. SamePage: a shared surface where a person and an agent work on the same page — agent-authored UI, human marks, and read-backs described in relations rather than coordinates."
 license = "MIT OR Apache-2.0"
 readme = "README.md"
+repository = "https://github.com/MikeSchirtzinger/samepage"
 keywords = ["agent", "collaboration", "surface", "ui"]
