@@ -91,6 +91,14 @@ pub mod activity;
 /// presence and attention are context, never authority.
 pub mod semantic_targets;
 
+/// Who someone is, as distinct from what they may do.
+///
+/// Separate from [`Caller`] on purpose, and separate from `semantic_targets`
+/// for a subtler reason: presence answers "who is here right now" and is
+/// allowed to lapse, while identity answers "who wrote this" and must outlive
+/// every connection that carried it.
+pub mod identity;
+
 /// Startup-compiled ActionDef schemas shared by every invocation origin.
 mod action_schema;
 
@@ -1176,8 +1184,20 @@ pub struct Actor {
     pub caller: Caller,
     /// Room-unique display name, when this actor announced itself.
     pub label: Option<String>,
-    /// Host-minted participant id, stable for the life of the session.
+    /// Host-minted participant id, stable across every connection this actor
+    /// makes, not just the current one.
+    ///
+    /// The distinction matters: a session id would change when a laptop sleeps
+    /// or a model reconnects, and a surface that stored one on a byline would
+    /// show two authors where there was one person who reloaded.
     pub participant_id: Option<String>,
+    /// Display colour, assigned at join from the principal. Present for a
+    /// person, and for an agent it is the colour of the person responsible for
+    /// it, so the chain of responsibility is visible without being read.
+    pub hue: Option<u16>,
+    /// The [`Principal`](identity::Principal) key behind this actor: the person
+    /// themselves, or for an agent the person who brought it.
+    pub responsible: Option<String>,
 }
 
 impl Actor {
@@ -1188,6 +1208,8 @@ impl Actor {
             caller,
             label: None,
             participant_id: None,
+            hue: None,
+            responsible: None,
         }
     }
 
@@ -1197,6 +1219,24 @@ impl Actor {
             caller,
             label: Some(agent.label.clone()),
             participant_id: Some(agent.participant_id.clone()),
+            hue: None,
+            responsible: agent.responsible.clone(),
+        }
+    }
+
+    /// A person who joined and holds a resume token.
+    ///
+    /// Deliberately not reachable from a request body. A person's identity is
+    /// resolved from a token the host minted and the browser presents, never
+    /// from a field a caller could fill in, because a byline anyone can choose
+    /// is not a byline.
+    pub fn person(caller: Caller, person: &identity::Person) -> Self {
+        Self {
+            caller,
+            label: Some(person.name.clone()),
+            participant_id: Some(person.participant_id.clone()),
+            hue: Some(person.hue),
+            responsible: Some(person.principal.key()),
         }
     }
 
@@ -2132,6 +2172,7 @@ impl App {
             .route("/debug/stats", get(stats_handler))
             .route("/control", post(control_handler))
             .route("/ask", post(ask_handler))
+            .route("/surface/me", get(whoami_handler).post(join_handler))
             .route("/surface/action", post(tool_handler))
             .route("/canvas-tool", post(tool_handler))
             .route("/provider", get(provider_get).post(provider_post))
@@ -3195,6 +3236,10 @@ fn attach_mcp_agent(st: &RouterState, identity: mcp::ClientIdentity) -> Attached
         label: label.clone(),
         client_name: identity.name,
         client_version: identity.version,
+        // Nothing on the MCP handshake carries this yet, so an agent attaching
+        // to an open room is nobody's. The meetings tier is where this becomes
+        // required rather than known, and where an attach without it is refused.
+        responsible: None,
     };
     attached_agents.insert(session, agent.clone());
     drop(attached_agents);
@@ -3227,6 +3272,176 @@ fn unique_participant_label(
     let mut taken = presence_labels.to_vec();
     taken.extend(attached_agents.values().map(|agent| agent.label.clone()));
     unique_label(proposed, &taken)
+}
+
+/// The resume token a person's browser holds. `HttpOnly`: nothing in the page
+/// needs to read it, and a token JavaScript can read is a token an injected
+/// script can steal and then write under someone else's name.
+const PERSON_COOKIE: &str = "agui_person";
+
+/// Every display name currently spoken for, by a person or by an agent.
+///
+/// Both sources matter for the same reason `unique_participant_label` reads
+/// both: a room where a person and an agent can both be called "sam" cannot
+/// answer who said something, which is the one thing it is for.
+fn names_in_use(st: &RouterState) -> Vec<String> {
+    let mut taken: Vec<String> = st
+        .rt
+        .mcp_agents
+        .lock()
+        .values()
+        .map(|agent| agent.label.clone())
+        .collect();
+    taken.extend(
+        st.rt
+            .people
+            .everyone()
+            .into_iter()
+            .map(|person| person.name),
+    );
+    taken
+}
+
+/// The person behind this request, resolved from the resume token their browser
+/// presents.
+///
+/// Returns nothing when the token is absent or unrecognized rather than minting
+/// on the spot. Admission happens at exactly one endpoint, so an action can
+/// never quietly create an identity as a side effect of writing something.
+fn person_from(st: &RouterState, headers: &HeaderMap) -> Option<identity::Person> {
+    let token = cookie_value(headers, PERSON_COOKIE)?;
+    st.rt.people.resolve(&token)
+}
+
+fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers
+        .get(axum::http::header::COOKIE)?
+        .to_str()
+        .ok()?
+        .split(';')
+        .filter_map(|pair| pair.split_once('='))
+        .find(|(key, _)| key.trim() == name)
+        .map(|(_, value)| value.trim().to_string())
+}
+
+/// `GET /surface/me` — who the browser asking is, if it has been here before.
+///
+/// Read-only, and deliberately so. Minting here instead would mean every
+/// unauthenticated GET created a participant: a health check, a crawler, or a
+/// readiness probe would each leave a person in the room who never arrived and
+/// will never leave. Joining is a POST because joining is a change.
+async fn whoami_handler(State(st): State<RouterState>, headers: HeaderMap) -> impl IntoResponse {
+    match person_from(&st, &headers) {
+        Some(person) => {
+            // Still here, so renew the presence lease the same way an acting
+            // agent does. A returning person who is not re-presented would be
+            // attributed correctly but shown as absent.
+            present_person(&st, &person);
+            Json(person_json(&person)).into_response()
+        }
+        None => Json(json!({ "ok": true, "joined": false })).into_response(),
+    }
+}
+
+/// `POST /surface/me` — join the room, and optionally choose a display name.
+///
+/// This is the human counterpart of an agent's `initialize` handshake, and it
+/// exists because people never had one. An agent announces itself and gets an
+/// identity; a person only ever loaded a page, so the surface had nothing to
+/// attribute their writes to and fell back to calling them "you" — which reads
+/// correctly to exactly one reader and silently mislabels everyone else.
+///
+/// Presenting an existing token returns the same participant, so a reload is
+/// the same person coming back rather than a second person arriving. That is
+/// the whole reason the token exists, and the reason a byline stores a
+/// participant id rather than anything connection-shaped.
+async fn join_handler(
+    State(st): State<RouterState>,
+    headers: HeaderMap,
+    body: Option<Json<JsonValue>>,
+) -> impl IntoResponse {
+    let proposed = body
+        .as_ref()
+        .and_then(|Json(body)| body.get("name"))
+        .and_then(JsonValue::as_str)
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string);
+
+    if let Some(person) = person_from(&st, &headers) {
+        let Some(proposed) = proposed else {
+            present_person(&st, &person);
+            return Json(person_json(&person)).into_response();
+        };
+        // Renaming reads the room's names first and disambiguates against
+        // them, so asking for a name someone already has takes a suffix rather
+        // than their identity.
+        let taken = names_in_use(&st);
+        let token = cookie_value(&headers, PERSON_COOKIE).unwrap_or_default();
+        let person = match st.rt.people.rename(&token, &proposed, &taken) {
+            Some(_) => st.rt.people.resolve(&token).unwrap_or(person),
+            None => person,
+        };
+        present_person(&st, &person);
+        return Json(person_json(&person)).into_response();
+    }
+
+    // A local principal, because the open tiers have nothing better and should
+    // not pretend to. The meetings tier admits `Principal::Invited` here
+    // instead, from the address the invitation was sent to — same record, same
+    // byline, same colour, only a stronger claim behind it.
+    let principal = identity::Principal::Local {
+        id: uuid::Uuid::new_v4().simple().to_string(),
+    };
+    let (person, token) = st.rt.people.admit(
+        principal,
+        proposed.as_deref().unwrap_or("someone"),
+        &names_in_use(&st),
+    );
+    present_person(&st, &person);
+    tracing::info!(
+        participant = %person.participant_id,
+        name = %person.name,
+        "person joined"
+    );
+    let mut response = Json(person_json(&person)).into_response();
+    if let Ok(value) = HeaderValue::from_str(&format!(
+        "{PERSON_COOKIE}={token}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly"
+    )) {
+        response
+            .headers_mut()
+            .insert(axum::http::header::SET_COOKIE, value);
+    }
+    response
+}
+
+/// Presence is context, not authority, so a refused lease never fails a join —
+/// the person is admitted either way and simply shows as absent.
+fn present_person(st: &RouterState, person: &identity::Person) {
+    let Some(service) = st.semantic_targets.as_deref() else {
+        return;
+    };
+    if let Err(error) = service.present(Participant::human(
+        &person.participant_id,
+        &person.name,
+    )) {
+        tracing::warn!(%error, "could not register person presence");
+    }
+}
+
+/// What a person is told about themselves. The resume token is deliberately
+/// absent: the browser proves who it is with the cookie, and a page that also
+/// held the token in a variable would be one XSS away from handing it over.
+fn person_json(person: &identity::Person) -> JsonValue {
+    json!({
+        "ok": true,
+        "joined": true,
+        "id": person.participant_id,
+        "name": person.name,
+        "hue": person.hue,
+        "principal": person.principal.key(),
+        "invitable": person.principal.address().is_some(),
+    })
 }
 
 /// Disambiguate a proposed display name against the names already in use.
@@ -3266,9 +3481,16 @@ fn refresh_mcp_presence(st: &RouterState, session: &str) {
 
 async fn ask_handler(
     State(st): State<RouterState>,
+    headers: HeaderMap,
     Json(body): Json<JsonValue>,
 ) -> impl IntoResponse {
     let rt = &st.rt;
+    // Who actually asked, resolved from their resume token. `by` below is a
+    // field the caller fills in and defaults to "you", which every browser
+    // sends and every browser then renders as its own message — so a second
+    // person's question arrived on the first person's screen looking like
+    // something they had said themselves.
+    let asker = person_from(&st, &headers);
     let question = body
         .get("question")
         .and_then(|v| v.as_str())
@@ -3321,12 +3543,20 @@ async fn ask_handler(
     // the actor (default "you"; a programmatic driver can pass its own label);
     // `origin` is the sender's client token so its own browser skips the live
     // echo it already rendered locally (all other clients render it).
-    let by = body
-        .get("by")
-        .and_then(|v| v.as_str())
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .unwrap_or("you");
+    //
+    // A resolved person's name wins over the field, because the field is
+    // self-declared and this is not. `by` keeps its old default so surfaces
+    // that never adopted identity read exactly as before.
+    let by = match asker.as_ref() {
+        Some(person) => person.name.as_str(),
+        None => body
+            .get("by")
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or("you"),
+    };
+    let by_id = asker.as_ref().map(|person| person.participant_id.as_str());
     let origin = body.get("origin").and_then(|v| v.as_str()).unwrap_or("");
     let turn = runtime_state::TurnRequest {
         text: for_model,
@@ -3338,7 +3568,7 @@ async fn ask_handler(
         &question,
         Some((
             "surface.ask",
-            json!({ "by": by, "text": question, "origin": origin }),
+            json!({ "by": by, "by_id": by_id, "text": question, "origin": origin }),
         )),
         Some(&question),
     );
@@ -3353,6 +3583,7 @@ async fn ask_handler(
 /// generic `Surface::tools()` dispatch path (see [`turn_loop::dispatch_tool`]).
 async fn tool_handler(
     State(st): State<RouterState>,
+    headers: HeaderMap,
     Json(body): Json<JsonValue>,
 ) -> impl IntoResponse {
     let name = body.get("name").and_then(|v| v.as_str()).unwrap_or("");
@@ -3395,7 +3626,13 @@ async fn tool_handler(
             })),
         );
     }
-    let actor = Actor::anonymous(caller);
+    // Attribution only. A recognized person changes whose name is on the write
+    // and nothing about what the write may do — authorization is still
+    // `Caller::may_call` inside dispatch, from the transport this arrived on.
+    let actor = match person_from(&st, &headers) {
+        Some(person) if caller == Caller::Human => Actor::person(caller, &person),
+        _ => Actor::anonymous(caller),
+    };
     st.surface.note_caller(&actor);
     let (result, _was_query, ok) =
         turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, name, &args).await;
@@ -4887,8 +5124,39 @@ mod tests {
             label: "reviewer".to_string(),
             client_name: "claimed-client".to_string(),
             client_version: Some("1.0".to_string()),
+            responsible: None,
         };
         assert_eq!(Actor::attached(Caller::Agent, &agent).byline(), "reviewer");
+    }
+
+    /// Two people are two participants even when they have not said who they
+    /// are, which is the whole difference between a byline and a pronoun.
+    #[test]
+    fn two_people_who_never_named_themselves_are_still_distinguishable() {
+        let people = identity::People::new();
+        let (first, first_token) = people.admit(
+            identity::Principal::Local {
+                id: "one".to_string(),
+            },
+            "someone",
+            &[],
+        );
+        let (second, second_token) = people.admit(
+            identity::Principal::Local {
+                id: "two".to_string(),
+            },
+            "someone",
+            &[],
+        );
+        let first = Actor::person(Caller::Human, &first);
+        let second = Actor::person(Caller::Human, &second);
+        assert_ne!(first.participant_id, second.participant_id);
+        assert_ne!(first.byline(), second.byline());
+        assert_ne!(first_token, second_token);
+        assert_eq!(
+            first.caller, second.caller,
+            "identity must not have moved authorization"
+        );
     }
 
     #[test]
@@ -5585,6 +5853,7 @@ mod tests {
 
         let overlap_response = ask_handler(
             State(rs.clone()),
+            axum::http::HeaderMap::new(),
             Json(json!({ "question": "must not queue" })),
         )
         .await
@@ -5621,6 +5890,7 @@ mod tests {
 
         let _accepted = ask_handler(
             State(rs.clone()),
+            axum::http::HeaderMap::new(),
             Json(json!({ "question": "cancel me immediately" })),
         )
         .await;
@@ -5674,6 +5944,7 @@ mod tests {
 
         let _response = ask_handler(
             State(rs.clone()),
+            axum::http::HeaderMap::new(),
             Json(json!({ "question": "provider disappeared" })),
         )
         .await;
@@ -6756,6 +7027,7 @@ mod tests {
 
         let invalid = tool_handler(
             State(state.clone()),
+            axum::http::HeaderMap::new(),
             Json(serde_json::json!({ "name": "set_label", "args": { "label": 9 } })),
         )
         .await
@@ -6766,6 +7038,7 @@ mod tests {
         for identity in [json!("humna"), json!(7)] {
             let unknown = tool_handler(
                 State(state.clone()),
+                axum::http::HeaderMap::new(),
                 Json(serde_json::json!({
                     "name": "set_label",
                     "args": { "label": "forged" },
@@ -6784,6 +7057,7 @@ mod tests {
 
         let valid = tool_handler(
             State(state),
+            axum::http::HeaderMap::new(),
             Json(serde_json::json!({ "name": "set_label", "args": { "label": "ready" } })),
         )
         .await

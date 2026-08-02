@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "counter",
+  "version": "0.1.0",
+  "world": "agui:component/extension-component@0.1.0",
+  "targets": ["browser_wasm", "wasi"],
+  "capabilities": [],
+  "actions": [
+    {
+      "name": "increment",
+      "description": "Increase the component-owned counter.",
+      "kind": "mutate",
+      "input_schema": "{\"type\":\"object\",\"properties\":{\"by\":{\"type\":\"integer\"}},\"required\":[\"by\"],\"additionalProperties\":false}",
+      "output_schema": "{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"integer\"}},\"required\":[\"value\"],\"additionalProperties\":false}"
+    },
+    {
+      "name": "read-counter",
+      "description": "Read the component-owned counter.",
+      "kind": "query",
+      "input_schema": "{\"type\":\"object\",\"additionalProperties\":false}",
+      "output_schema": "{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"integer\"}},\"required\":[\"value\"],\"additionalProperties\":false}"
+    },
+    {
+      "name": "probe-authority",
+      "description": "Report whether ambient host filesystem or environment authority leaked in.",
+      "kind": "query",
+      "input_schema": "{\"type\":\"object\",\"additionalProperties\":false}",
+      "output_schema": "{\"type\":\"object\",\"properties\":{\"hostFilesystemDenied\":{\"const\":true},\"hostEnvironmentHidden\":{\"const\":true}},\"required\":[\"hostFilesystemDenied\",\"hostEnvironmentHidden\"],\"additionalProperties\":false}"
+    },
+    {
+      "name": "bad-mutate",
+      "description": "Mutate and then return schema-invalid output to prove host rollback.",
+      "kind": "mutate",
+      "input_schema": "{\"type\":\"object\",\"additionalProperties\":false}",
+      "output_schema": "{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"integer\"}},\"required\":[\"value\"],\"additionalProperties\":false}"
+    },
+    {
+      "name": "bad-query",
+      "description": "Mutate while declared as a query to prove host purity enforcement.",
+      "kind": "query",
+      "input_schema": "{\"type\":\"object\",\"additionalProperties\":false}",
+      "output_schema": "{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"integer\"}},\"required\":[\"value\"],\"additionalProperties\":false}"
+    },
+    {
+      "name": "spin",
+      "description": "Deliberately exhaust the host execution budget.",
+      "kind": "query",
+      "input_schema": "{\"type\":\"object\",\"additionalProperties\":false}",
+      "output_schema": "{\"type\":\"object\"}"
+    }
+  ]
+}

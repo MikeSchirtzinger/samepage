@@ -87,25 +87,72 @@ function snapAxis(wanted, others, axis, size) {
   return { value: Math.round(wanted / GRID) * GRID, guide: null };
 }
 
-/// Snap a size, which lines up with a neighbour's *dimensions* rather than its
-/// position: matching two panes' widths is a thing people do deliberately and
-/// cannot do at all by eye.
-function snapSize(wanted, others, axis, edge) {
+/// Snap the one edge a resize is dragging.
+///
+/// A resize pins the opposite edge, so there are only two kinds of offer worth
+/// making, and both are expressed as a position for the moving edge so they
+/// compete on the same scale: land where a neighbour's edge already is, or land
+/// where this pane ends up exactly as wide (or as tall) as that neighbour.
+/// Matching two panes by eye is the thing nobody can do, so it gets an offer
+/// from whichever edge is in hand rather than only from the bottom-right.
+///
+/// `pinned` is the edge that is not moving; `dir` is +1 when the trailing edge
+/// is in hand and -1 when it is the leading one.
+function snapEdge(wanted, others, axis, pinned, dir) {
   const dimension = axis === "x" ? "w" : "h";
   let best = null;
-  const offer = (value, guide) => {
-    const gap = Math.abs(value - wanted);
+  const offer = (at, guide) => {
+    const gap = Math.abs(at - wanted);
     if (gap > SNAP || (best && gap >= best.gap)) return;
-    best = { gap, value, guide };
+    best = { gap, value: at, guide };
   };
   for (const spot of others) {
-    offer(spot[dimension], null);
-    // Or end flush with a neighbour's far edge.
-    const far = axis === "x" ? spot.x + spot.w : spot.y + spot.h;
-    offer(far - edge, far);
+    const low = axis === "x" ? spot.x : spot.y;
+    const high = low + spot[dimension];
+    offer(low, low);
+    offer(high, high);
+    offer(high + GUTTER, high);
+    offer(low - GUTTER, low);
+    // Same size as that one. No guide: there is no line on screen that would
+    // explain "these are now equally wide", and a line that means nothing is
+    // worse than none.
+    offer(pinned + dir * spot[dimension], null);
   }
   if (best) return { value: best.value, guide: best.guide };
   return { value: Math.round(wanted / GRID) * GRID, guide: null };
+}
+
+/// Which edges each handle is holding: +1 trailing, -1 leading, 0 pinned.
+const HANDLES = [
+  { edge: "n", x: 0, y: -1, cursor: "ns-resize" },
+  { edge: "s", x: 0, y: 1, cursor: "ns-resize" },
+  { edge: "w", x: -1, y: 0, cursor: "ew-resize" },
+  { edge: "e", x: 1, y: 0, cursor: "ew-resize" },
+  { edge: "nw", x: -1, y: -1, cursor: "nwse-resize" },
+  { edge: "ne", x: 1, y: -1, cursor: "nesw-resize" },
+  { edge: "sw", x: -1, y: 1, cursor: "nesw-resize" },
+  { edge: "se", x: 1, y: 1, cursor: "nwse-resize" },
+];
+
+/// Resolve one axis of a resize into `{ pos, size, guide }`.
+///
+/// The minimum is applied to the *edge* before the rectangle is derived, so a
+/// pane dragged past its floor stops dead instead of turning inside out and
+/// walking away from the pointer.
+function resizeAxis(dir, startPos, startSize, delta, minimum, others, axis, free) {
+  if (dir === 0) return { pos: startPos, size: startSize, guide: null };
+  const pinned = dir > 0 ? startPos : startPos + startSize;
+  const wanted = (dir > 0 ? startPos + startSize : startPos) + delta;
+  const snapped = free
+    ? { value: Math.max(0, wanted), guide: null }
+    : snapEdge(Math.max(0, wanted), others, axis, pinned, dir);
+  let value = Math.max(0, snapped.value);
+  if (dir > 0) {
+    value = Math.max(value, pinned + minimum);
+    return { pos: pinned, size: value - pinned, guide: snapped.guide };
+  }
+  value = Math.min(value, pinned - minimum);
+  return { pos: value, size: pinned - value, guide: snapped.guide };
 }
 
 const MARKS = [
@@ -586,6 +633,20 @@ export async function activate(ctx) {
 
   let state = null;
   let focused = null;
+  /// Who this browser is, as the host minted it.
+  ///
+  /// Fetched before the first render because "you" is not a property of a mark.
+  /// It is a comparison between the mark's author and whoever is looking, and
+  /// the room broadcasts one state payload to every viewer, so the server
+  /// cannot make it for us — it has no idea which of us is reading.
+  // Shared with the shell rather than fetched here: both load at once and
+  // neither holds a cookie on a first visit, so two fetches admitted this
+  // browser as two different people. `whoAmI` resolves once for the page.
+  //
+  // It resolves to null when the surface has no identity to give, in which case
+  // the room still shows every byline and simply shows this person their own
+  // name instead of "you" — strictly better than calling everybody "you".
+  const me = ctx.whoAmI ? await ctx.whoAmI() : null;
   /// Which pane, if any, is filling the page. Local to this browser and never
   /// written back: two people in the room can be looking at different things
   /// without fighting over the document.
@@ -598,6 +659,96 @@ export async function activate(ctx) {
   /// belong here — only the view, whose shape decides the body's structure.
   function paneKey(pane) {
     return JSON.stringify(pane.view);
+  }
+
+  /// What to call an author who never announced a name. Mirrors the words the
+  /// server uses in the agent's read-back so the two descriptions of one room
+  /// do not disagree about what happened in it.
+  const CATEGORY = { human: "someone", agent: "agent", companion: "companion" };
+
+  /// The byline as *this* viewer should read it.
+  ///
+  /// The only place "you" is decided. The document records which participant
+  /// wrote a pane; only the browser knows which participant is reading, and
+  /// this is where those two facts meet. Comparing ids and never names is the
+  /// point: two people who both chose "Sam" would otherwise each read the
+  /// other's marks as their own, which is the exact confusion a byline exists
+  /// to prevent.
+  function bylineOf(pane) {
+    // Built on `whoIs` rather than repeating it, because the two resolving a
+    // participant differently is precisely how one person ends up reading as
+    // "you" on a pane and by name on the note inside it.
+    const { mine, name, hue } = whoIs(pane.by_id, pane.by_name);
+    return {
+      mine,
+      text: mine ? "you" : name || CATEGORY[pane.author] || pane.author,
+      // The tooltip always states the category the host stands behind, even
+      // when the visible label is a chosen name. A label a participant picked
+      // never gets to stand in for the claim the host is making — and people
+      // pick their own names here exactly like agents do, so a person calling
+      // themselves "Codex" still reads as a person on inspection.
+      title: name ? `${name} — ${pane.author}` : pane.author,
+      named: Boolean(name) && !mine,
+      hue,
+    };
+  }
+
+  /// Who a participant id belongs to, from this viewer's point of view.
+  ///
+  /// The shared half of every byline in the room: pane authors, note writers
+  /// and mark setters all resolve the same way, so one person cannot read as
+  /// "you" in one corner of a pane and by name in another.
+  function whoIs(id, recorded) {
+    const roster = state?.participants || {};
+    const known = id ? roster[id] : null;
+    const name = known?.name || recorded || null;
+    const mine = Boolean(me?.id && id && id === me.id);
+    return {
+      mine,
+      name,
+      text: mine ? "you" : name || "someone",
+      hue: Number.isFinite(known?.hue) ? known.hue : null,
+    };
+  }
+
+  /// Paint the mark row, including whose mark it is.
+  ///
+  /// A mark is the one thing in this room an agent cannot make, so it is the
+  /// one most worth attributing — and a disagreement whose author you cannot
+  /// see is an argument with nobody. The glyph carries the marker's colour and
+  /// says their name on hover; it stays uncoloured when the mark is your own,
+  /// because everyone sees their own marks as theirs.
+  function applyMarks(article, marks, pane) {
+    const who = whoIs(pane.mark_by, pane.mark_by_name);
+    for (const mark of MARKS) {
+      const button = marks.querySelector(`[data-mark="${mark.id}"]`);
+      const on = pane.mark === mark.id;
+      article.classList.toggle(`marked-${mark.id}`, on);
+      if (!button) continue;
+      button.classList.toggle("on", on);
+      button.title = on ? `${mark.title} — ${who.text}` : mark.title;
+      if (on && !who.mine && who.hue !== null) {
+        button.style.setProperty("--by-hue", String(who.hue));
+      } else {
+        button.style.removeProperty("--by-hue");
+      }
+    }
+  }
+
+  /// Paint a byline. Shared by the first build and every in-place refresh, so
+  /// the two can never drift into describing the same author differently.
+  function applyByline(by, article, pane) {
+    const credit = bylineOf(pane);
+    by.className = `pane-by by-${pane.author}${credit.named ? " named" : ""}${credit.mine ? " mine" : ""}`;
+    by.textContent = credit.text;
+    by.title = credit.title;
+    // The hue comes from the host, which assigned it from the participant's
+    // principal. Deriving it here from a name would give two same-named people
+    // the same colour — undoing the one thing the colour is for.
+    if (credit.hue === null) by.style.removeProperty("--by-hue");
+    else by.style.setProperty("--by-hue", String(credit.hue));
+    article.dataset.author = pane.author;
+    article.dataset.mine = credit.mine ? "true" : "false";
   }
 
   /// A pane's rectangle, defended against a document that predates the field
@@ -618,6 +769,48 @@ export async function activate(ctx) {
     article.style.setProperty("--y", `${spot.y}px`);
     article.style.setProperty("--w", `${spot.w}px`);
     article.style.setProperty("--h", `${spot.h}px`);
+  }
+
+  /// Which pane is in front, from the document rather than from the order the
+  /// panes happen to have been built in.
+  ///
+  /// Document order used to decide this, which is why some panes could never be
+  /// brought forward however many times you clicked them: their place in the
+  /// list was fixed and touching one did not change it.
+  ///
+  /// The z-index is the pane's *rank* among the room's stack numbers, not the
+  /// number itself. A rank is bounded by the number of panes, so a long session
+  /// of clicking cannot climb into the bands reserved for the pane in hand or
+  /// the one filling the page.
+  function applyStack(article, id) {
+    const order = (state?.panes || [])
+      .map((pane) => ({ id: pane.id, stack: Number.isFinite(pane.stack) ? pane.stack : 0 }))
+      .sort((a, b) => a.stack - b.stack || (a.id < b.id ? -1 : 1));
+    const rank = order.findIndex((pane) => pane.id === id);
+    article.style.zIndex = String(1 + Math.max(0, rank));
+  }
+
+  /// Bring a pane in front of the ones it overlaps, if it is not already there.
+  ///
+  /// Skipped when nothing overlaps it, and skipped when it is already in front:
+  /// raising is a write, and a write nobody can see is a revision the room did
+  /// not need. It is recorded silently — see `mutate` in `room.rs` — so this
+  /// never wakes an agent parked on the room.
+  function raise(id) {
+    const panesNow = state?.panes || [];
+    const me = panesNow.find((pane) => pane.id === id);
+    if (!me) return;
+    const mine = spotOf(me);
+    const stackOf = (pane) => (Number.isFinite(pane.stack) ? pane.stack : 0);
+    const overlapping = panesNow.filter((pane) => {
+      if (pane.id === id) return false;
+      const other = spotOf(pane);
+      return mine.x < other.x + other.w && other.x < mine.x + mine.w
+        && mine.y < other.y + other.h && other.y < mine.y + mine.h;
+    });
+    if (!overlapping.length) return;
+    if (overlapping.every((pane) => stackOf(pane) < stackOf(me))) return;
+    queued(() => ["room_arrange", { panes: [{ id, raise: true }] }]);
   }
 
   /// Everyone else's rectangle — what a drag snaps against.
@@ -784,8 +977,13 @@ export async function activate(ctx) {
 
   // The receiving half of the html-pane pointer bridge. A click inside a
   // sandboxed frame arrives here as a message; the frame's pane id says where
-  // it happened, and the label becomes that pane's note — the same human-only
-  // channel the note input uses, because the click *is* the person.
+  // it happened, and the label is recorded against that pane.
+  //
+  // It goes to `pointed`, not to `note`. Both are the person speaking and both
+  // are human-only, but a note is a sentence they chose and a point is a
+  // gesture the page caught. Sharing one slot meant opening the note box
+  // presented them with the last thing they clicked, to be deleted before they
+  // could write anything.
   window.addEventListener("message", (event) => {
     const label = event.data && typeof event.data.aguiPoint === "string"
       ? event.data.aguiPoint.trim().slice(0, 560)
@@ -795,15 +993,143 @@ export async function activate(ctx) {
       .find((candidate) => candidate.contentWindow === event.source);
     const paneId = frame?.dataset.paneId;
     if (!paneId) return;
-    const note = `pointed: ${label}`;
-    // An unchanged note is not re-written. Without this, a script that
+    // An unchanged point is not re-written. Without this, a script that
     // reports on load re-fires on every re-render — each write bumps the
     // revision, the new snapshot re-renders, the frame refetches, and the
     // room spins revisions forever.
-    const current = state?.panes?.find((pane) => pane.id === paneId)?.note;
-    if (current === note) return;
-    queued(() => ["room_annotate_pane", { id: paneId, note }]);
+    const current = state?.panes?.find((pane) => pane.id === paneId)?.pointed;
+    if (current === label) return;
+    queued(() => ["room_annotate_pane", { id: paneId, pointed: label }]);
   });
+
+  /// Everything the person has said about a pane, each in its own voice.
+  ///
+  /// `note` is a sentence they typed. `pointed` is the last thing they clicked
+  /// inside a sandbox, which the room recorded for them. Both are theirs and
+  /// neither is the agent's, but only one of them is writing, so only one of
+  /// them belongs in the box they type into.
+  function showSaid(into, pane) {
+    const rows = [];
+    if (pane.note) {
+      const row = el("p", "pane-note");
+      // Signed with whoever actually wrote it. This said "you" unconditionally,
+      // which was true for the only reader a single-occupancy room had and
+      // became a lie about the other person the moment there were two.
+      const who = whoIs(pane.note_by, pane.note_by_name);
+      const tag = el("span", "pane-note-mark", who.text);
+      if (who.hue !== null) tag.style.setProperty("--by-hue", String(who.hue));
+      if (who.mine) tag.classList.add("mine");
+      row.append(tag, document.createTextNode(pane.note));
+      rows.push(row);
+    }
+    if (pane.pointed) {
+      const row = el("p", "pane-note pane-pointed");
+      // Signed the same way, for the same reason: with two people in the room,
+      // "somebody clicked Run" is not something either of them can act on.
+      // "pointed" alone when nobody was identified, which is the pre-identity
+      // case and still what a caller who never joined gets.
+      const who = whoIs(pane.pointed_by, pane.pointed_by_name);
+      const signed = who.mine || who.name;
+      const tag = el("span", "pane-note-mark", signed ? `${who.text} pointed` : "pointed");
+      if (who.hue !== null) tag.style.setProperty("--by-hue", String(who.hue));
+      if (who.mine) tag.classList.add("mine");
+      row.append(tag, document.createTextNode(pane.pointed));
+      rows.push(row);
+    }
+    into.replaceChildren(...rows);
+  }
+
+  /// Hold the room still while a pane is being dragged or resized.
+  ///
+  /// A press that becomes a drag has already started a text selection by then:
+  /// `preventDefault` on `pointerdown` does not stop Chrome firing `mousedown`,
+  /// and the pane's own `user-select: none` only covers the pane, not the
+  /// siblings the pointer then sweeps across. So a drag used to paint the whole
+  /// room blue and leave the selection behind after the drop. Clear what has
+  /// been selected already, and mark the canvas so nothing new can be.
+  function holdStill(on) {
+    canvas.classList.toggle("dragging", on);
+    if (on) window.getSelection()?.removeAllRanges();
+  }
+
+  /// Move a pane with the pointer.
+  ///
+  /// `threshold` is how far the pointer has to travel before this counts as a
+  /// move at all. The header commits immediately — that strip exists to be
+  /// dragged. A press on the body has to wait, because the same press is also
+  /// how you click the button under it, and only the travel tells them apart.
+  ///
+  /// Returns true once it has committed, so the caller can swallow the click
+  /// that a completed drag would otherwise deliver to whatever was underneath.
+  function startMove(article, paneId, event, threshold) {
+    const start = spotOf(livePane(paneId) || {});
+    const origin = { x: event.clientX, y: event.clientY };
+    const others = otherSpots(paneId);
+    const source = event.currentTarget;
+    let placed = start;
+    let moving = threshold === 0;
+    if (moving) {
+      article.classList.add("moving");
+      holdStill(true);
+    }
+    source.setPointerCapture(event.pointerId);
+
+    const onMove = (move) => {
+      if (!moving) {
+        const travel = Math.hypot(move.clientX - origin.x, move.clientY - origin.y);
+        if (travel < threshold) return;
+        moving = true;
+        article.classList.add("moving");
+        // Only now, once the press has turned out to be a drag. Clearing on
+        // press would wipe a selection they made deliberately and then clicked
+        // beside.
+        holdStill(true);
+      }
+      const wantedX = start.x + (move.clientX - origin.x);
+      const wantedY = start.y + (move.clientY - origin.y);
+      // Shift drags free: an escape hatch for the one time in ten that the
+      // magnet is holding a pane somewhere you do not want it.
+      const x = move.shiftKey
+        ? { value: Math.max(0, wantedX), guide: null }
+        : snapAxis(Math.max(0, wantedX), others, "x", start.w);
+      const y = move.shiftKey
+        ? { value: Math.max(0, wantedY), guide: null }
+        : snapAxis(Math.max(0, wantedY), others, "y", start.h);
+      placed = { x: Math.max(0, x.value), y: Math.max(0, y.value), w: start.w, h: start.h };
+      applySpot(article, placed);
+      showGuides([
+        x.guide === null ? null : { axis: "x", at: x.guide, ...guideSpan("x", x.guide, placed, others) },
+        y.guide === null ? null : { axis: "y", at: y.guide, ...guideSpan("y", y.guide, placed, others) },
+      ]);
+    };
+
+    const finish = () => {
+      source.removeEventListener("pointermove", onMove);
+      source.removeEventListener("pointerup", finish);
+      source.removeEventListener("pointercancel", finish);
+      article.classList.remove("moving");
+      holdStill(false);
+      clearGuides();
+      if (!moving) return;
+      // A drag that travelled is not also a click on whatever it started over.
+      // Armed only here, and disarmed on the next turn of the loop, so a drag
+      // released somewhere that never delivers a click cannot leave a trap for
+      // an unrelated click later.
+      const swallow = (click) => {
+        click.preventDefault();
+        click.stopPropagation();
+      };
+      window.addEventListener("click", swallow, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener("click", swallow, true), 0);
+      if (placed.x === start.x && placed.y === start.y) return;
+      resizeCanvas();
+      queued(() => ["room_arrange", { panes: [{ id: paneId, spot: placed }] }]);
+    };
+
+    source.addEventListener("pointermove", onMove);
+    source.addEventListener("pointerup", finish);
+    source.addEventListener("pointercancel", finish);
+  }
 
   function renderPane(pane) {
     const article = el("article", "pane");
@@ -822,46 +1148,7 @@ export async function activate(ctx) {
       if (event.button !== 0 || event.target.closest("button, input")) return;
       if (expanded === pane.id) return;
       event.preventDefault();
-      const start = spotOf(livePane(pane.id) || pane);
-      const origin = { x: event.clientX, y: event.clientY };
-      const others = otherSpots(pane.id);
-      let placed = start;
-      article.classList.add("moving");
-      head.setPointerCapture(event.pointerId);
-
-      const onMove = (move) => {
-        const wantedX = start.x + (move.clientX - origin.x);
-        const wantedY = start.y + (move.clientY - origin.y);
-        // Shift drags free: an escape hatch for the one time in ten that the
-        // magnet is holding a pane somewhere you do not want it.
-        const x = move.shiftKey
-          ? { value: Math.max(0, wantedX), guide: null }
-          : snapAxis(Math.max(0, wantedX), others, "x", start.w);
-        const y = move.shiftKey
-          ? { value: Math.max(0, wantedY), guide: null }
-          : snapAxis(Math.max(0, wantedY), others, "y", start.h);
-        placed = { x: Math.max(0, x.value), y: Math.max(0, y.value), w: start.w, h: start.h };
-        applySpot(article, placed);
-        showGuides([
-          x.guide === null ? null : { axis: "x", at: x.guide, ...guideSpan("x", x.guide, placed, others) },
-          y.guide === null ? null : { axis: "y", at: y.guide, ...guideSpan("y", y.guide, placed, others) },
-        ]);
-      };
-
-      const finish = () => {
-        head.removeEventListener("pointermove", onMove);
-        head.removeEventListener("pointerup", finish);
-        head.removeEventListener("pointercancel", finish);
-        article.classList.remove("moving");
-        clearGuides();
-        if (placed.x === start.x && placed.y === start.y) return;
-        resizeCanvas();
-        queued(() => ["room_arrange", { panes: [{ id: pane.id, spot: placed }] }]);
-      };
-
-      head.addEventListener("pointermove", onMove);
-      head.addEventListener("pointerup", finish);
-      head.addEventListener("pointercancel", finish);
+      startMove(article, pane.id, event, 0);
     });
 
     const title = el("h3", "pane-title", pane.title);
@@ -869,17 +1156,11 @@ export async function activate(ctx) {
     // that is not the person into "agent" — "companion" is a distinct claim
     // (an assistant reaching in from outside the room) and flattening it here
     // would throw away the byline the server went to the trouble of keeping.
-    // Show the name whoever wrote this announced, falling back to the bare
-    // category. The category stays in the class either way, so "agent" and
-    // "companion" keep looking different at a glance no matter what an agent
-    // decided to call itself, and the tooltip always states it in words — a
-    // chosen label never gets to stand in for the claim the host is making.
-    const by = el(
-      "span",
-      `pane-by by-${pane.author}${pane.by_name ? " named" : ""}`,
-      pane.by_name || pane.author,
-    );
-    by.title = pane.by_name ? `${pane.by_name} — ${pane.author}` : pane.author;
+    // The category stays in the class either way, so "agent" and "companion"
+    // keep looking different at a glance no matter what anyone decided to call
+    // themselves.
+    const by = el("span", "pane-by");
+    applyByline(by, article, pane);
     head.append(title, by);
 
     const marks = el("div", "pane-marks");
@@ -888,7 +1169,6 @@ export async function activate(ctx) {
       button.type = "button";
       button.title = mark.title;
       button.dataset.mark = mark.id;
-      if (pane.mark === mark.id) button.classList.add("on");
       button.addEventListener("click", (event) => {
         event.stopPropagation();
         queued((live) => {
@@ -902,6 +1182,8 @@ export async function activate(ctx) {
       });
       marks.append(button);
     }
+    // Once all four exist, so the pass that colours the active one can find it.
+    applyMarks(article, marks, pane);
     // Text, not a glyph: ✎ and 📌 fall back to colour emoji in this font stack,
     // which reads as decoration next to the monochrome ? ! ✓ ✗.
     const noteButton = el("button", "mark wide-mark secondary", "note");
@@ -987,67 +1269,80 @@ export async function activate(ctx) {
     }, scope));
 
     article.append(head, noteRow);
-    if (pane.note) {
-      const shown = el("p", "pane-note");
-      shown.append(el("span", "pane-note-mark", "you"), document.createTextNode(pane.note));
-      article.append(shown);
-    }
+    // Two lines, never one. What the person wrote is signed "you"; what they
+    // clicked is signed "pointed" and reads as the record it is. Collapsing
+    // them was what put a click label in the note box.
+    const lines = el("div", "pane-said");
+    article.append(lines);
+    showSaid(lines, pane);
     article.append(body);
 
-    // Drag the corner to resize. Any size at all, down to the point where the
-    // header stops being readable — a pane nobody can identify is a pane
-    // nobody can talk about, which is the only reason there is a floor here.
-    const grip = el("div", "pane-grip");
-    grip.title = "Drag to resize · shift to ignore the guides · double-click for the whole page";
+    // Every edge and every corner resizes, because the edge you want is the one
+    // nearest whatever you are trying to line the pane up with — and a pane you
+    // can only grow down and to the right is one you have to move first and
+    // resize second. Any size at all, down to the point where the header stops
+    // being readable: a pane nobody can identify is a pane nobody can talk
+    // about, which is the only reason there is a floor here.
+    let grip = null;
+    for (const handle of HANDLES) {
+      const node = el("div", `pane-handle handle-${handle.edge}`);
+      node.title = "Drag to resize · shift to ignore the guides";
+      // The bottom-right one carries the visible chevron and the double-click,
+      // so the affordance stays exactly where people already look for it.
+      if (handle.edge === "se") {
+        grip = node;
+        node.classList.add("pane-grip");
+        node.title = "Drag to resize · shift to ignore the guides · double-click for the whole page";
+      }
 
-    grip.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const start = spotOf(livePane(pane.id) || pane);
-      const origin = { x: event.clientX, y: event.clientY };
-      const others = otherSpots(pane.id);
-      let placed = start;
-      article.classList.add("resizing");
-      grip.setPointerCapture(event.pointerId);
+      node.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const start = spotOf(livePane(pane.id) || pane);
+        const origin = { x: event.clientX, y: event.clientY };
+        const others = otherSpots(pane.id);
+        let placed = start;
+        article.classList.add("resizing");
+        holdStill(true);
+        node.setPointerCapture(event.pointerId);
 
-      const onMove = (move) => {
-        const wantedW = Math.max(MIN_W, start.w + (move.clientX - origin.x));
-        const wantedH = Math.max(MIN_H, start.h + (move.clientY - origin.y));
-        const w = move.shiftKey
-          ? { value: wantedW, guide: null }
-          : snapSize(wantedW, others, "x", start.x);
-        const h = move.shiftKey
-          ? { value: wantedH, guide: null }
-          : snapSize(wantedH, others, "y", start.y);
-        placed = {
-          x: start.x,
-          y: start.y,
-          w: Math.max(MIN_W, w.value),
-          h: Math.max(MIN_H, h.value),
+        const onMove = (move) => {
+          const free = move.shiftKey;
+          const x = resizeAxis(
+            handle.x, start.x, start.w, move.clientX - origin.x, MIN_W, others, "x", free,
+          );
+          const y = resizeAxis(
+            handle.y, start.y, start.h, move.clientY - origin.y, MIN_H, others, "y", free,
+          );
+          placed = { x: x.pos, y: y.pos, w: x.size, h: y.size };
+          applySpot(article, placed);
+          showGuides([
+            x.guide === null ? null : { axis: "x", at: x.guide, ...guideSpan("x", x.guide, placed, others) },
+            y.guide === null ? null : { axis: "y", at: y.guide, ...guideSpan("y", y.guide, placed, others) },
+          ]);
         };
-        applySpot(article, placed);
-        showGuides([
-          w.guide === null ? null : { axis: "x", at: w.guide, ...guideSpan("x", w.guide, placed, others) },
-          h.guide === null ? null : { axis: "y", at: h.guide, ...guideSpan("y", h.guide, placed, others) },
-        ]);
-      };
 
-      const finish = () => {
-        grip.removeEventListener("pointermove", onMove);
-        grip.removeEventListener("pointerup", finish);
-        grip.removeEventListener("pointercancel", finish);
-        article.classList.remove("resizing");
-        clearGuides();
-        if (placed.w === start.w && placed.h === start.h) return;
-        resizeCanvas();
-        queued(() => ["room_arrange", { panes: [{ id: pane.id, spot: placed }] }]);
-      };
+        const finish = () => {
+          node.removeEventListener("pointermove", onMove);
+          node.removeEventListener("pointerup", finish);
+          node.removeEventListener("pointercancel", finish);
+          article.classList.remove("resizing");
+          holdStill(false);
+          clearGuides();
+          if (placed.x === start.x && placed.y === start.y
+            && placed.w === start.w && placed.h === start.h) return;
+          resizeCanvas();
+          queued(() => ["room_arrange", { panes: [{ id: pane.id, spot: placed }] }]);
+        };
 
-      grip.addEventListener("pointermove", onMove);
-      grip.addEventListener("pointerup", finish);
-      grip.addEventListener("pointercancel", finish);
-    });
+        node.addEventListener("pointermove", onMove);
+        node.addEventListener("pointerup", finish);
+        node.addEventListener("pointercancel", finish);
+      });
+
+      article.append(node);
+    }
 
     // The whole page, for when a pane is the only thing worth looking at.
     // Deliberately local and unrecorded, like flipping a deck: how you are
@@ -1062,7 +1357,6 @@ export async function activate(ctx) {
       event.preventDefault();
       expand(expanded === pane.id ? null : pane.id);
     });
-    article.append(grip);
     if (expanded === pane.id) article.classList.add("expanded");
 
     // Everything a mark or a note changes, refreshed without touching the body.
@@ -1076,47 +1370,52 @@ export async function activate(ctx) {
       if (!article.classList.contains("moving") && !article.classList.contains("resizing")) {
         applySpot(article, spotOf(next));
       }
+      applyStack(article, next.id);
       title.textContent = next.title;
-      by.className = `pane-by by-${next.author}${next.by_name ? " named" : ""}`;
-      by.textContent = next.by_name || next.author;
-      by.title = next.by_name ? `${next.by_name} — ${next.author}` : next.author;
-      article.dataset.author = next.author;
+      applyByline(by, article, next);
 
-      for (const mark of MARKS) {
-        const button = marks.querySelector(`[data-mark="${mark.id}"]`);
-        if (button) button.classList.toggle("on", next.mark === mark.id);
-        article.classList.toggle(`marked-${mark.id}`, next.mark === mark.id);
-      }
+      applyMarks(article, marks, next);
       pin.textContent = next.pinned ? "pinned" : "pin";
       close.disabled = Boolean(next.pinned);
 
-      // Never overwrite what they are in the middle of typing.
+      // Never overwrite what they are in the middle of typing — and never seed
+      // it with anything but their own note, which is the whole point of
+      // keeping `pointed` in its own field.
       if (document.activeElement !== noteInput) noteInput.value = next.note || "";
-
-      let shown = article.querySelector(":scope > .pane-note");
-      if (next.note) {
-        if (!shown) {
-          shown = el("p", "pane-note");
-          article.insertBefore(shown, body);
-        }
-        shown.replaceChildren(
-          el("span", "pane-note-mark", "you"),
-          document.createTextNode(next.note),
-        );
-      } else if (shown) {
-        shown.remove();
-      }
+      showSaid(lines, next);
 
       article.classList.toggle("focused", focused === next.id);
       article.classList.toggle("expanded", expanded === next.id);
       wider.title = expanded === next.id ? "Back to the room (esc)" : "Fill the page";
     };
 
+    // An unselected pane moves from anywhere on it, the way an unfocused window
+    // does: you should not have to find the title bar to shove something out of
+    // the way. Once it is selected the body is content again and a press there
+    // means what the content says it means.
+    //
+    // `pointerdown` runs before `mousedown`, so this still sees the selection
+    // as it was *before* this very press selects the pane — which is the whole
+    // distinction being drawn.
+    article.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || expanded === pane.id) return;
+      if (focused === pane.id) return;
+      if (event.target.closest(".pane-head, .pane-handle, input, textarea, select")) return;
+      // Not preventDefault: the press has not committed to anything yet, and
+      // swallowing it here would break every control it might still turn out
+      // to be a click on.
+      startMove(article, pane.id, event, 4);
+    });
+
     // Clicking a pane is the deixis gesture: it makes "this" mean this pane.
+    // It also brings it forward, because the thing you just reached for being
+    // the thing you can see is not a preference, it is what every window on
+    // the person's desktop already does.
     article.addEventListener("mousedown", () => {
       focused = pane.id;
       canvas.querySelectorAll(".pane.focused").forEach((node) => node.classList.remove("focused"));
       article.classList.add("focused");
+      raise(pane.id);
       ctx.semantic("room.pane.focused", { id: pane.id }).catch(() => {});
       document.dispatchEvent(new CustomEvent("room:focus", {
         detail: { id: pane.id, label: pane.title },
@@ -1179,6 +1478,9 @@ export async function activate(ctx) {
       }
       live.add(pane.id);
     }
+    // After every pane exists, so a rank is computed against the whole room
+    // rather than against however much of it had been built at the time.
+    for (const pane of value.panes) applyStack(panes.get(pane.id).article, pane.id);
     for (const [id, entry] of [...panes.entries()]) {
       if (live.has(id)) continue;
       entry.article.remove();
