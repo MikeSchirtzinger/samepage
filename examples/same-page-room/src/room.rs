@@ -360,8 +360,7 @@ impl RoomDoc {
         Self {
             schema_version: SCHEMA_VERSION,
             revision: 0,
-            intent: "Get on the same page about ag-ui-rust. Nothing is decided about \
-                     what this room becomes."
+            intent: "Choose what to get on the same page about. Nothing else is decided yet."
                 .to_string(),
             theme: Theme::default(),
             panes: vec![
@@ -388,10 +387,9 @@ impl RoomDoc {
                         gap: None,
                         children: vec![
                             Node::Text {
-                                text: "This room is empty on purpose. Every pane here — \
-                                       including this one — is data the agent wrote and can \
-                                       rewrite. Pick a direction, or type your own; the room \
-                                       reshapes around it."
+                                text: "These two starter panes are only a starting point. Ask \
+                                       an attached agent to rewrite them or add what the work \
+                                       needs."
                                     .to_string(),
                                 tone: view::Tone::Muted,
                             },
@@ -409,9 +407,9 @@ impl RoomDoc {
                                     },
                                     Node::Button {
                                         label: "Show me what runs".to_string(),
-                                        ask: "Walk me through the options pane — what is each \
-                                              of these examples, and which two are worth \
-                                              opening right now?"
+                                        ask: "Walk me through the options pane. What is each \
+                                              example, and which two are worth opening right \
+                                              now?"
                                             .to_string(),
                                         tone: view::Tone::Neutral,
                                     },
@@ -436,8 +434,8 @@ impl RoomDoc {
                             Node::Divider,
                             Node::Text {
                                 text: "Drag a pane by its title to move it. The ? ! ✓ ✗ \
-                                       buttons mark a pane for the agent — that channel is \
-                                       yours alone, the agent cannot write it."
+                                       buttons mark a pane for the agent. That channel is \
+                                       yours alone. The agent cannot write it."
                                     .to_string(),
                                 tone: view::Tone::Muted,
                             },
@@ -450,7 +448,7 @@ impl RoomDoc {
                     author: Author::Agent,
                     by_name: None,
                     by_id: None,
-                    spot: Spot::new(layout::DEFAULT_W + 20.0, 0.0, layout::DEFAULT_W, 460.0),
+                    spot: Spot::new(layout::DEFAULT_W + 20.0, 0.0, layout::DEFAULT_W, 520.0),
                     pinned: false,
                     mark: Mark::None,
                     mark_by: None,
@@ -2666,6 +2664,19 @@ mod tests {
             source.contains("article.__update(pane)") && source.contains("panes.set("),
             "panes must be reconciled by id and refreshed in place; rebuilding \
              them reloads every iframe in the room"
+        );
+    }
+
+    #[test]
+    fn a_port_conflict_tells_the_person_what_to_set() {
+        let source = include_str!("../static/extensions/room/index.js");
+        assert!(
+            source.contains("Set ${option.port_env} to another port before starting this one."),
+            "a conflict with an override must name the environment variable and the action"
+        );
+        assert!(
+            !source.contains("override with ${option.port_env}="),
+            "an assignment with no value is not an actionable override"
         );
     }
 
