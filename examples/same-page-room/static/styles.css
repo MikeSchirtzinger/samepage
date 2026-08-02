@@ -194,17 +194,30 @@ body { display: flex; flex-direction: column; }
   overflow: hidden;
   display: flex; flex-direction: column;
   transition: border-color 140ms, box-shadow 140ms;
+  /* The canvas under it is grabbable; a pane is not, except where it says so. */
+  cursor: default;
 }
 /* The body takes whatever the dragged height leaves over. A pane is exactly
-   the size the person made it, and its contents scroll inside that. */
-.pane-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+   the size the person made it, and its contents scroll inside that.
+
+   The transparent right border is load-bearing: a scrollbar is drawn inside the
+   border, so this holds it clear of the resize band that now runs down the same
+   edge. Without it the two gestures fight over the same few pixels and the
+   scrollbar loses, which trades a bug Mike named for one he did not. */
+.pane-body {
+  flex: 1 1 auto; min-height: 0; overflow: auto;
+  border-right: 8px solid transparent;
+}
 
 /* Moving and resizing skip the transition — a pane must sit under the pointer,
    not chase it. Raised while in hand so it passes over its neighbours rather
    than disappearing behind them. */
 .pane.moving, .pane.resizing {
   transition: none;
-  z-index: 40;
+  /* Far above the stacking ranks, which run 1..(number of panes): the pane in
+     hand is above everything by definition, and no amount of clicking around
+     can promote a resting pane into this band. */
+  z-index: 900;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
   border-color: var(--accent);
 }
@@ -214,25 +227,53 @@ body { display: flex; flex-direction: column; }
    edge that actually caught, so a guide on screen always means "this is what
    you snapped to". */
 .snap-guide {
-  position: absolute; z-index: 45; pointer-events: none;
+  position: absolute; z-index: 950; pointer-events: none;
   background: var(--accent); opacity: 0.85;
 }
 .snap-guide.v { width: 1px; }
 .snap-guide.h { height: 1px; }
 
-/* The resize grip. Quiet until the pane is under the pointer, like the other
-   housekeeping controls, so a room at rest still reads as content. */
-.pane-grip {
-  position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px;
-  cursor: nwse-resize; opacity: 0; transition: opacity 120ms ease;
-  touch-action: none; border-radius: 0 0 var(--radius) 0;
+/* Resize from any edge or corner. The bands are invisible and sit just inside
+   the border: the pane's own frame is the affordance, and the cursor says which
+   way it will go the moment you are close enough to act on it. Corners are
+   listed after the edges so they win the overlap.
+   The bands sit fully inside the frame rather than straddling it, because the
+   pane clips its own overflow and half a hit target is worse than a thin one. */
+.pane-handle { position: absolute; z-index: 4; touch-action: none; }
+.handle-n, .handle-s { left: 0; right: 0; height: 7px; cursor: ns-resize; }
+.handle-w, .handle-e { top: 0; bottom: 0; width: 7px; cursor: ew-resize; }
+.handle-n { top: 0; }
+.handle-s { bottom: 0; }
+.handle-w { left: 0; }
+.handle-e { right: 0; }
+.handle-nw, .handle-ne, .handle-sw, .handle-se {
+  width: 15px; height: 15px; z-index: 5;
 }
+.handle-nw { top: 0; left: 0; cursor: nwse-resize; }
+.handle-ne { top: 0; right: 0; cursor: nesw-resize; }
+.handle-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.handle-se { bottom: 0; right: 0; cursor: nwse-resize; }
+
+/* The bottom-right corner keeps a visible chevron — quiet until the pane is
+   under the pointer, like the other housekeeping controls, so a room at rest
+   still reads as content. The other seven are felt rather than seen. */
+.pane-grip { opacity: 0; transition: opacity 120ms ease; }
 .pane-grip::after {
-  content: ""; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px;
+  content: ""; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px;
   border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
 }
 .pane:hover .pane-grip, .pane.resizing .pane-grip, .pane-grip:focus-visible { opacity: 1; }
 .pane.resizing { user-select: none; }
+
+/* An unselected pane moves from anywhere on it, so say so with the cursor
+   before the person has to discover it by trying. Selected, the body is content
+   again and the pointer goes back to meaning what the content means. */
+.pane:not(.focused):not(.expanded) .pane-body { cursor: grab; }
+.pane.moving, .pane.moving .pane-body { user-select: none; }
+/* A drag sweeps the pointer across every pane it passes over, and each one of
+   those is selectable text. Holding the whole canvas still for the length of
+   the gesture is what stops a move smearing a selection across the room. */
+.room-canvas.dragging, .room-canvas.dragging * { user-select: none; }
 /* What the pane will be when you let go, in the same words the agent uses. */
 .pane-size {
   position: absolute; right: 8px; bottom: 22px; z-index: 3;
@@ -247,7 +288,7 @@ body { display: flex; flex-direction: column; }
 body.has-expanded .pane:not(.expanded) { display: none; }
 body.has-expanded .room-canvas { display: block; }
 .pane.expanded {
-  position: fixed; inset: 12px; z-index: 60; margin: 0;
+  position: fixed; inset: 12px; z-index: 1000; margin: 0;
   /* Beats the per-pane rectangle without disturbing it: filling the page is a
      way of looking, so the stored spot has to survive it untouched. */
   left: 12px; top: 12px; width: auto; height: auto;
@@ -255,7 +296,8 @@ body.has-expanded .room-canvas { display: block; }
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
 }
 .pane.expanded .pane-body { flex: 1 1 auto; max-height: none; overflow: auto; }
-.pane.expanded .pane-grip { display: none; }
+/* Filling the page is a way of looking, not a rectangle — nothing to drag. */
+.pane.expanded .pane-handle { display: none; }
 .pane.expanded .pane-head::after {
   content: "esc"; margin-left: 8px; flex: 0 0 auto;
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
@@ -297,8 +339,26 @@ body.has-expanded .room-canvas { display: block; }
   text-transform: none; letter-spacing: 0.01em; font-size: 11px;
   max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.pane-by.by-you   { color: var(--human); border-color: color-mix(in srgb, var(--human) 40%, transparent); }
+.pane-by.by-human { color: var(--human); border-color: color-mix(in srgb, var(--human) 40%, transparent); }
 .pane-by.by-agent { color: var(--agent); border-color: color-mix(in srgb, var(--agent) 40%, transparent); }
+/* A participant the host gave a colour to wears it, overriding the category
+   tint. The colour is keyed to who they are rather than what they typed, so
+   two people who both called themselves "Sam" still read apart at a glance —
+   which is the case the colour exists for. The host assigns it; deriving it
+   here from the visible name would collapse exactly those two people back
+   together. */
+.pane-by[style*="--by-hue"] {
+  color: hsl(var(--by-hue) 65% 68%);
+  border-color: hsl(var(--by-hue) 65% 68% / 0.42);
+}
+/* Your own writing is stated plainly rather than coloured in. Everyone sees
+   "you" on their own marks, so a colour here would be the one swatch in the
+   room that means something different on each screen. */
+.pane-by.mine {
+  color: var(--muted);
+  border-color: var(--line);
+  text-transform: uppercase; letter-spacing: 0.07em; font-size: 10px;
+}
 /* A companion is a model, so it reads as one — but not as *this room's* model,
    which is the whole point of giving it a separate byline. */
 .pane-by.by-companion { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
@@ -327,6 +387,14 @@ body.has-expanded .room-canvas { display: block; }
 }
 .mark:hover { color: var(--ink); border-color: var(--line); }
 .mark.on { color: var(--accent); border-color: var(--accent); }
+/* Somebody else's mark wears their colour, so a ✗ on your work says at a glance
+   who disagreed. Your own stays the neutral accent: everyone sees their own
+   marks as their own, so colouring those would be the one swatch in the room
+   that means a different person on every screen. */
+.mark.on[style*="--by-hue"] {
+  color: hsl(var(--by-hue) 65% 68%);
+  border-color: hsl(var(--by-hue) 65% 68% / 0.7);
+}
 .mark.danger:hover { color: var(--danger); border-color: var(--danger); }
 .mark:disabled { opacity: 0.3; cursor: default; }
 
@@ -350,6 +418,20 @@ body.has-expanded .room-canvas { display: block; }
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
   color: var(--human);
 }
+/* A note signed by somebody else is signed in their colour. */
+.pane-note-mark[style*="--by-hue"]:not(.mine) { color: hsl(var(--by-hue) 65% 68%); }
+/* What they clicked, as against what they wrote. Both are the person, so both
+   keep the human colour, but a recorded gesture is quieter than a sentence
+   somebody chose — and it is not editable here, which the weight should say
+   before anyone tries. */
+.pane-pointed {
+  background: color-mix(in srgb, var(--human) 5%, transparent);
+  color: var(--muted);
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: calc(11px * var(--scale));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pane-pointed .pane-note-mark { opacity: 0.75; }
 
 .pane-body { padding: var(--pane-padding); }
 

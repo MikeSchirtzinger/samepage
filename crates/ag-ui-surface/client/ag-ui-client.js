@@ -4,6 +4,37 @@
 
 export const AGUI_CLIENT_VERSION = "1";
 
+/// The in-flight join, so a page joins the room exactly once.
+///
+/// Memoized at module scope rather than per caller because the shell and every
+/// extension all need to know who this browser is, they all load at once, and
+/// none of them holds a cookie yet on a first visit. Called twice, the server
+/// correctly admits two people — it has nothing to tell the two requests apart
+/// with — and one browser ends up as two participants, each seeing half its own
+/// writing signed by a stranger. One promise, shared by everyone, is the fix.
+let joining = null;
+
+/// Who this browser is, as the host minted it.
+///
+/// Resolves to `null` when the surface has no identity endpoint or it failed:
+/// a page that cannot learn who it is still renders every byline, it just shows
+/// this person their own name instead of "you".
+export function whoAmI() {
+  if (!joining) {
+    joining = fetch("/surface/me", { method: "POST", credentials: "same-origin" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => (body && body.joined ? body : null))
+      .catch(() => null);
+  }
+  return joining;
+}
+
+/// Replace the cached identity after a rename, so a second reader of `whoAmI`
+/// does not get the name this person just stopped using.
+export function rememberMe(person) {
+  joining = Promise.resolve(person || null);
+}
+
 export class AgUiRequestError extends Error {
   constructor(message, { status = 0, body = null } = {}) {
     super(message);
@@ -176,6 +207,12 @@ export async function loadExtensions(client, { manifestUrl = "/extensions" } = {
         client: extensionClient,
         extension: Object.freeze({ ...extension }),
         mount,
+        // Who this browser is, so an extension can tell this person's own
+        // writing from everybody else's. Handed down rather than fetched per
+        // extension: joining is the one request that must happen exactly once
+        // per page, and every caller doing it themselves is how one browser
+        // became several participants.
+        whoAmI,
         action: (name, args) => {
           if (!extension.actions.includes(name)) {
             throw new Error(`extension ${extension.id} is not allowed to invoke action ${name}`);

@@ -45,6 +45,15 @@ pub struct AttachedAgent {
     pub label: String,
     pub client_name: String,
     pub client_version: Option<String>,
+    /// The [`Principal`](crate::identity::Principal) key of the person who
+    /// brought this agent, when the surface knows it.
+    ///
+    /// Optional here and required at the meetings tier, which is the whole
+    /// distinction between the two: an open room lets an agent wander in, and a
+    /// meeting insists every agent in it is somebody's. Without this an agent's
+    /// writes are attributable to a model but to no one accountable, which is a
+    /// record of what happened with the responsible party cropped out.
+    pub responsible: Option<String>,
 }
 
 /// One suspended [`Effect::EmitAndAwait`](crate::Effect::EmitAndAwait),
@@ -240,6 +249,15 @@ pub struct RuntimeState {
     /// literal. A shared surface has to be able to say *which* agent wrote
     /// something, which starts with being able to hold more than one.
     pub mcp_agents: Mutex<HashMap<String, AttachedAgent>>,
+    /// Everyone here who is a person rather than a model, keyed by the resume
+    /// token their browser holds.
+    ///
+    /// Agents got identity first because they attach with a handshake that had
+    /// somewhere to put it. People never handshake — they just load a page — so
+    /// a surface could say which of four agents wrote something while still
+    /// calling every human "you". That asymmetry is what made a room usable by
+    /// any number of agents and exactly one person.
+    pub people: crate::identity::People,
     /// MCP version selected by the most recent authenticated `initialize`
     /// request. ACP runs one provider session at a time; switching providers
     /// clears this slot before the replacement client receives `/mcp`.
@@ -409,6 +427,7 @@ impl RuntimeState {
                 .filter(|token| !token.is_empty())
                 .unwrap_or_else(|| MessageId::random().to_string()),
             mcp_agents: Mutex::new(HashMap::new()),
+            people: crate::identity::People::new(),
             mcp_protocol_version: Mutex::new(None),
             current_focus: Mutex::new(None),
             decision: Mutex::new(HashMap::new()),

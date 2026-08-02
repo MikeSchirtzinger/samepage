@@ -22,23 +22,49 @@ use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 
 const MAX_INTERNAL_CORE_INSTANCES: usize = 64;
-const DENY_ALL_WASI_IMPORTS: &[&str] = &[
-    "wasi:io/poll@0.2.6",
-    "wasi:io/error@0.2.6",
-    "wasi:io/streams@0.2.6",
-    "wasi:cli/environment@0.2.6",
-    "wasi:cli/exit@0.2.6",
-    "wasi:cli/stdin@0.2.6",
-    "wasi:cli/stdout@0.2.6",
-    "wasi:cli/stderr@0.2.6",
-    "wasi:cli/terminal-input@0.2.6",
-    "wasi:cli/terminal-output@0.2.6",
-    "wasi:cli/terminal-stdin@0.2.6",
-    "wasi:cli/terminal-stdout@0.2.6",
-    "wasi:cli/terminal-stderr@0.2.6",
-    "wasi:clocks/wall-clock@0.2.6",
-    "wasi:filesystem/types@0.2.6",
-    "wasi:filesystem/preopens@0.2.6",
+/// The interfaces the `wasm32-wasip2` adapter links into every component
+/// whether or not the guest ever calls them, and which this host answers with a
+/// context that grants nothing: no preopened directory, no environment, no
+/// inherited stdio.
+///
+/// **What passing this check does and does not prove.** It proves the artifact
+/// cannot reach an interface outside this list — no sockets, no outgoing HTTP,
+/// no `wasi:random`. It does **not** prove the component is inert, and it is not
+/// the `declared capabilities ⊇ actual imports` rule: nothing here is compared
+/// against the descriptor at all. The counter example declares
+/// `capabilities: []` and still imports filesystem and environment from this
+/// list, so a descriptor claiming zero capabilities remains an unverified claim
+/// about *these* interfaces. It is only checked against the ones that would
+/// grant ambient authority the host context cannot take back.
+///
+/// Closing that gap properly means building against a world that pulls no
+/// adapter at all, so a component with zero imports is self-evidently inert
+/// rather than trusted-by-host-configuration. Mapping each interface to a
+/// product-level capability name instead would need a table somebody maintains
+/// by hand, which fails closed on legitimate components when it goes stale and
+/// fails open on interfaces added after it was written.
+///
+/// Versions are deliberately absent: the interface identity is the part that
+/// carries authority, and pinning `@0.2.6` here meant a toolchain bump refused
+/// every component at once — which gets fixed by pasting in names, exactly the
+/// reflex this list exists to prevent.
+const INERT_WASI_INTERFACES: &[&str] = &[
+    "wasi:io/poll",
+    "wasi:io/error",
+    "wasi:io/streams",
+    "wasi:cli/environment",
+    "wasi:cli/exit",
+    "wasi:cli/stdin",
+    "wasi:cli/stdout",
+    "wasi:cli/stderr",
+    "wasi:cli/terminal-input",
+    "wasi:cli/terminal-output",
+    "wasi:cli/terminal-stdin",
+    "wasi:cli/terminal-stdout",
+    "wasi:cli/terminal-stderr",
+    "wasi:clocks/wall-clock",
+    "wasi:filesystem/types",
+    "wasi:filesystem/preopens",
 ];
 
 mod bindings {
@@ -614,11 +640,22 @@ fn prepare_store(store: &mut Store<HostState>, limits: ExecutionLimits) -> Resul
 
 fn validate_component_imports(component: &Component, engine: &Engine) -> Result<(), HostError> {
     for (name, _) in component.component_type().imports(engine) {
-        if !DENY_ALL_WASI_IMPORTS.contains(&name) {
+        if !import_is_inert(name) {
             return Err(HostError::UnsupportedImport(name.to_string()));
         }
     }
     Ok(())
+}
+
+/// Whether one import names an interface from [`INERT_WASI_INTERFACES`],
+/// ignoring its version.
+///
+/// Split out from the loop so it can be tested against real import names
+/// without compiling a component for every case — and so the version-stripping
+/// rule is stated once rather than implied by a string comparison.
+fn import_is_inert(name: &str) -> bool {
+    let interface = name.split_once('@').map_or(name, |(head, _)| head);
+    INERT_WASI_INTERFACES.contains(&interface)
 }
 
 fn build_surface_actions(
@@ -819,6 +856,7 @@ fn enforce_output_limit(
 mod tests {
     use super::*;
     use ag_ui_component::CapabilityGrant;
+    use std::path::PathBuf;
 
     #[test]
     fn invalid_output_schema_is_rejected_before_component_compilation() {
@@ -878,8 +916,159 @@ mod tests {
 
     #[test]
     fn ambient_network_and_random_imports_are_not_allowlisted() {
-        assert!(!DENY_ALL_WASI_IMPORTS.contains(&"wasi:sockets/tcp@0.2.6"));
-        assert!(!DENY_ALL_WASI_IMPORTS.contains(&"wasi:random/random@0.2.6"));
-        assert!(DENY_ALL_WASI_IMPORTS.contains(&"wasi:cli/environment@0.2.6"));
+        // The interfaces that would hand a component authority the host context
+        // cannot take back once it is linked.
+        for reachable in [
+            "wasi:sockets/tcp@0.2.6",
+            "wasi:sockets/udp@0.2.6",
+            "wasi:sockets/ip-name-lookup@0.2.6",
+            "wasi:random/random@0.2.6",
+            "wasi:random/insecure-seed@0.2.6",
+            "wasi:http/outgoing-handler@0.2.6",
+            "wasi:clocks/monotonic-clock@0.2.6",
+        ] {
+            assert!(
+                !import_is_inert(reachable),
+                "{reachable} must not load: nothing downstream re-checks it"
+            );
+        }
+        assert!(import_is_inert("wasi:cli/environment@0.2.6"));
+    }
+
+    /// A version bump must not turn the check into "refuse everything", because
+    /// the fix for that is pasting names into the list without reading them.
+    #[test]
+    fn an_interface_is_recognised_across_wasi_versions() {
+        for version in ["@0.2.0", "@0.2.6", "@0.2.9", "@0.3.0", ""] {
+            assert!(
+                import_is_inert(&format!("wasi:io/streams{version}")),
+                "wasi:io/streams{version} is the same interface at every version"
+            );
+            assert!(
+                !import_is_inert(&format!("wasi:sockets/tcp{version}")),
+                "and sockets is refused at every version too"
+            );
+        }
+    }
+
+    /// A near-miss must not pass. Prefix matching on `wasi:cli/std` would admit
+    /// anything that merely starts like an allowed name.
+    #[test]
+    fn a_name_that_only_resembles_an_allowed_interface_is_refused() {
+        for impostor in [
+            "wasi:cli/stdout-evil@0.2.6",
+            "wasi:filesystem/types-extra",
+            "evil:io/streams@0.2.6",
+            "wasi:io/streams-plus@0.2.6",
+        ] {
+            assert!(!import_is_inert(impostor), "{impostor} must not load");
+        }
+    }
+
+    /// The check against a real artifact rather than against its own list.
+    ///
+    /// Skipped rather than failed when the component has not been built: the
+    /// `wasm32-wasip2` target is not present on every machine, and a test that
+    /// fails on a missing build artifact teaches people to ignore it.
+    #[test]
+    fn the_built_counter_component_loads_and_imports_nothing_outside_the_list() {
+        let Some(bytes) = counter_component_bytes() else {
+            eprintln!("skipped: component_counter_extension.wasm has not been built");
+            return;
+        };
+        let mut config = Config::new();
+        config.wasm_component_model(true);
+        let engine = Engine::new(&config).expect("engine");
+        let component = Component::from_binary(&engine, &bytes).expect("the component compiles");
+
+        let imports: Vec<String> = component
+            .component_type()
+            .imports(&engine)
+            .map(|(name, _)| name.to_string())
+            .collect();
+        assert!(
+            !imports.is_empty(),
+            "a component with no imports at all would make this test vacuous — the day that \
+             is true, this check has been replaced by something stronger"
+        );
+        let refused: Vec<&String> = imports
+            .iter()
+            .filter(|name| !import_is_inert(name))
+            .collect();
+        assert!(
+            refused.is_empty(),
+            "the shipped component must still load; these imports were refused: {refused:?}"
+        );
+        validate_component_imports(&component, &engine)
+            .expect("and the whole check must agree with the per-import rule");
+    }
+
+    /// What this check is *not*. Written as a test so the limit is discovered by
+    /// reading the suite rather than by trusting a comment: the component that
+    /// motivated this work declares no capabilities and still imports filesystem
+    /// and environment, and it loads.
+    #[test]
+    fn a_descriptor_claiming_no_capabilities_is_still_an_unverified_claim() {
+        let Some(bytes) = counter_component_bytes() else {
+            eprintln!("skipped: component_counter_extension.wasm has not been built");
+            return;
+        };
+        let mut config = Config::new();
+        config.wasm_component_model(true);
+        let engine = Engine::new(&config).expect("engine");
+        let component = Component::from_binary(&engine, &bytes).expect("the component compiles");
+        let imports: Vec<String> = component
+            .component_type()
+            .imports(&engine)
+            .map(|(name, _)| name.to_string())
+            .collect();
+
+        let descriptor: ComponentDescriptor = serde_json::from_str(include_str!(
+            "../../../examples/component-counter-extension/descriptor.json"
+        ))
+        .expect("the shipped descriptor parses");
+
+        assert!(
+            descriptor.capabilities.is_empty(),
+            "this test is about a descriptor that declares nothing"
+        );
+        assert!(
+            imports.iter().any(|name| name.starts_with("wasi:filesystem/")
+                || name.starts_with("wasi:cli/environment")),
+            "and about it importing interfaces anyway: {imports:?}"
+        );
+        assert!(
+            validate_component_imports(&component, &engine).is_ok(),
+            "which loads today. `declared ⊇ actual` would refuse it, and the honest fix is a \
+             world that pulls no adapter — not a hand-maintained interface-to-capability table"
+        );
+    }
+
+    fn counter_component_bytes() -> Option<Vec<u8>> {
+        // Cargo does not tell a host crate where a wasm32 artifact landed, and
+        // the target directory is relocatable, so both the workspace default and
+        // an overridden CARGO_TARGET_DIR are checked.
+        let mut roots = Vec::new();
+        if let Ok(target) = std::env::var("CARGO_TARGET_DIR") {
+            roots.push(PathBuf::from(target));
+        }
+        roots.push(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()?
+                .parent()?
+                .join("target"),
+        );
+        for root in roots {
+            for profile in ["debug", "release"] {
+                let path = root
+                    .join("wasm32-wasip2")
+                    .join(profile)
+                    .join("component_counter_extension.wasm");
+                if let Ok(bytes) = std::fs::read(&path) {
+                    return Some(bytes);
+                }
+            }
+        }
+        None
     }
 }

@@ -5,7 +5,7 @@
 // extension is what owns the room's actions — the loader would refuse this file
 // if it tried to call them directly.
 
-import { AgUiClient, loadExtensions } from "/_agui/client.js";
+import { AgUiClient, loadExtensions, whoAmI, rememberMe } from "/_agui/client.js";
 import "/_agui/provider-settings.js";
 
 const client = new AgUiClient();
@@ -126,7 +126,11 @@ client.on("surface.tutor", (event) => {
 client.on("surface.ask", (event) => {
   const value = event.value || {};
   if (value.origin === clientId) return;
-  message(value.by === "you" ? "user" : "agent", value.text || "", { author: value.by || "participant" });
+  // Whose bubble this is, by participant id rather than by the word "you".
+  // Every browser sends "you", so matching on it put the other person's
+  // question on this screen as though this person had asked it.
+  const mine = value.by_id ? value.by_id === participantId : value.by === "you";
+  message(mine ? "user" : "agent", value.text || "", { author: value.by || "participant" });
 });
 client.on("surface.narrate", (event) => {
   const value = event.value || {};
@@ -261,40 +265,91 @@ document.querySelector("agui-provider-settings").addEventListener("provider-stat
 // Who is on this page right now: this browser, and every agent attached over
 // /mcp, by the label the host disambiguated. The strip only describes — the
 // snapshot's own `authority` field says this state cannot authorize anything.
-// Identity lives in localStorage so one browser profile is one participant
-// across every tab it opens.
 const presenceStrip = byId("presence-strip");
-const PARTICIPANT_KEY = "agui.semanticParticipantId";
-let participantId = localStorage.getItem(PARTICIPANT_KEY);
-if (!participantId) {
-  participantId = `human-${crypto.randomUUID()}`;
-  localStorage.setItem(PARTICIPANT_KEY, participantId);
-}
+
+/// Who this browser is, minted by the host and resumed from its cookie.
+///
+/// This replaced an id the page minted for itself and kept in `localStorage`.
+/// A client that picks its own id can pick one already in use, and every
+/// browser picked the label "You" — which is why the strip used to have to
+/// guess that a second participant calling itself "You" was "another browser".
+/// It is not a guess any more: the host names everybody, and no two people get
+/// the same name.
+///
+/// Taken from the shared `whoAmI`, never fetched here. The shell and the room
+/// extension both need it and both load at once, so two independent fetches
+/// admitted this browser twice — which showed up as your own writing coming
+/// back signed by somebody you had never met.
+let me = await whoAmI();
+let participantId = me?.id || null;
 
 function renderPresence(snapshot) {
   if (!presenceStrip || !Array.isArray(snapshot?.participants)) return;
   presenceStrip.replaceChildren();
   for (const entry of snapshot.participants) {
+    const you = Boolean(participantId) && entry.participant?.id === participantId;
+    const label = entry.participant?.label || "someone";
+    if (you) {
+      // Your own chip is the name control. Everyone else in the room reads
+      // this, and a room where the other person is permanently "someone" can
+      // record who did what but cannot tell you who they were.
+      const field = document.createElement("input");
+      field.className = `presence-chip presence-me${entry.active ? " active" : ""}`;
+      field.value = me?.name || label;
+      field.title = "What everyone else in this room sees you as";
+      field.setAttribute("aria-label", "Your name in this room");
+      field.maxLength = 40;
+      field.size = Math.max(6, field.value.length);
+      if (Number.isFinite(me?.hue)) field.style.setProperty("--by-hue", String(me.hue));
+      field.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") field.blur();
+        if (event.key === "Escape") {
+          field.value = me?.name || label;
+          field.blur();
+        }
+      });
+      field.addEventListener("change", () => rename(field.value));
+      presenceStrip.append(field);
+      continue;
+    }
     const chip = document.createElement("span");
     chip.className = `presence-chip${entry.active ? " active" : ""}`;
-    const you = entry.participant?.id === participantId;
-    // Every browser calls itself "You", so any *other* human participant
-    // carrying that label is a different browser — name it as one instead of
-    // claiming this person is on the page twice.
-    let label = you ? "You" : entry.participant?.label || "someone";
-    if (!you && label === "You") label = "another browser";
     chip.textContent = label;
-    chip.title = you ? entry.status : `${label} · ${entry.status}`;
+    chip.title = `${label} · ${entry.status}`;
     presenceStrip.append(chip);
   }
 }
 
+/// Choose the name everyone else sees. The host disambiguates it, so the name
+/// that comes back may not be the one that went out — take what it says rather
+/// than what was asked for, or this page will show a name nobody else does.
+async function rename(proposed) {
+  const wanted = String(proposed || "").trim();
+  if (!wanted || wanted === me?.name) return;
+  try {
+    const response = await fetch("/surface/me", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ name: wanted }),
+    });
+    if (!response.ok) return;
+    me = await response.json();
+    // Everyone else who asks who this browser is must get the new name too.
+    rememberMe(me);
+    await presenceRefresh();
+  } catch {
+    /* keep the old name rather than showing one the room did not accept */
+  }
+}
+
 async function presenceCheckIn() {
+  if (!participantId) return;
   try {
     const response = await fetch("/semantic-targets/presence", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ participantId, participantLabel: "You" }),
+      body: JSON.stringify({ participantId, participantLabel: me?.name || "someone" }),
     });
     const body = await response.json();
     if (body?.snapshot) renderPresence(body.snapshot);

@@ -7,6 +7,7 @@
 //! has no human twin and `annotate_pane` has no agent twin, which is what makes
 //! a mark trustworthy: the agent cannot mark its own work as agreed.
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -42,10 +43,19 @@ const MAX_STATE_BYTES: u64 = 4 * 1024 * 1024;
 pub const VOCABULARY: &str = "stack, row, deck, heading, text, code, list, kv, table, badge, \
      divider, button, field, link, image, source, options, embed, html, diagram";
 
+/// The trust category behind a write. Never viewer-relative: a stored value
+/// that means something different depending on who is reading it is not a
+/// record of who wrote something, and this enum used to have one.
+///
+/// [`Author::Human`] was `You` until the room admitted a second person. "You"
+/// is a rendering of an identity, not an identity, and the difference is
+/// invisible while there is exactly one person in the room and wrong the moment
+/// there are two. Which of the people in a room is "you" is now decided at the
+/// point of display, against the viewer's own participant id.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Author {
-    You,
+    Human,
     Agent,
     /// An assistant that is not this room's own agent — the one the person is
     /// already talking to in a terminal, reaching in over HTTP.
@@ -60,7 +70,7 @@ pub enum Author {
 impl Author {
     fn word(self) -> &'static str {
         match self {
-            Author::You => "you",
+            Author::Human => "person",
             Author::Agent => "agent",
             Author::Companion => "companion",
         }
@@ -83,13 +93,35 @@ impl Author {
 /// The byline as a reader sees it: the category the host stands behind, then
 /// the self-declared name when there is one.
 ///
-/// Category first on purpose. Leading with the name would invite reading a
-/// label the caller chose for itself as an established identity, which is the
-/// one thing this room must not blur.
+/// Category first on purpose, and for people too. Leading with the name would
+/// invite reading a label the caller chose for itself as an established
+/// identity, which is the one thing this room must not blur — and people choose
+/// their own names here exactly like agents do, so a person who called
+/// themselves "Codex" would otherwise read as one.
+///
+/// This is written for an agent, which is why an unnamed person is "someone"
+/// and never "you". In a read-back headed "since your last read", "you" is the
+/// model reading it; using the same word for the person on the page told the
+/// agent it had marked its own work, and with two people in the room it told it
+/// so about both of them.
 fn credit(author: Author, name: Option<&str>) -> String {
+    match (author, name) {
+        (Author::Human, None) => "someone".to_string(),
+        (_, None) => author.word().to_string(),
+        (_, Some(name)) => format!("{} “{name}”", author.word()),
+    }
+}
+
+/// Who set a mark or wrote a note. Always a person — the actions that write
+/// these have no agent twin — so the category is implied and only the name is
+/// worth printing.
+///
+/// An unnamed marker is "someone", never "they". With one person in the room
+/// "they" was unambiguous; with two it silently picks one of them.
+fn marker(name: Option<&str>) -> String {
     match name {
-        Some(name) => format!("{} “{name}”", author.word()),
-        None => author.word().to_string(),
+        Some(name) => format!("“{name}”"),
+        None => "someone".to_string(),
     }
 }
 
@@ -108,29 +140,46 @@ fn credit(author: Author, name: Option<&str>) -> String {
 pub struct Byline {
     pub author: Author,
     pub name: Option<String>,
+    /// The host-minted participant id of whoever wrote this, when they have
+    /// one. This is the durable half of the byline: names are chosen and can
+    /// be changed or repeated, and this cannot.
+    ///
+    /// It is also the only field a viewer may compare against itself to decide
+    /// whether a write says "you". Comparing names instead would let two people
+    /// who picked the same name read each other's marks as their own.
+    pub id: Option<String>,
 }
 
 impl Byline {
-    /// The person, who never needs a name: the room only has one of them and
-    /// the surface already addresses them as "you".
-    fn you() -> Self {
-        Self {
-            author: Author::You,
-            name: None,
-        }
-    }
-
     /// A display name is decoration, so it fails soft: too long, blank, or
     /// carrying control characters and it is simply dropped and the category
     /// word stands in. A write is never refused over its byline.
-    fn named(author: Author, name: Option<String>) -> Self {
+    ///
+    /// The participant id is held to a different standard on purpose. It is
+    /// never shown and never chosen, so there is nothing to fail soft about.
+    fn named(author: Author, name: Option<String>, id: Option<String>) -> Self {
         let name = name.map(|name| name.trim().to_string()).filter(|name| {
             !name.is_empty()
                 && name.chars().count() <= MAX_BYLINE
                 && !name.chars().any(char::is_control)
         });
-        Self { author, name }
+        Self { author, name, id }
     }
+}
+
+/// One participant as the browser needs to draw them: what to call them, what
+/// they are, and the colour that tells two same-named people apart.
+///
+/// The colour comes from the host rather than being derived in the page. The
+/// same derivation written twice in two languages drifts, and this one would
+/// drift into two people sharing a colour, which is precisely the confusion it
+/// exists to prevent.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Presence {
+    pub name: String,
+    pub author: Author,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hue: Option<u16>,
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
@@ -169,10 +218,13 @@ impl Mark {
 
 /// Bumped when the stored shape changes in a way `load` has to repair.
 ///
-/// 1 → 2 replaced `span`/`height` tokens with a free rectangle per pane. A
-/// version-1 document is migrated in [`migrate`] on the way in and rewritten,
-/// so an old room opens where it left off rather than refusing.
-const SCHEMA_VERSION: u32 = 2;
+/// 1 → 2 replaced `span`/`height` tokens with a free rectangle per pane.
+/// 2 → 3 replaced the `you` author with `human` plus a participant id, because
+/// `you` meant something different depending on who opened the room.
+///
+/// An older document is migrated in [`migrate`] on the way in and rewritten, so
+/// an old room opens where it left off rather than refusing.
+const SCHEMA_VERSION: u32 = 3;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Theme {
@@ -215,8 +267,16 @@ pub struct Pane {
     /// The display name of whoever last wrote this pane, when they announced
     /// one. Absent on every pane written before bylines existed, which is why
     /// it defaults rather than being required — an older room still opens.
+    ///
+    /// Kept beside [`Pane::by_id`] rather than looked up from it, so a pane
+    /// written by someone who has since left still shows the name it was
+    /// written under. The record keeps what was true when it was written.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub by_name: Option<String>,
+    /// The participant id of whoever last wrote this pane. What a viewer
+    /// compares against its own to decide whether this pane says "you".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub by_id: Option<String>,
     pub view: Node,
     /// Where this pane sits on the canvas. Free geometry: the person drags it
     /// anywhere and it stays there. Nothing agent-facing ever reads these
@@ -227,8 +287,48 @@ pub struct Pane {
     pub pinned: bool,
     #[serde(default)]
     pub mark: Mark,
+    /// Who set the mark, and who wrote the note.
+    ///
+    /// Separate from [`Pane::by_id`], which is whoever last *wrote* the pane. A
+    /// mark is a claim about somebody else's pane, so crediting it to the pane's
+    /// author would credit the agent with agreeing with itself — and it is
+    /// precisely because an agent cannot set one of these that a `✓` means
+    /// anything at all.
+    ///
+    /// Separate from each other because they are set at different times by
+    /// different people. Folding them into one field would let whoever wrote
+    /// the note inherit whoever's mark was already there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mark_by: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mark_by_name: Option<String>,
     #[serde(default)]
     pub note: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note_by: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note_by_name: Option<String>,
+    /// The last thing the person clicked inside this pane's html sandbox.
+    ///
+    /// Kept apart from `note` on purpose. Pointing and writing are both the
+    /// person speaking, but one is a gesture the page recorded and the other is
+    /// a sentence they chose — putting them in one slot meant the note box came
+    /// up pre-filled with whatever was last clicked, and the person had to
+    /// delete it before they could say anything.
+    ///
+    /// Attributed for the same reason a mark is: with two people in a room,
+    /// "somebody clicked Run" is not something either of them can act on.
+    #[serde(default)]
+    pub pointed: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pointed_by: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pointed_by_name: Option<String>,
+    /// Which pane is in front where two overlap. Higher is nearer. Bumped when
+    /// the person touches a pane, so the last thing they reached for is the
+    /// thing they can see — the same rule every window on their desktop uses.
+    #[serde(default)]
+    pub stack: u64,
     pub revision: u64,
 }
 
@@ -238,6 +338,8 @@ pub struct LogEntry {
     pub by: Author,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub by_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub by_id: Option<String>,
     /// Past-tense phrase, already written from the agent's point of view, so
     /// the delta reads as prose instead of as a diff the model has to narrate.
     pub said: String,
@@ -268,10 +370,19 @@ impl RoomDoc {
                     title: "Where do you want to take this?".to_string(),
                     author: Author::Agent,
                     by_name: None,
+                    by_id: None,
                     spot: Spot::new(0.0, 0.0, layout::DEFAULT_W, 340.0),
                     pinned: false,
                     mark: Mark::None,
+                    mark_by: None,
+                    mark_by_name: None,
                     note: String::new(),
+                    note_by: None,
+                    note_by_name: None,
+                    pointed: String::new(),
+                    pointed_by: None,
+                    pointed_by_name: None,
+                    stack: 0,
                     revision: 0,
                     view: Node::Stack {
                         gap: None,
@@ -338,10 +449,19 @@ impl RoomDoc {
                     title: "What this workspace can run".to_string(),
                     author: Author::Agent,
                     by_name: None,
+                    by_id: None,
                     spot: Spot::new(layout::DEFAULT_W + 20.0, 0.0, layout::DEFAULT_W, 460.0),
                     pinned: false,
                     mark: Mark::None,
+                    mark_by: None,
+                    mark_by_name: None,
                     note: String::new(),
+                    note_by: None,
+                    note_by_name: None,
+                    pointed: String::new(),
+                    pointed_by: None,
+                    pointed_by_name: None,
+                    stack: 0,
                     revision: 0,
                     view: Node::Stack {
                         gap: None,
@@ -379,6 +499,17 @@ pub struct RoomState {
     /// The name that caller announced when it attached, if any. Read beside
     /// [`RoomState::caller`] to build the byline.
     caller_name: Mutex<Option<String>>,
+    /// The participant id the host minted for that caller, if it joined.
+    caller_id: Mutex<Option<String>>,
+    /// Everyone the room has seen write, by participant id.
+    ///
+    /// Deliberately not persisted and deliberately not the source of a stored
+    /// byline. This is the live roster the browser needs to draw a name and a
+    /// colour beside a mark; the marks themselves already carry who made them.
+    /// Keeping it separate means an old pane renders with the name it was
+    /// written under even after its author is gone, instead of losing its
+    /// byline when the roster forgets them.
+    roster: Mutex<BTreeMap<String, Presence>>,
     /// Woken after every committed change so `await_room` can park instead of
     /// poll. The room's whole premise is that the person writes on the page and
     /// the agent answers; without this the agent only finds out by asking again,
@@ -411,6 +542,8 @@ impl RoomState {
             read_cursor: Mutex::new(0),
             caller: Mutex::new(Caller::Agent),
             caller_name: Mutex::new(None),
+            caller_id: Mutex::new(None),
+            roster: Mutex::new(BTreeMap::new()),
             changed: tokio::sync::Notify::new(),
         }))
     }
@@ -420,8 +553,40 @@ impl RoomState {
         Byline::named(
             Author::of(*self.caller.lock()),
             self.caller_name.lock().clone(),
+            self.caller_id.lock().clone(),
         )
     }
+
+    /// The byline for a write arriving through a human-audience action.
+    ///
+    /// Signed with whoever the runtime last said was calling, which for a
+    /// person is resolved from the resume token their browser holds — not from
+    /// anything in the request body. A byline a caller could fill in would make
+    /// every mark in the room worthless, since marks are the one thing an agent
+    /// is refused.
+    ///
+    /// A caller who never joined still writes; they are simply unnamed. The
+    /// open tier does not get to require a handshake before someone can point
+    /// at something.
+    fn person_byline(&self) -> Byline {
+        Byline::named(
+            Author::Human,
+            self.caller_name.lock().clone(),
+            self.caller_id.lock().clone(),
+        )
+    }
+
+    /// The byline for a write on whichever of an action's two twins it arrived
+    /// through. Must be called on the calling thread — see the note at the
+    /// action registrations.
+    fn byline(&self, from_person: bool) -> Byline {
+        if from_person {
+            self.person_byline()
+        } else {
+            self.agent_byline()
+        }
+    }
+
 
     /// The wire shape: the stored document with every host-resolved node
     /// replaced by what it currently stands for.
@@ -436,10 +601,19 @@ impl RoomState {
                     "title": pane.title,
                     "author": pane.author,
                     "by_name": pane.by_name,
+                    "by_id": pane.by_id,
                     "spot": pane.spot,
                     "pinned": pane.pinned,
                     "mark": pane.mark,
+                    "mark_by": pane.mark_by,
+                    "mark_by_name": pane.mark_by_name,
                     "note": pane.note,
+                    "note_by": pane.note_by,
+                    "note_by_name": pane.note_by_name,
+                    "pointed": pane.pointed,
+                    "pointed_by": pane.pointed_by,
+                    "pointed_by_name": pane.pointed_by_name,
+                    "stack": pane.stack,
                     "revision": pane.revision,
                     "view": view::resolve(&pane.view, &self.workspace),
                 })
@@ -451,6 +625,12 @@ impl RoomState {
             "theme": doc.theme,
             "panes": panes,
             "vocabulary": VOCABULARY,
+            // Who to draw beside a mark. Broadcast to everyone identically —
+            // there is one state event for the whole room, so the page cannot be
+            // handed a payload that already knows which participant is reading
+            // it. Resolving "you" is therefore the browser's job, and this is
+            // what it needs to do it.
+            "participants": *self.roster.lock(),
         })
     }
 
@@ -458,6 +638,7 @@ impl RoomState {
     where
         F: FnOnce(&mut RoomDoc, u64) -> Result<(String, String), String>,
     {
+        let quiet;
         let reply = {
             let mut live = self.doc.lock();
             if live.revision != expected {
@@ -474,15 +655,24 @@ impl RoomState {
             let mut candidate = live.clone();
             let (reply, said) = apply(&mut candidate, next)?;
             candidate.revision = next;
-            candidate.log.push(LogEntry {
-                revision: next,
-                by: by.author,
-                by_name: by.name.clone(),
-                said,
-            });
-            if candidate.log.len() > MAX_LOG {
-                let overflow = candidate.log.len() - MAX_LOG;
-                candidate.log.drain(0..overflow);
+            // An empty `said` means the room changed in a way nobody needs told
+            // about — today, only bringing a pane to the front. It still
+            // persists and still reaches every browser, but it writes no log
+            // entry, so it never lands in the delta and never wakes an agent
+            // parked on `await_room`. Clicking around a room is not news.
+            quiet = said.is_empty();
+            if !quiet {
+                candidate.log.push(LogEntry {
+                    revision: next,
+                    by: by.author,
+                    by_name: by.name.clone(),
+                    by_id: by.id.clone(),
+                    said,
+                });
+                if candidate.log.len() > MAX_LOG {
+                    let overflow = candidate.log.len() - MAX_LOG;
+                    candidate.log.drain(0..overflow);
+                }
             }
             validate_doc(&candidate)?;
             persist(&self.path, &candidate)?;
@@ -490,7 +680,9 @@ impl RoomState {
             format!("{reply} The room is now at revision {next}.")
         };
         self.transport.emit(EVENT_NAME, self.resolved());
-        self.changed.notify_waiters();
+        if !quiet {
+            self.changed.notify_waiters();
+        }
         Ok(Some(reply))
     }
 
@@ -573,6 +765,11 @@ impl RoomState {
                 }
             };
 
+            // A pane that just went up goes in front. Starting it at the back
+            // would let a new pane arrive underneath an existing one and be
+            // invisible, which reads as the write having silently failed.
+            let front = doc.panes.iter().map(|pane| pane.stack).max().unwrap_or(0);
+
             let pane = match existing {
                 Some(index) => {
                     let pane = &mut doc.panes[index];
@@ -583,6 +780,7 @@ impl RoomState {
                     pane.view = node.clone();
                     pane.author = by.author;
                     pane.by_name.clone_from(&by.name);
+                    pane.by_id.clone_from(&by.id);
                     pane.revision = revision;
                     pane.spot = spot;
                     doc.panes[index].clone()
@@ -593,11 +791,20 @@ impl RoomState {
                         title: title.clone(),
                         author: by.author,
                         by_name: by.name.clone(),
+                        by_id: by.id.clone(),
                         view: node.clone(),
                         spot,
                         pinned: false,
                         mark: Mark::None,
+                        mark_by: None,
+                        mark_by_name: None,
                         note: String::new(),
+                        note_by: None,
+                        note_by_name: None,
+                        pointed: String::new(),
+                        pointed_by: None,
+                        pointed_by_name: None,
+                        stack: front + 1,
                         revision,
                     };
                     doc.panes.push(pane.clone());
@@ -666,6 +873,11 @@ impl RoomState {
                             Some(parse_spot(raw)?)
                         }
                     };
+                    let raise = match optional_bool(value, "raise")? {
+                        Some(true) if !from_person => return Err(RAISE_IS_NOT_YOURS.to_string()),
+                        Some(raise) => raise,
+                        None => false,
+                    };
                     Ok(Adjustment {
                         id: pane_id(&required_string(value, "id")?)?,
                         place: optional_string(value, "place")?
@@ -676,6 +888,7 @@ impl RoomState {
                             .transpose()?,
                         spot,
                         pinned: optional_bool(value, "pinned")?,
+                        raise,
                     })
                 })
                 .collect::<Result<Vec<_>, String>>()?,
@@ -688,6 +901,7 @@ impl RoomState {
                     .to_string(),
             );
         }
+        let raising = adjustments.iter().any(|adjustment| adjustment.raise);
 
         self.mutate(expected, by, move |doc, _revision| {
             let mut said = Vec::new();
@@ -709,8 +923,29 @@ impl RoomState {
                     ));
                 }
 
-                let moved = adjustment.spot.is_some() || adjustment.place.is_some();
-                if !moved && adjustment.size.is_none() {
+                if adjustment.raise {
+                    // The front of the room *without* this pane. Taking the max
+                    // over every pane would include the one being raised, so the
+                    // comparison below would be `stack <= max(.., stack)` — true
+                    // for the front pane as much as for a buried one, and the
+                    // skip it guards would never once fire.
+                    let front = doc
+                        .panes
+                        .iter()
+                        .enumerate()
+                        .filter(|(other, _)| *other != index)
+                        .map(|(_, pane)| pane.stack)
+                        .max()
+                        .unwrap_or(0);
+                    // Already in front of everything: leave the number alone
+                    // rather than writing a new revision to say the same thing.
+                    if doc.panes[index].stack <= front {
+                        doc.panes[index].stack = front + 1;
+                    }
+                }
+
+                let placed = adjustment.spot.is_some() || adjustment.place.is_some();
+                if !placed && adjustment.size.is_none() {
                     continue;
                 }
 
@@ -746,20 +981,28 @@ impl RoomState {
                         spot: pane.spot,
                     })
                     .collect();
+                // What actually changed, not which argument carried it. Now that
+                // a pane resizes from any edge, dragging its left side sends a
+                // rectangle *and* changes where the pane starts — reporting
+                // that as "moved" would hide the resize, and reporting it as
+                // "resized" would hide that everything shifted.
                 let title = doc.panes[index].title.clone();
-                if moved {
-                    said.push(format!(
-                        "moved “{title}” — it now sits {}",
-                        layout::locate(index, &sited)
-                    ));
-                } else {
-                    said.push(format!(
-                        "resized “{title}” — it now sits {}",
-                        layout::locate(index, &sited)
-                    ));
-                }
+                let travelled = next.x != current.x || next.y != current.y;
+                let resized = next.w != current.w || next.h != current.h;
+                let verb = match (travelled, resized) {
+                    (true, true) => "moved and resized",
+                    (false, true) => "resized",
+                    // A place or spot that resolved to where it already was.
+                    _ => "moved",
+                };
+                said.push(format!(
+                    "{verb} “{title}” — it now sits {}",
+                    layout::locate(index, &sited)
+                ));
             }
-            let said = if said.is_empty() {
+            // Empty when the person only brought a pane to the front: a real
+            // change to the document, but not one to narrate. See `mutate`.
+            let said = if said.is_empty() && !raising {
                 "rearranged the room (no visible change)".to_string()
             } else {
                 said.join(", ")
@@ -806,7 +1049,12 @@ impl RoomState {
 
     /// Human-only. The agent has no way to write this field, which is what
     /// makes a `✓` on a pane mean something.
-    fn annotate(&self, args: &JsonValue) -> Result<Option<String>, String> {
+    ///
+    /// Takes its byline rather than reading one, so a mark is signed by whoever
+    /// made it and not by whoever happened to call next. A mark is the one
+    /// thing in this room an agent cannot forge, so a mark attributed to the
+    /// wrong person is worse than no mark at all.
+    fn annotate(&self, by: Byline, args: &JsonValue) -> Result<Option<String>, String> {
         let expected = required_u64(args, "expected_revision")?;
         let id = pane_id(&required_string(args, "id")?)?;
         let mark = optional_string(args, "mark")?
@@ -815,11 +1063,17 @@ impl RoomState {
         let note = optional_string(args, "note")?
             .map(|note| checked("note", &note, 0, MAX_NOTE))
             .transpose()?;
-        if mark.is_none() && note.is_none() {
+        let pointed = optional_string(args, "pointed")?
+            .map(|pointed| checked("pointed", &pointed, 0, MAX_NOTE))
+            .transpose()?;
+        if mark.is_none() && note.is_none() && pointed.is_none() {
             return Err("annotate_pane needs a mark, a note, or both".to_string());
         }
 
-        self.mutate(expected, Byline::you(), move |doc, _revision| {
+        // Cloned out before the byline moves into `mutate`, which needs it for
+        // the log entry as well.
+        let (marker, marker_name) = (by.id.clone(), by.name.clone());
+        self.mutate(expected, by, move |doc, _revision| {
             let pane = doc
                 .panes
                 .iter_mut()
@@ -828,6 +1082,15 @@ impl RoomState {
             let mut said = Vec::new();
             if let Some(mark) = mark {
                 pane.mark = mark;
+                if mark == Mark::None {
+                    // Clearing a mark clears whose it was. Leaving the name
+                    // behind would attribute an absence to somebody.
+                    pane.mark_by = None;
+                    pane.mark_by_name = None;
+                } else {
+                    pane.mark_by.clone_from(&marker);
+                    pane.mark_by_name.clone_from(&marker_name);
+                }
                 said.push(match mark.describe() {
                     Some(description) => {
                         format!("marked “{}” with {description}", pane.title)
@@ -838,10 +1101,29 @@ impl RoomState {
             if let Some(note) = note {
                 if note.is_empty() {
                     said.push(format!("cleared their note on “{}”", pane.title));
+                    pane.note_by = None;
+                    pane.note_by_name = None;
                 } else {
                     said.push(format!("noted on “{}”: “{note}”", pane.title));
+                    pane.note_by.clone_from(&marker);
+                    pane.note_by_name.clone_from(&marker_name);
                 }
                 pane.note = note;
+            }
+            if let Some(pointed) = pointed {
+                // Named with the pane, because "pointed at Run" is unreadable
+                // without knowing where — the pane is the more useful half of
+                // what the person just told you.
+                if pointed.is_empty() {
+                    said.push(format!("stopped pointing inside “{}”", pane.title));
+                    pane.pointed_by = None;
+                    pane.pointed_by_name = None;
+                } else {
+                    said.push(format!("pointed at “{pointed}” inside “{}”", pane.title));
+                    pane.pointed_by.clone_from(&marker);
+                    pane.pointed_by_name.clone_from(&marker_name);
+                }
+                pane.pointed = pointed;
             }
             let said = said.join(", ");
             Ok((format!("Recorded: {said}."), said))
@@ -892,10 +1174,17 @@ impl RoomState {
                     view::summarize(&pane.view),
                 ));
                 if let Some(mark) = pane.mark.describe() {
-                    out.push_str(&format!("     MARKED {mark}\n"));
+                    out.push_str(&format!(
+                        "     MARKED {mark} — by {}\n",
+                        marker(pane.mark_by_name.as_deref())
+                    ));
                 }
                 if !pane.note.is_empty() {
-                    out.push_str(&format!("     their note: “{}”\n", pane.note));
+                    out.push_str(&format!(
+                        "     note from {}: “{}”\n",
+                        marker(pane.note_by_name.as_deref()),
+                        pane.note
+                    ));
                 }
                 if pane.pinned {
                     out.push_str("     pinned; it cannot be removed until they unpin it\n");
@@ -936,8 +1225,10 @@ impl RoomState {
                 ));
             }
             out.push_str(
-                "Changes attributed to `you` were made by the person, in the browser, \
-                 not by you the agent.\n",
+                "A change credited to a `person` was made by a human in the browser, not by \
+                 you. More than one person can be in this room, so address them by the name \
+                 in the byline rather than as \"you\" — and `someone` means a person who has \
+                 not told the room what to call them.\n",
             );
         }
 
@@ -1025,10 +1316,17 @@ impl SurfaceState for RoomState {
             view::summarize(&pane.view),
         );
         if let Some(mark) = pane.mark.describe() {
-            out.push_str(&format!("\nThey marked it {mark}"));
+            out.push_str(&format!(
+                "\n{} marked it {mark}",
+                marker(pane.mark_by_name.as_deref())
+            ));
         }
         if !pane.note.is_empty() {
-            out.push_str(&format!("\nTheir note: “{}”", pane.note));
+            out.push_str(&format!(
+                "\nNote from {}: “{}”",
+                marker(pane.note_by_name.as_deref()),
+                pane.note
+            ));
         }
         Ok(Some(out))
     }
@@ -1108,6 +1406,23 @@ impl Extension for RoomExtension {
     fn note_caller(&self, actor: &ag_ui_surface::Actor) {
         *self.state.caller.lock() = actor.caller;
         self.state.caller_name.lock().clone_from(&actor.label);
+        self.state.caller_id.lock().clone_from(&actor.participant_id);
+        // Record them the moment they are known rather than on their first
+        // write, so a person who has joined and not yet done anything is
+        // already someone the room can name.
+        if let (Some(id), Some(name)) = (&actor.participant_id, &actor.label) {
+            self.state.roster.lock().insert(
+                id.clone(),
+                Presence {
+                    name: name.clone(),
+                    author: match actor.caller {
+                        Caller::Human => Author::Human,
+                        other => Author::of(other),
+                    },
+                    hue: actor.hue,
+                },
+            );
+        }
     }
 
     fn routes(&self) -> Vec<RouteDef> {
@@ -1178,12 +1493,13 @@ impl Extension for RoomExtension {
 
 /// Prepended to every served `html` node. Reports what the person clicks —
 /// the nearest `data-point` label, or a text fallback — to the host page,
-/// which records it as the pane's note. The agent's own script may call
+/// which records it as the pane's `pointed`, beside but never inside the note
+/// they type. The agent's own script may call
 /// `parent.postMessage({aguiPoint: "…"}, "*")` too, to report a composed
 /// result like the set of checked boxes.
 ///
 /// The text fallback makes pointing free for simple panes, but it also means
-/// every click anywhere is a note — and a note is a room revision. A pane with
+/// every click anywhere is a write — and a write is a room revision. A pane with
 /// its own chrome (an accordion, tabs, a control panel) would write one on each
 /// expand, saying nothing. `data-quiet` on any ancestor suppresses the
 /// fallback inside that subtree; an explicit `data-point` still reports, so
@@ -1194,6 +1510,13 @@ const POINTER_BRIDGE_DOC: &str = concat!(
     "<script>document.addEventListener(\"click\",(event)=>{",
     "const hit=event.target.closest(\"[data-point]\");",
     "if(!hit&&event.target.closest(\"[data-quiet]\"))return;",
+    // Clicking the background is not pointing at anything. Without this the
+    // fallback reads `body.textContent`, which is every text node in the
+    // document — including this script and the style above it, so a click on
+    // empty space reported the bridge's own source back as what the person
+    // touched. Nobody could act on that, and it landed in their note.
+    "const bare=event.target===document.body||event.target===document.documentElement;",
+    "if(!hit&&bare)return;",
     "const label=hit?hit.getAttribute(\"data-point\")",
     ":(event.target.textContent||event.target.tagName||\"\").trim().slice(0,80);",
     "if(label)parent.postMessage({aguiPoint:label},\"*\");",
@@ -1305,6 +1628,10 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
                                 "h": { "type": "number" }
                             },
                             "required": ["x", "y", "w", "h"]
+                        },
+                        "raise": {
+                            "type": "boolean",
+                            "description": "Bring this pane in front of the ones it overlaps, because the person just touched it. Browser-only."
                         }
                     },
                     "required": ["id"]
@@ -1337,25 +1664,35 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
         fixed set of tokens, not CSS. The room has no column count to set — panes sit wherever \
         they were placed on a free canvas.";
 
+    // `from_person` marks the browser's twin of each action. It decides two
+    // things that used to be decided by whether a byline was handed in at
+    // registration: which byline the write is signed with, and whether a raw
+    // rectangle may arrive on this channel at all.
+    //
+    // Every one of these reads its byline on the *calling* thread, before
+    // handing work to `effect`. `note_caller` holds whoever called most
+    // recently, so a byline read after the effect wakes can be the next
+    // caller's — which would sign one participant's write with another's name.
+    // That is the single worst thing this file can get wrong.
     let mut defs = Vec::new();
-    for (name, audience, by) in [
-        ("put_pane", ActionAudience::Agent, None),
-        ("room_put_pane", ActionAudience::Human, Some(Byline::you())),
+    for (name, audience, from_person) in [
+        ("put_pane", ActionAudience::Agent, false),
+        ("room_put_pane", ActionAudience::Human, true),
     ] {
         let state = state.clone();
         defs.push(
             ToolDef::new(name, put_description, put_schema.clone(), move |args| {
-                let by = by.clone();
+                let by = state.byline(from_person);
                 effect(state.clone(), args.clone(), move |state, args| {
-                    state.put_pane(by.clone().unwrap_or_else(|| state.agent_byline()), &args)
+                    state.put_pane(by.clone(), &args)
                 })
             })
             .audience(audience),
         );
     }
-    for (name, audience, by) in [
-        ("remove_pane", ActionAudience::Agent, None),
-        ("room_remove_pane", ActionAudience::Human, Some(Byline::you())),
+    for (name, audience, from_person) in [
+        ("remove_pane", ActionAudience::Agent, false),
+        ("room_remove_pane", ActionAudience::Human, true),
     ] {
         let state = state.clone();
         defs.push(
@@ -1364,51 +1701,38 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
                 remove_description,
                 remove_schema.clone(),
                 move |args| {
-                    let by = by.clone();
+                    let by = state.byline(from_person);
                     effect(state.clone(), args.clone(), move |state, args| {
-                        state.remove_pane(by.clone().unwrap_or_else(|| state.agent_byline()), &args)
+                        state.remove_pane(by.clone(), &args)
                     })
                 },
             )
             .audience(audience),
         );
     }
-    for (name, audience, by) in [
-        ("arrange_room", ActionAudience::Agent, None),
-        ("room_arrange", ActionAudience::Human, Some(Byline::you())),
+    for (name, audience, from_person) in [
+        ("arrange_room", ActionAudience::Agent, false),
+        ("room_arrange", ActionAudience::Human, true),
     ] {
         let state = state.clone();
-        let schema = if by.is_some() {
+        let schema = if from_person {
             arrange_schema_human.clone()
         } else {
             arrange_schema.clone()
         };
         defs.push(
-            ToolDef::new(
-                name,
-                arrange_description,
-                schema,
-                move |args| {
-                    let by = by.clone();
-                    effect(state.clone(), args.clone(), move |state, args| {
-                        // A byline handed in by the registration means this is
-                        // the browser's twin, which is the only channel a
-                        // rectangle may arrive on.
-                        let from_person = by.is_some();
-                        state.arrange(
-                            by.clone().unwrap_or_else(|| state.agent_byline()),
-                            from_person,
-                            &args,
-                        )
-                    })
-                },
-            )
+            ToolDef::new(name, arrange_description, schema, move |args| {
+                let by = state.byline(from_person);
+                effect(state.clone(), args.clone(), move |state, args| {
+                    state.arrange(by.clone(), from_person, &args)
+                })
+            })
             .audience(audience),
         );
     }
-    for (name, audience, by) in [
-        ("configure_room", ActionAudience::Agent, None),
-        ("room_configure", ActionAudience::Human, Some(Byline::you())),
+    for (name, audience, from_person) in [
+        ("configure_room", ActionAudience::Agent, false),
+        ("room_configure", ActionAudience::Human, true),
     ] {
         let state = state.clone();
         defs.push(
@@ -1417,9 +1741,9 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
                 configure_description,
                 configure_schema.clone(),
                 move |args| {
-                    let by = by.clone();
+                    let by = state.byline(from_person);
                     effect(state.clone(), args.clone(), move |state, args| {
-                        state.configure(by.clone().unwrap_or_else(|| state.agent_byline()), &args)
+                        state.configure(by.clone(), &args)
                     })
                 },
             )
@@ -1522,15 +1846,17 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
                     "expected_revision": revision,
                     "id": id,
                     "mark": { "type": "string", "enum": ["none", "question", "important", "agree", "disagree"] },
-                    "note": { "type": "string", "maxLength": MAX_NOTE }
+                    "note": { "type": "string", "maxLength": MAX_NOTE },
+                    "pointed": { "type": "string", "maxLength": MAX_NOTE }
                 },
                 "required": ["expected_revision", "id"]
             }),
             {
                 let state = state.clone();
                 move |args| {
+                    let by = state.byline(true);
                     effect(state.clone(), args.clone(), move |state, args| {
-                        state.annotate(&args)
+                        state.annotate(by.clone(), &args)
                     })
                 }
             },
@@ -1556,6 +1882,10 @@ struct Adjustment {
     /// Only ever `Some` on the human-audience twin — see [`RoomState::arrange`].
     spot: Option<Spot>,
     pinned: Option<bool>,
+    /// Also person-only. Which pane is in front is decided by reaching for it,
+    /// and an agent that could raise its own pane could cover the thing the
+    /// person was reading.
+    raise: bool,
 }
 
 /// What the agent is told when it tries to send a rectangle.
@@ -1563,6 +1893,17 @@ struct Adjustment {
 /// Worth the words: a refusal that only says "not allowed" invites the model to
 /// retry the same shape, whereas naming the vocabulary it *should* be using
 /// turns the refusal into the documentation.
+/// What the agent is told when it tries to bring its own pane to the front.
+///
+/// Same shape of refusal as the rectangle: name the thing it can do instead.
+/// Raising is not a layout choice, it is a record of what the person reached
+/// for, and an agent that could raise its own pane could cover the thing they
+/// were reading at the moment they looked away.
+const RAISE_IS_NOT_YOURS: &str = "arrange_room does not take `raise`. Which pane is in front is \
+     decided by the person touching it, so covering one is not something you can ask for. If a \
+     pane needs their attention, say so in it, or place it somewhere nothing overlaps: place: \
+     \"below: <id>\", \"right of: <id>\", or end.";
+
 const SPOT_IS_NOT_YOURS: &str = "arrange_room does not take coordinates, and it never will — \
      the room is described to you in relations so you and the person can talk about it in the \
      same words. Say where a pane should go relative to another one: place: \"right of: <id>\", \
@@ -1620,52 +1961,86 @@ fn migrate(body: &mut JsonValue) -> Result<(), String> {
         return Ok(());
     }
 
-    let columns = body
-        .get("columns")
-        .and_then(JsonValue::as_u64)
-        .unwrap_or(2)
-        .clamp(1, 3) as u8;
-    let panes = body
-        .get_mut("panes")
-        .and_then(JsonValue::as_array_mut)
-        .ok_or_else(|| "room document has no panes array".to_string())?;
+    // Each step is gated on the version it upgrades *from*. Running the flow
+    // rebuild against an already-migrated document would find no `span` or
+    // `height`, fall back to defaults, and relay every pane into a grid — which
+    // is to say it would silently throw away the arrangement the person made.
+    if version < 2 {
+        let columns = body
+            .get("columns")
+            .and_then(JsonValue::as_u64)
+            .unwrap_or(2)
+            .clamp(1, 3) as u8;
+        let panes = body
+            .get_mut("panes")
+            .and_then(JsonValue::as_array_mut)
+            .ok_or_else(|| "room document has no panes array".to_string())?;
 
-    // Rebuild the flow the old model implied, so the room opens looking like
-    // the person left it rather than as a pile at the origin.
-    let flow: Vec<(u8, String)> = panes
-        .iter()
-        .map(|pane| {
-            let span = pane
-                .get("span")
-                .and_then(JsonValue::as_u64)
-                .unwrap_or(1)
-                .clamp(1, 3) as u8;
-            let height = pane
-                .get("height")
-                .and_then(JsonValue::as_str)
-                .unwrap_or("auto")
-                .to_string();
-            (span, height)
-        })
-        .collect();
-    let borrowed: Vec<(u8, &str)> = flow
-        .iter()
-        .map(|(span, height)| (*span, height.as_str()))
-        .collect();
-    let spots = layout::migrate_flow(&borrowed, columns);
+        // Rebuild the flow the old model implied, so the room opens looking like
+        // the person left it rather than as a pile at the origin.
+        let flow: Vec<(u8, String)> = panes
+            .iter()
+            .map(|pane| {
+                let span = pane
+                    .get("span")
+                    .and_then(JsonValue::as_u64)
+                    .unwrap_or(1)
+                    .clamp(1, 3) as u8;
+                let height = pane
+                    .get("height")
+                    .and_then(JsonValue::as_str)
+                    .unwrap_or("auto")
+                    .to_string();
+                (span, height)
+            })
+            .collect();
+        let borrowed: Vec<(u8, &str)> = flow
+            .iter()
+            .map(|(span, height)| (*span, height.as_str()))
+            .collect();
+        let spots = layout::migrate_flow(&borrowed, columns);
 
-    for (pane, spot) in panes.iter_mut().zip(spots) {
-        let object = pane
-            .as_object_mut()
-            .ok_or_else(|| "a stored pane is not an object".to_string())?;
-        object.remove("span");
-        object.remove("height");
-        object.insert(
-            "spot".to_string(),
-            serde_json::to_value(spot)
-                .map_err(|error| format!("could not write a migrated pane: {error}"))?,
-        );
+        for (pane, spot) in panes.iter_mut().zip(spots) {
+            let object = pane
+                .as_object_mut()
+                .ok_or_else(|| "a stored pane is not an object".to_string())?;
+            object.remove("span");
+            object.remove("height");
+            object.insert(
+                "spot".to_string(),
+                serde_json::to_value(spot)
+                    .map_err(|error| format!("could not write a migrated pane: {error}"))?,
+            );
+        }
     }
+
+    if version < 3 {
+        // `you` stops being something a document can say. It was never a
+        // participant, only the way one participant was rendered to one reader,
+        // and a stored room reopened by a second person would have credited
+        // them with everything the first one wrote.
+        //
+        // The rewrite deliberately adds no participant id. Nobody knows which
+        // person wrote these — that information never existed — and inventing
+        // one would turn "we cannot tell" into a confident wrong answer.
+        for pane in body
+            .get_mut("panes")
+            .and_then(JsonValue::as_array_mut)
+            .ok_or_else(|| "room document has no panes array".to_string())?
+        {
+            if pane.get("author").and_then(JsonValue::as_str) == Some("you") {
+                pane["author"] = json!("human");
+            }
+        }
+        if let Some(log) = body.get_mut("log").and_then(JsonValue::as_array_mut) {
+            for entry in log {
+                if entry.get("by").and_then(JsonValue::as_str) == Some("you") {
+                    entry["by"] = json!("human");
+                }
+            }
+        }
+    }
+
     body["schema_version"] = json!(SCHEMA_VERSION);
     Ok(())
 }
@@ -1752,7 +2127,7 @@ fn vocabulary_reference() -> JsonValue {
             "source": { "path": "repository-relative", "from": "1-based, optional", "to": "optional", "note": "re-read from disk on every render, so it cannot go stale" },
             "options": { "filter": "optional substring", "note": "renders the live catalog of runnable packages, with a live port probe" },
             "embed": { "url": "http(s)", "height": "120-2000 px", "note": "sandboxed; an agent-authored embed does not load until the person clicks it" },
-            "html": { "html": "raw HTML, max 48000 chars", "height": "120-2000 px, default 320", "note": "The no-build escape hatch: any interface the vocabulary lacks — checkboxes, a canvas experiment, a control panel — authored directly, rendered in a fully isolated sandbox (scripts run inside, nothing reaches the page). Put data-point=\"label\" on elements that matter: when the person clicks one, the label becomes the pane's note, so read_room tells you exactly what they touched. Your own script may also call parent.postMessage({aguiPoint: \"label\"}, \"*\") to report a composed result, e.g. every checked box. Any click without a data-point reports its own text instead, which is free for a simple pane but chatty for one with its own chrome — put data-quiet on a wrapper to silence that subtree; an explicit data-point inside it still reports." },
+            "html": { "html": "raw HTML, max 48000 chars", "height": "120-2000 px, default 320", "note": "The no-build escape hatch: any interface the vocabulary lacks — checkboxes, a canvas experiment, a control panel — authored directly, rendered in a fully isolated sandbox (scripts run inside, nothing reaches the page). Put data-point=\"label\" on elements that matter: when the person clicks one, read_room reports it as what they pointed at inside this pane. That is separate from their note — a note is a sentence they chose to write, a point is a gesture the page caught, and reading one as the other misreads them. Your own script may also call parent.postMessage({aguiPoint: \"label\"}, \"*\") to report a composed result, e.g. every checked box. A click that lands on nothing in particular reports nothing; a click on an element without a data-point reports that element's own text, which is free for a simple pane but chatty for one with its own chrome — put data-quiet on a wrapper to silence that subtree; an explicit data-point inside it still reports." },
             "diagram": {
                 "nodes": "[{id, label optional (defaults to id), tone optional}]",
                 "edges": "[{from, to — node ids; label optional; arrow bool, default true}]",
@@ -2018,7 +2393,7 @@ mod tests {
             "a companion's pane must not be signed by this room's agent"
         );
         // And never by the person — that is the failure this exists to stop.
-        assert!(doc.panes.iter().all(|pane| pane.author != Author::You));
+        assert!(doc.panes.iter().all(|pane| pane.author != Author::Human));
         assert!(doc.log.iter().any(|entry| entry.by == Author::Companion));
     }
 
@@ -2234,6 +2609,24 @@ mod tests {
              fallback, or it would suppress explicit points too"
         );
 
+        // A click on bare background is not pointing at anything, and the
+        // fallback there is actively harmful: `body.textContent` is every text
+        // node in the document, which includes the style and script this very
+        // constant injects. Without the guard, clicking empty space reported
+        // the bridge's own source back as what the person touched.
+        let bare_at = POINTER_BRIDGE_DOC
+            .find("document.body")
+            .expect("the bridge still refuses a click on bare background");
+        assert!(
+            POINTER_BRIDGE_DOC.contains("if(!hit&&bare)return;"),
+            "the bare-background guard is missing from the bridge"
+        );
+        assert!(
+            bare_at < fallback_at,
+            "the bare-background guard must come before the text fallback, or \
+             the fallback it exists to prevent has already run"
+        );
+
         let reference = vocabulary_reference();
         assert!(
             reference["nodes"]["html"]
@@ -2282,6 +2675,19 @@ mod tests {
             caller,
             label: Some(label.to_string()),
             participant_id: Some("p-test".to_string()),
+            hue: None,
+            responsible: None,
+        }
+    }
+
+    /// A person who joined, as `GET /surface/me` produces.
+    fn person_actor(label: &str, id: &str, hue: u16) -> ag_ui_surface::Actor {
+        ag_ui_surface::Actor {
+            caller: Caller::Human,
+            label: Some(label.to_string()),
+            participant_id: Some(id.to_string()),
+            hue: Some(hue),
+            responsible: Some(format!("local:{id}")),
         }
     }
 
@@ -2367,7 +2773,7 @@ mod tests {
             Author::Companion,
             "a companion calling itself “you” is still a companion"
         );
-        assert_ne!(pane.author, Author::You);
+        assert_ne!(pane.author, Author::Human);
         assert_eq!(
             credit(pane.author, pane.by_name.as_deref()),
             "companion “you”",
@@ -2378,12 +2784,12 @@ mod tests {
     #[test]
     fn an_unusable_name_falls_back_to_the_category_instead_of_refusing() {
         for label in ["   ", "a".repeat(MAX_BYLINE + 1).as_str(), "bad\nname"] {
-            let byline = Byline::named(Author::Agent, Some(label.to_string()));
+            let byline = Byline::named(Author::Agent, Some(label.to_string()), None);
             assert_eq!(byline.name, None, "{label:?} should have been dropped");
             assert_eq!(byline.author, Author::Agent);
         }
         assert_eq!(
-            Byline::named(Author::Agent, Some("  Codex  ".to_string())).name,
+            Byline::named(Author::Agent, Some("  Codex  ".to_string()), None).name,
             Some("Codex".to_string()),
             "a usable name is kept, trimmed"
         );
@@ -2533,7 +2939,7 @@ mod tests {
 
         let after = state.read().expect("second read");
         assert!(after.contains("CHANGED SINCE YOUR LAST READ"));
-        assert!(after.contains("you marked"), "{after}");
+        assert!(after.contains("someone marked"), "{after}");
         assert!(after.contains("they think this is wrong"), "{after}");
 
         let again = state.read().expect("third read");
@@ -2710,6 +3116,243 @@ mod tests {
     }
 
     #[test]
+    fn pointing_at_something_never_writes_the_persons_note() {
+        // These shared one field. Opening the note box then presented whatever
+        // was last clicked, to be deleted before anything could be written in
+        // it — so the room was putting words in the person's mouth and then
+        // charging them for the edit.
+        let (state, extension) = fresh("point-vs-note");
+        call(
+            &extension,
+            &state,
+            "room_annotate_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "start",
+                "note": "the part I actually care about",
+            }),
+        )
+        .expect("the person writes a note");
+
+        let said = call(
+            &extension,
+            &state,
+            "room_annotate_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "start",
+                "pointed": "Run the thing",
+            }),
+        )
+        .expect("then clicks something inside a sandbox")
+        .expect("the room replies");
+
+        let doc = state.doc.lock();
+        let pane = doc.panes.iter().find(|pane| pane.id == "start").expect("start");
+        assert_eq!(pane.note, "the part I actually care about", "a click overwrote their note");
+        assert_eq!(pane.pointed, "Run the thing");
+        // The pane is the more useful half: "pointed at Run" is not actionable
+        // without knowing where.
+        assert!(said.contains("Run the thing"), "{said}");
+        // By title, not by id: the room's own rule is that panes are named the
+        // way the person would name them out loud.
+        assert!(
+            said.contains(pane.title.as_str()),
+            "the read-back must name the pane it happened in: {said}",
+        );
+    }
+
+    #[test]
+    fn a_resize_does_not_read_back_as_a_move() {
+        // Dragging an edge sends a rectangle, and so does dragging the pane.
+        // Before every edge resized, "a rectangle arrived" and "it moved" were
+        // the same statement; now a left-edge drag changes both where a pane
+        // starts and how wide it is, and the read-back has to say which.
+        let (state, extension) = fresh("resize-wording");
+        let spot = |x: f64, y: f64, w: f64, h: f64| {
+            json!({ "x": x, "y": y, "w": w, "h": h })
+        };
+        let arrange = |spot: JsonValue| {
+            call(
+                &extension,
+                &state,
+                "room_arrange",
+                json!({
+                    "expected_revision": revision(&state),
+                    "panes": [{ "id": "start", "spot": spot }]
+                }),
+            )
+            .expect("the person drags")
+            .expect("the room replies")
+        };
+
+        arrange(spot(100.0, 100.0, 400.0, 300.0));
+
+        // Same corner, different size: the person pulled an edge.
+        let said = arrange(spot(100.0, 100.0, 560.0, 300.0));
+        assert!(said.contains("resized"), "{said}");
+        assert!(!said.contains("moved"), "a pure resize must not claim it moved: {said}");
+
+        // Same size, different corner: the person dragged the pane.
+        let said = arrange(spot(220.0, 180.0, 560.0, 300.0));
+        assert!(said.contains("moved"), "{said}");
+        assert!(!said.contains("resized"), "a pure move must not claim it resized: {said}");
+
+        // A leading edge does both at once, and hiding either half would be a
+        // read-back the person could not reconcile with what they just did.
+        let said = arrange(spot(120.0, 180.0, 660.0, 300.0));
+        assert!(said.contains("moved and resized"), "{said}");
+    }
+
+    #[test]
+    fn only_the_person_may_bring_a_pane_to_the_front() {
+        let (state, extension) = fresh("raise");
+        let error = call(
+            &extension,
+            &state,
+            "arrange_room",
+            json!({
+                "expected_revision": revision(&state),
+                "panes": [{ "id": "start", "raise": true }]
+            }),
+        )
+        .expect_err("an agent may not put its own pane in front of theirs");
+        assert!(error.contains("does not take `raise`"), "{error}");
+        // Same rule as the rectangle: refuse, then name what does work.
+        assert!(error.contains("below:"), "{error}");
+
+        let defs = actions(state.clone());
+        let schema_of = |name: &str| {
+            defs.iter()
+                .find(|def| def.name == name)
+                .unwrap_or_else(|| panic!("no action {name}"))
+                .parameters
+                .to_string()
+        };
+        // The layer that actually fires: a model is never shown the field, so
+        // the worded refusal above is the backstop, not the mechanism.
+        assert!(
+            !schema_of("arrange_room").contains("\"raise\""),
+            "the agent's schema must not offer a way to cover the person's pane"
+        );
+        assert!(
+            schema_of("room_arrange").contains("\"raise\""),
+            "the person's own action is where a raise arrives"
+        );
+    }
+
+    #[test]
+    fn raising_a_pane_is_recorded_without_being_announced() {
+        // Clicking around a room is not news. A raise persists and reaches every
+        // browser, but it writes no log entry — so it never lands in the delta
+        // and never wakes an agent parked on `await_room`.
+        let (state, extension) = fresh("quiet-raise");
+        call(
+            &extension,
+            &state,
+            "room_put_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "second",
+                "title": "Second",
+                "view": text_view("two"),
+            }),
+        )
+        .expect("a second pane to sit under");
+
+        let before = state.doc.lock().log.len();
+        call(
+            &extension,
+            &state,
+            "room_arrange",
+            json!({
+                "expected_revision": revision(&state),
+                "panes": [{ "id": "start", "raise": true }]
+            }),
+        )
+        .expect("the person touches a pane");
+
+        let doc = state.doc.lock();
+        let stack = |id: &str| {
+            doc.panes
+                .iter()
+                .find(|pane| pane.id == id)
+                .unwrap_or_else(|| panic!("no pane {id}"))
+                .stack
+        };
+        assert!(
+            stack("start") > stack("second"),
+            "the pane they touched should be in front: {} vs {}",
+            stack("start"),
+            stack("second"),
+        );
+        assert_eq!(
+            doc.log.len(),
+            before,
+            "raising must not write a log entry, or every click becomes a delta",
+        );
+    }
+
+    #[test]
+    fn raising_the_pane_that_is_already_in_front_changes_nothing() {
+        // The skip that keeps a stack number from climbing on every click. It
+        // used to compare against a maximum taken over *all* panes, which
+        // includes the pane being raised — so the test was `stack <= max(..,
+        // stack)`, true for the front pane as surely as for a buried one, and
+        // the skip never fired once.
+        let (state, extension) = fresh("front-raise");
+        call(
+            &extension,
+            &state,
+            "room_put_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "second",
+                "title": "Second",
+                "view": text_view("two"),
+            }),
+        )
+        .expect("a second pane to sit under");
+
+        let raise = |id: &str| {
+            call(
+                &extension,
+                &state,
+                "room_arrange",
+                json!({
+                    "expected_revision": revision(&state),
+                    "panes": [{ "id": id, "raise": true }]
+                }),
+            )
+            .expect("the person touches a pane");
+        };
+        let stack = |id: &str| {
+            state
+                .doc
+                .lock()
+                .panes
+                .iter()
+                .find(|pane| pane.id == id)
+                .unwrap_or_else(|| panic!("no pane {id}"))
+                .stack
+        };
+
+        raise("start");
+        let front = stack("start");
+        assert!(front > stack("second"), "the first raise should bring it up");
+
+        // Touching the pane that is already on top three more times.
+        raise("start");
+        raise("start");
+        raise("start");
+        assert_eq!(
+            stack("start"),
+            front,
+            "a pane already in front must keep its number, however often it is clicked",
+        );
+    }
+
+    #[test]
     fn the_rooms_own_read_back_describes_position_without_a_single_number() {
         // layout::describe has its own version of this check; this one is the
         // guard on the seam — that the section actually reaches read_room, and
@@ -2764,7 +3407,7 @@ mod tests {
 
         let read = state.read().expect("read back");
         assert!(
-            read.contains("moved “Where do you want to take this?”"),
+            read.contains("“Where do you want to take this?” — it now sits"),
             "the delta should name the pane that moved:\n{read}"
         );
         assert!(
@@ -2913,6 +3556,7 @@ mod tests {
         let state =
             RoomState::open(test_transport(), path.clone(), workspace.clone()).expect("open");
         let extension = RoomExtension::new(state.clone());
+        extension.note_caller(&person_actor("Mike", "person-a", 210));
         call(
             &extension,
             &state,
@@ -2929,6 +3573,138 @@ mod tests {
             .iter()
             .find(|pane| pane.id == "mine")
             .expect("pane");
-        assert_eq!(pane.author, Author::You, "authorship survives the restart");
+        assert_eq!(pane.author, Author::Human, "authorship survives the restart");
+        assert!(
+            pane.by_id.is_some(),
+            "the participant id is the durable half of the byline and must survive too"
+        );
+    }
+
+    /// The failure this whole change exists to fix: two people in one room.
+    #[test]
+    fn two_people_do_not_share_a_byline() {
+        let (state, extension) = fresh("two-people");
+        for (name, id, hue, pane) in [
+            ("Mike", "person-a", 210u16, "his"),
+            ("Alex", "person-b", 28u16, "hers"),
+        ] {
+            extension.note_caller(&person_actor(name, id, hue));
+            call(
+                &extension,
+                &state,
+                "room_put_pane",
+                json!({
+                    "expected_revision": revision(&state),
+                    "id": pane,
+                    "title": pane,
+                    "view": text_view("mine")
+                }),
+            )
+            .expect("a person writes a pane");
+        }
+
+        let doc = state.doc.lock();
+        let his = doc.panes.iter().find(|p| p.id == "his").expect("his pane");
+        let hers = doc.panes.iter().find(|p| p.id == "hers").expect("her pane");
+        assert_eq!(his.author, Author::Human);
+        assert_eq!(hers.author, Author::Human);
+        assert_ne!(
+            his.by_id, hers.by_id,
+            "two people writing must not collapse into one author"
+        );
+        assert_eq!(his.by_name.as_deref(), Some("Mike"));
+        assert_eq!(hers.by_name.as_deref(), Some("Alex"));
+    }
+
+    /// A name is chosen, an id is minted. Comparing the wrong one is how a
+    /// viewer ends up reading someone else's marks as its own.
+    #[test]
+    fn two_people_who_chose_the_same_name_are_still_two_people() {
+        let (state, extension) = fresh("same-name");
+        for (id, pane) in [("person-a", "first"), ("person-b", "second")] {
+            extension.note_caller(&person_actor("Sam", id, 210));
+            call(
+                &extension,
+                &state,
+                "room_put_pane",
+                json!({
+                    "expected_revision": revision(&state),
+                    "id": pane,
+                    "title": pane,
+                    "view": text_view("mine")
+                }),
+            )
+            .expect("a person writes a pane");
+        }
+        let doc = state.doc.lock();
+        let first = doc.panes.iter().find(|p| p.id == "first").expect("first");
+        let second = doc.panes.iter().find(|p| p.id == "second").expect("second");
+        assert_eq!(first.by_name, second.by_name, "they did pick the same name");
+        assert_ne!(
+            first.by_id, second.by_id,
+            "and they are still not the same person"
+        );
+    }
+
+    /// The read-back is written for a model. "You" in it is the model.
+    #[test]
+    fn the_read_back_names_people_rather_than_calling_them_you() {
+        let (state, extension) = fresh("named-read-back");
+        state.read().expect("establish the cursor");
+        extension.note_caller(&person_actor("Alex", "person-b", 28));
+        call(
+            &extension,
+            &state,
+            "room_annotate_pane",
+            json!({ "expected_revision": revision(&state), "id": "start", "mark": "question" }),
+        )
+        .expect("a person marks a pane");
+
+        let read = state.read().expect("read back");
+        assert!(
+            read.contains("person “Alex” marked"),
+            "a named person is named, and still carries the category:\n{read}"
+        );
+        assert!(
+            !read.contains("you marked"),
+            "the reader is the agent; the person is not it:\n{read}"
+        );
+    }
+
+    /// An older room must open, and must not gain facts nobody recorded.
+    #[test]
+    fn a_stored_room_that_says_you_migrates_without_inventing_an_author() {
+        let mut body = json!({
+            "schema_version": 2,
+            "revision": 4,
+            "intent": "carried over",
+            "theme": Theme::default(),
+            "panes": [{
+                "id": "old",
+                "title": "Old",
+                "author": "you",
+                "by_name": "Mike",
+                "view": { "kind": "stack", "children": [] },
+                "spot": { "x": 0.0, "y": 0.0, "w": 400.0, "h": 300.0 },
+                "revision": 4
+            }],
+            "log": [{ "revision": 4, "by": "you", "said": "wrote something" }]
+        });
+        migrate(&mut body).expect("an old room opens");
+
+        assert_eq!(body["schema_version"], json!(SCHEMA_VERSION));
+        assert_eq!(body["panes"][0]["author"], json!("human"));
+        assert_eq!(body["log"][0]["by"], json!("human"));
+        assert!(
+            body["panes"][0].get("by_id").is_none(),
+            "nobody knows which person wrote this, and a made-up id would say we did"
+        );
+        // The v1 step must not have run: it would have found no span/height,
+        // defaulted, and relaid the canvas.
+        assert_eq!(body["panes"][0]["spot"]["w"], json!(400.0));
+
+        let doc: RoomDoc = serde_json::from_value(body).expect("the migrated room parses");
+        assert_eq!(doc.panes[0].author, Author::Human);
+        assert_eq!(doc.panes[0].by_name.as_deref(), Some("Mike"));
     }
 }
