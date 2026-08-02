@@ -16,6 +16,10 @@ ADR 0006's checker boundary and does not introduce Phase 4 preflight,
 postconditions, or runtime governance. Those broader Phase 4 concerns remain
 separate.
 
+The enforcement layer currently called Govern will likely ship under a
+different name because its crates.io name is taken, but its machine-checked
+agreements still keep people and agents aligned while stopping project drift.
+
 ## Fail-closed statuses
 
 The receipt uses literal, separate statuses:
@@ -41,11 +45,11 @@ machine-readable `configuration_error` receipt and exit 2.
 The v1 schema is
 `specs/evals/schema/scenario-v1.schema.json`. Each scenario names:
 
-- one layer: `conformance` or `agent_eval`;
-- one subject id and one atomic capability statement;
-- for **AGENT EVAL**, the real adapter, provider, and model;
-- one bounded command and its availability requirements;
-- one or more observable scorers with explicit thresholds;
+- one layer: `conformance` or `agent_eval`.
+- one subject id and one atomic capability statement.
+- for **AGENT EVAL**, the real adapter, provider, and model.
+- one bounded command and its availability requirements.
+- one or more observable scorers with explicit thresholds.
 - an `exit_code == 0` scorer, which is mandatory.
 
 Supported observations are the process exit code and values selected from the
@@ -106,11 +110,11 @@ behaviors into separate files and scorers.
 Every batch records:
 
 - the population, window, sampling method, inclusion rule, sampler version, and
-  each session's selection probability;
-- an opaque source receipt reference rather than copied or invented evidence;
-- extension id and named capabilities;
-- the provider/model that produced the sampled session;
-- each scorer's observed value, threshold, and recomputed pass state;
+  each session's selection probability.
+- an opaque source receipt reference rather than copied or invented evidence.
+- extension id and named capabilities.
+- the provider/model that produced the sampled session.
+- each scorer's observed value, threshold, and recomputed pass state.
 - separate pass, fail, and reason-bearing skipped counts.
 
 `specs/evals/run-scoring/example-v1.json` is explicitly illustrative, not a
@@ -133,12 +137,12 @@ must not be reported as sampled-session scoring.
 `.github/workflows/evaluation.yml` runs all three distinct jobs on a nightly or
 manual invocation:
 
-- `conformance`;
-- `agent-eval-real-provider`;
+- `conformance`.
+- `agent-eval-real-provider`.
 - `run-scoring-contract`.
 
 Each job uploads its JSON receipt with `if: always()`. The real-provider job is
-allowed to go red with exit 3 when the provider is unavailable; its receipt
+allowed to go red with exit 3 when the provider is unavailable. Its receipt
 still states why. The Rust runner has no Node or React dependency. Pi is only
 installed in the targeted **AGENT EVAL** job as the selected external provider
 adapter.

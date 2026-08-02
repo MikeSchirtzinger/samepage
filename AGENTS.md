@@ -1,84 +1,140 @@
-# Overview
+# SamePage repository guide
 
-AG-UI Rust is an agent-first application platform. The canonical sequencing
-authority is `docs/platform-roadmap.md`; Govern is a derived coordination and
-evidence index, not a replacement roadmap. Phase 2, agent-driven setup, is the
-only active roadmap phase.
+SamePage is one running surface shared by a person and an agent. Both act on
+the same state. The host stamps writes with unforgeable bylines, the person can
+mark or dispute what the agent placed, and the agent reads layout back as
+relations rather than browser coordinates.
 
-# Agent navigation
+A rendered summary, status page, or report is not a same page. It is a one-way
+artifact without shared mutation, host-stamped attribution, or in-place
+disagreement.
 
-- Read `agent-harness.json` for the machine-readable map of authorities,
-  resource roots, progressive guides, commands, extension mechanics, and proof
-  vocabulary.
-- Read `docs/agent-harness/README.md` for task routing. Load the complete
-  environment, extension, same-page, decision, or Govern guide only when the
-  task needs it.
-- Run `python3 dev/agent-harness/check.py --json` when current resource
-  provenance, recipe selection, branch state, or documentation diagnostics
-  matter.
-- For rationale, use `docs/decisions/index.json` and the indexed record. If no
-  rationale is documented, say `unknown` or `undocumented`; do not reconstruct
-  intent from source code alone.
+## Start with the real tree
 
-# Architecture
+The root `Cargo.toml` is the authority for workspace membership. The important
+paths are:
 
-The runtime kernel owns actions, events, state, context, providers,
-interruption, human decisions, evidence, and transport-neutral dispatch.
-Browser WASM and local WASI are distinct hosts for the same portable component
-contract. Example applications prove compositions; they do not define generic
-platform vocabulary.
+- `crates/samepage`: Placeholder for the public crate API.
+- `crates/ag-ui-core`: AG-UI protocol types and fixtures.
+- `crates/ag-ui-surface`: Runtime, action dispatch, identity, provider, and
+  authenticated MCP behavior.
+- `crates/ag-ui-canvas*`: Shared canvas state, renderer, and browser or server
+  hosts.
+- `crates/ag-ui-component*`: Portable component contract and host.
+- `crates/ag-ui-eval`: Evaluation runner and receipt types.
+- `examples/same-page-room`: The runnable SamePage application in this
+  repository.
+- `docs/ag-ui-surface-spec.md`: Runtime design and implementation record.
+- `docs/ag-ui-extension-architecture.md`: Extension and composition contract.
+- `docs/evaluation-layers.md`: Separation between conformance, real-agent
+  evaluation, and run scoring.
 
-# Boundaries
+Do not infer a package from a leftover directory. Check the workspace member
+list and that package's `Cargo.toml`.
 
-- Keep Phase 3, Phase 4, and Phase 5 work parked until their entry gates are
-  explicitly opened in `docs/platform-roadmap.md`.
-- One bounded pre-Phase-4 `clear_board` learning test may exercise Govern
-  around a real runtime action, but it must not become a runtime dependency.
-- A mock, fallback response, disabled feature, or receipt copied from another
-  path does not count as proof.
-- Preserve separate claims for implemented, compiled, tested, opened in real
-  Chrome, and proven by a machine-readable receipt.
-- Clean setup may not depend on an undocumented sibling checkout.
-- `crates/convergence-attrs` is a compatibility shim, not enforcement.
-- Do not couple the runtime kernel to the Govern CLI, its store, or its
-  extractor. `dev/govern` is development coordination only.
+## Run and validate
 
-# Commands
+Start the room from the repository root:
 
-- `python3 dev/agent-harness/check.py` validates the checked-in agent resource
-  graph, decision index, and Same Page Studio extension assets. It is
-  configuration evidence, not compiler or browser proof.
-- `dev/govern/bootstrap.sh` initializes and refreshes the local Govern index.
-- `dev/govern/check.sh` reports roadmap drift and obligations without blocking.
-- `dev/govern/check.sh --enforce` applies the same checks as a blocking gate.
-  This is the **export-boundary gate**: run it (green) before curating a
-  concern out to the `~/dev/ag-ui` storefront fork. In the lab itself the
-  checks stay advisory so iteration is never blocked.
-- `dev/govern/spec-drift-check.sh` diffs `ag-ui-core`'s `EventType` against
-  live upstream AG-UI; the `.github/workflows/spec-drift` job runs it weekly
-  and fails loudly on any drift. `AGUI-EVENTTYPE-SHAPE-01` +
-  `AGUI-CONFORMANCE-SUITE-01` gate the same conformance in `--enforce`.
-- Follow the phase-specific deterministic build and real-surface proof commands
-  documented by the roadmap and component-host packages.
+```bash
+AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
+```
 
-# Testing
+Open <http://127.0.0.1:8100>. The room has no frontend build step. Static
+assets are served by the Rust process, and panes are data interpreted by the
+already compiled renderer.
 
-Validate changes at the real layer they affect. Rust compiler and test success
-prove code paths, while browser claims require real Chrome and cross-host claims
-require the checked-in machine-readable receipt. Never widen a gate or add a
-fallback merely to make a check pass.
+Use these repository gates for code changes:
 
-# Decisions
+```bash
+cargo check --workspace
+cargo clippy --workspace --all-targets
+cargo test -p same-page-room
+```
 
-- `docs/platform-roadmap.md` remains the single sequencing authority.
-- Phase 2 is active; later phases remain parked.
-- Govern is being dogfooded now as an advisory development control plane.
-- Per-run enforcement is allowed for clean-checkout probes and future CI, but
-  repository adoption does not change a developer's global Govern policy.
-- Runtime preflight and postcondition governance remains a Phase 4 concern.
+Compilation, tests, browser rendering, a real model action, and a durable
+receipt are separate claims. Report only the layers actually proven.
 
-# Parked Ideas
+## Attach an agent through MCP
 
-- Phase 3 packages: Extract generic packages and multi-language SDKs after the Phase 2 exit gate.
-- Phase 4 runtime governance: Add preflight, postconditions, evals, and governed action receipts after the Phase 3 exit gate.
-- Phase 5 P2P: Add scoped invitations, revocation, and reconnect behavior after the Phase 4 exit gate.
+An outside MCP client needs `AGUI_MCP_TOKEN` set before the room starts. The
+runtime still requires a bearer token when it generates one automatically, but
+only managed provider adapters receive that generated value. A terminal client
+therefore needs a value both it and the room know.
+
+The attachment sequence is:
+
+1. Send `initialize` to `POST /mcp` with `Authorization: Bearer <token>` and a
+   `clientInfo.name`.
+2. Read the host-issued `Mcp-Session-Id` response header. The display name is a
+   proposal. The host mints the participant id and disambiguates duplicate
+   names.
+3. Send `MCP-Protocol-Version: 2025-06-18` on every request after
+   initialization.
+4. Echo `Mcp-Session-Id` on every request after initialization to keep the
+   attached byline and presence lease.
+
+Dropping `Mcp-Session-Id` does not impersonate or resume the named participant.
+The call keeps agent permissions, but any resulting write is signed with the
+generic `agent` byline. An unsupported or missing post-initialize protocol
+version is refused before dispatch.
+
+The endpoint is loopback-only in normal use. A presented browser `Origin` must
+also be loopback, which prevents a remote page from reaching the local action
+surface through DNS rebinding.
+
+## Human and agent authority
+
+Every action declares `ActionAudience::Human`, `ActionAudience::Agent`, or
+`ActionAudience::Both`. The runtime compiles every input schema at startup and
+validates every call at the single dispatcher before the action runs.
+
+The agent-visible room actions are `put_pane`, `remove_pane`, `arrange_room`,
+`configure_room`, `await_room`, and `read_room`. Browser actions use the
+`room_*` names and are absent from MCP discovery. `room_annotate_pane` has no
+agent-visible twin, so an agent cannot create a human mark or note.
+
+Hiding a tool from discovery is not the security boundary. The shared
+dispatcher checks the caller against the action audience again. Unknown or
+ambiguous caller identities receive no audience.
+
+## The room contract
+
+`examples/same-page-room/prompt.md` is the room agent's standing contract. The
+server reads it at startup. `AGUI_PROMPT` may point to another file, but a
+checked-in behavior change belongs in the default prompt.
+
+The contract requires the agent to:
+
+- call `read_room` before writing
+- act on the change delta instead of guessing from chat
+- reuse pane ids when revising work
+- preserve the person's marks, notes, and layout
+- place panes by relation and named size, never by rectangle
+- use `source` nodes for live file evidence
+- claim browser proof only after opening the real surface
+
+Read `examples/same-page-room/AGENTS.md` before changing the room itself. Read
+`examples/same-page-room/workspace/AGENTS.md` when working as an agent inside a
+running room.
+
+## Repository boundaries
+
+- Never commit `.local`, logs, `target`, or workspace scratch.
+- Do not add a process-spawning capability to the room as a convenience. Its
+  runnable catalog reports commands and live HTTP status but does not execute
+  them.
+- A runnable package may omit a default HTTP port. Keep a declared port exact,
+  and represent a command-line-only package as portless.
+- Host-resolved source panes stay inside `AGUI_PROJECT_ROOT` and retain the
+  text-type, private-directory, credential-name, and size limits in
+  `examples/same-page-room/src/catalog.rs`.
+- Keep human-only marks absent from every agent schema and execution path.
+- Preserve host-stamped participant ids and bylines. Names are display text,
+  never authorization input.
+- Never make a fallback, mock, copied receipt, or disabled feature count as
+  proof.
+
+The enforcement layer currently called Govern will likely ship under a
+different name because its crates.io name is taken, but its machine-checked
+agreements still keep people and agents aligned while stopping project drift.
