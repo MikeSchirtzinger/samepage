@@ -524,7 +524,28 @@ mod tests {
         let workspace = workspace();
         let catalog = workspace.catalog(None).expect("catalog builds");
         let options = catalog["options"].as_array().expect("options array");
-        assert!(options.len() > 3, "expected several runnable packages");
+        let discovered: std::collections::BTreeSet<String> = options
+            .iter()
+            .map(|option| {
+                option["path"]
+                    .as_str()
+                    .expect("every catalog option names its workspace path")
+                    .to_string()
+            })
+            .collect();
+        let workspace_manifest = fs::read_to_string(workspace.root().join("Cargo.toml"))
+            .expect("workspace manifest is readable");
+        let expected: std::collections::BTreeSet<String> = members(&workspace_manifest)
+            .into_iter()
+            .filter(|member| {
+                fs::read_to_string(workspace.root().join(member).join("Cargo.toml"))
+                    .is_ok_and(|manifest| manifest.contains("[[bin]]"))
+            })
+            .collect();
+        assert_eq!(
+            discovered, expected,
+            "catalog paths must match runnable members in the workspace manifest"
+        );
         let room = options
             .iter()
             .find(|option| option["package"] == "same-page-room")
