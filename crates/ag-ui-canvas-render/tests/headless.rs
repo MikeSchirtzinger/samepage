@@ -8,6 +8,58 @@ use ag_ui_canvas_render::{text, Renderer, SceneObject, TextQuad};
 const W: u32 = 256;
 const H: u32 = 256;
 
+/// Test-only: queue for the GPU behind the same file lock the teaching-canvas
+/// test binary uses.
+///
+/// This binary and `examples/teaching-canvas` are the only two places in the
+/// workspace that acquire wgpu devices, and `cargo test --workspace` schedules
+/// them at the same time. Acquiring concurrently starved the other binary's
+/// readiness bound, so its renderer tests failed a couple at a time,
+/// non-deterministically, while each package passed on its own.
+///
+/// The lock is held across device acquisition only and released before the
+/// render work, because acquisition was the part that starved. Each test still
+/// builds its own `Renderer`, so nothing here shares GPU state between tests.
+///
+/// **The file name is a contract with
+/// `examples/teaching-canvas/src/gpu_lock.rs`, which locks the same path.** If
+/// the two drift apart the gate silently stops gating, and the symptom is the
+/// renderer timeout returning under a workspace run.
+mod gpu_gate {
+    use std::fs::File;
+
+    use fs2::FileExt;
+
+    const GATE_FILE: &str = "ag-ui-rust-gpu-tests.lock";
+
+    /// Held while a device is being acquired, released on drop.
+    pub struct Gate(Option<File>);
+
+    impl Drop for Gate {
+        fn drop(&mut self) {
+            if let Some(file) = &self.0 {
+                let _ = FileExt::unlock(file);
+            }
+        }
+    }
+
+    /// Wait for the GPU to be free. A gate that cannot be opened must not fail
+    /// the test: the worst case is the contention this exists to remove.
+    pub fn enter() -> Gate {
+        let file = File::options()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(false)
+            .open(std::env::temp_dir().join(GATE_FILE))
+            .ok();
+        if let Some(file) = &file {
+            let _ = file.lock_exclusive();
+        }
+        Gate(file)
+    }
+}
+
 fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
     let i = ((y * W + x) * 4) as usize;
     pixels[i..i + 4].try_into().unwrap()
@@ -22,9 +74,12 @@ fn roughly(actual: [u8; 4], expected: [u8; 4], tol: u8) -> bool {
 
 #[test]
 fn renders_objects_and_points_to_expected_pixels() {
-    let mut renderer = match pollster::block_on(Renderer::new_headless(W, H)) {
-        Ok(r) => r,
-        Err(e) => panic!("no GPU adapter available for headless test: {e}"),
+    let mut renderer = {
+        let _gate = gpu_gate::enter();
+        match pollster::block_on(Renderer::new_headless(W, H)) {
+            Ok(r) => r,
+            Err(e) => panic!("no GPU adapter available for headless test: {e}"),
+        }
     };
 
     // One big red disc at the origin (screen center), one green square to
@@ -146,9 +201,12 @@ fn renders_objects_and_points_to_expected_pixels() {
 
 #[test]
 fn renders_text_label_ink_to_framebuffer() {
-    let mut renderer = match pollster::block_on(Renderer::new_headless(W, H)) {
-        Ok(r) => r,
-        Err(e) => panic!("no GPU adapter available for headless test: {e}"),
+    let mut renderer = {
+        let _gate = gpu_gate::enter();
+        match pollster::block_on(Renderer::new_headless(W, H)) {
+            Ok(r) => r,
+            Err(e) => panic!("no GPU adapter available for headless test: {e}"),
+        }
     };
 
     // A white single-line label "AGUI" centered at the world origin. Lay the
@@ -197,7 +255,10 @@ fn renders_text_label_ink_to_framebuffer() {
 
 #[test]
 fn blob_generation_gating_skips_stale_uploads() {
-    let mut renderer = pollster::block_on(Renderer::new_headless(64, 64)).expect("adapter");
+    let mut renderer = {
+        let _gate = gpu_gate::enter();
+        pollster::block_on(Renderer::new_headless(64, 64)).expect("adapter")
+    };
 
     let gen1: Vec<f32> = vec![0.0, 0.0, 1.0, 1.0];
     let gen2: Vec<f32> = vec![2.0, 2.0, 3.0, 3.0, 4.0, 4.0];
