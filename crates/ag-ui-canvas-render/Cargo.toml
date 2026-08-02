@@ -37,6 +37,10 @@ wgpu = { version = "29", default-features = false, features = [
 [dev-dependencies]
 pollster = "0.4"
 image = { version = "0.25", default-features = false, features = ["png"] }
+# Test infrastructure only. The headless tests queue for the GPU behind a
+# cross-process file lock shared with the teaching-canvas test binary, so a
+# workspace run does not have two binaries acquiring wgpu devices at once.
+fs2 = "0.4"
 
 [lints]
 workspace = true
