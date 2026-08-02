@@ -588,20 +588,30 @@ mod tests {
     }
 
     #[test]
-    fn every_discovered_package_reports_a_port() {
+    fn declared_ports_are_reported_and_portless_packages_stay_portless() {
         let workspace = workspace();
         let catalog = workspace.catalog(None).expect("catalog builds");
-        let missing: Vec<&str> = catalog["options"]
-            .as_array()
-            .expect("options array")
-            .iter()
-            .filter(|option| option["port"].is_null())
-            .filter_map(|option| option["package"].as_str())
-            .collect();
-        assert!(
-            missing.is_empty(),
-            "these packages bind a port the catalog could not read: {missing:?}"
-        );
+        for option in catalog["options"].as_array().expect("options array") {
+            let path = option["path"]
+                .as_str()
+                .expect("every catalog option names its workspace path");
+            let source = fs::read_to_string(workspace.root().join(path).join("src/main.rs"))
+                .unwrap_or_default();
+            match default_port(&source) {
+                Some((port_env, port)) => {
+                    assert_eq!(option["port"].as_u64(), Some(u64::from(port)), "{path}");
+                    assert_eq!(option["port_env"], port_env, "{path}");
+                    assert_eq!(option["url"], format!("http://127.0.0.1:{port}"), "{path}");
+                    assert!(option["listening"].is_boolean(), "{path}");
+                }
+                None => {
+                    assert!(option["port"].is_null(), "{path}");
+                    assert_eq!(option["port_env"], "", "{path}");
+                    assert!(option["url"].is_null(), "{path}");
+                    assert!(option["listening"].is_null(), "{path}");
+                }
+            }
+        }
     }
 
     #[test]
