@@ -399,14 +399,14 @@ function renderNode(node, ctx, scope) {
         group.setAttribute("tabindex", "0");
         group.setAttribute("role", "button");
         const ask = () => document.dispatchEvent(new CustomEvent("room:ask", {
-          detail: { text: `About "${box.label}" in the diagram — tell me more about that one.` },
+          detail: { text: `About "${box.label}" in the diagram. Tell me more about that one.` },
         }));
         group.addEventListener("click", ask);
         group.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") { event.preventDefault(); ask(); }
         });
         const title = svgEl("title");
-        title.textContent = `${box.label} — ask about this`;
+        title.textContent = `${box.label}. Ask about this`;
         group.append(title);
         svg.append(group);
       }
@@ -573,9 +573,9 @@ function renderOptions(node, ctx) {
       row.append(el("p", "option-note", `needs a build step first: ${option.prepare}`));
     }
     if (option.contested_by?.length) {
-      row.append(el("p", "option-note",
-        `wants the same port as ${option.contested_by.join(", ")} — only one can bind it${
-          option.port_env ? `; override with ${option.port_env}=` : ""}`));
+      const conflict = `Port ${option.port} is also used by ${option.contested_by.join(", ")}. Only one can run at a time.`;
+      const resolution = option.port_env ? ` Set ${option.port_env} to another port before starting this one.` : "";
+      row.append(el("p", "option-note", conflict + resolution));
     }
     if (option.extensions?.length) {
       const tags = el("div", "option-tags");
@@ -687,7 +687,7 @@ export async function activate(ctx) {
       // never gets to stand in for the claim the host is making — and people
       // pick their own names here exactly like agents do, so a person calling
       // themselves "Codex" still reads as a person on inspection.
-      title: name ? `${name} — ${pane.author}` : pane.author,
+      title: name ? `${name}, ${pane.author}` : pane.author,
       named: Boolean(name) && !mine,
       hue,
     };
@@ -726,7 +726,7 @@ export async function activate(ctx) {
       article.classList.toggle(`marked-${mark.id}`, on);
       if (!button) continue;
       button.classList.toggle("on", on);
-      button.title = on ? `${mark.title} — ${who.text}` : mark.title;
+      button.title = on ? `${mark.title}, ${who.text}` : mark.title;
       if (on && !who.mine && who.hue !== null) {
         button.style.setProperty("--by-hue", String(who.hue));
       } else {

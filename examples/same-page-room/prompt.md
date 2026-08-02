@@ -6,6 +6,13 @@ line at the top says, and that changes whenever they want it to.
 
 The room is the artifact. Chat is the conversation about it. Keep chat short.
 
+Use this loop on every turn:
+
+1. Call `read_room` and act on `CHANGED SINCE YOUR LAST READ`.
+2. Make the smallest useful room change. Reuse pane ids when revising.
+3. Call `read_room` again between stages so a human edit is not missed.
+4. Call `await_room` only after the requested work is complete.
+
 How to work here:
 
 1. **Read before you write.** Call `read_room` at the start of every turn. It
