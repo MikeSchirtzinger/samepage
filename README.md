@@ -1,66 +1,91 @@
 # SamePage
 
-A shared surface where a person and an agent work on the same page.
+SamePage is one running surface where a person and an agent work on shared
+state. The agent can author panes, the person can drag and mark them, and the
+host stamps every write with the participant who made it.
 
-The agent authors the UI. The person marks it. Every mark carries an
-unforgeable byline, and the surface describes itself back in *relations* —
-"sits right of", "top edges aligned" — never coordinates.
+The surface describes layout as relations such as "right of" and "top edges
+aligned." Coordinates never cross the agent boundary. A rendered report or a
+chat preview is not a same page because the person cannot act on the same
+artifact or dispute it in place.
 
-This is not a chat window with a preview pane, and it is not a rendered report.
-It is one running surface with shared state, attribution, marks, and read-back.
+## What is here
 
-## The primitives
+- **Panes:** Agent-authored interfaces over a typed view vocabulary.
+- **Human marks and notes:** A browser-only channel refused to agents by the
+  shared action dispatcher.
+- **Host-stamped bylines:** Human and attached-agent identities are minted or
+  admitted by the host, not accepted from action input.
+- **Relational read-back:** The agent reads the surface and its changes without
+  receiving browser coordinates.
+- **Live workspace catalog:** Runnable packages come from the workspace
+  manifest. HTTP ports are probed when declared, while command-line programs
+  honestly report that they have no default port.
+- **MCP attachment:** An outside terminal agent can join through the runtime's
+  authenticated `POST /mcp` endpoint under its own name.
 
-**Talk & presence**
-- `conversation` — transcript + composer, as a component
-- `presence` — who is on the page, by name, live
-- `activity feed` — host-owned record with an unforgeable byline
+## Repository layout
 
-**Shared artifacts**
-- `panes` — agent-authored UI over a typed view vocabulary
-- `html sandbox` — arbitrary UI, no build step; pointed clicks read back
-- `deck` — flip through alternatives one at a time
-- `diagram` — structure only; the host does layout
-- `source excerpts` — file slices that cannot go stale
-- `runnable catalog` — what the workspace can run, with a live port
-
-**Agreement & authority**
-- `marks & notes` — the human-only channel, refused to agents at dispatch
-- `semantic pointing` — "this one" resolves to meaning, not pixels
-
-**Reach**
-- `/mcp door` — any terminal agent attaches under its own name
-- `server-rendered routes` — the no-JS, Rust-only lane
-
-## Layout
-
-```
+```text
 crates/
-  samepage              name placeholder; the public API will land here
-  ag-ui-core            protocol types
-  ag-ui-surface         the app runtime: App + Surface, /mcp, extensions
-  ag-ui-canvas*         CRDT canvas, renderer, web + server halves
-  ag-ui-component*      WASM component host
-  ag-ui-eval            evaluation harness
+  samepage                 public crate-name placeholder
+  ag-ui-core               AG-UI protocol types
+  ag-ui-surface            application runtime, actions, identity, and MCP
+  ag-ui-canvas*            shared canvas state and rendering
+  ag-ui-component*         portable component contract and host
+  ag-ui-eval               deterministic and real-agent evaluation runner
 examples/
-  same-page-room        the open tier — a live room you can drag, mark, and
-                        attach an agent to
+  same-page-room           runnable shared room on port 8100
+docs/
+  ag-ui-surface-spec.md
+  ag-ui-extension-architecture.md
+  evaluation-layers.md
 ```
 
-## Running the room
+The root `Cargo.toml` is the source of truth for workspace members.
 
+## Run the room
+
+From the repository root:
+
+```bash
+AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
 ```
-cargo run -p same-page-room     # http://127.0.0.1:8100
+
+Open <http://127.0.0.1:8100>. There is no frontend build step.
+
+The room starts without an in-page model by default. Set `AGUI_MCP_TOKEN`
+before launch when an outside MCP client will attach. The client sends that
+value as `Authorization: Bearer local-room-token` to `POST /mcp`.
+
+Initialization returns an `Mcp-Session-Id`. Every later MCP request must send
+that header and `MCP-Protocol-Version: 2025-06-18`. Omitting the session header
+does not borrow another participant's identity. The host signs resulting
+writes with the generic `agent` byline.
+
+Read [AGENTS.md](AGENTS.md) for the attachment contract and repository rules.
+The room agent's standing contract is
+[`examples/same-page-room/prompt.md`](examples/same-page-room/prompt.md).
+
+## Proof commands
+
+```bash
+cargo check --workspace
+cargo clippy --workspace --all-targets
+cargo test -p same-page-room
 ```
 
-Then attach any MCP-capable agent to `/mcp`. See [AGENTS.md](AGENTS.md) for the
-rules an agent is expected to follow, and `examples/same-page-room/AGENTS.md`
-for the room's own vocabulary.
+Compiler and test success do not prove browser rendering or a real agent loop.
+Those are separate claims and need separate evidence.
 
-## Status
+## Naming
 
-Early. The crates still carry their `ag-ui-*` extraction names; the public
-surface is being consolidated under SamePage.
+The enforcement layer currently called Govern will likely ship under a
+different name because its crates.io name is taken, but its machine-checked
+agreements still keep people and agents aligned while stopping project drift.
+
+The internal crates still carry their `ag-ui-*` extraction names while the
+public API consolidates under SamePage.
 
 ## License
 
