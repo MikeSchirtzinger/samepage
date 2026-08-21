@@ -1,0 +1,60 @@
+{
+  "record_version": "0.1",
+  "session": {
+    "journal_id": "activity-synthetic",
+    "observer_id": "host-synthetic",
+    "started_at_ms": 1700000000000,
+    "trust": "host_verified"
+  },
+  "actors": [
+    {
+      "actor_id": "surface-human",
+      "kind": "human",
+      "label": "Human",
+      "participant_id": null,
+      "principal_key": null,
+      "responsible": null,
+      "trust": "host_verified"
+    }
+  ],
+  "events": {
+    "trust": "host_verified",
+    "coverage": [
+      {
+        "category": "action",
+        "instrumentation": "covered",
+        "observation": "observed",
+        "observedEvents": 2,
+        "source": "synthetic",
+        "note": "synthetic"
+      }
+    ],
+    "events": [
+      {
+        "sequence": 1,
+        "atMs": 1700000001000,
+        "category": "action",
+        "kind": "action.atlas_read",
+        "actor": { "id": "surface-human", "kind": "human", "label": "Human" },
+        "observer": { "id": "host-synthetic", "kind": "host", "label": "Host" },
+        "correlation": { "eventId": "event-1" },
+        "outcome": "succeeded"
+      },
+      {
+        "sequence": 2,
+        "atMs": 1700000002000,
+        "category": "action",
+        "kind": "action.atlas_cement",
+        "actor": { "id": "surface-human", "kind": "human", "label": "Human" },
+        "observer": { "id": "host-synthetic", "kind": "host", "label": "Host" },
+        "correlation": { "eventId": "event-1" },
+        "outcome": "succeeded"
+      }
+    ]
+  },
+  "documents": [
+    { "scope": "board", "revision": 4, "trust": "host_verified" },
+    { "scope": "atlas", "revision": "AQIDBA", "trust": "participant_claimed" }
+  ],
+  "settlements": []
+}

@@ -1,0 +1,16 @@
+[package]
+name = "ag-ui-record"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The neutral record of who did what under whose authority, version 0.1, with a validator that re-checks its honesty."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+
+[lints]
+workspace = true

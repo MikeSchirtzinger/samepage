@@ -1,28 +1,49 @@
 # SamePage
 
 SamePage is one running surface where a person and an agent work on shared
-state. The agent can author panes, the person can drag and mark them, and the
-host stamps every write with the participant who made it.
+state. The agent can author the surface, the person can drag and mark it, and
+the host stamps every write with the participant who made it.
 
 The surface describes layout as relations such as "right of" and "top edges
 aligned." Coordinates never cross the agent boundary. A rendered report or a
 chat preview is not a same page because the person cannot act on the same
 artifact or dispute it in place.
 
-## What is here
+Because the host stamps every write, a session is also a record: who put each
+thing on the page, who disputed it, and who agreed. Getting on the same page
+and being able to prove you were on it are the same mechanism. The stakes rise
+in that order wherever agents work beside people: first who contributed what,
+then what was decided and by whom, then what was committed and under whose
+authority. The record's shape is published early on purpose, as
+[`docs/record-shape-v0.1.md`](docs/record-shape-v0.1.md) with a validator
+crate, so any surface can adopt it. Trust labels are part of the schema: a
+claim the host cannot verify stays labeled as claimed instead of hardening
+into fact.
 
-- **Panes:** Agent-authored interfaces over a typed view vocabulary.
-- **Human marks and notes:** A browser-only channel refused to agents by the
+The room example below is one surface built this way. The general case is any
+place a person and an agent need to look at the same thing and settle what
+they see.
+
+## The surface
+
+- **Agent-authored views:** panes over a typed view vocabulary, no frontend
+  build step.
+- **Human marks and notes:** a browser-only channel refused to agents by the
   shared action dispatcher.
-- **Host-stamped bylines:** Human and attached-agent identities are minted or
-  admitted by the host, not accepted from action input.
-- **Relational read-back:** The agent reads the surface and its changes without
-  receiving browser coordinates.
-- **Live workspace catalog:** Runnable packages come from the workspace
-  manifest. HTTP ports are probed when declared, while command-line programs
-  honestly report that they have no default port.
-- **MCP attachment:** An outside terminal agent can join through the runtime's
+- **Relational read-back:** the agent reads the surface and its changes
+  without receiving browser coordinates.
+- **MCP attachment:** an outside terminal agent joins through the runtime's
   authenticated `POST /mcp` endpoint under its own name.
+
+## The record
+
+- **Host-stamped bylines:** human and attached-agent identities are minted or
+  admitted by the host, not accepted from action input.
+- **Transport-derived authority:** what a request may act as comes from its
+  credentials. The request body can narrow that authority, never widen it,
+  and ambiguity fails closed.
+- **Record shape v0.1:** `crates/ag-ui-record` validates a session record
+  against the published shape, including hash-linked settlement receipts.
 
 ## Repository layout
 
@@ -31,6 +52,7 @@ crates/
   samepage                 public crate-name placeholder
   ag-ui-core               AG-UI protocol types
   ag-ui-surface            application runtime, actions, identity, and MCP
+  ag-ui-record             session-record shape validator
   ag-ui-canvas*            shared canvas state and rendering
   ag-ui-component*         portable component contract and host
   ag-ui-eval               deterministic and real-agent evaluation runner
@@ -40,6 +62,8 @@ docs/
   ag-ui-surface-spec.md
   ag-ui-extension-architecture.md
   evaluation-layers.md
+  record-shape-v0.1.md
+  demo-runbook.md
 ```
 
 The root `Cargo.toml` is the source of truth for workspace members.
@@ -73,6 +97,7 @@ The room agent's standing contract is
 cargo check --workspace
 cargo clippy --workspace --all-targets
 cargo test -p same-page-room
+cargo test -p ag-ui-record
 ```
 
 Compiler and test success do not prove browser rendering or a real agent loop.

@@ -1,0 +1,64 @@
+{
+  "conflicts": [],
+  "meta": {
+    "advisory_only": true,
+    "artifact": "govern-obligations",
+    "atlas_document_revision": "BJDmicjAi9oFugLxytDz1pGAAwOor439rtb1ChSPz6qC7vc1Kg",
+    "board_revision": 2,
+    "cemented_at": "2026-08-13T08:47:47Z",
+    "note": "Cemented intent is a review draft. Every obligation remains prose-only and advisory until a reviewer supplies scope and a deterministic checker.",
+    "source": "cement-receipt.json",
+    "source_sha256": "ba216148f15f6ea5a1b3cb81df73949458cf161b0bbb4dfcda504516db21512f",
+    "status": "draft",
+    "version": "0.1.0-draft"
+  },
+  "obligations": [
+    {
+      "also_stated_by": [],
+      "checker": {
+        "mode": "prose_only"
+      },
+      "convergence_test": {
+        "check": "DRAFT: define a deterministic checker before promoting this obligation.",
+        "fails_when": "The checker is undefined; prose-only remains unknown rather than passing.",
+        "id": "conv-atlas-you-1"
+      },
+      "descends_from": {
+        "decision": "you-1",
+        "source": {
+          "file": "cement-receipt.json",
+          "lines": "/assertions/0",
+          "sha256": "ba216148f15f6ea5a1b3cb81df73949458cf161b0bbb4dfcda504516db21512f"
+        },
+        "title": "claim (settled): The action-route caller is derived from transport credentials; the body can only narrow it.",
+        "why": "Signed off by you at 2026-08-13T08:47:34Z on board revision 2.",
+        "why_kind": "human_signoff"
+      },
+      "id": "OBL-ATLAS-you-1",
+      "rule": {
+        "kind": "atlas_settled_assertion",
+        "params": {
+          "assertion": {
+            "id": "you-1",
+            "kind": "claim",
+            "status": "settled",
+            "text": "The action-route caller is derived from transport credentials; the body can only narrow it."
+          },
+          "author_byline": "you",
+          "signed_off_by": "you"
+        }
+      },
+      "scope": {
+        "crates": [],
+        "paths": []
+      },
+      "signal": {
+        "advisory": true,
+        "conflict_kind": null,
+        "gate": "none",
+        "wiring": "unwired_draft"
+      }
+    }
+  ],
+  "open_questions": []
+}

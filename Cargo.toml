@@ -13,6 +13,7 @@ members = [
   "crates/ag-ui-canvas-web",
   "crates/ag-ui-canvas-server",
   "crates/ag-ui-surface",
+  "crates/ag-ui-record",
   "examples/same-page-room",
 ]
 

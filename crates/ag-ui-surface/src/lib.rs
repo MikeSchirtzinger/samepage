@@ -2003,7 +2003,7 @@ impl App {
         let mounts = self.mounts;
         let surface_routes = surface.routes();
         let surface_action_routes = surface.action_routes();
-        let human_route_cookie_enabled = !surface_action_routes.is_empty();
+        let human_route_cookie_enabled = needs_human_route_cookie(surface.as_ref());
         validate_http_layout(
             &surface_routes,
             &surface_action_routes,
@@ -2140,6 +2140,7 @@ impl App {
             extensions,
             mcp_catalog,
             human_route_token: human_route_token.clone(),
+            human_route_cookie_enabled,
         };
 
         let hitl = self.hitl.unwrap_or_default();
@@ -2402,6 +2403,7 @@ struct RouterState {
     extensions: Arc<ExtensionManifest>,
     mcp_catalog: Arc<mcp::Catalog>,
     human_route_token: Arc<str>,
+    human_route_cookie_enabled: bool,
 }
 
 const RUNTIME_ROUTE_PATHS: &[&str] = &[
@@ -2721,6 +2723,34 @@ fn action_route_caller(headers: &HeaderMap, st: &RouterState) -> Caller {
         // ambiguous. Neither may silently fall through to the human audience.
         _ => Caller::Unknown,
     }
+}
+
+/// Apply the request body's optional role only after the transport has
+/// established the caller. A human browser may deliberately use the lower
+/// agent authority, but an agent credential can never claim the person.
+fn narrow_action_route_caller(established: Caller, requested: Option<&JsonValue>) -> Caller {
+    let Some(requested) = requested else {
+        return established;
+    };
+    let Some(requested) = requested.as_str() else {
+        return Caller::Unknown;
+    };
+    let requested = requested.trim().to_ascii_lowercase();
+
+    match (established, requested.as_str()) {
+        (Caller::Human, "human") => Caller::Human,
+        (Caller::Human | Caller::Agent, "agent") => Caller::Agent,
+        (Caller::Human | Caller::Agent | Caller::Companion, "companion") => Caller::Companion,
+        (Caller::Companion, "agent") => Caller::Agent,
+        _ => Caller::Unknown,
+    }
+}
+
+/// A browser needs its host-issued human credential whenever it can discover
+/// a human action. This includes DOM extensions that call `/surface/action`
+/// directly and have no server-rendered [`ActionRouteDef`] adapters.
+fn needs_human_route_cookie(surface: &dyn Surface) -> bool {
+    surface.tools().iter().any(|action| action.audience.human())
 }
 
 fn cookie_matches(headers: &HeaderMap, name: &str, expected: &str) -> bool {
@@ -3313,6 +3343,14 @@ fn person_from(st: &RouterState, headers: &HeaderMap) -> Option<identity::Person
     st.rt.people.resolve(&token)
 }
 
+/// A credential the host has minted for a human browser. The navigation
+/// credential proves entry through the local page, while the person token
+/// preserves access for any participant the host has already admitted.
+fn human_replica_credential_is_valid(st: &RouterState, headers: &HeaderMap) -> bool {
+    cookie_matches(headers, HUMAN_ROUTE_COOKIE, st.human_route_token.as_ref())
+        || person_from(st, headers).is_some()
+}
+
 fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
     headers
         .get(axum::http::header::COOKIE)?
@@ -3421,10 +3459,7 @@ fn present_person(st: &RouterState, person: &identity::Person) {
     let Some(service) = st.semantic_targets.as_deref() else {
         return;
     };
-    if let Err(error) = service.present(Participant::human(
-        &person.participant_id,
-        &person.name,
-    )) {
+    if let Err(error) = service.present(Participant::human(&person.participant_id, &person.name)) {
         tracing::warn!(%error, "could not register person presence");
     }
 }
@@ -3594,14 +3629,9 @@ async fn tool_handler(
             Json(json!({ "ok": false, "error": "missing tool name" })),
         );
     }
-    // Who is asking. The browser omits this and stays the human; an outside
-    // assistant driving the surface says so, and gets an agent's permissions
-    // and its own byline instead of being mistaken for the person.
-    let caller = match body.get("as") {
-        None => Caller::Human,
-        Some(JsonValue::String(value)) => Caller::parse(Some(value)),
-        Some(_) => Caller::Unknown,
-    };
+    // Credentials establish the maximum authority. The body may only narrow
+    // it, so omitting `as` is never a way to become the person.
+    let caller = narrow_action_route_caller(action_route_caller(&headers, &st), body.get("as"));
     if caller == Caller::Unknown {
         st.rt.activity.record_action(
             Caller::Unknown,
@@ -3627,8 +3657,8 @@ async fn tool_handler(
         );
     }
     // Attribution only. A recognized person changes whose name is on the write
-    // and nothing about what the write may do — authorization is still
-    // `Caller::may_call` inside dispatch, from the transport this arrived on.
+    // and nothing about what the write may do. Authorization stays inside
+    // `Caller::may_call` after transport credentials establish the caller.
     let actor = match person_from(&st, &headers) {
         Some(person) if caller == Caller::Human => Actor::person(caller, &person),
         _ => Actor::anonymous(caller),
@@ -5007,6 +5037,11 @@ async fn ws_handler(
     if !websocket_origin_allowed(&headers) {
         return (StatusCode::FORBIDDEN, "untrusted WebSocket Origin").into_response();
     }
+    // This authenticates the human replica at the door. CRDT operations remain
+    // replica-signed inside the document; this does not authenticate each op.
+    if st.human_route_cookie_enabled && !human_replica_credential_is_valid(&st, &headers) {
+        return (StatusCode::FORBIDDEN, "human replica credential required").into_response();
+    }
 
     // Subscribe before capturing the authoritative replay so a mutation that
     // races this pre-upgrade check is present in either the replay or the
@@ -5445,9 +5480,57 @@ mod tests {
         }
     }
 
+    struct WebsocketState;
+
+    impl SurfaceState for WebsocketState {
+        fn backing(&self) -> StateBacking {
+            StateBacking::Crdt
+        }
+
+        fn describe(&self) -> Result<String, String> {
+            Ok(String::new())
+        }
+
+        fn snapshot(&self) -> Result<StateSnapshot, String> {
+            Ok(StateSnapshot {
+                backing: StateBacking::Crdt,
+                body: serde_json::json!({}),
+                chrome: None,
+            })
+        }
+
+        fn ws_hello(&self) -> Result<Vec<Vec<u8>>, String> {
+            Ok(Vec::new())
+        }
+
+        fn ws_receive(&self, _data: &[u8]) -> Result<Vec<Vec<u8>>, String> {
+            Ok(Vec::new())
+        }
+    }
+
+    struct WebsocketSurface {
+        state: WebsocketState,
+        tools: Vec<ToolDef>,
+    }
+
+    impl Surface for WebsocketSurface {
+        fn state(&self) -> &dyn SurfaceState {
+            &self.state
+        }
+
+        fn tools(&self) -> &[ToolDef] {
+            &self.tools
+        }
+
+        fn client_modules(&self) -> Vec<ClientModule> {
+            Vec::new()
+        }
+    }
+
     fn test_router_state_with_channels(
         surface: Arc<dyn Surface>,
     ) -> (RouterState, runtime_state::RuntimeChannels) {
+        let human_route_cookie_enabled = needs_human_route_cookie(surface.as_ref());
         let extensions = Arc::new(ExtensionManifest::from_surface(surface.as_ref()).unwrap());
         let mcp_catalog = Arc::new(mcp::Catalog::from_actions(surface.tools()).unwrap());
         let (ws_tx, _ws_rx) = tokio::sync::broadcast::channel(8);
@@ -5481,6 +5564,7 @@ mod tests {
                 extensions,
                 mcp_catalog,
                 human_route_token: Arc::from("test-human-route-token"),
+                human_route_cookie_enabled,
             },
             channels,
         )
@@ -5488,6 +5572,77 @@ mod tests {
 
     fn test_router_state(surface: Arc<dyn Surface>) -> RouterState {
         test_router_state_with_channels(surface).0
+    }
+
+    fn websocket_surface_with_human_route() -> Arc<dyn Surface> {
+        let human_action = ToolDef::new(
+            "human_write",
+            "Apply a human-authored write.",
+            serde_json::json!({ "type": "object", "properties": {} }),
+            |_args| Effect::Query(Box::new(|_state| Ok("ok".to_string()))),
+        )
+        .human_only();
+        Arc::new(WebsocketSurface {
+            state: WebsocketState,
+            tools: vec![human_action],
+        })
+    }
+
+    async fn websocket_upgrade_status_line(state: RouterState, cookie: Option<String>) -> String {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+            .await
+            .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let guard = LoopbackRequestGuard {
+            port,
+            human_route_token: state.human_route_token.clone(),
+            human_route_cookie_enabled: state.human_route_cookie_enabled,
+        };
+        let app = Router::new()
+            .route("/ws", get(ws_handler))
+            .with_state(state)
+            .layer(middleware::from_fn_with_state(
+                guard,
+                loopback_request_guard,
+            ));
+        let server = tokio::spawn(async move { axum::serve(listener, app).await });
+
+        let cookie = cookie
+            .map(|value| format!("Cookie: {value}\r\n"))
+            .unwrap_or_default();
+        let mut stream = tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
+            .await
+            .unwrap();
+        let request = format!(
+            "GET /ws HTTP/1.1\r\n\
+             Host: 127.0.0.1:{port}\r\n\
+             Connection: Upgrade\r\n\
+             Upgrade: websocket\r\n\
+             Sec-WebSocket-Version: 13\r\n\
+             Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\
+             Origin: http://127.0.0.1:{port}\r\n\
+             {cookie}\r\n"
+        );
+        stream.write_all(request.as_bytes()).await.unwrap();
+        let mut response = [0_u8; 1024];
+        let read = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            stream.read(&mut response),
+        )
+        .await
+        .expect("websocket handshake response timed out")
+        .expect("websocket handshake response failed");
+        let status_line = std::str::from_utf8(&response[..read])
+            .unwrap()
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .to_string();
+        drop(stream);
+        server.abort();
+        status_line
     }
 
     struct FailingState;
@@ -5685,6 +5840,63 @@ mod tests {
 
         headers.insert(header::ORIGIN, "https://evil.example".parse().unwrap());
         assert!(!websocket_origin_allowed(&headers));
+    }
+
+    #[tokio::test]
+    async fn websocket_upgrade_without_human_credential_is_refused_when_enforcement_is_on() {
+        let state = test_router_state(websocket_surface_with_human_route());
+        assert!(state.human_route_cookie_enabled);
+        let status_line = websocket_upgrade_status_line(state.clone(), None).await;
+        assert_eq!(status_line, "HTTP/1.1 403 Forbidden");
+
+        let forged = format!("{PERSON_COOKIE}=not-host-minted");
+        let status_line = websocket_upgrade_status_line(state, Some(forged)).await;
+        assert_eq!(status_line, "HTTP/1.1 403 Forbidden");
+    }
+
+    #[tokio::test]
+    async fn websocket_upgrade_accepts_navigation_and_admitted_participant_credentials() {
+        let state = test_router_state(websocket_surface_with_human_route());
+
+        let navigation_cookie =
+            format!("{HUMAN_ROUTE_COOKIE}={}", state.human_route_token.as_ref());
+        assert_eq!(
+            websocket_upgrade_status_line(state.clone(), Some(navigation_cookie)).await,
+            "HTTP/1.1 101 Switching Protocols"
+        );
+
+        let _first_person = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let second_person = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        assert_eq!(state.rt.people.everyone().len(), 2);
+        let participant_cookie = second_person
+            .headers()
+            .get(header::SET_COOKIE)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.split(';').next())
+            .expect("joining a second person must mint a resume cookie")
+            .to_string();
+        assert_eq!(
+            websocket_upgrade_status_line(state, Some(participant_cookie)).await,
+            "HTTP/1.1 101 Switching Protocols"
+        );
+    }
+
+    #[tokio::test]
+    async fn websocket_upgrade_without_credentials_remains_open_when_enforcement_is_off() {
+        let surface: Arc<dyn Surface> = Arc::new(WebsocketSurface {
+            state: WebsocketState,
+            tools: Vec::new(),
+        });
+        let state = test_router_state(surface);
+        assert!(!state.human_route_cookie_enabled);
+        assert_eq!(
+            websocket_upgrade_status_line(state, None).await,
+            "HTTP/1.1 101 Switching Protocols"
+        );
     }
 
     #[test]
@@ -7024,10 +7236,17 @@ mod tests {
             ],
         });
         let state = test_router_state(surface);
+        let mut human_headers = axum::http::HeaderMap::new();
+        human_headers.insert(
+            header::COOKIE,
+            format!("{HUMAN_ROUTE_COOKIE}={}", state.human_route_token.as_ref())
+                .parse()
+                .unwrap(),
+        );
 
         let invalid = tool_handler(
             State(state.clone()),
-            axum::http::HeaderMap::new(),
+            human_headers.clone(),
             Json(serde_json::json!({ "name": "set_label", "args": { "label": 9 } })),
         )
         .await
@@ -7038,7 +7257,7 @@ mod tests {
         for identity in [json!("humna"), json!(7)] {
             let unknown = tool_handler(
                 State(state.clone()),
-                axum::http::HeaderMap::new(),
+                human_headers.clone(),
                 Json(serde_json::json!({
                     "name": "set_label",
                     "args": { "label": "forged" },
@@ -7057,13 +7276,191 @@ mod tests {
 
         let valid = tool_handler(
             State(state),
-            axum::http::HeaderMap::new(),
+            human_headers,
             Json(serde_json::json!({ "name": "set_label", "args": { "label": "ready" } })),
         )
         .await
         .into_response();
         assert_eq!(valid.status(), StatusCode::OK);
         assert_eq!(apply_count.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn surface_action_without_human_cookie_cannot_call_human_only_action() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let human_apply_count = Arc::new(AtomicUsize::new(0));
+        let human_action = ToolDef::new(
+            "human_write",
+            "Apply a human-authored write.",
+            serde_json::json!({
+                "type": "object",
+                "properties": { "text": { "type": "string" } },
+                "required": ["text"],
+                "additionalProperties": false
+            }),
+            {
+                let apply_count = human_apply_count.clone();
+                move |_args| {
+                    let apply_count = apply_count.clone();
+                    Effect::Mutate(Box::new(move |_state| {
+                        apply_count.fetch_add(1, Ordering::SeqCst);
+                        Ok(Some("written by human".to_string()))
+                    }))
+                }
+            },
+        )
+        .human_only();
+        let agent_apply_count = Arc::new(AtomicUsize::new(0));
+        let agent_action = ToolDef::new(
+            "agent_write",
+            "Apply an agent-authored write.",
+            serde_json::json!({
+                "type": "object",
+                "properties": { "text": { "type": "string" } },
+                "required": ["text"],
+                "additionalProperties": false
+            }),
+            {
+                let apply_count = agent_apply_count.clone();
+                move |_args| {
+                    let apply_count = apply_count.clone();
+                    Effect::Mutate(Box::new(move |_state| {
+                        apply_count.fetch_add(1, Ordering::SeqCst);
+                        Ok(Some("written by agent".to_string()))
+                    }))
+                }
+            },
+        )
+        .agent_only();
+        let surface: Arc<dyn Surface> = Arc::new(MultiModuleSurface {
+            state: FocusState,
+            tools: vec![human_action, agent_action],
+            modules: vec![ClientModule::lazy(
+                "records",
+                "1.0.0",
+                "/extensions/records.js",
+                "records",
+            )
+            .action("human_write")],
+        });
+        let state = test_router_state(surface);
+        let mcp_token = state.rt.mcp_token.clone();
+        let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+            .await
+            .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let app = Router::new()
+            .route("/surface/action", post(tool_handler))
+            .route("/canvas-tool", post(tool_handler))
+            .with_state(state);
+        let server = tokio::spawn(async move { axum::serve(listener, app).await });
+
+        let response = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{port}/surface/action"))
+            .json(&serde_json::json!({
+                "name": "human_write",
+                "args": { "text": "forged" }
+            }))
+            .send()
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), reqwest::StatusCode::FORBIDDEN);
+        assert_eq!(human_apply_count.load(Ordering::SeqCst), 0);
+
+        let response = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{port}/canvas-tool"))
+            .json(&serde_json::json!({
+                "name": "human_write",
+                "args": { "text": "forged alias" }
+            }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::FORBIDDEN);
+        assert_eq!(human_apply_count.load(Ordering::SeqCst), 0);
+
+        let cookie = format!("{HUMAN_ROUTE_COOKIE}=test-human-route-token");
+        let response = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{port}/surface/action"))
+            .header(header::COOKIE, &cookie)
+            .json(&serde_json::json!({
+                "name": "human_write",
+                "args": { "text": "real" }
+            }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        assert_eq!(human_apply_count.load(Ordering::SeqCst), 1);
+
+        let response = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{port}/surface/action"))
+            .header(header::COOKIE, &cookie)
+            .json(&serde_json::json!({
+                "name": "agent_write",
+                "args": { "text": "narrowed" },
+                "as": "agent"
+            }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        assert_eq!(agent_apply_count.load(Ordering::SeqCst), 1);
+
+        let response = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{port}/surface/action"))
+            .header(header::AUTHORIZATION, format!("Bearer {mcp_token}"))
+            .json(&serde_json::json!({
+                "name": "agent_write",
+                "args": { "text": "authenticated" }
+            }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+        assert_eq!(agent_apply_count.load(Ordering::SeqCst), 2);
+
+        let response = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{port}/surface/action"))
+            .header(header::AUTHORIZATION, format!("Bearer {mcp_token}"))
+            .json(&serde_json::json!({
+                "name": "human_write",
+                "args": { "text": "widened" },
+                "as": "human"
+            }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::FORBIDDEN);
+        assert_eq!(human_apply_count.load(Ordering::SeqCst), 1);
+        server.abort();
+    }
+
+    #[test]
+    fn human_route_cookie_follows_human_actions_not_action_route_adapters() {
+        let action = |audience| {
+            ToolDef::new(
+                "write",
+                "Write once.",
+                serde_json::json!({ "type": "object", "properties": {} }),
+                |_args| Effect::Query(Box::new(|_state| Ok("ok".to_string()))),
+            )
+            .audience(audience)
+        };
+        let surface = FocusSurface {
+            state: FocusState,
+            tools: vec![action(ActionAudience::Human)],
+        };
+        assert!(surface.action_routes().is_empty());
+        assert!(needs_human_route_cookie(&surface));
+
+        let agent_only = FocusSurface {
+            state: FocusState,
+            tools: vec![action(ActionAudience::Agent)],
+        };
+        assert!(!needs_human_route_cookie(&agent_only));
     }
 
     #[test]

@@ -1,0 +1,34 @@
+{
+  "assertions": [
+    {
+      "assertion": {
+        "id": "you-1",
+        "kind": "claim",
+        "status": "settled",
+        "text": "The action-route caller is derived from transport credentials; the body can only narrow it."
+      },
+      "author": {
+        "at": "2026-08-13T08:46:48Z",
+        "board_revision": 1,
+        "byline": "you"
+      },
+      "id": "you-1",
+      "kind": "claim",
+      "signed_off": {
+        "at": "2026-08-13T08:47:34Z",
+        "board_revision": 2,
+        "by": "you",
+        "mark": "agree",
+        "note": null
+      }
+    }
+  ],
+  "atlas_document_revision": "BJDmicjAi9oFugLxytDz1pGAAwOor439rtb1ChSPz6qC7vc1Kg",
+  "board": {
+    "revision": 2,
+    "subject": null
+  },
+  "cemented_at": "2026-08-13T08:47:47Z",
+  "kind": "same-page-atlas-cement-receipt",
+  "schema_version": 1
+}

@@ -298,7 +298,11 @@ pub fn resolve(
                 .fold(f64::MAX, f64::min);
             Spot::new(
                 if others.is_empty() { 0.0 } else { left },
-                if others.is_empty() { 0.0 } else { bottom + GUTTER },
+                if others.is_empty() {
+                    0.0
+                } else {
+                    bottom + GUTTER
+                },
                 w,
                 h,
             )
@@ -325,12 +329,7 @@ pub fn resolve(
         }
         Some(Placement::LeftOf(id)) => {
             let anchor = find(id)?;
-            Spot::new(
-                (anchor.spot.x - w - GUTTER).max(0.0),
-                anchor.spot.y,
-                w,
-                h,
-            )
+            Spot::new((anchor.spot.x - w - GUTTER).max(0.0), anchor.spot.y, w, h)
         }
         Some(Placement::Below(id)) => {
             let anchor = find(id)?;
@@ -338,12 +337,7 @@ pub fn resolve(
         }
         Some(Placement::Above(id)) => {
             let anchor = find(id)?;
-            Spot::new(
-                anchor.spot.x,
-                (anchor.spot.y - h - GUTTER).max(0.0),
-                w,
-                h,
-            )
+            Spot::new(anchor.spot.x, (anchor.spot.y - h - GUTTER).max(0.0), w, h)
         }
         Some(Placement::Near(id)) => {
             let anchor = find(id)?;
@@ -446,8 +440,7 @@ fn reading_order(panes: &[Sited<'_>]) -> Vec<usize> {
     let mut order: Vec<usize> = (0..panes.len()).collect();
     order.sort_by(|&a, &b| {
         let (a, b) = (&panes[a].spot, &panes[b].spot);
-        let same_band = span_overlap(a.y, a.bottom(), b.y, b.bottom())
-            > FACING * a.h.min(b.h);
+        let same_band = span_overlap(a.y, a.bottom(), b.y, b.bottom()) > FACING * a.h.min(b.h);
         if same_band {
             a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal)
         } else {
@@ -574,7 +567,10 @@ fn region(spot: &Spot, extent: &Spot) -> String {
 fn extent(panes: &[Sited<'_>]) -> Spot {
     let left = panes.iter().map(|p| p.spot.x).fold(f64::MAX, f64::min);
     let top = panes.iter().map(|p| p.spot.y).fold(f64::MAX, f64::min);
-    let right = panes.iter().map(|p| p.spot.right()).fold(f64::MIN, f64::max);
+    let right = panes
+        .iter()
+        .map(|p| p.spot.right())
+        .fold(f64::MIN, f64::max);
     let bottom = panes
         .iter()
         .map(|p| p.spot.bottom())
@@ -855,7 +851,10 @@ mod tests {
             sited("lonely", "Off on its own", 2400.0, 1800.0, 400.0, 300.0),
         ];
         let text = describe(&panes);
-        assert!(text.contains("“Primitives catalog” sits right of it"), "{text}");
+        assert!(
+            text.contains("“Primitives catalog” sits right of it"),
+            "{text}"
+        );
         assert!(text.contains("“Start here” sits below it"), "{text}");
         assert!(text.contains("top edges aligned"), "{text}");
         assert!(text.contains("left edges aligned"), "{text}");
@@ -886,9 +885,15 @@ mod tests {
         let spots = migrate_flow(&[(1, "auto"), (1, "auto"), (1, "short")], 2);
         assert_eq!(spots.len(), 3);
         assert!(spots[0].x < spots[1].x, "first two share a row");
-        assert!((spots[0].y - spots[1].y).abs() < 1.0, "first two share a row");
+        assert!(
+            (spots[0].y - spots[1].y).abs() < 1.0,
+            "first two share a row"
+        );
         assert!(spots[2].y > spots[0].y, "third wraps below");
-        assert!((spots[2].x - spots[0].x).abs() < 1.0, "third lands in column one");
+        assert!(
+            (spots[2].x - spots[0].x).abs() < 1.0,
+            "third lands in column one"
+        );
     }
 
     #[test]

@@ -1,0 +1,895 @@
+{
+  "record_version": "0.1",
+  "session": {
+    "journal_id": "activity-662edd91600c48a8afe9bd9c86836049",
+    "observer_id": "host-46a97afb81684178baf667d46ee90a38",
+    "started_at_ms": 1786610006816,
+    "trust": "host_verified"
+  },
+  "actors": [
+    {
+      "actor_id": "surface-host",
+      "kind": "host",
+      "label": "Host",
+      "participant_id": null,
+      "principal_key": null,
+      "responsible": null,
+      "trust": "host_verified"
+    },
+    {
+      "actor_id": "surface-agent",
+      "kind": "agent",
+      "label": "Agent",
+      "participant_id": null,
+      "principal_key": null,
+      "responsible": null,
+      "trust": "host_verified"
+    },
+    {
+      "actor_id": "surface-human",
+      "kind": "human",
+      "label": "Human",
+      "participant_id": null,
+      "principal_key": null,
+      "responsible": null,
+      "trust": "host_verified"
+    }
+  ],
+  "events": {
+    "trust": "host_verified",
+    "coverage": [
+      {
+        "category": "lifecycle",
+        "instrumentation": "covered",
+        "observation": "observed",
+        "observedEvents": 3,
+        "source": "runtime tutor lifecycle boundary",
+        "note": "Host lifecycle transitions are recorded independently of browser delivery."
+      },
+      {
+        "category": "message",
+        "instrumentation": "covered",
+        "observation": "uncovered",
+        "observedEvents": 0,
+        "source": "runtime transcript and narration boundary",
+        "note": "Human submissions and host-authorized assistant message completion are observed."
+      },
+      {
+        "category": "tool",
+        "instrumentation": "covered",
+        "observation": "uncovered",
+        "observedEvents": 0,
+        "source": "provider-independent tool lifecycle boundary",
+        "note": "All adapters project tool start, argument completion, and result through one host seam."
+      },
+      {
+        "category": "action",
+        "instrumentation": "covered",
+        "observation": "observed",
+        "observedEvents": 14,
+        "source": "shared typed action dispatcher",
+        "note": "Every dispatcher outcome is stamped from its resolved Caller before returning."
+      },
+      {
+        "category": "connection",
+        "instrumentation": "partial",
+        "observation": "observed",
+        "observedEvents": 6,
+        "source": "runtime SSE and WebSocket handlers",
+        "note": "Host connection establishment is observed; abrupt HTTP disconnect timing is best effort."
+      },
+      {
+        "category": "provider",
+        "instrumentation": "partial",
+        "observation": "observed",
+        "observedEvents": 3,
+        "source": "provider supervisor",
+        "note": "Selection, startup, adoption, readiness, and terminal supervisor outcomes are observed."
+      },
+      {
+        "category": "failure",
+        "instrumentation": "partial",
+        "observation": "observed",
+        "observedEvents": 2,
+        "source": "runtime dispatcher, turn, and provider failure boundaries",
+        "note": "Runtime failures are observed; extension-private background failures need their own host adapter."
+      }
+    ],
+    "events": [
+      {
+        "sequence": 1,
+        "atMs": 1786610006816,
+        "category": "lifecycle",
+        "kind": "runtime.started",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-60b2dc6178e64ddc8f6a0af83721741d"
+        },
+        "outcome": "started",
+        "detail": "listening on 127.0.0.1:8099"
+      },
+      {
+        "sequence": 2,
+        "atMs": 1786610006823,
+        "category": "provider",
+        "kind": "provider.selected",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-2442ad07d46e462aac66d02f159d4dc4"
+        },
+        "outcome": "info",
+        "detail": "none"
+      },
+      {
+        "sequence": 3,
+        "atMs": 1786610006836,
+        "category": "provider",
+        "kind": "provider.starting",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-ca1c81129b154fb296d79db8ee8bb8ff"
+        },
+        "outcome": "started",
+        "detail": "none"
+      },
+      {
+        "sequence": 4,
+        "atMs": 1786610006844,
+        "category": "lifecycle",
+        "kind": "lifecycle.warming",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-58cd0927147e466d8687b5c1ed1bd07d"
+        },
+        "outcome": "started"
+      },
+      {
+        "sequence": 5,
+        "atMs": 1786610006865,
+        "category": "lifecycle",
+        "kind": "lifecycle.ready",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-8403845fb8cb4ece95ab511b3638584e"
+        },
+        "outcome": "succeeded"
+      },
+      {
+        "sequence": 6,
+        "atMs": 1786610006872,
+        "category": "provider",
+        "kind": "provider.ready",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-7e43a3f717b743d3a206cb8f18dcdd8e"
+        },
+        "outcome": "succeeded",
+        "detail": "none"
+      },
+      {
+        "sequence": 7,
+        "atMs": 1786610008325,
+        "category": "connection",
+        "kind": "connection.sse",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-91dd9ef709d746efb35c19399196b773"
+        },
+        "outcome": "connected",
+        "detail": "AG-UI event subscriber connected"
+      },
+      {
+        "sequence": 8,
+        "atMs": 1786610008333,
+        "category": "connection",
+        "kind": "connection.sse",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-c6564b9fc53b4c648f69636bf50f4362"
+        },
+        "outcome": "connected",
+        "detail": "AG-UI event subscriber connected"
+      },
+      {
+        "sequence": 9,
+        "atMs": 1786610033681,
+        "category": "connection",
+        "kind": "connection.sse",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-05a406f5faa641a4952477dbb13d12bb"
+        },
+        "outcome": "connected",
+        "detail": "AG-UI event subscriber connected"
+      },
+      {
+        "sequence": 10,
+        "atMs": 1786610033719,
+        "category": "connection",
+        "kind": "connection.websocket",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-27643a4482b4414a82e37ecfa161193a"
+        },
+        "outcome": "connected",
+        "detail": "binary surface subscriber connected"
+      },
+      {
+        "sequence": 11,
+        "atMs": 1786610033769,
+        "category": "connection",
+        "kind": "connection.sse",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-0a23e98446594dbb8fd7ddfa8bed77d6"
+        },
+        "outcome": "connected",
+        "detail": "AG-UI event subscriber connected"
+      },
+      {
+        "sequence": 12,
+        "atMs": 1786610034732,
+        "category": "connection",
+        "kind": "connection.websocket",
+        "actor": {
+          "id": "surface-host",
+          "kind": "host",
+          "label": "Host"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-9ea0825c3a214d4382b43a0f61fc05ca"
+        },
+        "outcome": "connected",
+        "detail": "binary surface subscriber connected"
+      },
+      {
+        "sequence": 13,
+        "atMs": 1786610043447,
+        "category": "action",
+        "kind": "action.atlas_read",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-d33ae44e0cd444eda5716d2500842660"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 14,
+        "atMs": 1786610193052,
+        "category": "action",
+        "kind": "action.await_atlas",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-f214e9e903944637acaf21081387faba"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 15,
+        "atMs": 1786610315311,
+        "category": "action",
+        "kind": "action.await_atlas",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-24f53c08596a4a8fac8bcb08179d0d58"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 16,
+        "atMs": 1786610363024,
+        "category": "action",
+        "kind": "action.await_atlas",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-ba1e5dd74a5a4e98abe4667bf783d2ad"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 17,
+        "atMs": 1786610394731,
+        "category": "action",
+        "kind": "action.await_atlas",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-113378fadce54c0da81f2ea91dbf87fa"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 18,
+        "atMs": 1786610427378,
+        "category": "action",
+        "kind": "action.atlas_read",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-939bf4be2606468e9761d53bda5cdbaf"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 19,
+        "atMs": 1786610618331,
+        "category": "action",
+        "kind": "action.atlas_read",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-d98a7e0433e84395a26cf3ffa58dcc35"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 20,
+        "atMs": 1786610673080,
+        "category": "action",
+        "kind": "action.atlas_sketch",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-da778409ad114d6d9870d4872173488d"
+        },
+        "outcome": "failed",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "detail": "shapes[2]: shape label is longer than 140 characters \u2014 2 shape(s) from this sketch are already on the atlas and were not undone; read it back before retrying"
+      },
+      {
+        "sequence": 21,
+        "atMs": 1786610673090,
+        "category": "failure",
+        "kind": "action.failed",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-9b829e76d674414e99642acc4f558e9c"
+        },
+        "outcome": "failed",
+        "detail": "atlas_sketch: shapes[2]: shape label is longer than 140 characters \u2014 2 shape(s) from this sketch are already on the atlas and were not undone; read it back before retrying"
+      },
+      {
+        "sequence": 22,
+        "atMs": 1786610675878,
+        "category": "action",
+        "kind": "action.atlas_sketch",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-3f02584e6c054c29a7236bb3b53d01f7"
+        },
+        "outcome": "failed",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "detail": "shapes[0]: shape label is longer than 140 characters"
+      },
+      {
+        "sequence": 23,
+        "atMs": 1786610675892,
+        "category": "failure",
+        "kind": "action.failed",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-154c809829004d568fc4fc113896af05"
+        },
+        "outcome": "failed",
+        "detail": "atlas_sketch: shapes[0]: shape label is longer than 140 characters"
+      },
+      {
+        "sequence": 24,
+        "atMs": 1786610677754,
+        "category": "action",
+        "kind": "action.atlas_sketch",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-29cfadecc80c4a8f8d29b524d6b4369e"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 25,
+        "atMs": 1786610679371,
+        "category": "action",
+        "kind": "action.atlas_read",
+        "actor": {
+          "id": "surface-agent",
+          "kind": "agent",
+          "label": "Agent"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-8ce03fe071f843119995d38ffec67f2a"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ]
+      },
+      {
+        "sequence": 26,
+        "atMs": 1786610808267,
+        "category": "action",
+        "kind": "action.board_compose",
+        "actor": {
+          "id": "surface-human",
+          "kind": "human",
+          "label": "Human"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-3933a32f025e435b9b26071519a20300"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "0"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "1"
+          }
+        ]
+      },
+      {
+        "sequence": 27,
+        "atMs": 1786610854758,
+        "category": "action",
+        "kind": "action.board_mark",
+        "actor": {
+          "id": "surface-human",
+          "kind": "human",
+          "label": "Human"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-564f7b7909334612af2a0c4a7625c09d"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "1"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "2"
+          }
+        ]
+      },
+      {
+        "sequence": 28,
+        "atMs": 1786610867930,
+        "category": "action",
+        "kind": "action.atlas_cement",
+        "actor": {
+          "id": "surface-human",
+          "kind": "human",
+          "label": "Human"
+        },
+        "observer": {
+          "id": "host-46a97afb81684178baf667d46ee90a38",
+          "kind": "host",
+          "label": "Host"
+        },
+        "correlation": {
+          "eventId": "event-a87a52ef72794cf484ac18994c2ea85e"
+        },
+        "outcome": "succeeded",
+        "stateRevisionBefore": [
+          {
+            "scope": "board/document",
+            "value": "2"
+          }
+        ],
+        "stateRevisionAfter": [
+          {
+            "scope": "board/document",
+            "value": "2"
+          }
+        ]
+      }
+    ]
+  },
+  "documents": [
+    {
+      "scope": "board",
+      "revision": 2,
+      "trust": "host_verified"
+    },
+    {
+      "scope": "atlas",
+      "revision": "BJDmicjAi9oFugLxytDz1pGAAwOor439rtb1ChSPz6qC7vc1Kg",
+      "trust": "participant_claimed"
+    }
+  ],
+  "settlements": [
+    {
+      "receipt": {
+        "assertions": [
+          {
+            "assertion": {
+              "id": "you-1",
+              "kind": "claim",
+              "status": "settled",
+              "text": "The action-route caller is derived from transport credentials; the body can only narrow it."
+            },
+            "author": {
+              "at": "2026-08-13T08:46:48Z",
+              "board_revision": 1,
+              "byline": "you"
+            },
+            "id": "you-1",
+            "kind": "claim",
+            "signed_off": {
+              "at": "2026-08-13T08:47:34Z",
+              "board_revision": 2,
+              "by": "you",
+              "mark": "agree",
+              "note": null
+            }
+          }
+        ],
+        "atlas_document_revision": "BJDmicjAi9oFugLxytDz1pGAAwOor439rtb1ChSPz6qC7vc1Kg",
+        "board": {
+          "revision": 2,
+          "subject": null
+        },
+        "cemented_at": "2026-08-13T08:47:47Z",
+        "kind": "same-page-atlas-cement-receipt",
+        "schema_version": 1
+      },
+      "obligations_source_sha256": "ba216148f15f6ea5a1b3cb81df73949458cf161b0bbb4dfcda504516db21512f",
+      "trust": "host_verified"
+    }
+  ]
+}
