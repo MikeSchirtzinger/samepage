@@ -1,0 +1,25 @@
+{
+  "entries": [
+    {
+      "assertion": {
+        "kind": "claim",
+        "id": "you-1",
+        "text": "The action-route caller is derived from transport credentials; the body can only narrow it.",
+        "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-08-13T08:46:48Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+        "agree",
+        null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-08-13T08:47:34Z",
+      "marked_at_revision": 2
+    }
+  ],
+  "revision": 2,
+  "subject": null
+}

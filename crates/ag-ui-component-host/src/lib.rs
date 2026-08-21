@@ -1033,8 +1033,10 @@ mod tests {
             "this test is about a descriptor that declares nothing"
         );
         assert!(
-            imports.iter().any(|name| name.starts_with("wasi:filesystem/")
-                || name.starts_with("wasi:cli/environment")),
+            imports
+                .iter()
+                .any(|name| name.starts_with("wasi:filesystem/")
+                    || name.starts_with("wasi:cli/environment")),
             "and about it importing interfaces anyway: {imports:?}"
         );
         assert!(

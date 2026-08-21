@@ -138,7 +138,12 @@ impl People {
     /// The participant id is minted here and never taken from the client, for
     /// the same reason an attaching agent's is: a caller that could choose its
     /// own id could take over one already present.
-    pub fn admit(&self, principal: Principal, proposed_name: &str, taken: &[String]) -> (Person, String) {
+    pub fn admit(
+        &self,
+        principal: Principal,
+        proposed_name: &str,
+        taken: &[String],
+    ) -> (Person, String) {
         let token = uuid::Uuid::new_v4().simple().to_string();
         let participant_id = format!("person-{}", uuid::Uuid::new_v4().simple());
         let mut people = self.by_token.lock();

@@ -585,7 +585,6 @@ impl RoomState {
         }
     }
 
-
     /// The wire shape: the stored document with every host-resolved node
     /// replaced by what it currently stands for.
     fn resolved(&self) -> JsonValue {
@@ -693,8 +692,7 @@ impl RoomState {
     fn unread_from_others(&self, me: &Byline) -> bool {
         let cursor = *self.read_cursor.lock();
         self.doc.lock().log.iter().any(|entry| {
-            entry.revision > cursor
-                && !(entry.by == me.author && entry.by_name == me.name)
+            entry.revision > cursor && !(entry.by == me.author && entry.by_name == me.name)
         })
     }
 
@@ -908,9 +906,7 @@ impl RoomState {
                     .panes
                     .iter()
                     .position(|pane| pane.id == adjustment.id)
-                    .ok_or_else(|| {
-                        format!("there is no pane {} in the room", adjustment.id)
-                    })?;
+                    .ok_or_else(|| format!("there is no pane {} in the room", adjustment.id))?;
 
                 if let Some(pinned) = adjustment.pinned {
                     doc.panes[index].pinned = pinned;
@@ -1258,10 +1254,7 @@ impl RoomState {
 
     fn describe_short(&self) -> String {
         let doc = self.doc.lock();
-        let mut out = format!(
-            "THE ROOM (revision {}): {}\n",
-            doc.revision, doc.intent
-        );
+        let mut out = format!("THE ROOM (revision {}): {}\n", doc.revision, doc.intent);
         if doc.panes.is_empty() {
             out.push_str("No panes yet.\n");
             return out;
@@ -1404,7 +1397,10 @@ impl Extension for RoomExtension {
     fn note_caller(&self, actor: &ag_ui_surface::Actor) {
         *self.state.caller.lock() = actor.caller;
         self.state.caller_name.lock().clone_from(&actor.label);
-        self.state.caller_id.lock().clone_from(&actor.participant_id);
+        self.state
+            .caller_id
+            .lock()
+            .clone_from(&actor.participant_id);
         // Record them the moment they are known rather than on their first
         // write, so a person who has joined and not yet done anything is
         // already someone the room can name.
@@ -1459,15 +1455,15 @@ impl Extension for RoomExtension {
                             .and_then(|value| value.parse().ok())
                             .unwrap_or(0);
                         let doc = state.doc.lock();
-                        let markup = doc
-                            .panes
-                            .iter()
-                            .find(|pane| pane.id == pane_id)
-                            .and_then(|pane| {
-                                let mut nodes = Vec::new();
-                                view::collect_html(&pane.view, &mut nodes);
-                                nodes.get(index).map(|html| (*html).to_string())
-                            });
+                        let markup =
+                            doc.panes
+                                .iter()
+                                .find(|pane| pane.id == pane_id)
+                                .and_then(|pane| {
+                                    let mut nodes = Vec::new();
+                                    view::collect_html(&pane.view, &mut nodes);
+                                    nodes.get(index).map(|html| (*html).to_string())
+                                });
                         match markup {
                             Some(html) => RouteResponse {
                                 status: 200,
@@ -1786,8 +1782,7 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
                     // arrived and moved it.
                     let me = state.agent_byline();
                     Effect::AsyncQuery(Box::pin(async move {
-                        let deadline =
-                            tokio::time::Instant::now() + Duration::from_secs(seconds);
+                        let deadline = tokio::time::Instant::now() + Duration::from_secs(seconds);
                         loop {
                             // Register interest *before* looking, or a change
                             // landing between the check and the wait is a
@@ -3159,8 +3154,15 @@ mod tests {
         .expect("the room replies");
 
         let doc = state.doc.lock();
-        let pane = doc.panes.iter().find(|pane| pane.id == "start").expect("start");
-        assert_eq!(pane.note, "the part I actually care about", "a click overwrote their note");
+        let pane = doc
+            .panes
+            .iter()
+            .find(|pane| pane.id == "start")
+            .expect("start");
+        assert_eq!(
+            pane.note, "the part I actually care about",
+            "a click overwrote their note"
+        );
         assert_eq!(pane.pointed, "Run the thing");
         // The pane is the more useful half: "pointed at Run" is not actionable
         // without knowing where.
@@ -3180,9 +3182,7 @@ mod tests {
         // the same statement; now a left-edge drag changes both where a pane
         // starts and how wide it is, and the read-back has to say which.
         let (state, extension) = fresh("resize-wording");
-        let spot = |x: f64, y: f64, w: f64, h: f64| {
-            json!({ "x": x, "y": y, "w": w, "h": h })
-        };
+        let spot = |x: f64, y: f64, w: f64, h: f64| json!({ "x": x, "y": y, "w": w, "h": h });
         let arrange = |spot: JsonValue| {
             call(
                 &extension,
@@ -3202,12 +3202,18 @@ mod tests {
         // Same corner, different size: the person pulled an edge.
         let said = arrange(spot(100.0, 100.0, 560.0, 300.0));
         assert!(said.contains("resized"), "{said}");
-        assert!(!said.contains("moved"), "a pure resize must not claim it moved: {said}");
+        assert!(
+            !said.contains("moved"),
+            "a pure resize must not claim it moved: {said}"
+        );
 
         // Same size, different corner: the person dragged the pane.
         let said = arrange(spot(220.0, 180.0, 560.0, 300.0));
         assert!(said.contains("moved"), "{said}");
-        assert!(!said.contains("resized"), "a pure move must not claim it resized: {said}");
+        assert!(
+            !said.contains("resized"),
+            "a pure move must not claim it resized: {said}"
+        );
 
         // A leading edge does both at once, and hiding either half would be a
         // read-back the person could not reconcile with what they just did.
@@ -3350,7 +3356,10 @@ mod tests {
 
         raise("start");
         let front = stack("start");
-        assert!(front > stack("second"), "the first raise should bring it up");
+        assert!(
+            front > stack("second"),
+            "the first raise should bring it up"
+        );
 
         // Touching the pane that is already on top three more times.
         raise("start");
@@ -3584,7 +3593,11 @@ mod tests {
             .iter()
             .find(|pane| pane.id == "mine")
             .expect("pane");
-        assert_eq!(pane.author, Author::Human, "authorship survives the restart");
+        assert_eq!(
+            pane.author,
+            Author::Human,
+            "authorship survives the restart"
+        );
         assert!(
             pane.by_id.is_some(),
             "the participant id is the durable half of the byline and must survive too"

@@ -551,9 +551,7 @@ pub fn resolve(node: &Node, workspace: &Workspace) -> JsonValue {
     };
 
     match node {
-        Node::Stack { children, .. }
-        | Node::Row { children, .. }
-        | Node::Deck { children, .. } => {
+        Node::Stack { children, .. } | Node::Row { children, .. } | Node::Deck { children, .. } => {
             let resolved: Vec<JsonValue> = children
                 .iter()
                 .map(|child| resolve(child, workspace))
@@ -1065,8 +1063,8 @@ mod tests {
         .expect("node parses");
         validate(&node).expect("sandboxed html validates without being parsed");
 
-        let oversize = parse(json!({ "kind": "html", "html": "x".repeat(48_001) }))
-            .expect("node parses");
+        let oversize =
+            parse(json!({ "kind": "html", "html": "x".repeat(48_001) })).expect("node parses");
         validate(&oversize).expect_err("oversize html is rejected");
 
         let flat = parse(json!({ "kind": "html", "html": "<p>hi</p>", "height": 40 }))
