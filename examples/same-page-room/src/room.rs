@@ -811,11 +811,11 @@ impl RoomState {
             let verb = if replaced { "rewrote" } else { "put up" };
             Ok((
                 format!(
-                    "{} pane {id} — {}.",
+                    "{} pane {id}: {}.",
                     if replaced { "Rewrote" } else { "Added" },
                     summary
                 ),
-                format!("{verb} the pane “{}” [{id}] — {summary}", pane.title),
+                format!("{verb} the pane “{}” [{id}]: {summary}", pane.title),
             ))
         })
     }
@@ -892,7 +892,7 @@ impl RoomState {
         };
         if adjustments.is_empty() {
             return Err(
-                "arrange needs at least one pane to adjust — each one takes a place, a size, \
+                "arrange needs at least one pane to adjust. Each one takes a place, a size, \
                  or pinned."
                     .to_string(),
             );
@@ -990,7 +990,7 @@ impl RoomState {
                     _ => "moved",
                 };
                 said.push(format!(
-                    "{verb} “{title}” — it now sits {}",
+                    "{verb} “{title}”. It now sits {}",
                     layout::locate(index, &sited)
                 ));
             }
@@ -1136,7 +1136,7 @@ impl RoomState {
         };
 
         let mut out = format!(
-            "THE ROOM — revision {}, {} pane{} on a free canvas\nIntent: {}\nAppearance: {}\n",
+            "THE ROOM: revision {}, {} pane{} on a free canvas\nIntent: {}\nAppearance: {}\n",
             doc.revision,
             doc.panes.len(),
             if doc.panes.len() == 1 { "" } else { "s" },
@@ -1147,7 +1147,7 @@ impl RoomState {
         if doc.panes.is_empty() {
             out.push_str("\nThe room is empty. Nothing is on the shared page yet.\n");
         } else {
-            out.push_str("\nPANES, in reading order — down the canvas, left to right\n");
+            out.push_str("\nPANES, in reading order, down the canvas, left to right\n");
             let sited: Vec<Sited<'_>> = doc
                 .panes
                 .iter()
@@ -1169,7 +1169,7 @@ impl RoomState {
                 ));
                 if let Some(mark) = pane.mark.describe() {
                     out.push_str(&format!(
-                        "     MARKED {mark} — by {}\n",
+                        "     MARKED {mark} by {}\n",
                         marker(pane.mark_by_name.as_deref())
                     ));
                 }
@@ -1189,7 +1189,7 @@ impl RoomState {
 
         if doc.panes.iter().any(|pane| view::shows_options(&pane.view)) {
             out.push_str(
-                "\nWHAT IS RUNNABLE — this is the catalog they can see in the options pane, \
+                "\nWHAT IS RUNNABLE: this is the catalog they can see in the options pane, \
                  read from the workspace manifest just now\n",
             );
             out.push_str(&self.workspace.describe_options());
@@ -1221,20 +1221,20 @@ impl RoomState {
             out.push_str(
                 "A change credited to a `person` was made by a human in the browser, not by \
                  you. More than one person can be in this room, so address them by the name \
-                 in the byline rather than as \"you\" — and `someone` means a person who has \
+                 in the byline rather than as \"you\". `someone` means a person who has \
                  not told the room what to call them.\n",
             );
         }
 
         out.push_str(&format!(
             "\nHOW TO CHANGE THE ROOM\n\
-             put_pane(id, title, view, place?, size?, expected_revision) — create or \
+             put_pane(id, title, view, place?, size?, expected_revision): create or \
              rewrite a pane; the same id twice rewrites in place, leaving it where the person \
              put it.\n\
              remove_pane, arrange_room (place/size/pinned), configure_room \
              (intent/theme).\n\
-             Panes sit on a free canvas with no grid: `place` names a neighbour — \
-             \"right of: <id>\", \"below: <id>\", \"near: <id>\" — or \"start\"/\"end\". \
+             Panes sit on a free canvas with no grid: `place` names a neighbour, \
+             \"right of: <id>\", \"below: <id>\", \"near: <id>\", or \"start\"/\"end\". \
              `size` is a shape: small, medium, wide, tall, large. Neither takes a number, \
              and the room is always described back to you in the same relational words.\n\
              A view is a node tree. Kinds: {VOCABULARY}.\n\
@@ -1242,7 +1242,7 @@ impl RoomState {
              disk on every render, so it never goes stale. `options` renders the live \
              catalog of runnable packages. `button` sends its `ask` to you as if they typed \
              it. GET /room/vocabulary has every field.\n\
-             You cannot set a mark or a note — those are theirs.\n\
+             You cannot set a mark or a note. Those are theirs.\n\
              await_room blocks until they touch something and then reads it back, so you \
              can answer and wait instead of asking again.\n\
              Always pass expected_revision = {}.\n",
@@ -1533,11 +1533,11 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
     let size = json!({
         "type": "string",
         "enum": ["small", "medium", "wide", "tall", "large"],
-        "description": "Roughly how big this pane should be. A shape, not a measurement — the person resizes freely by dragging, and their size wins."
+        "description": "Roughly how big this pane should be. A shape, not a measurement. The person resizes freely by dragging, and their size wins."
     });
     let place = json!({
         "type": "string",
-        "description": "Where to put it, relative to another pane: \"right of: <pane-id>\", \"left of: <pane-id>\", \"below: <pane-id>\", \"above: <pane-id>\", \"near: <pane-id>\", or \"start\"/\"end\" for the top or bottom of the canvas. The room has no grid and no columns — panes sit wherever they were put, and you position yours by naming a neighbour. Coordinates are not accepted. Omit to leave an existing pane exactly where the person left it."
+        "description": "Where to put it, relative to another pane: \"right of: <pane-id>\", \"left of: <pane-id>\", \"below: <pane-id>\", \"above: <pane-id>\", \"near: <pane-id>\", or \"start\"/\"end\" for the top or bottom of the canvas. The room has no grid and no columns. Panes sit wherever they were put, and you position yours by naming a neighbour. Coordinates are not accepted. Omit to leave an existing pane exactly where the person left it."
     });
     let theme = json!({
         "type": "object",
@@ -1561,7 +1561,7 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
             "title": { "type": "string", "minLength": 1, "maxLength": MAX_TITLE },
             "view": {
                 "type": "object",
-                "description": "A node tree. Every node is {\"kind\": ...}. Kinds: stack{children}, row{children,wrap}, heading{text,level}, text{text,tone}, code{text,lang}, list{items,ordered}, kv{items:[{label,value}]}, table{columns,rows}, badge{text,tone}, divider, button{label,ask} (sends `ask` to you as if they typed it), field{key,label,placeholder,multiline} (its value is appended to any button `ask` in the same pane), link{label,url}, image{src} (same-origin or data: only), source{path,from,to} (repo-relative, re-read from disk on every render), options{filter} (the live catalog of runnable packages), embed{url,height} (a site framed in the room), diagram{nodes:[{id,label,tone}],edges:[{from,to,label,arrow}],direction,caption} (boxes and arrows — you send structure only and the host lays it out; use it whenever the point is how things connect). Tones: neutral, muted, strong, accent, good, warn, bad. GET /room/vocabulary is the full reference."
+                "description": "A node tree. Every node is {\"kind\": ...}. Kinds: stack{children}, row{children,wrap}, heading{text,level}, text{text,tone}, code{text,lang}, list{items,ordered}, kv{items:[{label,value}]}, table{columns,rows}, badge{text,tone}, divider, button{label,ask} (sends `ask` to you as if they typed it), field{key,label,placeholder,multiline} (its value is appended to any button `ask` in the same pane), link{label,url}, image{src} (same-origin or data: only), source{path,from,to} (repo-relative, re-read from disk on every render), options{filter} (the live catalog of runnable packages), embed{url,height} (a site framed in the room), diagram{nodes:[{id,label,tone}],edges:[{from,to,label,arrow}],direction,caption} (boxes and arrows: you send structure only and the host lays it out; use it whenever the point is how things connect). Tones: neutral, muted, strong, accent, good, warn, bad. GET /room/vocabulary is the full reference."
             },
             "size": size,
             "place": place
@@ -1651,11 +1651,11 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
     let remove_description =
         "Take a pane down. A pinned pane is refused until the person unpins it.";
     let arrange_description = "Move a pane next to another one, change its size, or pin it. \
-        Panes sit on a free canvas, so you place yours by naming a neighbour — \"right of: \
-        <id>\", \"below: <id>\" — never by coordinate. The person drags panes wherever they \
+        Panes sit on a free canvas, so you place yours by naming a neighbour: \"right of: \
+        <id>\", \"below: <id>\", never by coordinate. The person drags panes wherever they \
         like, and read_room tells you where everything ended up in the same relational words.";
     let configure_description = "Change what the room is for and how it looks. Appearance is a \
-        fixed set of tokens, not CSS. The room has no column count to set — panes sit wherever \
+        fixed set of tokens, not CSS. The room has no column count to set. Panes sit wherever \
         they were placed on a free canvas.";
 
     // `from_person` marks the browser's twin of each action. It decides two
@@ -1752,7 +1752,7 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
              than you marks, notes, moves or rewrites something, and returns exactly what \
              read_room would. Use it to stay on the page with them instead of asking again: \
              answer, then wait. Returns after `seconds` (default 60, max 600) with nothing to \
-             report if the room stayed still — a quiet room is not an error, just call it again.",
+             report if the room stayed still. A quiet room is not an error, just call it again.",
             json!({
                 "type": "object",
                 "additionalProperties": false,
@@ -1812,8 +1812,8 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
     defs.push(
         ToolDef::new(
             "read_room",
-            "Read the whole room: what is on the page, what the person marked, and — the part \
-             to act on — what they changed since your last read. Call this at the start of \
+            "Read the whole room: what is on the page, what the person marked, and the part \
+             to act on: what they changed since your last read. Call this at the start of \
              every turn, before you write anything.",
             json!({ "type": "object", "additionalProperties": false, "properties": {} }),
             {
@@ -1897,7 +1897,7 @@ const RAISE_IS_NOT_YOURS: &str = "arrange_room does not take `raise`. Which pane
      pane needs their attention, say so in it, or place it somewhere nothing overlaps: place: \
      \"below: <id>\", \"right of: <id>\", or end.";
 
-const SPOT_IS_NOT_YOURS: &str = "arrange_room does not take coordinates, and it never will — \
+const SPOT_IS_NOT_YOURS: &str = "arrange_room does not take coordinates, and it never will: \
      the room is described to you in relations so you and the person can talk about it in the \
      same words. Say where a pane should go relative to another one: place: \"right of: <id>\", \
      \"left of: <id>\", \"below: <id>\", \"above: <id>\", \"near: <id>\", start, or end. For \
@@ -2098,19 +2098,19 @@ fn validate_doc(doc: &RoomDoc) -> Result<(), String> {
 fn vocabulary_reference() -> JsonValue {
     json!({
         "note": "The complete room view vocabulary. A pane's `view` is one node; containers nest \
-                 up to 8 deep, with at most 400 nodes in a tree. Text is rendered as text — the \
+                 up to 8 deep, with at most 400 nodes in a tree. Text is rendered as text. The \
                  renderer never parses markup.",
         "tones": ["neutral", "muted", "strong", "accent", "good", "warn", "bad"],
         "nodes": {
             "stack": { "children": "[node]", "gap": "0-24, optional" },
             "row": { "children": "[node]", "gap": "0-24, optional", "wrap": "bool, default true" },
-            "deck": { "children": "[node] — one shown at a time", "titles": "[string], optional — one per child, labels the flip counter", "note": "For a sequence the person flips through — review steps, alternatives — when showing everything at once would spend the whole screen. Flipping is local to each reader and never round-trips through the agent." },
+            "deck": { "children": "[node], one shown at a time", "titles": "[string], optional, one per child, labels the flip counter", "note": "For a sequence the person flips through, such as review steps or alternatives, when showing everything at once would spend the whole screen. Flipping is local to each reader and never round-trips through the agent." },
             "heading": { "text": "string", "level": "1-3, optional" },
             "text": { "text": "string", "tone": "tone, optional" },
             "code": { "text": "string", "lang": "label only; nothing is highlighted or run" },
             "list": { "items": "[string]", "ordered": "bool" },
             "kv": { "items": "[{label, value}]" },
-            "table": { "columns": "[string]", "rows": "[[string]] — every row must match the column count" },
+            "table": { "columns": "[string]", "rows": "[[string]], every row must match the column count" },
             "badge": { "text": "string", "tone": "tone, optional" },
             "divider": {},
             "button": { "label": "string", "ask": "sent to the agent as if the person typed it", "tone": "tone, optional" },
@@ -2120,13 +2120,13 @@ fn vocabulary_reference() -> JsonValue {
             "source": { "path": "repository-relative", "from": "1-based, optional", "to": "optional", "note": "re-read from disk on every render, so it cannot go stale" },
             "options": { "filter": "optional substring", "note": "renders the live catalog of runnable packages, with a live port probe" },
             "embed": { "url": "http(s)", "height": "120-2000 px", "note": "sandboxed; an agent-authored embed does not load until the person clicks it" },
-            "html": { "html": "raw HTML, max 48000 chars", "height": "120-2000 px, default 320", "note": "The no-build escape hatch: any interface the vocabulary lacks — checkboxes, a canvas experiment, a control panel — authored directly, rendered in a fully isolated sandbox (scripts run inside, nothing reaches the page). Put data-point=\"label\" on elements that matter: when the person clicks one, read_room reports it as what they pointed at inside this pane. That is separate from their note — a note is a sentence they chose to write, a point is a gesture the page caught, and reading one as the other misreads them. Your own script may also call parent.postMessage({aguiPoint: \"label\"}, \"*\") to report a composed result, e.g. every checked box. A click that lands on nothing in particular reports nothing; a click on an element without a data-point reports that element's own text, which is free for a simple pane but chatty for one with its own chrome — put data-quiet on a wrapper to silence that subtree; an explicit data-point inside it still reports." },
+            "html": { "html": "raw HTML, max 48000 chars", "height": "120-2000 px, default 320", "note": "The no-build escape hatch: any interface the vocabulary lacks (checkboxes, a canvas experiment, a control panel), authored directly, rendered in a fully isolated sandbox (scripts run inside, nothing reaches the page). Put data-point=\"label\" on elements that matter: when the person clicks one, read_room reports it as what they pointed at inside this pane. That is separate from their note: a note is a sentence they chose to write, a point is a gesture the page caught, and reading one as the other misreads them. Your own script may also call parent.postMessage({aguiPoint: \"label\"}, \"*\") to report a composed result, e.g. every checked box. A click that lands on nothing in particular reports nothing; a click on an element without a data-point reports that element's own text, which is free for a simple pane but chatty for one with its own chrome. Put data-quiet on a wrapper to silence that subtree; an explicit data-point inside it still reports." },
             "diagram": {
                 "nodes": "[{id, label optional (defaults to id), tone optional}]",
-                "edges": "[{from, to — node ids; label optional; arrow bool, default true}]",
-                "direction": "\"right\" (roots left, flow rightward — pipelines, computation graphs) or \"down\" (roots on top). Default \"right\".",
+                "edges": "[{from, to: node ids; label optional; arrow bool, default true}]",
+                "direction": "\"right\" (roots left, flow rightward: pipelines, computation graphs) or \"down\" (roots on top). Default \"right\".",
                 "caption": "optional line under the drawing",
-                "note": "Send STRUCTURE only — never coordinates. The host lays it out: boxes sized to their labels, arrows landing on box edges, layers spaced, nothing overlapping or off-frame. Prefer this over prose or a table whenever the point is how things connect. Clicking a box asks about that node, so the person can point at one part of the picture."
+                "note": "Send STRUCTURE only, never coordinates. The host lays it out: boxes sized to their labels, arrows landing on box edges, layers spaced, nothing overlapping or off-frame. Prefer this over prose or a table whenever the point is how things connect. Clicking a box asks about that node, so the person can point at one part of the picture."
             }
         },
         "refused": [
@@ -2298,7 +2298,7 @@ mod tests {
         assert_eq!(
             listed, documented,
             "VOCABULARY and vocabulary_reference() disagree. Every node kind needs \
-             a line in both — see examples/same-page-room/AGENTS.md."
+             a line in both, see examples/same-page-room/AGENTS.md."
         );
     }
 
@@ -2651,7 +2651,7 @@ mod tests {
         );
         assert!(
             !frame_url.contains("rev"),
-            "the html frame's url must not carry the room revision — every note \
+            "the html frame's url must not carry the room revision: every note \
              would change it and reload the sandbox that was just pointed at: {frame_url}"
         );
 
@@ -3427,7 +3427,7 @@ mod tests {
 
         let read = state.read().expect("read back");
         assert!(
-            read.contains("“Where do you want to take this?” — it now sits"),
+            read.contains("“Where do you want to take this?”. It now sits"),
             "the delta should name the pane that moved:\n{read}"
         );
         assert!(

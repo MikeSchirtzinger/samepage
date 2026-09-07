@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn text_with_nothing_to_escape_survives_unchanged() {
-        let plain = "a normal claim, with punctuation — and a dash.";
+        let plain = "a normal claim, with punctuation, and a dash.";
         assert_eq!(escape(plain), plain);
         assert_eq!(escape(""), "");
         // Non-ASCII passes through; this escapes HTML syntax, not encoding.

@@ -6,7 +6,7 @@
   <!-- `frame-src` is the one opening in this policy, and it is the whole point
        of the `embed` node: a site can be framed here. It is framed without
        `allow-same-origin`, so it cannot reach this origin. Nothing else is
-       relaxed — no inline script, no remote script, no remote image. -->
+       relaxed: no inline script, no remote script, no remote image. -->
   <meta
     http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src http: https:"
@@ -61,7 +61,7 @@
         <div class="transcript" id="transcript" aria-live="polite">
           <div class="conversation-empty" id="conversation-empty">
             <p>The room starts almost empty on purpose.</p>
-            <p>Try: <em>“Let's get on the same page about this repo — put up whatever
+            <p>Try: <em>“Let's get on the same page about this repo. Put up whatever
               you think I should be looking at, and tell me why that.”</em></p>
           </div>
         </div>
@@ -72,7 +72,7 @@
           </div>
           <label class="sr-only" for="ask-input">Message the agent</label>
           <textarea id="ask-input" rows="3" maxlength="12000"
-                    placeholder="Ask for anything — a pane, a file, a site, a different look…"></textarea>
+                    placeholder="Ask for anything: a pane, a file, a site, a different look…"></textarea>
           <div class="composer-footer">
             <span id="composer-status" role="status" aria-live="polite">Shift + Enter for a new line</span>
             <button class="send-button" id="send-button" type="submit">Send</button>
@@ -89,7 +89,7 @@
     </header>
     <p class="muted">
       These are the only appearance controls that exist. The agent has exactly the
-      same set and no more — it cannot send CSS, so a pane can never restyle the
+      same set and no more. It cannot send CSS, so a pane can never restyle the
       page around it.
     </p>
     <div class="sheet-grid">

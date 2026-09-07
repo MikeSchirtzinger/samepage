@@ -604,7 +604,7 @@ pub fn describe(panes: &[Sited<'_>]) -> String {
     let extent = extent(panes);
     let order = reading_order(panes);
     let mut out = String::from(
-        "\nWHERE THINGS SIT — read as relations; the canvas is free-form and the person \
+        "\nWHERE THINGS SIT, read as relations; the canvas is free-form and the person \
          can drag anything anywhere\n",
     );
 
@@ -638,7 +638,7 @@ pub fn describe(panes: &[Sited<'_>]) -> String {
                 .map(|note| format!(" ({note})"))
                 .unwrap_or_default();
             let touching = if panes[other].spot.overlaps(&subject.spot) {
-                " — they overlap"
+                ", and they overlap"
             } else {
                 ""
             };
@@ -673,7 +673,7 @@ pub fn describe(panes: &[Sited<'_>]) -> String {
     }
 
     out.push_str(
-        "To move a pane, name it and say where it should go — \
+        "To move a pane, name it and say where it should go: \
          put_pane/arrange_room take place: \"right of: <id>\", \"below: <id>\", \
          \"near: <id>\", start or end. The person moves panes by dragging them.\n",
     );
@@ -864,7 +864,7 @@ mod tests {
             let cleaned = token.trim_matches(|c: char| !c.is_ascii_digit());
             assert!(
                 cleaned.is_empty(),
-                "read-back leaked a number ({token:?}) — describe() must speak in relations:\n{text}"
+                "read-back leaked a number ({token:?}): describe() must speak in relations:\n{text}"
             );
         }
     }

@@ -1982,7 +1982,7 @@ impl App {
             providers.push(connection);
         }
         let prompts = self.prompt.ok_or(AppError::MissingConfiguration(
-            "App::prompt(...) is required — your agent's persona/method",
+            "App::prompt(...) is required: your agent's persona/method",
         ))?;
         // Current ACP adapters connect to the runtime-owned HTTP MCP endpoint.
         // A caller-supplied stdio bridge remains only as a compatibility
@@ -3557,7 +3557,7 @@ async fn ask_handler(
         .and_then(|service| service.latest_active(ParticipantKind::Human))
     {
         format!(
-            "[Semantic attention context — the human is indicating {}:{}: {}. \
+            "[Semantic attention context: the human is indicating {}:{}: {}. \
              When they say \"this\", \"that\", \"here\", or \"it\", they mean \
              this semantic target. Attention is context only, never authority \
              or permission.]\n\n{question}",
@@ -3569,7 +3569,7 @@ async fn ask_handler(
         let focus = rt.current_focus.lock();
         match focus.as_ref() {
             Some((phrase, at)) if at.elapsed() <= runtime_state::FOCUS_TTL => format!(
-                "[Pointing context — the learner is indicating {phrase}. When they say \"this\", \"that\", \"here\", or \"it\", they mean THIS object. Answer about it directly; don't ask which one they mean.]\n\n{question}"
+                "[Pointing context: the learner is indicating {phrase}. When they say \"this\", \"that\", \"here\", or \"it\", they mean THIS object. Answer about it directly; don't ask which one they mean.]\n\n{question}"
             ),
             _ => question.clone(),
         }
@@ -4294,7 +4294,7 @@ fn auth_snapshot(rt: &runtime_state::RuntimeState) -> JsonValue {
                 (
                     true,
                     "local",
-                    Some("local server — no key needed".to_string()),
+                    Some("local server, no key needed".to_string()),
                 )
             } else {
                 (status.ready, status.source, status.detail)

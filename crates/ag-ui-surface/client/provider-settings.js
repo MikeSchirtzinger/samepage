@@ -150,7 +150,7 @@ class AgUiProviderSettings extends HTMLElement {
     this.ui.base.value=provider?.base_url || (provider?.id==='openai' ? this.data.byok?.base_url || '' : '');
     this.ui.base.disabled=!!provider && !userConnection && !provider.byok;
     this.ui.model.value=provider?.model || (provider?.id==='openai' ? this.data.byok?.model || '' : '');
-    this.ui.key.value=''; this.ui.key.placeholder=provider?.source==='stored' ? 'Saved — leave blank to keep it' : 'Paste API key';
+    this.ui.key.value=''; this.ui.key.placeholder=provider?.source==='stored' ? 'Saved. Leave blank to keep it' : 'Paste API key';
     this.ui.vision.checked=!!provider?.vision; this.ui.vision.disabled=!!provider && !userConnection;
     this.ui.results.hidden=true; this.editing=provider;
     this.setStatus(provider?.group==='preset' ? 'Saving updates this configured endpoint.' : '');

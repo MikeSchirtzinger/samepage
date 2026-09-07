@@ -1,4 +1,4 @@
-/* `<agui-conversation>` — see conversation.js.
+/* `<agui-conversation>`, see conversation.js.
  *
  * Every colour is a `--ac-*` custom property with a dark default, so an app
  * themes the panel from outside the shadow root by setting the ones it cares
