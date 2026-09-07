@@ -554,7 +554,7 @@ async fn dispatch_tool_inner(
             };
             let result = match outcome {
                 DecisionOutcome::Interrupted => Ok(format!(
-                    "decision '{id}' interrupted (barge-in) — the human moved on without answering"
+                    "decision '{id}' interrupted (barge-in): the human moved on without answering"
                 )),
                 DecisionOutcome::Reply(reply) => match reply {
                     Ok(result) => result,

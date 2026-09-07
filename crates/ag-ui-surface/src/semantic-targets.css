@@ -17,7 +17,7 @@
 /* The agent's phrase is a sentence, not a chip. It used to be `nowrap` with
    an ellipsis, which cut every explanation off mid-clause and left the human
    with the half that carried no information. It wraps now, and only gives up
-   after six lines — at which point the phrase, not the box, is the problem. */
+   after six lines, at which point the phrase, not the box, is the problem. */
 .agui-semantic-overlay-label {
   position: absolute;
   left: 8px;

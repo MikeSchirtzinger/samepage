@@ -463,13 +463,13 @@ impl SemanticTargetService {
             ));
             if let Some(attention) = awareness.attention {
                 text.push_str(&format!(
-                    " at {}:{} — {}",
+                    " at {}:{}: {}",
                     attention.target.target.extension_id,
                     attention.target.target.target_id,
                     attention.target.description
                 ));
                 if let Some(message) = attention.message {
-                    text.push_str(&format!(" — {message:?}"));
+                    text.push_str(&format!(": {message:?}"));
                 }
             }
         }
@@ -604,7 +604,7 @@ fn host_actions(service: &Arc<SemanticTargetService>) -> Vec<ToolDef> {
                             message,
                         )?;
                         Ok(Some(format!(
-                            "pointing at {}:{} — {}",
+                            "pointing at {}:{}: {}",
                             resolved.target.extension_id,
                             resolved.target.target_id,
                             resolved.description
@@ -635,7 +635,7 @@ fn host_actions(service: &Arc<SemanticTargetService>) -> Vec<ToolDef> {
                             message,
                         )?;
                         Ok(Some(format!(
-                            "revealing {}:{} — {}",
+                            "revealing {}:{}: {}",
                             resolved.target.extension_id,
                             resolved.target.target_id,
                             resolved.description

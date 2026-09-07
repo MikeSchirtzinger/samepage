@@ -70,7 +70,7 @@ function notifySelections(snapshot) {
 /// What to call a participant on the strip.
 ///
 /// Every browser attaches with the label "You", which reads correctly on your
-/// own screen and is a lie on everyone else's — two windows both announced
+/// own screen and is a lie on everyone else's, two windows both announced
 /// themselves as "You" and the strip showed one person twice with no way to
 /// tell which chip was yours. "You" is therefore decided *here*, from whether
 /// the id matches the participant this browser attached as, and a second
@@ -110,7 +110,7 @@ function renderPresence(snapshot) {
 /// stops it from landing on a *neighbouring* column, because the overlay is
 /// `position: fixed` and the ancestor that clipped the target does not clip
 /// it. An agent pointing at an off-screen card then highlights whatever
-/// happens to sit at those coordinates — a confident ring around the wrong
+/// happens to sit at those coordinates, a confident ring around the wrong
 /// artifact, which is worse than no ring at all.
 function clipBoundsFor(element) {
   let bounds = null;
@@ -201,12 +201,12 @@ function renderAgentAttention(snapshot) {
     overlay.style.height = "0px";
     // The label opens back into the pane it is pinned to. Anchored at the
     // right edge it has to grow leftwards, or it lies across the *next*
-    // column — the same mistake as the ring, made by the caption instead.
+    // column, the same mistake as the ring, made by the caption instead.
     overlay.classList.toggle("from-right", arrow === "→");
     overlay.classList.toggle("from-left", arrow === "←");
     const canGo = typeof registration.reveal === "function";
     overlayLabel.textContent =
-      `${arrow} ${overlayLabel.textContent}${canGo ? " — off screen, click to go there" : " (off screen)"}`;
+      `${arrow} ${overlayLabel.textContent}${canGo ? ", off screen, click to go there" : " (off screen)"}`;
     overlayLabel.classList.toggle("actionable", canGo);
     overlayLabel.onclick = canGo
       ? () => {

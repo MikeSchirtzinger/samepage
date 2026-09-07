@@ -2,7 +2,7 @@
 //
 // The shell owns no room state. It reads `room:state` to keep its controls in
 // step and dispatches `room:command` when the person uses one, because the
-// extension is what owns the room's actions — the loader would refuse this file
+// extension is what owns the room's actions, the loader would refuse this file
 // if it tried to call them directly.
 
 import { AgUiClient, loadExtensions, whoAmI, rememberMe } from "/_agui/client.js";
@@ -263,7 +263,7 @@ document.querySelector("agui-provider-settings").addEventListener("provider-stat
 
 // ── presence ──────────────────────────────────────────────────────────────
 // Who is on this page right now: this browser, and every agent attached over
-// /mcp, by the label the host disambiguated. The strip only describes — the
+// /mcp, by the label the host disambiguated. The strip only describes, the
 // snapshot's own `authority` field says this state cannot authorize anything.
 const presenceStrip = byId("presence-strip");
 
@@ -271,14 +271,14 @@ const presenceStrip = byId("presence-strip");
 ///
 /// This replaced an id the page minted for itself and kept in `localStorage`.
 /// A client that picks its own id can pick one already in use, and every
-/// browser picked the label "You" — which is why the strip used to have to
+/// browser picked the label "You", which is why the strip used to have to
 /// guess that a second participant calling itself "You" was "another browser".
 /// It is not a guess any more: the host names everybody, and no two people get
 /// the same name.
 ///
 /// Taken from the shared `whoAmI`, never fetched here. The shell and the room
 /// extension both need it and both load at once, so two independent fetches
-/// admitted this browser twice — which showed up as your own writing coming
+/// admitted this browser twice, which showed up as your own writing coming
 /// back signed by somebody you had never met.
 let me = await whoAmI();
 let participantId = me?.id || null;
@@ -321,7 +321,7 @@ function renderPresence(snapshot) {
 }
 
 /// Choose the name everyone else sees. The host disambiguates it, so the name
-/// that comes back may not be the one that went out — take what it says rather
+/// that comes back may not be the one that went out, take what it says rather
 /// than what was asked for, or this page will show a name nobody else does.
 async function rename(proposed) {
   const wanted = String(proposed || "").trim();

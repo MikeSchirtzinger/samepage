@@ -1,13 +1,13 @@
-// `<agui-conversation>` — the conversation chrome, owned by the runtime.
+// `<agui-conversation>`, the conversation chrome, owned by the runtime.
 //
 // Every app built on this crate had rewritten the same panel: a transcript, a
 // streaming assistant message, the `surface.ask`/`narrate`/`history` broadcasts,
 // a composer with barge-in, and a connection light. Five copies of one protocol
-// client, drifting apart — the template's copy had already fallen behind the
+// client, drifting apart, the template's copy had already fallen behind the
 // `<agui-provider-settings>` element this crate ships.
 //
 // So it moves here, next to that element. An app writes one tag and gets the
-// conversation; what it keeps is the part that is actually its own — what the
+// conversation; what it keeps is the part that is actually its own, what the
 // surface *is*, and what "this" points at.
 //
 //     <agui-conversation hint="Try: “map this repository”"></agui-conversation>

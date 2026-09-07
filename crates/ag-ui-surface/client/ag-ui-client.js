@@ -9,8 +9,8 @@ export const AGUI_CLIENT_VERSION = "1";
 /// Memoized at module scope rather than per caller because the shell and every
 /// extension all need to know who this browser is, they all load at once, and
 /// none of them holds a cookie yet on a first visit. Called twice, the server
-/// correctly admits two people — it has nothing to tell the two requests apart
-/// with — and one browser ends up as two participants, each seeing half its own
+/// correctly admits two people, it has nothing to tell the two requests apart
+/// with, and one browser ends up as two participants, each seeing half its own
 /// writing signed by a stranger. One promise, shared by everyone, is the fix.
 let joining = null;
 

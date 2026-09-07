@@ -704,7 +704,7 @@ pub fn summarize(node: &Node) -> String {
     walk(node, &mut kinds, &mut gist);
     let shape = kinds.join("+");
     match gist {
-        Some(text) => format!("{shape} — “{}”", clip(&text, 90)),
+        Some(text) => format!("{shape}: “{}”", clip(&text, 90)),
         None => shape,
     }
 }

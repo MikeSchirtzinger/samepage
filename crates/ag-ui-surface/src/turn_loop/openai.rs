@@ -370,12 +370,12 @@ async fn run_openai_session(
     // — or switches to a different provider. Asks are already blocked
     // client-side because we never go `ready`, so we only watch for a switch.
     if !cfg.configured() {
-        info!("openai backend selected but not configured — awaiting credentials");
+        info!("openai backend selected but not configured, awaiting credentials");
         rt.warming.store(false, Ordering::Relaxed);
         let msg = cfg.credential_error.clone().unwrap_or_else(|| {
             match cfg.auth {
                 AuthMode::Oauth => "Claude subscription unavailable: the required Claude Code OAuth token is missing".to_string(),
-                AuthMode::ApiKey => "Add a model and API key (or a local base URL) in Settings — the ⚙ by the agent picker — to begin.".to_string(),
+                AuthMode::ApiKey => "Add a model and API key (or a local base URL) in Settings (the ⚙ by the agent picker) to begin.".to_string(),
             }
         });
         warn!("{msg}");
@@ -659,7 +659,7 @@ async fn run_turn(
                         messages.push(json!({
                             "role": "user",
                             "content": [
-                                { "type": "text", "text": "This is what the learner sees right now — your canvas, rendered. Glance at it once: is everything on-screen and readable, nothing overlapping? If ONE thing is genuinely off, nudge just that; otherwise leave it and keep teaching. Do not clear and redraw the whole picture." },
+                                { "type": "text", "text": "This is what the learner sees right now: your canvas, rendered. Glance at it once: is everything on-screen and readable, nothing overlapping? If ONE thing is genuinely off, nudge just that; otherwise leave it and keep teaching. Do not clear and redraw the whole picture." },
                                 { "type": "image_url", "image_url": { "url": uri } }
                             ]
                         }));
@@ -1078,7 +1078,7 @@ fn friendly_error(e: &str) -> String {
     {
         "This API connection reported insufficient credits. It is not using your managed subscription. Switch agents or update the key in Agents & connections.".to_string()
     } else if l.contains("429") || l.contains("rate limit") || l.contains("rate_limit") {
-        "Rate limited for a moment — give it a few seconds and ask again.".to_string()
+        "Rate limited for a moment. Give it a few seconds and ask again.".to_string()
     } else if l.contains("401")
         || l.contains("403")
         || l.contains("unauthorized")
@@ -1097,7 +1097,7 @@ fn friendly_error(e: &str) -> String {
         "Couldn't reach the endpoint. Check the base URL in Agents & connections.".to_string()
     } else {
         format!(
-            "The model call failed — {}",
+            "The model call failed: {}",
             e.chars().take(180).collect::<String>()
         )
     }

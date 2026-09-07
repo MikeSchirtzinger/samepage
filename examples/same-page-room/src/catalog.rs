@@ -204,7 +204,7 @@ impl Workspace {
                 None => "no default port".to_string(),
             };
             lines.push(format!(
-                "- {} ({status}) — {}\n  run: {}",
+                "- {} ({status}): {}\n  run: {}",
                 option.package,
                 if option.description.is_empty() {
                     "no description in Cargo.toml"

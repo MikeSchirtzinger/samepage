@@ -1,5 +1,5 @@
 /* The room's appearance is data. Everything a theme can change is a custom
-   property or a `data-` attribute on <html>, set from validated tokens — which
+   property or a `data-` attribute on <html>, set from validated tokens, which
    is why the agent can restyle the page without ever being handed CSS. */
 
 :root {
@@ -168,7 +168,7 @@ body { display: flex; flex-direction: column; }
 
 /* A canvas, not a grid. Every pane sits at the rectangle it was last dragged
    to; nothing flows, nothing reflows, and moving one pane never moves another.
-   There is no column count here on purpose — the model that had one could not
+   There is no column count here on purpose, the model that had one could not
    express "put that over there", which is the whole reason this replaced it.
    The surface is sized to its content so it scrolls in both directions, with
    slack past the furthest pane so there is always somewhere new to drop one. */
@@ -209,7 +209,7 @@ body { display: flex; flex-direction: column; }
   border-right: 8px solid transparent;
 }
 
-/* Moving and resizing skip the transition — a pane must sit under the pointer,
+/* Moving and resizing skip the transition, a pane must sit under the pointer,
    not chase it. Raised while in hand so it passes over its neighbours rather
    than disappearing behind them. */
 .pane.moving, .pane.resizing {
@@ -254,7 +254,7 @@ body { display: flex; flex-direction: column; }
 .handle-sw { bottom: 0; left: 0; cursor: nesw-resize; }
 .handle-se { bottom: 0; right: 0; cursor: nwse-resize; }
 
-/* The bottom-right corner keeps a visible chevron — quiet until the pane is
+/* The bottom-right corner keeps a visible chevron, quiet until the pane is
    under the pointer, like the other housekeeping controls, so a room at rest
    still reads as content. The other seven are felt rather than seen. */
 .pane-grip { opacity: 0; transition: opacity 120ms ease; }
@@ -284,7 +284,7 @@ body { display: flex; flex-direction: column; }
 }
 
 /* One pane, the whole page. A viewing choice, so nothing about it is sent
-   anywhere — Escape or double-clicking the header puts the room back. */
+   anywhere, Escape or double-clicking the header puts the room back. */
 body.has-expanded .pane:not(.expanded) { display: none; }
 body.has-expanded .room-canvas { display: block; }
 .pane.expanded {
@@ -296,7 +296,7 @@ body.has-expanded .room-canvas { display: block; }
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
 }
 .pane.expanded .pane-body { flex: 1 1 auto; max-height: none; overflow: auto; }
-/* Filling the page is a way of looking, not a rectangle — nothing to drag. */
+/* Filling the page is a way of looking, not a rectangle, nothing to drag. */
 .pane.expanded .pane-handle { display: none; }
 .pane.expanded .pane-head::after {
   content: "esc"; margin-left: 8px; flex: 0 0 auto;
@@ -343,7 +343,7 @@ body.has-expanded .room-canvas { display: block; }
 .pane-by.by-agent { color: var(--agent); border-color: color-mix(in srgb, var(--agent) 40%, transparent); }
 /* A participant the host gave a colour to wears it, overriding the category
    tint. The colour is keyed to who they are rather than what they typed, so
-   two people who both called themselves "Sam" still read apart at a glance —
+   two people who both called themselves "Sam" still read apart at a glance,
    which is the case the colour exists for. The host assigns it; deriving it
    here from the visible name would collapse exactly those two people back
    together. */
@@ -359,12 +359,12 @@ body.has-expanded .room-canvas { display: block; }
   border-color: var(--line);
   text-transform: uppercase; letter-spacing: 0.07em; font-size: 10px;
 }
-/* A companion is a model, so it reads as one — but not as *this room's* model,
+/* A companion is a model, so it reads as one, but not as *this room's* model,
    which is the whole point of giving it a separate byline. */
 .pane-by.by-companion { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 
 .pane-marks { display: flex; gap: 2px; flex: 0 0 auto; align-items: center; }
-/* The four marks are always reachable — they are the person's channel. The
+/* The four marks are always reachable, they are the person's channel. The
    housekeeping controls wait until the pane is under the pointer so a narrow
    pane spends its header on its title instead. */
 .pane-marks .secondary { display: none; }
@@ -422,7 +422,7 @@ body.has-expanded .room-canvas { display: block; }
 .pane-note-mark[style*="--by-hue"]:not(.mine) { color: hsl(var(--by-hue) 65% 68%); }
 /* What they clicked, as against what they wrote. Both are the person, so both
    keep the human colour, but a recorded gesture is quieter than a sentence
-   somebody chose — and it is not editable here, which the weight should say
+   somebody chose, and it is not editable here, which the weight should say
    before anyone tries. */
 .pane-pointed {
   background: color-mix(in srgb, var(--human) 5%, transparent);
@@ -666,7 +666,7 @@ body.terminal-first .page-grid { grid-template-columns: minmax(0, 1fr); }
 .sheet-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
 .sheet-error { margin: 10px 0 0; color: var(--danger); font-size: 12px; min-height: 1em; }
 
-/* diagram — geometry comes from the host; this is only paint.
+/* diagram, geometry comes from the host; this is only paint.
    Every stroke and fill is currentColor, so a node's `.tone-*` class (which
    sets `color`) themes the whole box without a per-tone rule here, and the
    drawing follows a theme switch for free. */

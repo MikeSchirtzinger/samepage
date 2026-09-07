@@ -15,7 +15,7 @@ const EVENT = "surface.room";
 const TONES = new Set(["neutral", "muted", "strong", "accent", "good", "warn", "bad"]);
 
 /// Pane geometry. These have to agree with `layout.rs`, which clamps anything
-/// arriving from here — the browser is where a size is *chosen*, but the server
+/// arriving from here, the browser is where a size is *chosen*, but the server
 /// is where it is decided, so a disagreement shows up as a pane that springs
 /// back rather than as a corrupt document.
 const MIN_W = 200;
@@ -28,7 +28,7 @@ const GUTTER = 20;
 /// The old model had exactly two widths and four heights, so "snapping" meant
 /// there was nowhere else to go. Here the pane can be any size at all and the
 /// snaps are *offers*: line up with a neighbour's edge, its centre, or the gap
-/// its neighbour already uses — and drag a little further to refuse all of them.
+/// its neighbour already uses, and drag a little further to refuse all of them.
 const SNAP = 9;
 const GRID = 8;
 /// Empty space left past the furthest pane so there is always canvas to drag
@@ -48,7 +48,7 @@ function contentKey(text) {
 ///
 /// Each candidate is `{ at, guide }`: `at` is where the dragged edge would go,
 /// `guide` is where to draw the line that explains why. Returning both is what
-/// keeps the feedback honest — a guide is only ever drawn for a snap that
+/// keeps the feedback honest, a guide is only ever drawn for a snap that
 /// actually applied, so the person is never shown a line they did not catch.
 function candidates(others, axis, size) {
   const out = [];
@@ -74,7 +74,7 @@ function candidates(others, axis, size) {
 
 /// Snap one edge, preferring a real neighbour over the fallback grid.
 ///
-/// Returns `{ value, guide }` — `guide` is null when the grid caught it, since
+/// Returns `{ value, guide }`, `guide` is null when the grid caught it, since
 /// "you are on the grid" is not worth a line on screen.
 function snapAxis(wanted, others, axis, size) {
   let best = null;
@@ -207,7 +207,7 @@ function collect(scope) {
 // ── node rendering ────────────────────────────────────────────────────────
 
 /// Which face each deck is showing, per pane, surviving re-renders. This is
-/// the reader's own position — like scroll, it never enters the document.
+/// the reader's own position, like scroll, it never enters the document.
 const deckPositions = new Map();
 
 /// The pointer bridge that reports clicks inside an `html` pane lives
@@ -242,7 +242,7 @@ function renderNode(node, ctx, scope) {
       frame.dataset.paneId = ctx.paneId || "";
       const index = ctx.htmlIndex?.get(node) ?? 0;
       // Keyed to what this frame *contains*, never to the room's revision. A
-      // click inside a sandbox becomes a pane note, which bumps the revision —
+      // click inside a sandbox becomes a pane note, which bumps the revision,
       // and a revision in this URL meant every point reloaded the very thing
       // that was pointed at, resetting it. The document only reloads when the
       // agent actually rewrites the html.
@@ -332,7 +332,7 @@ function renderNode(node, ctx, scope) {
       return wrap;
     }
     case "diagram": {
-      // The host already laid this out — see `view.rs::place`. Everything here
+      // The host already laid this out, see `view.rs::place`. Everything here
       // is transcription: one <rect> per node, one <line> per edge, at the
       // coordinates that arrived. Deliberately no layout logic, so there is
       // never a second (and disagreeing) implementation of the geometry.
@@ -412,7 +412,7 @@ function renderNode(node, ctx, scope) {
       }
 
       // Edge labels last. A label sits at the midpoint of the gap between two
-      // boxes, and it is routinely wider than that gap — drawn with the wires
+      // boxes, and it is routinely wider than that gap, drawn with the wires
       // it ends up buried under whichever box it overlaps. On top, plus the
       // halo `.diagram-edge-label` paints, it stays readable over both.
       for (const edge of placed.edges || []) {
@@ -638,14 +638,14 @@ export async function activate(ctx) {
   /// Fetched before the first render because "you" is not a property of a mark.
   /// It is a comparison between the mark's author and whoever is looking, and
   /// the room broadcasts one state payload to every viewer, so the server
-  /// cannot make it for us — it has no idea which of us is reading.
+  /// cannot make it for us, it has no idea which of us is reading.
   // Shared with the shell rather than fetched here: both load at once and
   // neither holds a cookie on a first visit, so two fetches admitted this
   // browser as two different people. `whoAmI` resolves once for the page.
   //
   // It resolves to null when the surface has no identity to give, in which case
   // the room still shows every byline and simply shows this person their own
-  // name instead of "you" — strictly better than calling everybody "you".
+  // name instead of "you", strictly better than calling everybody "you".
   const me = ctx.whoAmI ? await ctx.whoAmI() : null;
   /// Which pane, if any, is filling the page. Local to this browser and never
   /// written back: two people in the room can be looking at different things
@@ -656,7 +656,7 @@ export async function activate(ctx) {
 
   /// What a pane's DOM is actually built from. Marks, notes, titles, bylines,
   /// pins and sizes are all refreshed in place by `__update`, so none of them
-  /// belong here — only the view, whose shape decides the body's structure.
+  /// belong here, only the view, whose shape decides the body's structure.
   function paneKey(pane) {
     return JSON.stringify(pane.view);
   }
@@ -684,7 +684,7 @@ export async function activate(ctx) {
       text: mine ? "you" : name || CATEGORY[pane.author] || pane.author,
       // The tooltip always states the category the host stands behind, even
       // when the visible label is a chosen name. A label a participant picked
-      // never gets to stand in for the claim the host is making — and people
+      // never gets to stand in for the claim the host is making, and people
       // pick their own names here exactly like agents do, so a person calling
       // themselves "Codex" still reads as a person on inspection.
       title: name ? `${name}, ${pane.author}` : pane.author,
@@ -714,7 +714,7 @@ export async function activate(ctx) {
   /// Paint the mark row, including whose mark it is.
   ///
   /// A mark is the one thing in this room an agent cannot make, so it is the
-  /// one most worth attributing — and a disagreement whose author you cannot
+  /// one most worth attributing, and a disagreement whose author you cannot
   /// see is an argument with nobody. The glyph carries the marker's colour and
   /// says their name on hover; it stays uncoloured when the mark is your own,
   /// because everyone sees their own marks as theirs.
@@ -744,7 +744,7 @@ export async function activate(ctx) {
     by.title = credit.title;
     // The hue comes from the host, which assigned it from the participant's
     // principal. Deriving it here from a name would give two same-named people
-    // the same colour — undoing the one thing the colour is for.
+    // the same colour, undoing the one thing the colour is for.
     if (credit.hue === null) by.style.removeProperty("--by-hue");
     else by.style.setProperty("--by-hue", String(credit.hue));
     article.dataset.author = pane.author;
@@ -794,7 +794,7 @@ export async function activate(ctx) {
   ///
   /// Skipped when nothing overlaps it, and skipped when it is already in front:
   /// raising is a write, and a write nobody can see is a revision the room did
-  /// not need. It is recorded silently — see `mutate` in `room.rs` — so this
+  /// not need. It is recorded silently, see `mutate` in `room.rs`, so this
   /// never wakes an agent parked on the room.
   function raise(id) {
     const panesNow = state?.panes || [];
@@ -813,7 +813,7 @@ export async function activate(ctx) {
     queued(() => ["room_arrange", { panes: [{ id, raise: true }] }]);
   }
 
-  /// Everyone else's rectangle — what a drag snaps against.
+  /// Everyone else's rectangle, what a drag snaps against.
   function otherSpots(exceptId) {
     return (state?.panes || [])
       .filter((pane) => pane.id !== exceptId)
@@ -834,7 +834,7 @@ export async function activate(ctx) {
   }
 
   // Grab the empty canvas to pan it. Scrollbars already work, but a canvas you
-  // cannot pull is a canvas you keep losing your place on — and the gesture has
+  // cannot pull is a canvas you keep losing your place on, and the gesture has
   // to start on bare canvas, so it can never be confused with moving a pane.
   canvas.addEventListener("pointerdown", (event) => {
     if (event.target !== canvas || event.button !== 0) return;
@@ -958,7 +958,7 @@ export async function activate(ctx) {
   }
 
   // Every mutation carries the revision it was based on, so two controls
-  // clicked in the same tick would make the second one stale — nudge a slider
+  // clicked in the same tick would make the second one stale, nudge a slider
   // twice and the room rejects the second nudge. Serialising here means each
   // command reads the revision that the one before it produced. The conflict
   // check still does its real job: catching the *agent* writing underneath the
@@ -994,7 +994,7 @@ export async function activate(ctx) {
     const paneId = frame?.dataset.paneId;
     if (!paneId) return;
     // An unchanged point is not re-written. Without this, a script that
-    // reports on load re-fires on every re-render — each write bumps the
+    // reports on load re-fires on every re-render, each write bumps the
     // revision, the new snapshot re-renders, the frame refetches, and the
     // room spins revisions forever.
     const current = state?.panes?.find((pane) => pane.id === paneId)?.pointed;
@@ -1055,7 +1055,7 @@ export async function activate(ctx) {
   /// Move a pane with the pointer.
   ///
   /// `threshold` is how far the pointer has to travel before this counts as a
-  /// move at all. The header commits immediately — that strip exists to be
+  /// move at all. The header commits immediately, that strip exists to be
   /// dragged. A press on the body has to wait, because the same press is also
   /// how you click the button under it, and only the travel tells them apart.
   ///
@@ -1153,7 +1153,7 @@ export async function activate(ctx) {
 
     const title = el("h3", "pane-title", pane.title);
     // Print the author the host recorded rather than collapsing everything
-    // that is not the person into "agent" — "companion" is a distinct claim
+    // that is not the person into "agent", "companion" is a distinct claim
     // (an assistant reaching in from outside the room) and flattening it here
     // would throw away the byline the server went to the trouble of keeping.
     // The category stays in the class either way, so "agent" and "companion"
@@ -1250,8 +1250,8 @@ export async function activate(ctx) {
 
     const body = el("div", "pane-body");
     const scope = paneScope();
-    // Tree-order index for every html node — including deck faces that are
-    // not mounted — so the renderer and the pane-html route agree on which
+    // Tree-order index for every html node, including deck faces that are
+    // not mounted, so the renderer and the pane-html route agree on which
     // served document is which.
     const htmlIndex = new Map();
     (function walk(node) {
@@ -1278,7 +1278,7 @@ export async function activate(ctx) {
     article.append(body);
 
     // Every edge and every corner resizes, because the edge you want is the one
-    // nearest whatever you are trying to line the pane up with — and a pane you
+    // nearest whatever you are trying to line the pane up with, and a pane you
     // can only grow down and to the right is one you have to move first and
     // resize second. Any size at all, down to the point where the header stops
     // being readable: a pane nobody can identify is a pane nobody can talk
@@ -1361,7 +1361,7 @@ export async function activate(ctx) {
 
     // Everything a mark or a note changes, refreshed without touching the body.
     // The body holds the html sandboxes, and rebuilding one throws away
-    // whatever the person had going inside it — which is exactly what pointing
+    // whatever the person had going inside it, which is exactly what pointing
     // at it used to do.
     article.__update = (next) => {
       // Position and size are refreshed here rather than keyed, so moving or
@@ -1378,7 +1378,7 @@ export async function activate(ctx) {
       pin.textContent = next.pinned ? "pinned" : "pin";
       close.disabled = Boolean(next.pinned);
 
-      // Never overwrite what they are in the middle of typing — and never seed
+      // Never overwrite what they are in the middle of typing, and never seed
       // it with anything but their own note, which is the whole point of
       // keeping `pointed` in its own field.
       if (document.activeElement !== noteInput) noteInput.value = next.note || "";
@@ -1395,7 +1395,7 @@ export async function activate(ctx) {
     // means what the content says it means.
     //
     // `pointerdown` runs before `mousedown`, so this still sees the selection
-    // as it was *before* this very press selects the pane — which is the whole
+    // as it was *before* this very press selects the pane, which is the whole
     // distinction being drawn.
     article.addEventListener("pointerdown", (event) => {
       if (event.button !== 0 || expanded === pane.id) return;
@@ -1426,7 +1426,7 @@ export async function activate(ctx) {
   }
 
   /// The pane as the room currently has it, which is what a drag must start
-  /// from — the closure's `pane` is a snapshot from whenever this element was
+  /// from, the closure's `pane` is a snapshot from whenever this element was
   /// built, and starting a second drag from a stale rectangle would teleport it.
   function livePane(id) {
     return state?.panes?.find((entry) => entry.id === id);
@@ -1460,8 +1460,8 @@ export async function activate(ctx) {
     // Reuse a pane's element whenever the things it is built from are the same,
     // so a mark or a note refreshes in place. Rebuilding would reload every
     // iframe in the room, and an iframe reload is a sandbox losing its state.
-    // Document order no longer decides anything visual — every pane is placed
-    // by its own rectangle — so panes are only ever appended or removed, never
+    // Document order no longer decides anything visual, every pane is placed
+    // by its own rectangle, so panes are only ever appended or removed, never
     // re-inserted. That closes the last path by which a re-render could reload
     // a sandbox: moving a node reloads its iframes, and now nothing moves.
     const live = new Set();
