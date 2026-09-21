@@ -291,6 +291,13 @@ pub struct RuntimeState {
     /// During that drain this stays `None`, so late old chunks cannot leak into
     /// the queued turn's transcript or speech.
     pub(crate) stream_active_session: Mutex<Option<String>>,
+    /// When enabled, provider prose is held until the turn has no more tool
+    /// calls. Text emitted before a tool is discarded as scratch narration,
+    /// and only the final post-tool response reaches the conversation.
+    pub(crate) final_response_only: AtomicBool,
+    /// Candidate final provider text for [`Self::final_response_only`]. A new
+    /// tool call clears it because that text was not the final response.
+    pub(crate) deferred_agent_text: Mutex<String>,
     /// Establishes an atomic boundary between transcript mutation+broadcast
     /// and a reconnecting SSE client's history/active-message snapshot.
     pub transcript_replay_lock: Arc<Mutex<()>>,
@@ -550,6 +557,8 @@ impl RuntimeState {
             sse_tx,
             active_message: Mutex::new(None),
             stream_active_session: Mutex::new(None),
+            final_response_only: AtomicBool::new(false),
+            deferred_agent_text: Mutex::new(String::new()),
             transcript_replay_lock,
             history,
             audio_on: AtomicBool::new(audio_on),
@@ -596,6 +605,14 @@ impl RuntimeState {
                 narr_rx,
             },
         )
+    }
+
+    pub(crate) fn set_final_response_only(&self, enabled: bool) {
+        self.final_response_only
+            .store(enabled, AtomicOrdering::Relaxed);
+        if !enabled {
+            self.deferred_agent_text.lock().clear();
+        }
     }
 
     /// The relay holding chat no in-page provider could take. Lazily built so

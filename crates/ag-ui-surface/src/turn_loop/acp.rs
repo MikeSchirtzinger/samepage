@@ -779,6 +779,16 @@ async fn run_turn(
             Ok(())
         }
         r = &mut req => {
+            if rt
+                .final_response_only
+                .load(std::sync::atomic::Ordering::Relaxed)
+            {
+                if r.is_ok() {
+                    crate::narration::publish_deferred_provider_text(rt, session_id);
+                } else {
+                    crate::narration::discard_deferred_provider_text(rt);
+                }
+            }
             active_turn.clear();
             narrate_flush(rt);
             info!("acp turn complete in {:?}", turn_start.elapsed());
@@ -797,6 +807,7 @@ struct ActiveAcpTurn {
 impl ActiveAcpTurn {
     fn begin(rt: &Arc<RuntimeState>, session_id: &str) -> Self {
         let _replay_guard = rt.transcript_replay_lock.lock();
+        rt.deferred_agent_text.lock().clear();
         *rt.stream_active_session.lock() = Some(session_id.to_string());
         Self {
             rt: rt.clone(),
@@ -813,6 +824,13 @@ impl ActiveAcpTurn {
         let mut active = self.rt.stream_active_session.lock();
         if active.as_deref() == Some(self.session_id.as_str()) {
             *active = None;
+        }
+        if self
+            .rt
+            .final_response_only
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            self.rt.deferred_agent_text.lock().clear();
         }
         self.active = false;
     }
@@ -933,7 +951,14 @@ fn handle_notification(
                 .and_then(|c| c.get("text"))
                 .and_then(Value::as_str)
             {
-                crate::narration::narrate_provider_chunk(rt, session_id, text);
+                if rt
+                    .final_response_only
+                    .load(std::sync::atomic::Ordering::Relaxed)
+                {
+                    crate::narration::defer_provider_chunk(rt, session_id, text);
+                } else {
+                    crate::narration::narrate_provider_chunk(rt, session_id, text);
+                }
             }
         }
         // These notifications do not *execute* anything — a Surface action
@@ -971,6 +996,12 @@ fn handle_tool_call_notification(
     let call = tracked.entry(tool_call_id.to_string()).or_default();
 
     if !known {
+        if rt
+            .final_response_only
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            crate::narration::discard_deferred_provider_text(rt);
+        }
         // ACP has no tool-name field: `title` is the human-readable label the
         // agent chose, which is the thing worth showing. `kind` is only a
         // coarse category, used when a title is missing.

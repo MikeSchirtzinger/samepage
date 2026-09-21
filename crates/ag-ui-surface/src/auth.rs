@@ -531,10 +531,20 @@ impl AuthStore {
     /// reflects real credential state without claiming request health.
     pub fn status(&self, provider: &Provider) -> AuthStatus {
         let kind = match provider.auth {
+            AuthKind::None => "none",
             AuthKind::Managed => "managed",
             AuthKind::ApiKey => "api_key",
             AuthKind::Oauth => "oauth",
         };
+
+        if matches!(provider.auth, AuthKind::None) {
+            return AuthStatus {
+                kind,
+                ready: true,
+                source: "none",
+                detail: Some(provider.auth_note.clone()),
+            };
+        }
 
         // Managed subprocess providers own their login. This says the adapter
         // is available, not that a model request has succeeded; only the
