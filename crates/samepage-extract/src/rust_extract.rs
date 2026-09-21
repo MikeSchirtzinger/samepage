@@ -55,6 +55,12 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
         if stripped.trim().is_empty() {
             continue;
         }
+        // An import names a type; it does not bind, spawn, or connect. Without
+        // this, `use std::process::Command;` reads as a sidecar.
+        let head = stripped.trim_start();
+        if head.starts_with("use ") || head.starts_with("pub use ") || head.starts_with("extern crate ") {
+            continue;
+        }
 
         let push = |lanes: &mut Vec<Lane>, kind: LaneKind, detail: &str| {
             lanes.push(Lane {
