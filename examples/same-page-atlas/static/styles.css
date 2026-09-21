@@ -1,0 +1,2804 @@
+:root {
+  color-scheme: dark;
+  --bg: oklch(14% 0.014 255);
+  --canvas: oklch(12.5% 0.012 255);
+  --panel: oklch(18% 0.018 255);
+  --panel-2: oklch(16% 0.016 255);
+  --panel-raised: oklch(21% 0.022 255);
+  --line: oklch(31% 0.035 255);
+  --line-strong: oklch(42% 0.055 255);
+  --ink: oklch(93% 0.015 255);
+  --muted: oklch(68% 0.035 255);
+  --accent: oklch(72% 0.13 248);
+  --accent-soft: oklch(25% 0.055 248);
+  --human: oklch(78% 0.13 70);
+  --agent: oklch(78% 0.11 165);
+  --danger: oklch(70% 0.17 25);
+  --proposed: oklch(72% 0.09 305);
+  --radius-sm: 6px;
+  --radius: 9px;
+  --radius-lg: 12px;
+  --font-ui: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  --font-mono: "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+/* Any `display` rule beats the UA stylesheet's `[hidden] { display: none }`,
+   so every flex/grid element in this file would ignore its own hidden
+   attribute without this line. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 var(--font-ui);
+}
+
+body { display: flex; flex-direction: column; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── header ─────────────────────────────────────────────────────────── */
+
+.app-header {
+  min-height: 58px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--accent-soft);
+  color: var(--accent); font-weight: 750;
+}
+.brand strong { display: block; font-size: 14px; line-height: 1.25; letter-spacing: -0.01em; }
+.brand small { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
+.header-spacer { flex: 1; }
+
+.runtime-state {
+  display: flex; align-items: center; gap: 7px;
+  min-width: 0; color: var(--muted); font-size: 12px;
+  white-space: nowrap;
+}
+.connection-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--line-strong); transition: background 160ms;
+}
+.connection-dot.live { background: var(--agent); }
+.connection-dot.failed { background: var(--danger); }
+/* Attached, and nobody home. Distinct from failed, because the transport is
+   fine and the far end is not; they are different things to do about it. */
+.connection-dot.quiet { background: var(--human); box-shadow: none; }
+
+.header-actions {
+  display: flex; align-items: center; gap: 6px;
+  padding-left: 10px; border-left: 1px solid var(--line);
+}
+
+.quiet-button, .send-button, .icon-button {
+  font: inherit; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+}
+.quiet-button { min-height: 32px; padding: 5px 10px; font-size: 12px; }
+.quiet-button:hover { border-color: var(--line-strong); background: var(--panel-raised); }
+.quiet-button:active { transform: translateY(1px); }
+.quiet-button:focus-visible,
+.send-button:focus-visible,
+.icon-button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.agree-button { border-color: var(--line-strong); }
+.icon-button { border: none; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 6px; }
+.send-button { padding: 7px 14px; background: var(--accent); color: var(--bg); border-color: transparent; font-weight: 650; }
+.send-button:disabled { opacity: 0.5; cursor: progress; }
+
+/* ── layout ─────────────────────────────────────────────────────────── */
+
+/* The canvas is primary. Board, inspector, and chat share one supporting
+   workspace dock, so only one secondary task competes with the picture. */
+.page-grid {
+  --col-dock: 420px;
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7px var(--col-dock);
+  overflow: hidden;
+}
+
+/* ── resizable seams ────────────────────────────────────────────────── */
+
+.pane-resizer {
+  position: relative;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+}
+.pane-resizer[data-inert] { cursor: default; }
+.pane-resizer::after {
+  content: ""; position: absolute; inset: 0 -3px;
+}
+.pane-resizer:hover, .pane-resizer:focus-visible, .pane-resizer.dragging {
+  background: var(--agent); outline: none;
+}
+/* While a seam is being dragged, nothing else should take the pointer or
+   turn the drag into a text selection halfway across the page. */
+body.resizing-panes { cursor: col-resize; user-select: none; }
+body.resizing-panes .atlas-view { pointer-events: none; }
+
+.pane-collapse {
+  position: absolute; top: 9px; left: 50%; z-index: 4;
+  display: grid; place-items: center;
+  width: 17px; height: 30px; margin-left: -8px; padding: 0;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--panel); color: var(--muted);
+  font: 12px/1 var(--font-ui); cursor: pointer;
+  opacity: 0; transition: opacity 120ms ease;
+}
+.pane-resizer:hover .pane-collapse,
+.pane-resizer:focus-within .pane-collapse,
+.pane-collapse:focus-visible { opacity: 1; }
+.pane-collapse:hover { color: var(--ink); border-color: var(--agent); }
+.pane-collapse[aria-expanded="false"] span[aria-hidden] { display: inline-block; transform: rotate(180deg); }
+
+/* ── collapsed rail ─────────────────────────────────────────────────── */
+
+.pane-rail { display: none; }
+[data-pane].collapsed > :not(.pane-rail) { display: none; }
+[data-pane].collapsed > .pane-rail {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; padding: 0;
+  border: 0; background: transparent;
+  color: var(--muted); font: 650 12px/1 var(--font-ui);
+  letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+}
+[data-pane].collapsed > .pane-rail:hover { color: var(--ink); background: var(--panel); }
+[data-pane].collapsed > .pane-rail span[aria-hidden] {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+}
+/* Grid and flex children default to min-content width, so one long
+   unbreakable line (a source excerpt, an object id) pushes the whole page
+   sideways instead of scrolling inside its own panel. */
+.page-grid > * { min-width: 0; }
+
+.atlas-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+.atlas-toolbar {
+  position: relative;
+  min-height: 38px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 5px 12px; border-bottom: 1px solid var(--line);
+  font-size: 12px; color: var(--muted); background: var(--panel-2);
+}
+.canvas-heading { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+.canvas-heading strong { color: var(--ink); font-size: 12px; letter-spacing: .01em; }
+.canvas-heading span { color: var(--muted); }
+.canvas-help { position: relative; }
+.canvas-help summary {
+  list-style: none; cursor: pointer; padding: 4px 7px;
+  border-radius: var(--radius-sm); color: var(--muted);
+}
+.canvas-help summary::-webkit-details-marker { display: none; }
+.canvas-help summary::before { content: "?"; margin-right: 5px; color: var(--accent); font-weight: 750; }
+.canvas-help summary:hover { color: var(--ink); background: var(--panel-raised); }
+.canvas-help summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.canvas-help-body {
+  position: absolute; left: 0; top: calc(100% + 8px); z-index: 20;
+  width: min(340px, calc(100vw - 32px)); padding: 12px 14px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--panel-raised); color: var(--ink);
+  box-shadow: 0 18px 48px oklch(5% 0.02 255 / .45);
+}
+.canvas-help-body p { margin: 0; }
+.canvas-help-body p + p { margin-top: 8px; color: var(--muted); }
+.canvas-help-body .hint-line { display: block; }
+.canvas-help-body .hint-line + .hint-line { margin-top: 8px; color: var(--muted); }
+.hint-glyph {
+  display: inline; padding: 0; border: 0; background: transparent;
+  color: inherit; cursor: help; font: inherit;
+}
+.hint-glyph:hover, .hint-glyph:focus-visible { color: var(--ink); text-decoration: underline; }
+.atlas-toolbar kbd {
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
+  padding: 0 4px; font-family: var(--font-mono); font-size: 12px;
+}
+.sync-state { margin-left: auto; font-family: var(--font-mono); white-space: nowrap; }
+.sync-state.live { color: var(--agent); }
+
+.atlas-view {
+  position: relative; flex: 1; min-height: 0; overflow: hidden;
+  background:
+    radial-gradient(circle at 1px 1px, #1a2338 1px, transparent 0) 0 0 / 28px 28px,
+    var(--canvas);
+  cursor: grab;
+  outline: none;
+}
+.atlas-view:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.atlas-view.panning { cursor: grabbing; }
+.extension-loading { padding: 24px; color: var(--muted); }
+
+.atlas-world { position: absolute; inset: 0; transform-origin: 0 0; }
+.atlas-edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.atlas-relationship { outline: none; }
+.relationship-hit { pointer-events: stroke; cursor: pointer; }
+.relationship-halo, .relationship-line, .relationship-arrow, .relationship-port { pointer-events: none; }
+.atlas-edges.is-tracing .atlas-relationship,
+.atlas-edges.is-tracing .atlas-edge-label-frame,
+.atlas-edges.is-tracing .atlas-edge-label-leader { opacity: .18; }
+.atlas-edges.is-tracing .connection-active { opacity: 1; }
+.atlas-relationship.connection-active .relationship-line,
+.atlas-relationship.connection-active .relationship-port { stroke: var(--accent); stroke-width: 2.5; }
+.atlas-relationship.connection-active .relationship-arrow { fill: var(--accent); }
+.atlas-view .atlas-world .node.connection-endpoint { outline: 2px solid var(--accent); outline-offset: 3px; }
+.connection-readout {
+  position: absolute; left: 14px; top: 14px; z-index: 45;
+  max-width: calc(100% - 28px); box-sizing: border-box;
+  padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 6px;
+  background: var(--panel); color: var(--ink); font: 12px/1.4 var(--font-ui);
+  pointer-events: none;
+}
+.atlas-transition-edge {
+  fill: none;
+  stroke: #78a9ff;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.atlas-transition-back-edge { stroke-dasharray: 7 4; }
+.atlas-transition-edge.atlas-transition-taken {
+  stroke: #f4c15d;
+  stroke-width: 3.2;
+  filter: drop-shadow(0 0 3px rgba(244, 193, 93, .72));
+}
+.atlas-edge-label-leader {
+  stroke: rgba(120, 169, 255, .72);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.atlas-edge-label-leader.atlas-transition-taken { stroke: #f4c15d; stroke-width: 1.5; }
+.atlas-edge-label-frame { overflow: visible; pointer-events: none; }
+.atlas-edge-label {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 7px;
+  border: 1px solid #334766;
+  border-radius: 7px;
+  background: rgba(10, 15, 25, 0.94);
+  color: #aebbd1;
+  font: 600 12px/1.2 ui-monospace, Menlo, monospace;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.atlas-edge-label-frame.transition .atlas-edge-label {
+  border-color: rgba(120, 169, 255, 0.56);
+  color: #d7e6ff;
+}
+.atlas-edge-label-frame.atlas-transition-taken .atlas-edge-label {
+  border-color: #f4c15d;
+  background: rgba(44, 34, 13, .96);
+  color: #fff0bd;
+  box-shadow: 0 0 0 1px rgba(244, 193, 93, .2), 0 0 12px rgba(244, 193, 93, .2);
+}
+
+/* The drawn layer. Two SVGs rather than one: box forms sit behind the cards
+   they group, ink and arrows sit in front of what they annotate.
+   Stacking is declared here rather than left to DOM order, because it cannot
+   be left to DOM order: cards are appended to the world as they are first
+   rendered, so any element added at startup ends up underneath every card
+   that appears later. A strike drawn through a card would be hidden by it. */
+.atlas-shapes-back,
+.atlas-shapes-front {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+/* Frames sit under the box shapes as well as under the cards: a container is
+   the ground its members stand on, not another thing drawn over them. */
+.atlas-frames { z-index: auto; }
+.atlas-shapes-back { z-index: 0; }
+.constraint-layer-back {
+  position: absolute; left: 0; top: 0; overflow: visible;
+  pointer-events: none; z-index: 1;
+}
+.atlas-edges { z-index: 1; }
+.atlas-world .node { z-index: 2; }
+.atlas-shapes-front { z-index: 3; }
+.constraint-layer-fore {
+  position: absolute; left: 0; top: 0; overflow: visible;
+  pointer-events: none; z-index: 4;
+}
+.constraint-glyph {
+  fill: none; stroke: #8cb8ff; color: #8cb8ff;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.constraint-glyph,
+.constraint-glyph [data-constraint-id] { pointer-events: auto; }
+.constraint-back { opacity: .46; stroke-width: 1; }
+.constraint-fore { opacity: 1; stroke-width: 2; }
+.constraint-group-hull { stroke-dasharray: 7 5; }
+.constraint-sequence-rail { fill: none; }
+.constraint-sequence-order rect { fill: #0b0e14; stroke: currentColor; }
+.constraint-sequence-order text {
+  fill: #dce9ff; stroke: none; text-anchor: middle;
+  font: 700 12px/1 ui-monospace, Menlo, monospace;
+}
+.constraint-attaches-tick { stroke-width: 3; }
+.constraint-voids-slash { fill: none; stroke: #ff7a7a; stroke-width: 2; }
+.constraint-voids-overlay { stroke: #ff7a7a; }
+.constraint-label-chip rect { fill: #17203a; stroke: #8cb8ff; }
+.constraint-label-chip text {
+  fill: #dce9ff; stroke: none;
+  font: 700 12px/1 ui-monospace, Menlo, monospace;
+}
+.constraint-mark-anchor { overflow: visible; }
+.constraint-mark-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+
+/* The diagnostic register is deliberately a separate visual language. */
+.diag-root {
+  position: absolute; inset: 0; z-index: 6;
+  overflow: hidden; pointer-events: none;
+}
+.diag-unsat {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  pointer-events: auto;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 79, 99, .15) 0 7px, rgba(255, 79, 99, .02) 7px 15px),
+    rgba(3, 4, 7, .82);
+}
+.diag-panel {
+  width: min(720px, calc(100% - 64px)); max-height: calc(100% - 64px); overflow: auto;
+  padding: 28px 30px; border: 3px solid #ff4f63; border-radius: 4px;
+  background: #09090c; color: #fff2f3;
+  box-shadow: 12px 12px 0 rgba(255, 79, 99, .28);
+  font: 14px/1.55 ui-monospace, Menlo, monospace;
+}
+.diag-kicker { color: #ff9ca7; font-weight: 800; letter-spacing: .16em; }
+.diag-title { margin: 8px 0 4px; color: #ff4f63; font: 900 52px/1 ui-monospace, Menlo, monospace; }
+.diag-summary { margin: 0 0 18px; color: #d7b8bc; }
+.diag-core { margin: 0; padding-left: 28px; }
+.diag-row { padding: 8px 10px; border-top: 1px solid #59242d; overflow-wrap: anywhere; }
+.diag-strip {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  max-height: 100%; overflow: auto; align-content: flex-start;
+  overscroll-behavior: contain; pointer-events: auto;
+  padding: 10px 12px; border: 2px solid #ff4f63; border-radius: 4px;
+  background: #210b11; color: #ffecee;
+  font: 12px/1.4 ui-monospace, Menlo, monospace;
+}
+.diag-strip-title { color: #ff7a89; letter-spacing: .1em; }
+.diag-chip { padding: 4px 8px; border: 1px solid #ff4f63; background: #3a1019; color: #fff2f3; }
+/* Handles sit above everything, including the cards. An endpoint handle on an
+   arrow that runs under a card still has to be grabbable, or "drag the end off
+   to detach it" is advice you cannot follow. */
+.atlas-handles {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 4;
+}
+.atlas-handles .handle {
+  pointer-events: auto;
+  fill: var(--accent);
+  stroke: #05080f;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+/* Only the shapes themselves take the pointer, so the empty space between
+   them still pans the canvas. */
+.atlas-shapes-back .shape,
+.atlas-shapes-front .shape { pointer-events: auto; cursor: move; }
+.atlas-shapes-back .shape.sketching,
+.atlas-shapes-front .shape.sketching { pointer-events: none; }
+.shape.selected,
+.constraint-glyph.selected { filter: drop-shadow(0 0 4px var(--accent)); }
+.segment-frame { overflow: visible; }
+.segment-object {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: move;
+  user-select: none;
+  filter: drop-shadow(0 13px 16px rgba(0, 0, 0, .42));
+}
+.segment-object[data-motion-compositing="overlay"] { filter: none; }
+.segment-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.segment-canvas {
+  display: block;
+  position: absolute;
+  pointer-events: none;
+}
+.segment-body-canvas {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  z-index: 2;
+}
+.segment-wing-canvas {
+  z-index: 1;
+  transition: transform 70ms linear;
+  will-change: transform;
+}
+.segment-badge-frame {
+  overflow: visible;
+  pointer-events: none;
+}
+.segment-badge-holder {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.segment-badge {
+  display: inline-block;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  padding: 4px 7px;
+  border: 1px solid rgba(103, 232, 249, .52);
+  border-radius: 6px;
+  background: rgba(5, 12, 23, .86);
+  color: #d9fbff;
+  font: 650 12px/1.2 ui-monospace, Menlo, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: text;
+  user-select: text;
+  z-index: 3;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.shape:hover > .segment-badge-frame .segment-badge,
+.shape.selected > .segment-badge-frame .segment-badge,
+.segment-badge[data-segment-selected="true"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+.segment-badge[data-segment-status="proposed"] {
+  border-color: rgba(246, 173, 85, .7);
+  color: #ffe0aa;
+}
+.segment-pulse { animation: atlas-segment-pulse 1.4s ease-in-out infinite; }
+@keyframes atlas-segment-pulse {
+  0%, 100% { filter: drop-shadow(0 12px 15px rgba(0, 0, 0, .42)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 24px rgba(79, 209, 197, .72)); transform: scale(1.025); }
+}
+.segment-rock { animation: atlas-segment-rock 1.2s ease-in-out infinite alternate; }
+@keyframes atlas-segment-rock {
+  from { transform: rotate(-6deg); }
+  to { transform: rotate(6deg); }
+}
+.segment-tap-part {
+  animation: atlas-segment-tap 1.8s ease-in-out infinite;
+  animation-delay: calc(var(--segment-tap-index, 0) * 140ms);
+  will-change: transform;
+}
+@keyframes atlas-segment-tap {
+  0%, 18%, 100% { transform: translateY(0); }
+  7% { transform: translateY(9px); }
+  12% { transform: translateY(-2px); }
+}
+.segment-pivot-marker {
+  position: absolute;
+  z-index: 4;
+  width: 13px;
+  height: 13px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #f6ad55;
+  box-shadow: 0 0 0 2px rgba(5, 12, 23, .8);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.segment-flap-panel {
+  position: absolute;
+  top: 74px;
+  right: 18px;
+  z-index: 18;
+  width: min(310px, calc(100% - 36px));
+  max-height: calc(100% - 86px);
+  overflow-y: auto;
+  padding: 12px 14px 10px;
+  border: 1px solid rgba(103, 232, 249, .5);
+  border-radius: 10px;
+  background: rgba(5, 12, 23, .92);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .38);
+  color: #d9fbff;
+}
+.segment-flap-heading {
+  margin-bottom: 9px;
+  color: #f6ad55;
+  font: 700 12px/1.2 ui-monospace, Menlo, monospace;
+  letter-spacing: .14em;
+}
+.segment-control-guidance {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.segment-control-field {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 9px;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.segment-control-field legend { padding: 0; }
+.segment-control-field input,
+.segment-control-field select {
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink);
+  font: 600 12px/1 var(--font-ui);
+}
+.segment-animation-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, .8fr);
+  gap: 7px;
+  margin-bottom: 6px;
+}
+.segment-pivot-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+.segment-pivot-option {
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+  font: 600 12px/1 var(--font-ui);
+}
+.segment-pivot-option[aria-pressed="true"] {
+  border-color: #f6ad55;
+  background: rgba(246, 173, 85, .18);
+  color: #fff2d7;
+}
+.segment-describe-motion-button,
+.segment-replay-motion-button,
+.segment-stop-motion-button,
+.segment-add-part-button {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(103, 232, 249, .46);
+  border-radius: 7px;
+  background: rgba(79, 209, 197, .12);
+  color: #d9fbff;
+  cursor: pointer;
+  font: 650 12px/1 var(--font-ui);
+}
+.segment-add-part-button { margin-bottom: 9px; }
+.segment-add-part-button:disabled {
+  cursor: default;
+  opacity: .45;
+}
+.segment-stop-motion-button {
+  border-color: var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+.segment-replay-motion-button {
+  border-color: rgba(72, 187, 120, .58);
+  background: rgba(72, 187, 120, .14);
+  color: #d8ffe5;
+}
+.segment-replay-motion-button:disabled,
+.segment-stop-motion-button:disabled {
+  cursor: default;
+  opacity: .45;
+}
+.segment-motion-status {
+  margin: 0 0 9px;
+  color: #9de9e5;
+  font: 600 12px/1.3 ui-monospace, Menlo, monospace;
+}
+.segment-set-motion-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 7px;
+  margin: 10px 0;
+}
+.segment-tree-panel {
+  position: absolute;
+  top: 74px;
+  left: 18px;
+  z-index: 17;
+  width: min(220px, calc(100% - 36px));
+  padding: 10px;
+  border: 1px solid rgba(103, 232, 249, .34);
+  border-radius: 10px;
+  background: rgba(5, 12, 23, .9);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .32);
+}
+.segment-tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.segment-tree-actions { display: flex; align-items: center; gap: 5px; }
+.segment-tree-collapse {
+  min-width: 25px;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--ink);
+  cursor: pointer;
+  font: 700 12px/1 var(--font-ui);
+}
+.segment-tree-panel.collapsed { width: auto; }
+.segment-tree-panel.collapsed .segment-tree-header { margin-bottom: 0; }
+.segment-tree-panel.collapsed .segment-tree-add,
+.segment-tree-panel.collapsed .segment-tree-list { display: none; }
+.segment-tree-title {
+  color: #f6ad55;
+  font: 700 12px/1.2 ui-monospace, Menlo, monospace;
+  letter-spacing: .14em;
+}
+.segment-tree-add {
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--ink);
+  cursor: pointer;
+  font: 650 12px/1 var(--font-ui);
+}
+.segment-tree-list { display: grid; gap: 3px; }
+.segment-tree-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  padding-left: calc(var(--segment-tree-depth, 0) * 14px);
+}
+.segment-tree-toggle {
+  width: 18px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8fc7c9;
+  cursor: pointer;
+  font: 700 12px/1 ui-monospace, Menlo, monospace;
+}
+.segment-tree-toggle:hover { color: #d9fbff; }
+.segment-tree-toggle:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.segment-tree-toggle-empty { visibility: hidden; }
+.segment-tree-item {
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 5px 8px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 12px/1 var(--font-ui);
+}
+.segment-tree-item:hover,
+.segment-tree-item.selected { border-color: var(--accent); color: var(--ink); background: var(--accent-soft); }
+.segment-tree-part::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 7px 2px 0;
+  border-bottom: 1px solid #527d82;
+  border-left: 1px solid #527d82;
+}
+.segment-tree-item.dragging { opacity: .46; }
+.segment-tree-item.drop-target {
+  border-color: #f6ad55;
+  background: rgba(246, 173, 85, .14);
+  color: #fff2d7;
+}
+.segment-flap-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 9px;
+}
+.segment-flap-slider {
+  width: 100%;
+  accent-color: #4fd1c5;
+  cursor: ew-resize;
+}
+.segment-flap-limit,
+.segment-flap-output {
+  color: #9de9e5;
+  font: 600 12px/1.2 ui-monospace, Menlo, monospace;
+}
+.segment-flap-output {
+  display: block;
+  margin-top: 7px;
+  text-align: center;
+}
+.segment-picker-launcher {
+  width: auto;
+  min-width: 54px;
+  padding-inline: 10px;
+  color: #d9fbff;
+}
+.segment-picker {
+  position: fixed;
+  inset: 18px;
+  z-index: 100;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(103, 232, 249, .54);
+  border-radius: 14px;
+  background: rgba(5, 10, 18, .97);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .62);
+  overflow: hidden;
+}
+.segment-picker > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.segment-picker h2 {
+  margin: 2px 0 3px;
+  font-size: clamp(18px, 2vw, 25px);
+  letter-spacing: -.025em;
+}
+.segment-picker header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.segment-picker-eyebrow {
+  color: #f6ad55;
+  font: 700 12px/1.2 var(--font-mono);
+  letter-spacing: .14em;
+}
+.segment-picker-close {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font: 22px/1 var(--font-ui);
+}
+.segment-picker-canvas-wrap {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #03070d;
+}
+.segment-picker-canvas {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: crosshair;
+  touch-action: none;
+}
+.segment-picker-canvas-status {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  padding: 6px 10px;
+  border: 1px solid rgba(103, 232, 249, .34);
+  border-radius: 999px;
+  background: rgba(5, 12, 23, .9);
+  color: #d9fbff;
+  font: 650 12px/1.2 var(--font-ui);
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+}
+.segment-picker-canvas-status.busy::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: #4fd1c5;
+  animation: segment-picker-working .8s ease-in-out infinite alternate;
+}
+@keyframes segment-picker-working {
+  from { opacity: .25; }
+  to { opacity: 1; }
+}
+.segment-picker-controls,
+.segment-picker > footer {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.segment-picker-modes {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.segment-picker-source {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.segment-picker-source select {
+  min-height: 36px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--ink);
+  font: 600 12px/1 var(--font-ui);
+}
+.segment-picker-mode {
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: 600 12px/1 var(--font-ui);
+}
+.segment-picker-mode.active {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.segment-picker-reset-actions { display: inline-flex; gap: 7px; }
+.segment-picker-series-summary {
+  color: #ffd79a;
+  font: 650 12px/1.2 var(--font-ui);
+}
+.segment-picker-label {
+  flex: 1;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.segment-picker-label input,
+.segment-picker-label select {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--ink);
+  font: 600 13px/1 var(--font-ui);
+}
+.segment-picker-parent { flex: 0 1 190px; }
+.segment-picker-create {
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1px solid #4fd1c5;
+  border-radius: 7px;
+  background: #4fd1c5;
+  color: #061219;
+  cursor: pointer;
+  font: 700 12px/1 var(--font-ui);
+}
+.segment-picker-create:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+.segment-picker-finish {
+  min-height: 38px;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .segment-picker { inset: 8px; padding: 12px; }
+  .segment-picker-controls,
+  .segment-picker > footer { align-items: stretch; flex-direction: column; }
+  .segment-picker-modes { width: 100%; }
+  .segment-picker-source { width: 100%; }
+  .segment-picker-mode { flex: 1; }
+  .segment-picker-create,
+  .segment-picker-finish { width: 100%; }
+}
+.unbound-end-marker {
+  fill: #111827;
+  stroke: #e9b26a;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+/* A plain text shape. Rendered in a <foreignObject> so the words wrap, and
+   so the height they wrap to can be measured and written back, the same deal
+   a card's height is on. */
+.shape-text {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  pointer-events: auto;
+  cursor: move;
+}
+
+/* The words inside a rect, ellipse, or diamond. They wrap to the box and sit
+   in its middle; clicks fall through to the box under them. */
+.shape-box-label-frame { pointer-events: none; overflow: visible; }
+.shape-box-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
+.atlas-view.drawing { cursor: crosshair; }
+.atlas-view.drawing .node { cursor: crosshair; }
+
+.draw-tools {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px oklch(5% 0.02 255 / .3);
+}
+.draw-tools .tool {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.draw-tools .tool:hover { color: var(--ink); border-color: var(--line-strong); background: var(--panel-raised); }
+.draw-tools .tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.draw-tools .tool.active { color: var(--bg); background: var(--accent); border-color: transparent; }
+.altitude-levels {
+  display: flex; align-items: center; gap: 2px;
+  min-height: 26px; margin: 0 4px; padding: 0 5px;
+  border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+}
+.altitude-label {
+  margin-right: 2px; color: var(--muted);
+  font: 650 12px/1 var(--font-ui); letter-spacing: .02em;
+}
+.altitude-level {
+  min-width: 23px; height: 24px; padding: 0 5px;
+  border: 1px solid transparent; border-radius: 5px;
+  color: var(--muted); background: transparent; cursor: pointer;
+  font: 700 12px/1 var(--font-mono);
+}
+.altitude-level[data-altitude-level="all"] { min-width: 30px; }
+.altitude-level:hover { color: var(--ink); border-color: var(--line-strong); background: var(--panel-raised); }
+.altitude-level:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.altitude-level.active { color: #12121a; border-color: var(--human); background: var(--human); }
+.draw-tools .camera-return {
+  width: auto;
+  padding: 0 10px;
+  color: #e6ecf7;
+  background: rgba(39, 225, 179, 0.12);
+  border-color: rgba(39, 225, 179, 0.58);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.draw-tools .camera-policy {
+  width: 100%;
+  padding: 0 10px;
+  margin: 0;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.draw-tools .constraint-salience {
+  width: 100%;
+  padding: 0 10px;
+  margin: 0;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* The held camera is the state worth seeing across the pane: it is the one
+   that makes the agent stop moving the view, so it should not read as off. */
+.draw-tools .camera-policy[data-policy="hold"] {
+  color: var(--ink);
+  border-color: var(--human);
+  background: oklch(26% 0.045 70);
+}
+.draw-tools .camera-policy[data-policy="ask"] { color: #cfd8e8; }
+.ink-options,
+.view-options { position: relative; }
+.ink-options summary,
+.view-options summary {
+  list-style: none; min-height: 32px; display: flex; align-items: center; gap: 6px;
+  padding: 0 8px; border: 1px solid transparent; border-radius: var(--radius-sm);
+  color: var(--muted); font: 650 12px/1 var(--font-ui); cursor: pointer;
+}
+.ink-options summary::-webkit-details-marker,
+.view-options summary::-webkit-details-marker { display: none; }
+.ink-options summary:hover,
+.view-options summary:hover { color: var(--ink); border-color: var(--line-strong); background: var(--panel-raised); }
+.ink-options summary:focus-visible,
+.view-options summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ink-preview { width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 0 1px var(--line-strong); }
+.tool-inks,
+.view-options-panel {
+  position: absolute; top: calc(100% + 8px); z-index: 10;
+  padding: 7px; border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--panel-raised); box-shadow: 0 14px 36px oklch(5% 0.02 255 / .45);
+}
+.tool-inks { left: 0; display: grid; grid-template-columns: repeat(3, 28px); gap: 5px; }
+.view-options-panel { right: 0; width: 190px; display: grid; gap: 4px; }
+.tool-inks .swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 3px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.tool-inks .swatch:hover { transform: scale(.9); }
+.tool-inks .swatch.active { border-color: var(--ink); }
+.tool-strokes { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 28px); gap: 5px; }
+.tool-strokes .stroke-pick {
+  width: 28px; height: 24px; padding: 0;
+  border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--muted);
+  font: 700 12px/1 var(--font-ui); letter-spacing: -1px; cursor: pointer;
+}
+.tool-strokes .stroke-pick:hover { color: var(--ink); border-color: var(--line-strong); }
+.tool-strokes .stroke-pick.active { color: var(--ink); background: var(--panel); border-color: var(--line-strong); }
+/* A drawn frame: a thin named region on the back layer, kept visibly apart
+   from a container card's frame, which is DOM and lives in .atlas-frames. */
+.shape.frame-shape rect { stroke-opacity: .55; }
+.shape.frame-shape .frame-name { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+.reading { font-size: 13px; color: #cbd5e9; }
+
+
+/* ── dock zones ──────────────────────────────────────────────────────
+   Six exclusive zones, positioned here and nowhere else. A panel says which
+   zone it belongs to (in `panels.rs`) and stops carrying coordinates of its
+   own. Two panels can no longer be written at the same corner, because there
+   is only one place a corner is written.
+
+   `pointer-events: none` on the zone and `auto` on its children: a reserved
+   corner must not eat a drag that lands in it while it is empty. */
+.dock {
+  position: absolute; z-index: 6; display: flex; flex-direction: column;
+  gap: 8px; pointer-events: none;
+  max-height: calc(100% - 124px);
+}
+/* Two classes, so a panel that arrived with `position: fixed` of its own (the
+   runtime's presence tray) is placed by the zone whatever order the
+   stylesheets load in. */
+.dock > * { pointer-events: auto; }
+.dock > .docked { position: relative; inset: auto; }
+/* `--dock-strip` is the height the bottom strip actually took, written by the
+   page after it rendered. The three bottom corners stand on top of it: the
+   strip spans the whole width, so beside it is not available. */
+.dock[data-zone="top-left"] {
+  left: 14px; top: 58px; bottom: calc(58px + var(--dock-strip, 0px));
+  align-items: flex-start; justify-content: flex-start;
+}
+.dock[data-zone="top-right"] {
+  right: 14px; top: 62px; bottom: calc(58px + var(--dock-strip, 0px));
+  align-items: flex-end; justify-content: flex-start; z-index: 11;
+}
+.dock[data-zone="bottom-left"] {
+  left: 14px; top: 58px; bottom: calc(14px + var(--dock-strip, 0px));
+  align-items: flex-start; justify-content: flex-end; z-index: 8;
+}
+.dock[data-zone="bottom-centre"] {
+  left: 50%; top: 58px; bottom: calc(14px + var(--dock-strip, 0px));
+  transform: translateX(-50%);
+  align-items: center; justify-content: flex-end; z-index: 7;
+}
+.dock[data-zone="bottom-right"] {
+  right: 14px; top: 58px; bottom: calc(14px + var(--dock-strip, 0px));
+  align-items: flex-end; justify-content: flex-end; z-index: 5;
+}
+.dock[data-zone="bottom-strip"] {
+  left: 14px; right: 14px; bottom: 14px; z-index: 9;
+  max-height: calc(100% - 84px);
+}
+
+/* A collapsed flyout is its own title and nothing else. It stays on screen,
+   in its zone, so a panel that yielded the edge is still one click away
+   rather than gone. */
+.docked.collapsed {
+  width: auto; max-width: min(300px, calc(100% - 28px)); max-height: none;
+  padding: 6px 10px; overflow: hidden; cursor: pointer;
+}
+.docked.collapsed > * { display: none !important; }
+.docked.collapsed::after {
+  content: attr(data-dock-title);
+  color: var(--muted); font: 600 12px/1.3 ui-sans-serif, system-ui, sans-serif;
+}
+
+.zoom-controls {
+  display: flex; align-items: center; gap: 3px;
+  padding: 4px; border: 1px solid var(--line); border-radius: 9px;
+  background: rgba(10, 15, 26, .9); backdrop-filter: blur(6px);
+}
+.zoom-button {
+  height: 28px; min-width: 28px; padding: 0 7px;
+  border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--ink); cursor: pointer;
+  font: 700 13px/1 ui-sans-serif, system-ui, sans-serif;
+}
+.zoom-button:hover { border-color: var(--line); background: var(--panel); }
+.zoom-fit { min-width: 38px; font-size: 12px; }
+.zoom-percent {
+  min-width: 46px; color: var(--muted); text-align: center;
+  font: 12px/1 ui-monospace, Menlo, monospace;
+}
+
+.tool-toast {
+  padding: 7px 10px; border: 1px solid var(--accent); border-radius: 8px;
+  background: #10192c; color: #e6ecf7;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .38);
+  font: 600 12px/1.35 ui-sans-serif, system-ui, sans-serif;
+  pointer-events: none;
+}
+
+.gesture-card {
+  position: relative;
+  width: min(440px, calc(100% - 180px));
+  padding: 9px 40px 9px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--panel-raised); color: var(--ink);
+  box-shadow: 0 12px 30px oklch(5% 0.02 255 / .38);
+}
+.gesture-card-title { display: block; padding-right: 24px; font-size: 13px; }
+.gesture-card-list { margin: 2px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.gesture-card-close {
+  position: absolute; right: 7px; top: 6px; width: 24px; height: 24px;
+  border: 0; border-radius: 6px; background: transparent; color: var(--muted);
+  cursor: pointer; font-size: 17px;
+}
+.gesture-card-close:hover { color: var(--ink); background: var(--panel); }
+.atlas-view:has(.segment-flap-panel:not([hidden])) .gesture-card { display: none; }
+
+@media (max-width: 640px) {
+  .gesture-card { width: calc(100vw - 20px); }
+}
+
+/* ── nodes ──────────────────────────────────────────────────────────── */
+
+.node {
+  position: absolute;
+  --node-accent: var(--muted);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--node-accent);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 8px 10px 9px;
+  cursor: grab;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  user-select: none;
+}
+.node.dragging { cursor: grabbing; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
+.node.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(110, 168, 255, 0.35), 0 8px 20px rgba(0,0,0,.45); }
+
+.node-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); margin-bottom: 4px;
+}
+.node-who { margin-left: auto; }
+.node-who.human { color: var(--human); }
+.node-who.agent { color: var(--agent); }
+.node-label { font-weight: 650; font-size: 13.5px; overflow-wrap: anywhere; }
+.node-state-roles { display: flex; gap: 5px; margin: 0 0 5px; }
+.node-state-role {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font: 700 12px/1.3 ui-monospace, Menlo, monospace;
+  letter-spacing: .06em;
+}
+.node-state-initial { color: #80d7ad; background: rgba(31, 138, 91, .13); }
+.node-state-terminal { color: #d3dcf0; background: rgba(148, 163, 184, .11); }
+.node-state-current { color: #ffd36f; background: rgba(179, 124, 19, .2); }
+.node[data-state-current="true"] {
+  outline: 2px solid #f4c15d;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(244, 193, 93, .16), 0 10px 25px rgba(0, 0, 0, .5);
+}
+.node[data-state-terminal="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid var(--node-accent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.node-note { margin-top: 4px; font-size: 12px; color: #c3ccdd; overflow-wrap: anywhere; }
+
+/* Level of detail. The level comes from `labels.rs`; this only applies it.
+   A selected card opts out of every rule here: it shows what it has. */
+.atlas-view[data-detail="title"] .node:not(.selected) .node-note,
+.atlas-view[data-detail="title"] .node:not(.selected) .node-head,
+.atlas-view[data-detail="title"] .node:not(.selected) .node-claims {
+  /* Zoom changes detail visibility, never the card's measured shared size. */
+  visibility: hidden;
+}
+.node-source {
+  flex: 0 0 auto; width: 30px; height: 28px; padding: 2px; border: 1px solid var(--line);
+  border-radius: 5px; background: var(--panel); cursor: pointer;
+  font: 600 12px/1 ui-monospace, Menlo, monospace; color: var(--accent);
+}
+.node-title-row { display: flex; align-items: flex-start; gap: 8px; }
+.node-title-row .node-label { flex: 1; min-width: 0; }
+.node-source:hover { background: var(--panel-raised); border-color: var(--accent); }
+.node-source:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.node-source.source-unlinked { color: var(--muted); border-style: dashed; }
+.node-marks { margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
+.mark-chip {
+  font: 12px/1.35 ui-monospace, Menlo, monospace;
+  border: 1px solid var(--line); border-radius: 8px; padding: 3px 7px;
+  background: #17203a; color: var(--human);
+  max-width: 100%; overflow-wrap: anywhere;
+}
+.mark-chip.answered { color: var(--agent); }
+
+/* tone + status */
+.node[data-tone="crate"] { --node-accent: #6ea8ff; }
+.node[data-tone="example"] { --node-accent: #a78bfa; }
+.node[data-tone="doc"] { --node-accent: #7dd3fc; }
+.node[data-tone="spec"] { --node-accent: #f0abfc; }
+.node[data-tone="concept"] { --node-accent: #94a3b8; }
+.node[data-tone="question"] { --node-accent: var(--human); }
+.node[data-tone="risk"] { --node-accent: var(--danger); }
+.node[data-status="agreed"] { background: linear-gradient(180deg, #12241d, var(--panel)); }
+.node[data-status="disputed"] { background: linear-gradient(180deg, #2a1620, var(--panel)); }
+.node[data-status="done"] { opacity: 0.72; }
+
+.status-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px; }
+
+/* ── trust tiers (Explain / Map / Cement) ──────────────────────────────
+   A tier is computed by the host, never authored; see src/tier.rs. The
+   card always CARRIES its tier as data-tier, in every mode, so switching
+   modes never re-renders anything, it only changes what CSS shows. Explain
+   hides every rule below; Map and Cement show them. */
+.tier-chip {
+  display: none;
+  font: 700 12px/1.3 ui-monospace, Menlo, monospace;
+  letter-spacing: .04em;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 6px;
+}
+body[data-map-mode="map"] .tier-chip,
+body[data-map-mode="cement"] .tier-chip {
+  display: inline-flex;
+}
+.node[data-tier] { transition: border-color 120ms ease, outline-color 120ms ease; }
+body[data-map-mode="map"] .node[data-tier="claimed"],
+body[data-map-mode="cement"] .node[data-tier="claimed"] {
+  border-style: dashed; opacity: 0.82;
+}
+.tier-chip[data-tier="claimed"] { color: var(--muted); }
+body[data-map-mode="map"] .node[data-tier="verified"],
+body[data-map-mode="cement"] .node[data-tier="verified"] {
+  border-color: var(--agent); border-style: solid;
+}
+.tier-chip[data-tier="verified"] { color: var(--agent); }
+body[data-map-mode="map"] .node[data-tier="gate-met"],
+body[data-map-mode="cement"] .node[data-tier="gate-met"] {
+  border-color: var(--agent); border-width: 2px;
+}
+.tier-chip[data-tier="gate-met"] { color: var(--agent); background: rgba(94, 210, 150, .12); }
+body[data-map-mode="map"] .node[data-tier="gate-unmet"],
+body[data-map-mode="cement"] .node[data-tier="gate-unmet"] {
+  border-color: var(--danger); border-width: 2px;
+}
+.tier-chip[data-tier="gate-unmet"] { color: var(--danger); background: rgba(220, 90, 80, .12); }
+body[data-map-mode="map"] .node[data-tier="drifted"],
+body[data-map-mode="cement"] .node[data-tier="drifted"] {
+  border-color: var(--human);
+  background-image: repeating-linear-gradient(45deg, rgba(230, 170, 70, .12) 0 6px, transparent 6px 12px);
+}
+.tier-chip[data-tier="drifted"] { color: var(--human); }
+body[data-map-mode="map"] .node[data-tier="proposed"],
+body[data-map-mode="cement"] .node[data-tier="proposed"] {
+  border-color: var(--proposed); border-style: dashed;
+}
+.tier-chip[data-tier="proposed"] { color: var(--proposed); }
+body[data-map-mode="map"] .node[data-struck="true"],
+body[data-map-mode="cement"] .node[data-struck="true"] {
+  position: relative;
+}
+body[data-map-mode="map"] .node[data-struck="true"] .node-label,
+body[data-map-mode="cement"] .node[data-struck="true"] .node-label {
+  text-decoration: line-through; text-decoration-color: var(--danger); opacity: 0.7;
+}
+
+/* Undeclared: a lane the extractor found and nothing on the Map claims.
+   Never a Node; it cannot be dismissed because there is nothing to delete,
+   only a lane to claim or a removal to cement. Pulsing is bounded and
+   respects reduced motion, same rule the rest of this app already holds
+   attention animation to. */
+/* A floating overlay panel covers whatever canvas content happens to sit
+   under it, at any viewport, depending only on where cards were dragged or
+   where the camera last fit (the visual audit's text-occlusion rule caught
+   exactly this: a card's own chip made unreadable). Docked as a flex
+   sibling of the canvas instead, in normal flow, so it reserves its own
+   space and the canvas shrinks to fit beside it: nothing under it, ever,
+   at any width. */
+.atlas-undeclared-frame {
+  display: none;
+  flex: 0 0 auto;
+  max-height: min(260px, 30vh);
+  overflow-y: auto;
+  border-top: 1.5px dashed var(--human);
+  background: color-mix(in oklch, var(--human) 8%, var(--panel));
+  padding: 10px 14px;
+}
+body[data-map-mode="map"] .atlas-undeclared-frame,
+body[data-map-mode="cement"] .atlas-undeclared-frame {
+  display: block;
+}
+.atlas-undeclared-frame h3 {
+  margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--human);
+}
+/* A row of cards, not a tall stack: this panel is now a short docked strip
+   (see .atlas-undeclared-frame), and a horizontally scrolling row of fixed-
+   width cards suits that shape better than a vertical list would. */
+.undeclared-list { display: flex; gap: 8px; overflow-x: auto; padding: 2px 10px 6px; scroll-padding-inline: 10px; }
+.undeclared-card {
+  flex: 0 0 auto; width: 240px;
+  border: 1px solid var(--human); border-radius: var(--radius);
+  background: var(--panel-raised); padding: 8px 10px;
+  animation: undeclared-pulse 2.2s ease-in-out infinite;
+}
+.undeclared-card .undeclared-kind {
+  font: 700 12px/1.3 ui-monospace, Menlo, monospace; color: var(--human);
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.undeclared-card .undeclared-label { font-weight: 650; margin: 3px 0; }
+.undeclared-card .undeclared-evidence {
+  font: 12px/1.4 ui-monospace, Menlo, monospace; color: var(--muted);
+  background: var(--panel); border-radius: 5px; padding: 4px 6px;
+  overflow-wrap: anywhere; margin: 4px 0;
+}
+.undeclared-card .undeclared-actions { display: flex; gap: 6px; margin-top: 6px; }
+.undeclared-card button {
+  font: 600 12px ui-monospace, Menlo, monospace; padding: 5px 8px;
+  border-radius: 5px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--ink); cursor: pointer;
+}
+.undeclared-card button:hover { border-color: var(--human); }
+@keyframes undeclared-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(230, 170, 70, .35); }
+  50% { box-shadow: 0 0 0 5px rgba(230, 170, 70, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .undeclared-card { animation: none; }
+}
+/* A lane with a cemented removal obligation stops pulsing amber: it has a
+   decision recorded (atlas_remove_lane), it is just pending G8 confirming
+   the code is actually gone. Red until then, green once it is. */
+.undeclared-card[data-tier="gate-unmet"],
+.undeclared-card[data-tier="gate-met"] {
+  animation: none;
+}
+.undeclared-card[data-tier="gate-unmet"] { border-color: var(--danger); }
+.undeclared-card[data-tier="gate-met"] { border-color: var(--agent); }
+.undeclared-card[data-tier] .tier-chip[data-tier="gate-unmet"] { color: var(--danger); }
+.undeclared-card[data-tier] .tier-chip[data-tier="gate-met"] { color: var(--agent); }
+
+/* ── mode strip + legend (header) ──────────────────────────────────────
+   Replaces the lone scope word that used to sit here: which Map mode is
+   active is the thing worth one word of header space now. */
+.atlas-mode-strip { display: flex; align-items: center; gap: 2px; margin-right: 6px; flex: 0 0 auto; }
+.atlas-mode-button {
+  font: 600 12px/1.3 var(--font-ui); padding: 4px 8px; border-radius: 999px;
+  border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer;
+  white-space: nowrap;
+}
+.atlas-mode-button:hover { color: var(--ink); border-color: var(--line-strong); }
+.atlas-mode-button[aria-pressed="true"] {
+  color: #0c0f16; background: var(--accent); border-color: var(--accent); font-weight: 700;
+}
+.atlas-mode-obligations-count {
+  font: 700 12px ui-monospace, Menlo, monospace; margin-left: 6px; color: var(--muted);
+  white-space: nowrap;
+}
+.atlas-legend-toggle {
+  font: 600 12px var(--font-ui); padding: 4px 8px; border-radius: 999px;
+  border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer;
+  margin-right: 6px; flex: 0 0 auto; white-space: nowrap;
+}
+.atlas-legend-toggle:hover { color: var(--ink); }
+.atlas-legend {
+  position: absolute; z-index: 20; width: 320px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-lg);
+  background: var(--panel-raised); box-shadow: 0 18px 40px rgba(0,0,0,.5);
+  padding: 12px 14px; margin: 0;
+}
+.atlas-legend h3 { margin: 0 0 8px; font-size: 13px; }
+.atlas-legend dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; }
+.atlas-legend dt { font: 700 12px ui-monospace, Menlo, monospace; }
+.atlas-legend dd { margin: 0; font-size: 12.5px; color: var(--muted); }
+.atlas-legend .legend-limit { margin-top: 10px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+
+/* containers as named frames. Behind every card, never over one. */
+.atlas-frames { position: absolute; inset: 0; pointer-events: none; }
+.atlas-frame {
+  position: absolute;
+  border: 1.5px solid var(--authored-ink, #4a5a78);
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.05);
+  pointer-events: none;
+}
+.atlas-frame[data-depth="1"] { background: rgba(148, 163, 184, 0.08); }
+.atlas-frame[data-depth="2"] { background: rgba(148, 163, 184, 0.11); }
+/* The title sits INSIDE the band the hit-test reserves for it.
+   `computeFrameBox` puts the frame's top a FRAME_HEADER_H (48px) band above
+   its content and `frameEdgeHit` accepts that band as a grab handle, but the
+   label used to be lifted clear of the box with translateY(-100%). So the
+   band was empty, the label a human aims at was outside the only region the
+   hit-test accepts, and clicking a frame's name cleared the selection and
+   started a marquee instead. Height is capped to the reserved band so the
+   two cannot drift apart again. The frames layer itself is not a stacking
+   context, so this title can stay above cards while the frame body stays
+   behind them. */
+.atlas-frame-title {
+  position: absolute; left: 10px; top: 0;
+  z-index: 3;
+  box-sizing: border-box; display: flex; align-items: center; gap: 7px;
+  height: 22px; max-height: 26px;
+  padding: 2px 8px 3px;
+  font-size: 12px; font-weight: 650; letter-spacing: 0.02em; line-height: 15px;
+  color: var(--authored-ink, #9fb0cc);
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px 6px 0 0;
+  white-space: nowrap;
+}
+.atlas-frame-title-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.atlas-frame-state-status {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 6px;
+  color: #ff9b9b;
+  background: rgba(185, 28, 28, .18);
+  font: 700 12px/1.3 ui-monospace, Menlo, monospace;
+  letter-spacing: .05em;
+}
+.atlas-frame-count { color: var(--muted); font: 600 12px/1 ui-monospace, Menlo, monospace; }
+.atlas-frame-collapse {
+  width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: inherit; cursor: pointer; pointer-events: auto;
+  font: 700 12px/18px ui-monospace, Menlo, monospace;
+}
+.atlas-frame-collapse:hover,
+.atlas-frame-collapse:focus-visible { background: rgba(110, 168, 255, .16); outline: none; }
+.atlas-frame[data-collapsed="true"] { border-style: dashed; background: rgba(110, 168, 255, .07); }
+.atlas-frame[data-state-unresolved="true"] {
+  border-color: #ef7f7f;
+  box-shadow: 0 0 0 2px rgba(239, 127, 127, .14);
+}
+/* A mark on a container, beside its name. Marks were stored, delivered and
+   answered while being invisible here: the chips were built into the card
+   root, which a container then hides. `pointer-events` is re-enabled because
+   the frame layer disables it wholesale, and a chip has to be clickable to
+   select what it is attached to. */
+.atlas-frame-marks {
+  position: absolute; left: 10px; top: 24px;
+  display: flex; gap: 4px; flex-wrap: wrap;
+  max-width: calc(100% - 20px);
+  pointer-events: auto;
+}
+.atlas-frame-marks .mark-chip { background: var(--panel); cursor: pointer; }
+.atlas-frame.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(110, 168, 255, 0.3);
+}
+.atlas-frame.selected .atlas-frame-title { color: var(--accent); border-color: var(--accent); }
+.atlas-frame.marquee-hit { border-color: var(--accent); }
+
+/* style vocabulary: rendered only when the model carries it */
+.node[data-color] { --node-accent: var(--authored-ink); }
+.node[data-emphasis="strong"] {
+  border-color: var(--authored-ink, var(--accent));
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.28), 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+.node[data-emphasis="strong"] .node-label { font-weight: 800; }
+.node[data-emphasis="muted"] { opacity: 0.55; }
+.node[data-size="primary"] .node-label { font-size: 15.5px; }
+.node[data-size="hero"] .node-label { font-size: 18px; line-height: 1.25; }
+.node[data-size="hero"] { border-top-width: 3px; }
+.node[data-kind="ellipse"] { border-radius: 26px / 18px; }
+.node[data-kind="diamond"] {
+  border-radius: 4px;
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px),
+    calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+}
+.atlas-frame[data-emphasis="strong"] { border-width: 2.5px; }
+.atlas-frame[data-emphasis="muted"] { opacity: 0.6; }
+
+/* marquee: the box the human drags over empty canvas, and what it is about
+   to catch. Preview only; the real selection lands on release. */
+.atlas-marquee {
+  position: absolute; z-index: 18; pointer-events: none;
+  border: 1px solid var(--accent);
+  background: rgba(110, 168, 255, 0.12);
+  border-radius: 3px;
+}
+.node.marquee-hit { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(110, 168, 255, 0.28); }
+.shape.marquee-hit,
+.constraint-glyph.marquee-hit { filter: drop-shadow(0 0 3px var(--accent)); }
+/* The board drawn small. Its geometry comes from `camera.rs`; this is the
+   paint. */
+.minimap {
+  position: relative;
+  padding: 4px; border: 1px solid var(--line); border-radius: 9px;
+  background: rgba(10, 15, 26, .92); backdrop-filter: blur(6px);
+}
+.minimap-canvas {
+  position: relative; overflow: hidden; border-radius: 5px;
+  background: oklch(16% .02 255); cursor: pointer;
+  touch-action: none;
+}
+.minimap-content {
+  position: absolute; border: 1px solid var(--line); border-radius: 2px;
+  background: rgba(255, 255, 255, .02);
+}
+.minimap-marks { position: absolute; inset: 0; }
+.minimap-dot {
+  position: absolute; display: block; border-radius: 1px;
+  background: color-mix(in oklch, var(--muted) 70%, transparent);
+}
+/* Where you are looking. Outlined rather than filled: it sits ON the board
+   and must not hide the part of it you are about to aim at. */
+.minimap-viewport {
+  position: absolute; border: 1.5px solid var(--accent); border-radius: 2px;
+  background: color-mix(in oklch, var(--accent) 12%, transparent);
+  pointer-events: none;
+}
+.minimap-close {
+  position: absolute; right: 1px; top: -1px; width: 18px; height: 18px;
+  border: 0; border-radius: 5px; background: transparent; color: var(--muted);
+  cursor: pointer; font-size: 14px; line-height: 1;
+}
+.minimap-close:hover { color: var(--ink); background: var(--panel); }
+
+.minimap-empty {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  padding: 0 8px; text-align: center;
+  color: var(--muted); font: 12px/1.3 ui-sans-serif, system-ui, sans-serif;
+}
+
+.atlas-view.pan-ready { cursor: grab; }
+/* Hand armed says so before the drag, not during it: a cursor that only
+   changes once you are already dragging is a cursor that taught nobody. */
+.atlas-view.hand-armed,
+.atlas-view.hand-armed .node,
+.atlas-view.hand-armed .shape { cursor: grab; }
+.atlas-view.panning,
+.atlas-view.panning .node,
+.atlas-view.panning .shape { cursor: grabbing; }
+
+/* the SELECTED panel when more than one thing is selected */
+.selection-list { margin: 8px 0 0; padding-left: 20px; font-size: 12px; line-height: 1.5; }
+.selection-list li { cursor: pointer; }
+.selection-list li:hover { text-decoration: underline; }
+
+/* inline composer used for new nodes, labels and marks */
+.inline-input {
+  position: absolute; z-index: 20;
+  display: flex; gap: 6px; align-items: center;
+  background: var(--panel); border: 1px solid var(--accent);
+  border-radius: 8px; padding: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.inline-target {
+  max-width: 260px; color: #dce9ff; font-size: 12px; line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.inline-receipt {
+  grid-column: 1 / -1;
+  color: #dce9ff;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.inline-receipt.warning,
+.arrow-bind-receipt.warning { color: #e9b26a; }
+.inline-receipt.bound,
+.arrow-bind-receipt.bound { color: var(--agent); }
+.arrow-bind-receipt {
+  margin: 8px 0;
+  padding: 7px 9px;
+  border: 1px solid currentColor;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.inline-input:has(.inline-target),
+.inline-input:has(.inline-receipt) {
+  display: grid; grid-template-columns: auto minmax(0, 1fr);
+  width: min(390px, calc(100% - 8px));
+}
+.inline-input:has(.inline-target) input,
+.inline-input:has(.inline-receipt) input {
+  grid-column: 1 / -1; width: 100%; min-width: 0;
+}
+.inline-input input {
+  font: inherit; min-width: 230px; padding: 5px 8px;
+  background: var(--panel-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 6px;
+}
+.inline-input .glyph { color: var(--human); font-family: ui-monospace, Menlo, monospace; }
+
+/* Existing labels edit where they already live. This keeps the text under the
+   pointer and avoids a second floating box that obscures the canvas. */
+.inline-direct-editor {
+  min-width: 24px;
+  border-radius: 4px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  background: rgba(8, 17, 31, .96);
+  caret-color: #fff;
+  cursor: text !important;
+  user-select: text !important;
+  text-overflow: clip !important;
+}
+.segment-badge.inline-direct-editor {
+  min-width: 88px;
+  overflow: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+.node-label.inline-direct-editor,
+.shape-text.inline-direct-editor {
+  padding: 2px 3px;
+  margin: -2px -3px;
+}
+
+.atlas-context-menu {
+  position: absolute; z-index: 25; min-width: 180px;
+  display: grid; gap: 4px; padding: 7px;
+  border: 1px solid var(--accent); border-radius: 9px;
+  background: #0b1220; color: var(--ink);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .55);
+}
+.atlas-context-title {
+  padding: 3px 7px 5px; color: var(--muted); font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.atlas-context-action {
+  padding: 7px 9px; border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--ink); text-align: left; cursor: pointer;
+  font: 12px/1.25 ui-sans-serif, system-ui, sans-serif;
+}
+.atlas-context-action:hover, .atlas-context-action:focus-visible {
+  border-color: var(--line); background: var(--panel);
+}
+
+.source-viewer {
+  position: fixed; inset: 16px 16px 16px auto; margin: 0;
+  width: min(760px, calc(100vw - 32px)); max-width: none; max-height: none;
+  padding: 20px; border: 2px solid var(--line-strong); border-radius: 10px;
+  background: var(--panel); color: var(--ink); font: 14px/1.45 var(--font-ui);
+}
+.source-viewer:popover-open { display: flex; flex-direction: column; gap: 12px; }
+.source-viewer-header { display: flex; gap: 12px; align-items: flex-start; }
+.source-viewer-header h2 { flex: 1; margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.source-viewer-header button { flex: 0 0 auto; }
+.source-viewer-context { margin: 0; color: var(--muted); font-size: 13px; }
+.source-viewer-choices label { display: flex; align-items: center; gap: 12px; }
+.source-viewer-choices select { flex: 1; min-width: 0; max-width: 100%; padding: 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 4px; font: inherit; }
+.source-location { margin: 0; overflow-wrap: anywhere; font: 13px/1.45 var(--font-mono); }
+.source-notice { margin: 0; color: var(--muted); font-size: 13px; }
+.source-error { color: var(--human); }
+.source-code { display: flex; align-items: flex-start; flex: 1; min-height: 80px; margin: 0; padding: 12px 0; overflow: auto; white-space: pre; background: var(--bg); color: var(--ink); font: 13px/1.65 var(--font-mono); tab-size: 4; user-select: text; }
+.source-code-text { display: block; flex: 0 0 auto; padding-right: 16px; font: inherit; }
+.source-line-numbers { position: sticky; left: 0; display: block; flex: 0 0 auto; min-width: 5ch; padding: 0 12px; text-align: right; color: var(--muted); background: var(--bg); user-select: none; }
+.source-viewer-pages { display: flex; flex-wrap: wrap; gap: 8px; }
+.source-viewer .quiet-button { min-height: 36px; font-size: 13px; }
+.source-viewer button:disabled { opacity: .55; cursor: default; }
+.source-viewer-files summary { cursor: pointer; padding: 4px 0; }
+.source-directory { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.source-directory span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.source-file-list { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; max-height: 150px; overflow: auto; }
+.source-file { max-width: 100%; overflow-wrap: anywhere; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); background: var(--panel-2); cursor: pointer; font: 13px var(--font-mono); }
+@media (max-width: 760px) {
+  .source-viewer { inset: 8px; width: auto; padding: 14px; }
+  .source-viewer:popover-open { gap: 8px; }
+  .source-viewer-context { font-size: 12px; }
+  .source-file-list { max-height: 110px; }
+}
+
+/* ── supporting workspace dock ──────────────────────────────────────── */
+
+.workspace-dock {
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0; min-height: 0; overflow: hidden;
+  border-left: 1px solid var(--line); background: var(--panel-2);
+}
+.dock-header {
+  display: grid; gap: 10px; padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.dock-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.dock-heading > span { color: var(--muted); font-size: 12px; text-align: right; }
+.dock-tabs {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px;
+  padding: 3px; border-radius: 8px; background: var(--bg);
+}
+.dock-tabs button {
+  min-height: 34px; padding: 6px 8px;
+  border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--muted);
+  font: 650 12px/1 var(--font-ui); cursor: pointer;
+}
+.dock-tabs button:hover { color: var(--ink); background: var(--panel); }
+.dock-tabs button[aria-selected="true"] {
+  color: var(--ink); background: var(--panel-raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.dock-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dock-panel {
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  overflow: hidden;
+}
+.dock-panel-note {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 12px; border-bottom: 1px solid var(--line);
+  color: var(--muted); font-size: 12px;
+}
+.dock-panel > header { padding: 12px 14px 9px; border-bottom: 1px solid var(--line); }
+.dock-panel h2 { margin: 1px 0 0; font-size: 15px; line-height: 1.25; letter-spacing: -0.01em; }
+.eyebrow { margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+
+.inspector-body { overflow: auto; padding: 12px 14px; font-size: 13px; }
+.inspector-body dl { margin: 0 0 10px; display: grid; grid-template-columns: 84px 1fr; gap: 3px 10px; }
+.inspector-body dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.inspector-body dd { margin: 0; overflow-wrap: anywhere; }
+.inspector-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.inspector-actions .quiet-button { padding: 6px 9px; }
+.inspector-body pre {
+  margin: 0; padding: 9px 10px; max-height: 260px; overflow: auto;
+  background: #080c14; border: 1px solid var(--line); border-radius: 8px;
+  font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre;
+}
+.source-head { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; }
+.source-head h3 { margin: 0; font-size: 12px; color: var(--muted); font-weight: 600; }
+.mark-row { border-top: 1px solid var(--line); padding: 8px 0; }
+.mark-row .glyph { font-family: ui-monospace, Menlo, monospace; color: var(--human); }
+.mark-row .answer { color: var(--agent); }
+
+/* The transcript and composer are `<agui-conversation>`, served by the crate.
+   The app no longer styles them. It hands the component this page's palette
+   through the `--ac-*` custom properties, which inherit through the shadow
+   boundary. Twenty-odd rules became nine, and they say what the panel should
+   look like here rather than restating how a chat works. */
+agui-conversation {
+  flex: 1; min-height: 0;
+  --ac-panel: var(--panel);
+  --ac-panel-2: #16203a;
+  --ac-border: var(--line);
+  --ac-text: var(--ink);
+  --ac-muted: var(--muted);
+  --ac-accent: var(--accent);
+  --ac-agent: var(--agent);
+  --ac-danger: var(--danger);
+}
+
+/* ── agreement dialog ───────────────────────────────────────────────── */
+
+.agree-dialog {
+  width: min(1100px, 92vw); border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); color: var(--ink); padding: 16px;
+}
+.agree-dialog::backdrop { background: rgba(2, 4, 10, 0.7); }
+.agree-dialog header { display: flex; align-items: center; justify-content: space-between; }
+.agree-dialog h2 { margin: 0; font-size: 16px; }
+.agree-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.agree-columns h3 { font-size: 12px; color: var(--muted); margin: 8px 0 6px; }
+.agree-columns pre {
+  margin: 0; max-height: 52vh; overflow: auto; padding: 10px;
+  background: #080c14; border: 1px solid var(--line); border-radius: 8px;
+  font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap;
+}
+.verdict-same { color: var(--agent); }
+.verdict-different { color: var(--danger); }
+
+/* ── the board ──────────────────────────────────────────────────────── */
+
+.board-pane {
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: var(--panel-2);
+}
+.board-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.board-decision-details { border-top: 1px solid var(--line); flex-shrink: 0; }
+.board-decision-details > summary { padding: 12px 14px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.board-decision-details > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+
+.board-head { padding: 10px 14px 8px; border-bottom: 1px solid var(--line); }
+.board-subject { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.board-subject.unnamed { color: var(--muted); font-weight: 400; font-style: italic; }
+.board-meta { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.board-meta.fresh { color: var(--human); }
+.board-head-controls { display: flex; gap: 6px; margin-top: 8px; }
+.board-head-controls button:disabled { opacity: .4; cursor: default; }
+.board-head-controls button:disabled:hover { border-color: var(--line); }
+
+.board-list { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.board-empty { color: var(--muted); font-size: 12.5px; }
+.board-empty .muted { display: block; margin-top: 6px; font-size: 12px; opacity: .8; }
+
+.board-card {
+  --card-accent: var(--line-strong);
+  border: 1px solid var(--line); border-top: 2px solid var(--card-accent); border-radius: 10px;
+  background: var(--panel); padding: 9px 11px; cursor: pointer;
+}
+.board-card:hover { border-color: var(--accent); }
+.board-card.pointed { border-color: var(--agent); box-shadow: 0 0 0 1px var(--agent) inset; }
+/* Left edge says what kind of thing this is, before you read a word of it. */
+.board-card.claim { --card-accent: var(--accent); }
+.board-card.question { --card-accent: var(--human); }
+.board-card.choice { --card-accent: #b98bff; }
+.board-card.group { --card-accent: var(--muted); }
+.board-card.decision { --card-accent: var(--agent); }
+/* A human mark outranks the kind: it is the newest thing anyone did to it. */
+.board-card.marked-agree { --card-accent: var(--agent); }
+.board-card.marked-disagree { --card-accent: var(--danger); }
+.board-card.marked-question, .board-card.marked-important { --card-accent: var(--human); }
+.board-card.unseen { background: #16203a; }
+
+/* The statement is the loudest thing on the card; everything else is margin. */
+.board-said { margin: 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.board-tradeoff, .board-because, .board-relation, .board-evidence {
+  margin: 5px 0 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere;
+}
+.board-relation::before { content: "↳ "; color: var(--accent); }
+.board-evidence.confirmed { color: var(--agent); }
+.board-evidence.refuted { color: var(--danger); }
+.board-clause {
+  margin-top: 7px; padding: 6px 8px; border-radius: 7px;
+  background: color-mix(in srgb, var(--panel-2) 82%, transparent);
+}
+.board-clause .board-relation, .board-clause .board-evidence { margin-top: 0; }
+.board-clause-meta {
+  margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 6px;
+  color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+}
+.board-clause-mark { color: var(--human); }
+
+.board-byline {
+  margin: 7px 0 0; display: flex; flex-wrap: wrap; gap: 6px;
+  font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+}
+.board-byline .by-agent { color: var(--agent); }
+.board-byline .by-you { color: var(--human); }
+.board-id { font-family: ui-monospace, Menlo, monospace; text-transform: none; letter-spacing: 0; }
+.board-status-settled { color: var(--agent); }
+.board-status-contested, .board-blocking { color: var(--danger); }
+
+.board-mark {
+  margin: 7px 0 0; display: flex; gap: 7px; align-items: baseline;
+  font-size: 12px; color: var(--human);
+}
+.board-mark .glyph { font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+
+.board-controls { display: flex; gap: 4px; margin-top: 8px; }
+.board-controls.compact { margin-top: 5px; }
+.board-controls.compact .mark-button { padding: 3px 7px; font-size: 12px; }
+.mark-button {
+  font: 13px/1 ui-monospace, Menlo, monospace; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 7px; background: var(--panel-2);
+  color: var(--muted); padding: 4px 9px;
+}
+.mark-button:hover { color: var(--ink); border-color: var(--human); }
+.mark-button.on { color: #05080f; background: var(--human); border-color: var(--human); }
+
+.board-status { padding: 0 14px; font-size: 12px; color: var(--danger); }
+.board-status:empty { display: none; }
+.board-status.success { color: var(--agent); }
+
+.atlas-cement-controls { min-width: 0; overflow-wrap: anywhere; }
+.atlas-cement-form { display: flex; flex-wrap: wrap; gap: 8px; }
+.atlas-cement-form input {
+  flex: 1 1 180px; min-width: 0; width: 100%; padding: 8px;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--panel); color: var(--ink); font: inherit;
+}
+.atlas-cement-form input:focus { outline: 2px solid var(--human); outline-offset: 2px; }
+.board-cement {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px;
+  padding: 10px 12px 8px; border-top: 1px solid var(--line);
+}
+.board-cement input {
+  min-width: 0; font: 12px/1.3 ui-monospace, Menlo, monospace;
+  padding: 6px 8px; border-radius: 8px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+}
+.board-cement input:disabled, .board-cement button:disabled {
+  opacity: .45; cursor: default;
+}
+.board-cement-readiness {
+  grid-column: 1 / -1; color: var(--muted); font-size: 12px;
+}
+
+.board-compose {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px; padding: 10px 12px; border-top: 1px solid var(--line);
+}
+.board-compose-context {
+  grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  font-size: 12px;
+}
+.board-compose-context[hidden] { display: none; }
+.board-compose-target {
+  padding: 3px 7px; border: 1px solid var(--agent); border-radius: 999px;
+  background: color-mix(in srgb, var(--agent) 12%, transparent); color: var(--agent);
+}
+.board-compose-attachment { color: var(--human); }
+.board-compose select, .board-compose input {
+  font: inherit; padding: 6px 8px; border-radius: 8px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+}
+.board-compose input { flex: 1; min-width: 0; font-size: 13px; }
+.board-compose .send-button { padding: 6px 12px; }
+
+.extension-loading { padding: 14px; color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 960px) {
+  .app-header { flex-wrap: wrap; gap: 8px 12px; }
+  .header-spacer { display: none; }
+  .runtime-state { margin-left: auto; }
+  .header-actions {
+    order: 3; width: 100%; padding: 7px 0 0; border: 0; border-top: 1px solid var(--line);
+  }
+  .header-actions agui-provider-settings { margin-left: auto; }
+
+  .page-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(320px, 1fr) min(40vh, 360px);
+  }
+  .page-grid.dock-collapsed { grid-template-rows: minmax(0, 1fr) 44px; }
+  .pane-resizer { display: none; }
+  .workspace-dock { border-left: 0; border-top: 1px solid var(--line); }
+  [data-pane].collapsed > .pane-rail span[aria-hidden] {
+    writing-mode: horizontal-tb; transform: none;
+  }
+  .dock-header {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 44%);
+    align-items: center; padding: 8px 10px;
+  }
+  .dock-heading { display: block; }
+  .dock-heading > span { display: block; text-align: left; }
+}
+
+@media (max-width: 640px) {
+  .app-header { padding: 8px 10px; }
+  .brand small { display: none; }
+  .runtime-state { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
+  .header-actions { overflow-x: auto; padding-bottom: 2px; }
+  .header-actions .quiet-button { flex: 0 0 auto; }
+  .agree-button { margin-right: 2px; }
+  .atlas-toolbar { padding-inline: 9px; }
+  .canvas-heading span { display: none; }
+  .dock-header { grid-template-columns: 1fr; gap: 6px; }
+  .dock-heading > span { display: none; }
+  .dock-tabs button { min-height: 38px; }
+}
+
+/* One current teaching beat, projected from the same CRDT object the agent
+   reads. It stays compact enough to leave the infographic primary, while the
+   cue and its visible evidence remain readable without opening another pane. */
+.atlas-explanation-flow {
+  width: min(390px, calc(100% - 28px));
+  max-height: calc(100% - 124px); overflow-y: auto;
+  padding: 14px;
+  border: 1px solid color-mix(in oklch, var(--agent) 62%, var(--line));
+  border-radius: 14px;
+  background:
+    linear-gradient(150deg, oklch(20% .025 255 / .98), oklch(14% .018 255 / .97));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .48), inset 0 1px rgba(255, 255, 255, .04);
+  backdrop-filter: blur(10px);
+}
+.atlas-explanation-flow[data-status="paused"] { border-color: var(--human); }
+.atlas-explanation-flow[data-status="completed"] { border-color: var(--agent); }
+.atlas-explanation-flow[data-status="stopped"] { border-color: var(--line-strong); }
+.explanation-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+}
+.explanation-heading-text { min-width: 0; }
+.explanation-eyebrow {
+  display: block; margin-bottom: 3px;
+  color: var(--agent); font: 700 12px/1.2 var(--font-mono); letter-spacing: .14em;
+}
+.explanation-title {
+  margin: 0; color: var(--ink); font: 680 17px/1.22 var(--font-ui); letter-spacing: -.015em;
+}
+.explanation-progress {
+  flex: 0 0 auto; padding: 4px 7px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--muted); background: var(--panel-2);
+  font: 650 12px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+}
+.explanation-status-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 11px 0 13px; padding-top: 9px; border-top: 1px solid var(--line);
+}
+.explanation-status {
+  padding: 3px 6px; border-radius: 4px;
+  color: var(--agent); background: color-mix(in oklch, var(--agent) 13%, transparent);
+  font: 700 12px/1 var(--font-mono); letter-spacing: .08em;
+}
+.explanation-status.paused { color: var(--human); }
+.explanation-status.stopped { color: var(--muted); }
+.explanation-clock { color: var(--muted); font: 12px/1 var(--font-mono); }
+.explanation-beat-title {
+  margin: 0 0 7px; color: var(--ink); font: 650 14px/1.25 var(--font-ui);
+}
+.explanation-cue {
+  margin: 0; color: oklch(94% .018 255); font: 500 14px/1.52 var(--font-ui);
+}
+.explanation-intent {
+  margin: 10px 0 0; color: var(--muted); font: 12px/1.45 var(--font-ui);
+}
+.explanation-intent > span {
+  color: color-mix(in oklch, var(--accent) 78%, white); font: 700 12px/1 var(--font-mono);
+  letter-spacing: .08em;
+}
+.explanation-evidence {
+  margin-top: 13px; padding: 11px; border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(255, 255, 255, .025);
+}
+.explanation-evidence h4 {
+  margin: 0 0 8px; color: var(--muted); font: 700 12px/1 var(--font-mono); letter-spacing: .1em;
+}
+.explanation-evidence-list {
+  display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none;
+}
+.explanation-evidence-item {
+  display: grid; grid-template-columns: minmax(90px, auto) 1fr; align-items: start; gap: 9px;
+  color: var(--muted); font: 12px/1.4 var(--font-ui);
+}
+.explanation-target-button {
+  appearance: none; min-width: 0; padding: 4px 7px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border: 1px solid color-mix(in oklch, var(--accent) 55%, var(--line)); border-radius: 6px;
+  background: var(--accent-soft); color: var(--accent); font: 650 12px/1.2 var(--font-ui);
+}
+.explanation-target-button:hover,
+.explanation-target-button:focus-visible { border-color: var(--accent); outline: none; }
+.explanation-target-button.explanation-answer-target {
+  border-color: color-mix(in oklch, var(--agent) 72%, var(--line));
+  background: color-mix(in oklch, var(--agent) 18%, var(--panel));
+  color: oklch(95% .025 165);
+}
+.explanation-target-button.explanation-answer-target::after {
+  content: "  answer"; color: color-mix(in oklch, var(--agent) 80%, white);
+  font: 700 12px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase;
+}
+.explanation-advance { margin-top: 13px; }
+.explanation-prompt {
+  margin: 0 0 9px; color: var(--ink); font: 620 12.5px/1.42 var(--font-ui);
+}
+.explanation-transitions { display: flex; flex-wrap: wrap; gap: 7px; }
+.explanation-primary,
+.explanation-choice,
+.explanation-control {
+  appearance: none; min-height: 34px; padding: 7px 11px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--panel-raised); color: var(--ink); font: 650 12px/1.2 var(--font-ui);
+  text-decoration: none;
+}
+.explanation-primary {
+  border-color: color-mix(in oklch, var(--agent) 68%, var(--line));
+  background: color-mix(in oklch, var(--agent) 18%, var(--panel)); color: oklch(95% .025 165);
+}
+.explanation-choice:hover,
+.explanation-control:hover { border-color: var(--accent); }
+.explanation-primary:hover { border-color: var(--agent); }
+.explanation-control.danger:hover,
+.explanation-control.danger:focus-visible { border-color: var(--danger); color: var(--danger); }
+.explanation-direct-answer {
+  border-color: color-mix(in oklch, var(--agent) 68%, var(--line));
+  background: color-mix(in oklch, var(--agent) 18%, var(--panel)); color: oklch(95% .025 165);
+}
+.explanation-controls {
+  display: flex; align-items: center; gap: 7px; margin-top: 13px; padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.explanation-control { min-height: 29px; padding: 5px 9px; color: var(--muted); font-size: 12px; }
+.explanation-control.quiet { margin-left: auto; background: transparent; }
+.explanation-lesson-navigation {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
+}
+.explanation-navigation-label {
+  flex: 1 0 100%; color: var(--muted);
+  font: 700 12px/1 var(--font-mono); letter-spacing: .12em;
+}
+.explanation-error { color: var(--danger); }
+
+/* The glow keeps evidence identifiable. The attention class runs once only
+   when a beat first points or reveals, then removes itself on animation end. */
+.explanation-target-active { filter: drop-shadow(0 0 7px color-mix(in oklch, var(--agent) 78%, transparent)); }
+.explanation-target-attention {
+  animation: explanation-attention 760ms ease-out 1;
+}
+@keyframes explanation-attention {
+  0%, 100% { filter: drop-shadow(0 0 7px color-mix(in oklch, var(--agent) 78%, transparent)); }
+  24%, 70% { filter: drop-shadow(0 0 15px color-mix(in oklch, var(--agent) 92%, white)); }
+  46% { filter: drop-shadow(0 0 9px color-mix(in oklch, var(--agent) 82%, transparent)); }
+}
+.node.explanation-target-active {
+  outline: 2px solid color-mix(in oklch, var(--agent) 76%, white); outline-offset: 4px;
+}
+.explanation-target-reveal { filter: drop-shadow(0 0 9px color-mix(in oklch, var(--accent) 72%, transparent)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .explanation-target-attention { animation: none; }
+}
+
+/* The collision this used to patch is gone. `panels.rs` gives the top-right
+   zone to the walkthrough and collapses the notice to its title, instead of a
+   stylesheet moving one of two panels that were written at one address. */
+
+@media (max-width: 720px) {
+  /* The zone still owns the corner; only the panel's own width narrows. */
+  .dock[data-zone="top-right"] { left: 10px; right: 10px; top: 58px; align-items: stretch; }
+  .atlas-explanation-flow { width: auto; max-height: min(58%, 440px); }
+  .explanation-evidence-item { grid-template-columns: 1fr; gap: 5px; }
+}
+
+/* Learner mode is a consumption surface, not a restricted-looking editor.
+   The authoring dock and segmentation controls are absent from its layout,
+   while the same live replica and conversation transport remain connected. */
+body[data-atlas-mode="learn"] .header-actions,
+body[data-atlas-mode="learn"] .pane-resizer,
+body[data-atlas-mode="learn"] .workspace-dock,
+body[data-atlas-mode="learn"] .canvas-help,
+body[data-atlas-mode="learn"] .draw-tools,
+body[data-atlas-mode="learn"] .gesture-card,
+body[data-atlas-mode="learn"] .atlas-changes,
+body[data-atlas-mode="learn"] .agent-ink-panel,
+body[data-atlas-mode="learn"] .segment-flap-panel,
+body[data-atlas-mode="learn"] .segment-tree-panel,
+body[data-atlas-mode="learn"] .segment-picker,
+body[data-atlas-mode="learn"] .segment-badge-frame,
+body[data-atlas-mode="learn"] .atlas-handles,
+body[data-atlas-mode="learn"] .node-who,
+body[data-atlas-mode="learn"] .node-source,
+body[data-atlas-mode="learn"] .agui-semantic-presence {
+  display: none !important;
+}
+
+body[data-atlas-mode="learn"] .app-header {
+  min-height: 50px;
+  flex-wrap: nowrap;
+  padding-block: 6px;
+}
+
+body[data-atlas-mode="learn"] .page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.atlas-pane.atlas-learner-mode {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.atlas-pane.atlas-learner-mode.has-explanation-flow {
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 410px);
+}
+
+.atlas-pane.atlas-learner-mode > .atlas-toolbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.atlas-pane.atlas-learner-mode > .atlas-view {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.atlas-pane.atlas-learner-mode > .atlas-explanation-flow {
+  position: static;
+  grid-column: 2;
+  grid-row: 2;
+  width: auto;
+  max-height: none;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 20px;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+  background: var(--panel-2);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+body[data-atlas-mode="learn"] .explanation-clock {
+  display: none;
+}
+
+.atlas-learner-toolbar-navigation {
+  display: flex; align-items: center; gap: 7px; padding-right: 11px;
+  border-right: 1px solid var(--line);
+}
+.atlas-learner-workspace-link,
+.atlas-learner-topics-button {
+  appearance: none; min-height: 28px; padding: 5px 9px; cursor: pointer;
+  border: 1px solid var(--line-strong); border-radius: 7px;
+  background: transparent; color: var(--muted);
+  font: 650 12px/1 var(--font-ui); text-decoration: none;
+}
+.atlas-learner-workspace-link { border-color: color-mix(in oklch, var(--agent) 60%, var(--line)); color: var(--ink); }
+.atlas-learner-workspace-link::before { content: "←"; margin-right: 6px; color: var(--agent); }
+.atlas-learner-workspace-link:hover,
+.atlas-learner-workspace-link:focus-visible,
+.atlas-learner-topics-button:hover,
+.atlas-learner-topics-button:focus-visible,
+.atlas-learner-topics-button[aria-current="page"] {
+  border-color: var(--accent); color: var(--ink); outline: none;
+}
+
+.explanation-response-form {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding-top: 2px;
+}
+.explanation-response-label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font: 650 12px/1.3 var(--font-ui);
+}
+.explanation-response-input {
+  width: 100%;
+  resize: vertical;
+  padding: 9px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 13px/1.45 var(--font-ui);
+}
+.explanation-response-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.explanation-response-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.explanation-response-status {
+  color: var(--muted);
+  font: 12px/1.2 var(--font-mono);
+}
+
+@media (max-width: 900px) {
+  .atlas-pane.atlas-learner-mode.has-explanation-flow {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(260px, 56fr) minmax(230px, 44fr);
+  }
+  .atlas-pane.atlas-learner-mode > .atlas-explanation-flow {
+    grid-column: 1;
+    grid-row: 3;
+    border-width: 1px 0 0;
+  }
+}
+
+.atlas-pane.atlas-learner-mode.learner-session-screen,
+.atlas-pane.atlas-learner-mode.has-explanation-flow.learner-session-screen {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.atlas-pane.atlas-learner-mode.learner-session-screen > .atlas-learner-destination {
+  grid-column: 1 / -1; grid-row: 2;
+}
+.atlas-learner-destination {
+  min-width: 0; min-height: 0; overflow-y: auto;
+  padding: clamp(26px, 5vw, 68px);
+  background:
+    radial-gradient(circle at 80% 0%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 38%),
+    var(--canvas);
+}
+.learner-destination-header,
+.learner-topic-grid,
+.learner-destination-actions,
+.learner-left-card {
+  width: min(920px, 100%); margin-inline: auto;
+}
+.learner-destination-title {
+  margin: 0; color: var(--ink);
+  font: 720 clamp(24px, 4vw, 40px)/1.12 var(--font-ui); letter-spacing: -.025em;
+}
+.learner-destination-copy {
+  max-width: 680px; margin: 12px 0 0; color: var(--muted);
+  font: 450 15px/1.55 var(--font-ui);
+}
+.learner-topic-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+  margin-top: 30px;
+}
+.learner-topic-card {
+  display: flex; flex-direction: column; align-items: flex-start; min-height: 220px;
+  padding: 22px; border: 1px solid var(--line); border-radius: 14px;
+  background: color-mix(in oklch, var(--panel-2) 92%, transparent);
+}
+.learner-topic-card.current {
+  border-color: color-mix(in oklch, var(--agent) 66%, var(--line));
+  box-shadow: inset 0 1px color-mix(in oklch, var(--agent) 22%, transparent);
+}
+.learner-topic-current {
+  margin-bottom: 13px; padding: 4px 7px; border-radius: 5px;
+  background: color-mix(in oklch, var(--agent) 14%, transparent); color: var(--agent);
+  font: 700 12px/1 var(--font-mono); letter-spacing: .1em;
+}
+.learner-topic-title {
+  margin: 0; color: var(--ink); font: 680 20px/1.25 var(--font-ui); letter-spacing: -.015em;
+}
+.learner-topic-summary {
+  flex: 1; margin: 10px 0 22px; color: var(--muted); font: 13.5px/1.5 var(--font-ui);
+}
+.learner-destination-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 22px;
+}
+.learner-catalog-state,
+.learner-catalog-error {
+  width: min(920px, 100%); margin: 30px auto 0; color: var(--muted);
+}
+.learner-catalog-error {
+  padding: 18px; border: 1px solid var(--danger); border-radius: 12px;
+  background: color-mix(in oklch, var(--danger) 7%, var(--panel-2));
+}
+.learner-catalog-error strong { color: var(--ink); }
+.learner-catalog-error p { margin: 6px 0 14px; }
+.learner-left-card {
+  margin-block: clamp(26px, 9vh, 96px); padding: clamp(26px, 5vw, 54px);
+  border: 1px solid var(--line); border-radius: 18px; background: var(--panel-2);
+}
+.learner-left-card .learner-destination-actions { width: auto; margin-inline: 0; }
+.learner-leave-note {
+  margin: 22px 0 0; padding-top: 17px; border-top: 1px solid var(--line);
+  color: var(--muted); font: 12px/1.45 var(--font-ui);
+}
+
+@media (max-width: 700px) {
+  .atlas-learner-destination { padding: 24px 18px; }
+  .learner-topic-grid { grid-template-columns: minmax(0, 1fr); }
+  .learner-topic-card { min-height: 190px; }
+  .atlas-learner-toolbar-navigation { padding-right: 7px; }
+  .atlas-learner-topics-button { padding-inline: 7px; }
+}
+
+/* Learning stays inside the ordinary workspace dock. Opening a refresher may
+   navigate elsewhere, but the canvas and conversation remain the primary
+   session and the return URL points back to this exact page. */
+.learning-pane { min-height: 0; }
+.learning-view {
+  min-height: 0; overflow-y: auto; padding: 14px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.learning-workspace-intro {
+  padding: 13px 14px; border: 1px solid color-mix(in oklch, var(--agent) 42%, var(--line));
+  border-radius: 10px; background: color-mix(in oklch, var(--agent) 7%, var(--panel-2));
+}
+.learning-workspace-copy,
+.learning-empty,
+.learning-recent-summary,
+.learning-request-status {
+  margin: 0; color: var(--muted); font: 12px/1.5 var(--font-ui);
+}
+.learning-request-form {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 9px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--line);
+}
+.learning-request-label {
+  display: grid; gap: 6px; min-width: 0;
+  color: var(--ink); font: 650 12px/1.3 var(--font-ui);
+}
+.learning-request-input {
+  width: 100%; min-height: 36px; padding: 7px 9px;
+  border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--canvas); color: var(--ink); font: 12px/1.3 var(--font-ui);
+}
+.learning-request-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.learning-request-status { grid-column: 1 / -1; min-height: 18px; }
+.learning-recents-title {
+  margin: 0 0 10px; color: var(--ink); font: 680 13px/1.25 var(--font-ui);
+}
+.learning-recent-list { display: grid; gap: 9px; }
+.learning-recent-card {
+  display: grid; gap: 12px; padding: 13px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2);
+}
+.learning-recent-name { margin: 0; color: var(--ink); font: 660 13px/1.3 var(--font-ui); }
+.learning-recent-summary { margin-top: 5px; }
+.learning-recent-actions { display: flex; align-items: center; gap: 7px; }
+.learning-recent-actions .explanation-control.quiet { margin-left: 0; }
+
+@media (max-width: 460px) {
+  .learning-request-form { grid-template-columns: minmax(0, 1fr); }
+  .learning-request-status { grid-column: 1; }
+}
+
+/* What changed while the human was not looking.
+   The mirror of the agent's CHANGED SINCE YOUR LAST READ section: same
+   sentences, same comparison, addressed to the other reader. Top right so it
+   does not sit under the drawing tools, and collapsed by default so a busy
+   page announces itself in one line rather than a wall. */
+.atlas-changes {
+  /* Below the toolbar row, not across it: the tools stay reachable while the
+     panel is open, and an announcement that covers the pen is a worse trade
+     than one that sits under it. */
+  width: min(320px, calc(100% - 28px));
+  /* A third of the pane at most. Percentages resolve against the pane
+     because this is positioned inside it, which is the whole reason the cap
+     lives here and not on the list. */
+  max-height: min(33%, 300px);
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px; border: 1px solid var(--accent); border-radius: 10px;
+  background: rgba(10, 15, 26, 0.92);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .38);
+}
+
+.atlas-changes-summary {
+  appearance: none; border: 0; background: none; cursor: pointer;
+  text-align: left; padding: 2px 2px 2px 18px; position: relative;
+  color: var(--accent);
+  font: 600 12px/1.35 ui-sans-serif, system-ui, sans-serif;
+}
+
+.atlas-changes-summary::before {
+  content: "▸"; position: absolute; left: 4px;
+  transition: transform 120ms ease-out;
+}
+
+.atlas-changes-summary[aria-expanded="true"]::before { transform: rotate(90deg); }
+
+.atlas-changes-list {
+  display: flex; flex-direction: column; gap: 4px;
+  /* Bounded by the panel, which is bounded by the pane. It used to be 46vh,
+     which is a share of the WINDOW: on a short pane that was most of the
+     canvas, so the announcement covered the picture it was announcing. */
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+}
+
+/* Too narrow to carry an open list without covering the canvas. The width
+   rule in `panelFitsBesideTheCanvas` keeps it collapsed on arrival; this
+   keeps it small if a human opens it anyway. */
+.atlas-changes.cramped { width: min(240px, calc(100% - 28px)); }
+.atlas-changes.cramped .atlas-changes-list { max-height: min(25%, 160px); }
+
+.atlas-change {
+  appearance: none; text-align: left; cursor: default;
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03); color: #e6ecf7;
+  font: 400 12px/1.4 ui-sans-serif, system-ui, sans-serif;
+}
+
+button.atlas-change { cursor: pointer; }
+button.atlas-change:hover,
+button.atlas-change:focus-visible { border-color: var(--accent); }
+
+.atlas-changes-seen { align-self: flex-start; }
+
+/* Agent Ink is a deliberate learning instrument, not permanent canvas
+   chrome. Its summary stays discoverable while the full controls open only
+   when someone is changing the explanation. */
+.agent-ink-panel {
+  width: min(310px, calc(100% - 28px));
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); color: var(--ink);
+  box-shadow: 0 10px 30px oklch(5% 0.02 255 / .35);
+  overflow: hidden;
+}
+.agent-ink-summary {
+  min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 7px 10px; list-style: none; cursor: pointer;
+}
+.agent-ink-summary::-webkit-details-marker { display: none; }
+.agent-ink-summary::before {
+  content: "▸"; color: var(--accent); transition: transform 160ms cubic-bezier(.22, 1, .36, 1);
+}
+.agent-ink-panel[open] > .agent-ink-summary::before { transform: rotate(90deg); }
+.agent-ink-summary:hover { background: var(--panel-raised); }
+.agent-ink-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.agent-ink-body {
+  max-height: min(52vh, 430px); overflow: auto;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 8px 10px 10px; border-top: 1px solid var(--line);
+}
+.agent-ink-title {
+  margin-right: auto; color: var(--ink); font: 650 12px/1.35 var(--font-ui);
+}
+.agent-ink-meta { color: var(--muted); font: 12px/1 var(--font-mono); }
+.agent-ink-list {
+  display: flex; flex-direction: column; gap: 4px;
+}
+/* A name like "distance past the barrier" is the normal case, not the edge
+   case, and a solved value carries every digit the solver produced. Fight both
+   onto one line and the name column collapses to one character per row. So the
+   name gets its own full-width line and the value sits under it beside the
+   owner state, which holds up at any name length. */
+.agent-ink-row {
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline;
+  column-gap: 8px; row-gap: 2px;
+  padding: 4px 6px; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--panel-2);
+  font: 400 12px/1.4 var(--font-ui); color: var(--ink);
+}
+.agent-ink-name {
+  grid-column: 1 / -1; overflow-wrap: anywhere; color: var(--muted);
+}
+.agent-ink-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.agent-ink-value-input {
+  width: 74px; padding: 2px 5px; border: 1px solid var(--line); border-radius: 5px;
+  background: var(--canvas); color: var(--ink);
+  font: 400 12px/1.3 var(--font-mono); font-variant-numeric: tabular-nums;
+}
+.agent-ink-value-input:focus-visible { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
+.agent-ink-state {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+}
+.agent-ink-state-free, .agent-ink-state-derived { font-style: italic; }
+.agent-ink-scrub { display: flex; flex-direction: column; gap: 3px; }
+.agent-ink-scrub-label {
+  color: var(--muted); font: 12px/1.3 var(--font-mono);
+}
+.agent-ink-scrub-input { width: 100%; }
+.agent-ink-computed {
+  border-top: 1px solid var(--line); padding-top: 7px;
+}
+.agent-ink-computed-summary {
+  list-style: none; cursor: pointer; color: var(--muted);
+  font: 600 12px/1.3 var(--font-ui);
+}
+.agent-ink-computed-summary::-webkit-details-marker { display: none; }
+.agent-ink-computed-summary::before { content: "+"; display: inline-block; width: 14px; color: var(--accent); }
+.agent-ink-computed[open] > .agent-ink-computed-summary::before { content: "−"; }
+.agent-ink-computed .agent-ink-list { margin-top: 6px; }
+.agent-ink-promote { margin-top: 4px; }
+.agent-ink-promote-button {
+  width: 100%; min-height: 34px; padding: 6px 8px; border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  background: transparent; color: var(--accent); font: 600 12px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.agent-ink-promote-button:hover { background: var(--accent); color: var(--bg); }
+.agent-ink-promote-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.agent-ink-promote-button:disabled { opacity: .5; cursor: default; }
+
+/* ── claims and challenge ─────────────────────────────────────────────
+   A claim is the agent's, a verdict is the human's. A node with an open or
+   rejected claim is under challenge and wears the human colour; a node whose
+   claims are all accepted is settled and wears the agreed green. Withdrawn
+   claims stay as history, struck through. */
+.node[data-challenge="open"], .atlas-frame[data-challenge="open"] {
+  outline: 2px solid var(--human);
+  outline-offset: 2px;
+}
+.node[data-challenge="settled"], .atlas-frame[data-challenge="settled"] {
+  outline: 1px solid #3ddc97;
+  outline-offset: 2px;
+}
+.challenge-badge {
+  font: 12px/1.2 ui-monospace, Menlo, monospace;
+  border-radius: 999px; padding: 2px 7px; margin-left: auto;
+  border: 1px solid var(--human); color: var(--human);
+  background: rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+}
+.challenge-badge[data-challenge="settled"] { border-color: #3ddc97; color: #3ddc97; }
+.atlas-frame-title .challenge-badge { pointer-events: auto; }
+.node-claims, .atlas-frame-claims {
+  margin-top: 8px; display: flex; flex-direction: column; gap: 6px;
+}
+.atlas-frame-claims {
+  position: absolute; left: 10px; top: 52px;
+  max-width: min(420px, calc(100% - 20px));
+  pointer-events: auto;
+}
+.claim-row {
+  border: 1px solid var(--line); border-left: 1px solid var(--agent);
+  border-radius: 8px; padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.18);
+  font: 12px/1.4 var(--font-ui);
+}
+.claim-row[data-verdict="accepted"] { border-left-color: #3ddc97; }
+.claim-row[data-verdict="rejected"] { border-left-color: var(--danger); }
+.claim-row[data-verdict="withdrawn"] { opacity: 0.5; }
+.claim-row[data-verdict="withdrawn"] .claim-text { text-decoration: line-through; }
+.claim-head {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font: 12px/1.3 ui-monospace, Menlo, monospace;
+}
+.claim-basis {
+  border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.claim-row[data-basis="verified"] .claim-basis { border-color: #3ddc97; color: #3ddc97; }
+.claim-row[data-basis="inferred"] .claim-basis { border-color: var(--accent); color: var(--accent); }
+.claim-row[data-basis="assumed"] .claim-basis { border-color: #f0b455; color: #f0b455; }
+.claim-row[data-basis="unknown"] .claim-basis { border-color: var(--danger); color: var(--danger); }
+.claim-source {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; color: var(--accent); overflow-wrap: anywhere;
+}
+.claim-source:hover { text-decoration: underline; }
+.claim-verdict { margin-left: auto; color: var(--muted, #94a3b8); }
+.claim-row[data-verdict="accepted"] .claim-verdict { color: #3ddc97; }
+.claim-row[data-verdict="rejected"] .claim-verdict { color: var(--danger); }
+.claim-text { margin-top: 4px; overflow-wrap: anywhere; }
+.claim-actions { display: flex; gap: 6px; margin-top: 6px; }
+.claim-action {
+  font: 12px/1.2 inherit; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px;
+  background: var(--panel); color: inherit;
+}
+.claim-action[data-verdict="accepted"]:hover { border-color: #3ddc97; color: #3ddc97; }
+.claim-action[data-verdict="rejected"]:hover { border-color: var(--danger); color: var(--danger); }
+.claim-marks { margin-top: 6px; }
+
+/* Polish: the card carries a loud badge and one line per live claim; the
+   Inspect panel carries the full rows. */
+.challenge-badge {
+  font: 700 12px/1.2 var(--font-mono);
+  padding: 3px 9px; margin: 0 6px 0 0;
+  background: var(--human); color: #12121a; border-color: var(--human);
+}
+.challenge-badge[data-challenge="settled"] { background: #3ddc97; color: #0f1f18; border-color: #3ddc97; }
+.node-head { flex-wrap: wrap; row-gap: 4px; }
+.claim-line {
+  display: flex; align-items: baseline; gap: 6px;
+  font: 12px/1.35 var(--font-ui); color: var(--muted);
+  padding-left: 6px; border-left: 2px solid var(--agent);
+}
+.claim-line[data-verdict="accepted"] { border-left-color: #3ddc97; }
+.claim-line[data-verdict="rejected"] { border-left-color: var(--danger); color: var(--danger); }
+.claim-line .claim-basis { flex: none; font-size: 12px; }
+.claim-line-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.node-claims, .atlas-frame-claims { gap: 3px; }
+.atlas-frame-claims { top: 30px; }
+.inspector-claims { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.inspector-claims h3 { margin: 0; font: 600 12px/1.3 var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.claim-summary { margin: 0; font: 12px/1.4 var(--font-mono); color: var(--human); }
+.inspector-claims[data-challenge="settled"] .claim-summary { color: #3ddc97; }
+.inspector-claims .claim-row { font-size: 13px; }
+.hidden-inside {
+  padding-top: 12px; border-top: 1px solid var(--line-strong);
+}
+.hidden-inside h3 { color: var(--human); }
+.hidden-claim-group { display: flex; flex-direction: column; gap: 6px; }
+.hidden-claim-group h4 {
+  margin: 2px 0 0; color: var(--ink);
+  font: 650 12px/1.3 var(--font-ui);
+}
+.claim-mark { margin-top: 6px; padding-left: 8px; border-left: 2px solid var(--human); font-size: 12px; }
+.challenge-button { border-color: var(--human); color: var(--human); }
+.node-head .challenge-badge { flex-basis: 100%; align-self: flex-start; width: max-content; margin: 0 0 2px; }
+.claim-line { flex-wrap: wrap; row-gap: 2px; }
+.claim-line-text { white-space: normal; flex-basis: 100%; overflow-wrap: anywhere; }
+.atlas-frame-claims { top: auto; bottom: 8px; left: 10px; }
+.atlas-frame-claims .claim-line { flex-wrap: nowrap; min-height: 16px; }
+.atlas-frame-claims .claim-line-text { flex-basis: auto; white-space: nowrap; }
+
+.atlas-edge-label.atlas-edge-measure {
+  position: absolute; visibility: hidden; pointer-events: none;
+  width: max-content; max-width: 300px; height: auto;
+  top: 0; left: 0;
+}
+/* Page validation is a persistent, inspectable result in the shared header. */
+/* flex-shrink: 0 because its summary is deliberately nowrap (a status word
+   should not wrap mid-sentence); without this the header's flexible items
+   (widened since the Explain/Map/Cement strip and the legend toggle joined
+   them) could shrink this box narrower than that nowrap text, which reads
+   as the text overflowing its own container rather than wrapping. */
+.page-validation { position: relative; margin-right: 12px; font-size: 12px; flex-shrink: 0; }
+
+/* `.project-facts` itself (architecture-compare.css) now wraps instead of
+   ellipsizing for the same reason; see that file. This just keeps it from
+   growing unreasonably wide once it can wrap. */
+.project-facts { max-width: 200px; }
+.page-validation summary { cursor: pointer; color: #a7b4c7; white-space: nowrap; }
+.page-validation[data-status="failed"] summary { color: #ffb7ad; }
+.page-validation[data-status="passed"] summary { color: #8fcbb7; }
+.page-validation-body { position: absolute; top: 28px; right: 0; width: min(420px, 80vw); max-height: 55vh; overflow: auto; padding: 12px 16px; background: #17212d; border: 1px solid #526078; border-radius: 8px; box-shadow: 0 8px 30px #0008; z-index: 120; color: #e2e8f0; }
+.page-validation-body p { margin: 6px 0; line-height: 1.5; overflow-wrap: anywhere; }

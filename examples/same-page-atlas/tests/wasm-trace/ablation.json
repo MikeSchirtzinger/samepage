@@ -1,0 +1,51 @@
+{
+  "schema": "same-page-wasm-trace-ablation-v1",
+  "measured_at": "2026-09-03T15:43:07-04:00",
+  "baseline": {
+    "wasm_bytes": 1194613,
+    "wasm_sha256": "ace7329814ba164aabc296f16a28706d8c9eea4a54ea7790f38bb30a4de39a92"
+  },
+  "custom_trace_only": {
+    "wasm_bytes": 1254596,
+    "wasm_sha256": "554a51834b696e45e8c0edf02e21dcb36cb44e17e297b11e617eb7f6d961ac2f",
+    "delta_from_baseline_bytes": 59983,
+    "delta_from_baseline_percent": 5.021123995804499
+  },
+  "custom_trace_with_user_timing": {
+    "wasm_bytes": 1267680,
+    "wasm_sha256": "25167edddaf62b4dc3136d2aeb347431e1e842122fa058396916fa4381f1407b",
+    "delta_from_baseline_bytes": 73067,
+    "delta_from_baseline_percent": 6.116374089349438
+  },
+  "user_timing_increment": {
+    "wasm_bytes": 13084,
+    "percent_of_custom_trace_only": 1.0428855185254855
+  },
+  "browser_microbenchmark": {
+    "browser": "Chrome/152.0.7977.65",
+    "iterations_per_sample": 1024,
+    "samples": 5,
+    "timer_resolution_ms": 0.1,
+    "custom_trace_only": {
+      "disabled_ms": [0, 0, 0, 0, 0],
+      "enabled_ms": [7, 5.100000023841858, 4.400000095367432, 4.300000071525574, 4.599999904632568],
+      "enabled_median_ms": 4.599999904632568,
+      "overhead_us_per_iteration": 4.4921874068677425,
+      "user_timing_measures": 0
+    },
+    "custom_trace_with_user_timing": {
+      "disabled_ms": [0, 0, 0, 0, 0],
+      "enabled_ms": [19.199999928474426, 14.800000071525574, 13.599999904632568, 12.100000023841858, 11.699999928474426],
+      "enabled_median_ms": 13.599999904632568,
+      "overhead_us_per_iteration": 13.281249906867743
+    },
+    "user_timing_increment_us_per_iteration": 8.7890625,
+    "full_to_custom_overhead_ratio": 2.956521779693143,
+    "limitation": "The disabled median was below browser timer resolution. This is a tracing microbenchmark, not end-user latency."
+  },
+  "commands": {
+    "baseline": "examples/same-page-atlas/build-web.sh, then stat and shasum -a 256",
+    "custom_trace_only": "examples/same-page-atlas/build-web.sh, then stat and shasum -a 256",
+    "custom_trace_with_user_timing": "AGUI_ATLAS_USER_TIMING=1 examples/same-page-atlas/build-web.sh, then stat and shasum -a 256"
+  }
+}

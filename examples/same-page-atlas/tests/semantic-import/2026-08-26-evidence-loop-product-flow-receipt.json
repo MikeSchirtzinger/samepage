@@ -1,0 +1,149 @@
+{
+  "schema": "atlas-evidence-loop-product-flow/v1",
+  "recorded_at": "2026-08-27T00:40:17.698753Z",
+  "command": "dev/atlas-evidence-loop",
+  "manifest": "dev/atlas-experiment-lib/experiments/same-page-atlas-evidence-loop.json",
+  "driver": "dev/atlas-experiment-lib/drivers/same-page-atlas-evidence-loop.mjs",
+  "run": {
+    "id": "same-page-atlas-evidence-loop-20260826T203957-in36_ki2",
+    "receipt_path": ".local/atlas-experiment/same-page-atlas-evidence-loop-20260826T203957-in36_ki2/receipt.json",
+    "receipt_sha256": "2710541e0309fac5fa2d3e6e6f99e797dd29d0d54327814cc89729ab938ed52c",
+    "status": "pass",
+    "total_ms": 20611.252,
+    "baseline_run_id": "same-page-atlas-evidence-loop-20260826T203929-0mhgk5rq",
+    "baseline_receipt_sha256": "4b5f5b37d876d29f4852f3b7c0f41b2a6f172a0c12c0818105d951cee486497c",
+    "classifications": {
+      "gate:agent-harness": "unchanged-pass",
+      "gate:browser-product-contract": "unchanged-pass",
+      "gate:browser-wasm-build": "unchanged-pass",
+      "gate:core-human-mask-source-controls": "unchanged-pass",
+      "gate:picker-unit-contract": "unchanged-pass",
+      "gate:segmentation-contract-drift": "unchanged-pass",
+      "phase:human-segments-agent-motion": "unchanged-pass",
+      "phase:restart-persistence": "unchanged-pass"
+    }
+  },
+  "source": {
+    "id": "evidence-loop-stages-v1",
+    "url": "/assets/evidence-loop-infographic.png",
+    "sha256": "c202a6867f401f943266da0587fdf3ab6925ebc81891edfe862ab6729ee19442",
+    "size": [1536, 1024],
+    "contract_sha256": "1cdc87b4d699ce693fc91003f4ac592d996e3f99a8d03fbc00725dfd2e183522"
+  },
+  "real_worker": {
+    "model_id": "mobilesam-vit-t",
+    "backend_requested": "webgpu",
+    "adapter": {
+      "vendor": "apple",
+      "architecture": "metal-3"
+    },
+    "adapter_bound_to_runtime": true,
+    "device_acquired": true,
+    "alternate_provider_configured": false,
+    "execution_location": "browser-worker",
+    "fallback_used": false,
+    "mock_used": false,
+    "encoder_sha256": "d80de6055095e7ba5551e6c15aaa8981b05dca77d6ae77ee82e51e2746a87e3d",
+    "decoder_sha256": "a21b65b6e1b75e2c6265b36835747a0ab9169ec1ed725139a78ce90297f95126"
+  },
+  "human_segments": {
+    "root": {
+      "label": "Evidence Loop",
+      "id": "001cd38a952bf6e4-00000000",
+      "source_point": [738, 483],
+      "mask_source_box": [733, 450, 760, 485],
+      "mask_area_pixels": 815,
+      "decode_ms": 70.69999999925494
+    },
+    "observe": {
+      "label": "Observe",
+      "id": "001cd38a952bf6e4-00000001",
+      "source_point": [738, 140],
+      "mask_source_box": [621, 19, 916, 204],
+      "mask_area_pixels": 18646,
+      "decode_ms": 53.79999999888241
+    },
+    "segment": {
+      "label": "Segment",
+      "id": "001cd38a952bf6e4-00000002",
+      "source_point": [1147, 463],
+      "mask_source_box": [1105, 404, 1152, 537],
+      "mask_area_pixels": 5203,
+      "decode_ms": 45.59999999962747
+    },
+    "act": {
+      "label": "Act",
+      "id": "001cd38a952bf6e4-00000003",
+      "source_point": [738, 822],
+      "mask_source_box": [607, 683, 930, 991],
+      "mask_area_pixels": 82844,
+      "decode_ms": 49.59999999962747
+    },
+    "verify": {
+      "label": "Verify",
+      "id": "001cd38a952bf6e4-00000004",
+      "source_point": [338, 463],
+      "mask_source_box": [260, 379, 448, 628],
+      "mask_area_pixels": 25805,
+      "decode_ms": 48.90000000037253
+    },
+    "all_pointer_events_trusted": true,
+    "all_materialized": true,
+    "all_created_by_human": true
+  },
+  "motion": {
+    "label": "Evidence moves clockwise",
+    "backend": "authenticated-mcp",
+    "target_count": 5,
+    "saved_positions_unchanged": true,
+    "browser_animation_sample_count": 6,
+    "running_animation_count": 5,
+    "all_targets_changed_transform": true,
+    "selection_clear_key_trusted": true
+  },
+  "negative_control": {
+    "target": "not-a-real-segment",
+    "refused": true,
+    "accepted_motion_unchanged": true
+  },
+  "browser_diagnostics": {
+    "worker_attachments": 1,
+    "runtime_exceptions": 0,
+    "network_failures": 0,
+    "unexpected_console_errors": 0,
+    "unexpected_log_errors": 0,
+    "known_ort_provider_warning_events": 4,
+    "known_favicon_404_events": 1,
+    "segment_errors": []
+  },
+  "persistence": {
+    "real_host_restart": true,
+    "same_stable_ids": true,
+    "stored_motion_label": "Evidence moves clockwise",
+    "running_animation_count": 5,
+    "host_browser_equal": true,
+    "segment_errors": []
+  },
+  "screenshots": [
+    {
+      "path": ".local/atlas-experiment/same-page-atlas-evidence-loop-20260826T203957-in36_ki2/phase-01-human-segments-agent-motion/04-segmented-infographic.png",
+      "sha256": "c37edda9e24ee174604559f9a41d263d4a8b2b4428b043dd51ad473757d5eb67"
+    },
+    {
+      "path": ".local/atlas-experiment/same-page-atlas-evidence-loop-20260826T203957-in36_ki2/phase-01-human-segments-agent-motion/05-animation-frame-a.png",
+      "sha256": "594618c8b9dbcc18fa82db79ad28d181c56311044a0e8a1ec59310031041a649"
+    },
+    {
+      "path": ".local/atlas-experiment/same-page-atlas-evidence-loop-20260826T203957-in36_ki2/phase-01-human-segments-agent-motion/06-animation-frame-b.png",
+      "sha256": "9d881ed3a53bd3052a063eaa377ff78e932291a5379be761c22ec9823c1b767a"
+    },
+    {
+      "path": ".local/atlas-experiment/same-page-atlas-evidence-loop-20260826T203957-in36_ki2/phase-02-restart-persistence/00-persisted-animation.png",
+      "sha256": "8f4ce78543338cd7bab3f70f8436902b27c08c0074d36e260a66002ef0943454"
+    }
+  ],
+  "proof_boundary": {
+    "proves": "real trusted browser selection, real MobileSAM Worker masks, pinned WebGPU request and adapter binding, human CRDT authorship, backend MCP motion, visible browser animation, refusal atomicity, persistence, and replica equality",
+    "does_not_prove": "ground-truth semantic accuracy for MobileSAM masks or that every ONNX graph node executed on the GPU"
+  }
+}

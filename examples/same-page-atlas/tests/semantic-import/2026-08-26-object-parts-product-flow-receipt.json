@@ -1,0 +1,108 @@
+{
+  "schema": "atlas-object-parts-product-flow/v1",
+  "status": "PASS",
+  "measured_at": "2026-08-26",
+  "surface": {
+    "url": "http://127.0.0.1:8098/",
+    "browser": "real Chrome over direct CDP",
+    "schema_version": 7,
+    "host_schema_version": 7,
+    "wasm_schema_version": 7
+  },
+  "selection_entry": {
+    "explicit_add_mask_control": true,
+    "picker_stayed_closed_after_cold_restart": true,
+    "single_click_point_toggle": {
+      "point_count_after_add": 1,
+      "selection_after_add": true,
+      "point_count_after_second_click": 0,
+      "selection_after_second_click": false
+    },
+    "trusted_double_click_point_toggle": {
+      "point_count_after_double_click": 0,
+      "selection_after_double_click": false,
+      "picker_state": "ready"
+    }
+  },
+  "root_object": {
+    "id": "00140e0bede9ac35-00000000",
+    "label": "Owl body",
+    "parent_id": null,
+    "source_points": [[768, 617]],
+    "source_mask_box": [544, 225, 992, 816],
+    "source_mask_area_pixels": 179550,
+    "predicted_iou_raw": 0.9371851682662964,
+    "position_before_group_drag": [333.732385786802, 53.58],
+    "position_after_group_drag": [364.0, 69.0],
+    "trusted_group_drag_delta": [30.267614213197987, 15.420000000000002],
+    "pivot_after_trusted_control": [0.5, 1.0],
+    "animation_after_trusted_control": "rock"
+  },
+  "part_object": {
+    "id": "000c81e8d163d480-00000000",
+    "label": "Left flight wing",
+    "parent_id": "00140e0bede9ac35-00000000",
+    "source_points": [[619, 572]],
+    "source_mask_box": [544, 437, 665, 755],
+    "source_mask_area_pixels": 24168,
+    "predicted_iou_raw": 0.95475971698761,
+    "position_before_group_drag": [333.732385786802, 116.29756345177664],
+    "position_after_group_drag": [364.0, 131.71756345177664],
+    "trusted_group_drag_delta": [30.267614213197987, 15.420000000000002]
+  },
+  "execution": {
+    "model_id": "mobilesam-vit-t",
+    "encoder_sha256": "d80de6055095e7ba5551e6c15aaa8981b05dca77d6ae77ee82e51e2746a87e3d",
+    "decoder_sha256": "a21b65b6e1b75e2c6265b36835747a0ab9169ec1ed725139a78ce90297f95126",
+    "requested_provider": "webgpu",
+    "adapter": {
+      "vendor": "apple",
+      "architecture": "metal-3"
+    },
+    "execution_location": "browser-worker",
+    "alternate_provider_configured": false,
+    "fallback_used": false,
+    "mock_used": false
+  },
+  "inline_node_editor": {
+    "nonempty_click_away_created_nodes": 1,
+    "empty_click_away_created_nodes": 0,
+    "test_node_removed_after_proof": true
+  },
+  "persistence": {
+    "cold_host_restart": true,
+    "stable_ids_preserved": true,
+    "labels_preserved": true,
+    "hierarchy_preserved": true,
+    "group_positions_preserved": true,
+    "pivot_preserved": true,
+    "animation_preserved": true,
+    "browser_runtime_errors": 0
+  },
+  "visual_evidence": {
+    "path": ".local/product-flow/screenshots/final-object-parts-flow.png",
+    "sha256": "fc451e1438d8a449358d7597eda745b27dfe194d774c75169aae4746e8274ef3",
+    "bytes": 398120
+  },
+  "validation": {
+    "same_page_atlas_core_tests": 221,
+    "same_page_atlas_host_tests": 144,
+    "javascript_picker_contract": "PASS",
+    "rustfmt": "PASS",
+    "host_and_core_clippy_warnings_denied": "PASS",
+    "wasm_clippy_warnings_denied": "PASS",
+    "wasm_build": "PASS",
+    "segmentation_contract_drift_check": "PASS",
+    "agent_harness": "PASS",
+    "nonnegotiable_propagation": "PASS",
+    "credo_hard_violations": 0
+  },
+  "boundaries": [
+    "The object hierarchy is deliberately one root level with mask parts beneath it.",
+    "Motion pivots are five bounded 2D presets. This is not a 3D axis editor or modeling surface.",
+    "WebGPU is the only configured execution provider, but per-node GPU execution is not proven.",
+    "Mask agreement and visual inspection are not annotated semantic-accuracy evidence.",
+    "Gate 5 remains FROZEN_NOT_RUN."
+  ],
+  "verdict": "ATLAS_OBJECT_PARTS_PRODUCT_FLOW_PASS"
+}

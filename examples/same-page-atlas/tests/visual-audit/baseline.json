@@ -1,0 +1,350 @@
+[
+  {
+    "url": "http://127.0.0.1:8174/",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "findings": [
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "main.page-grid.dock-collapsed clips a positioned child"
+      },
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "section.atlas-pane clips a positioned child"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 32px shadow blur"
+      },
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "div.atlas-view clips a positioned child"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 24px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 24px shadow blur"
+      },
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "div.minimap-canvas clips a positioned child"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 32px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 32px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 36px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 36px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 80px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 36px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 50px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 50px shadow blur"
+      }
+    ]
+  },
+  {
+    "url": "http://127.0.0.1:8174/",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "findings": [
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "main.page-grid.dock-collapsed clips a positioned child"
+      },
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "section.atlas-pane clips a positioned child"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 32px shadow blur"
+      },
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "div.atlas-view clips a positioned child"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 24px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 24px shadow blur"
+      },
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "div.minimap.docked.collapsed clips a positioned child"
+      },
+      {
+        "antipattern": "clipped-overflow-container",
+        "name": "Positioned child clipped by overflow container",
+        "description": "A clipping container (overflow hidden or clip) wrapping an absolutely-positioned child cuts off tooltips, menus, and popovers that need to escape. Let the overflow be visible, or move the positioned layer out of the clip.",
+        "severity": "warning",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "div.minimap-canvas clips a positioned child"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 32px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 32px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 36px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 36px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 80px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 45px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 36px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 50px shadow blur"
+      },
+      {
+        "antipattern": "gpt-thin-border-wide-shadow",
+        "name": "Hairline border with wide shadow",
+        "description": "A hairline border paired with a wide, diffuse shadow is a recurring generated-UI signature. Commit to one \u2014 a defined edge or a soft elevation \u2014 rather than both at once.",
+        "severity": "advisory",
+        "category": "slop",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "1px border + 50px shadow blur"
+      },
+      {
+        "antipattern": "content-hidden-at-rest",
+        "name": "Content invisible at rest",
+        "description": "A large share of the page text sits at opacity 0 or visibility hidden even after every reveal handler had a chance to run. This is the failed-reveal signature: the content shipped but never becomes visible. Make content visible by default and let JavaScript enhance its entrance instead of gating its existence.",
+        "severity": "error",
+        "category": "quality",
+        "file": "http://127.0.0.1:8174/",
+        "line": 0,
+        "snippet": "43% of page text (508 of 1168 chars) stays at opacity 0 / visibility hidden after reveal handlers ran (e.g. \"asks for work\")"
+      }
+    ]
+  }
+]

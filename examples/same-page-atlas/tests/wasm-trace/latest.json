@@ -1,0 +1,4479 @@
+{
+  "schema": "same-page-wasm-trace-receipt-v1",
+  "measured_at": "2026-09-03T19:43:44.491Z",
+  "baseline": {
+    "wasm_bytes": 1194613,
+    "wasm_sha256": "ace7329814ba164aabc296f16a28706d8c9eea4a54ea7790f38bb30a4de39a92",
+    "command": "examples/same-page-atlas/build-web.sh, then stat and shasum -a 256"
+  },
+  "candidate": {
+    "wasm_bytes": 1267680,
+    "wasm_sha256": "25167edddaf62b4dc3136d2aeb347431e1e842122fa058396916fa4381f1407b",
+    "delta_bytes": 73067
+  },
+  "browser": {
+    "version": "Chrome/152.0.7977.65",
+    "url": "http://127.0.0.1:8101",
+    "ready": true,
+    "title": "Same Page Atlas · AG-UI",
+    "view_children": 13,
+    "trace_api": "object"
+  },
+  "snapshot_trace": {
+    "schema": "same-page-trace-v1",
+    "capacity": 256,
+    "emitted": 7,
+    "dropped": 0,
+    "records": [
+      {
+        "sequence": 1,
+        "kind": "span_open",
+        "trace_id": 1,
+        "span_id": 1,
+        "parent_span_id": null,
+        "name": "atlas.snapshot",
+        "target": "same_page_atlas_web",
+        "level": "INFO",
+        "at_ms": 1788464623999,
+        "duration_ms": null,
+        "fields": {
+          "operation": "snapshot"
+        }
+      },
+      {
+        "sequence": 2,
+        "kind": "span_open",
+        "trace_id": 1,
+        "span_id": 2,
+        "parent_span_id": 1,
+        "name": "atlas.read",
+        "target": "same_page_atlas_web",
+        "level": "INFO",
+        "at_ms": 1788464623999,
+        "duration_ms": null,
+        "fields": {
+          "source": "browser_crdt"
+        }
+      },
+      {
+        "sequence": 3,
+        "kind": "event",
+        "trace_id": 1,
+        "span_id": 0,
+        "parent_span_id": 2,
+        "name": "event examples/same-page-atlas/web/src/lib.rs:367",
+        "target": "same_page_atlas_web",
+        "level": "INFO",
+        "at_ms": 1788464623999,
+        "duration_ms": null,
+        "fields": {
+          "event": "atlas.snapshot.ready",
+          "node_count": 0,
+          "surface": "same-page-atlas",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4,
+        "kind": "span_exit",
+        "trace_id": 1,
+        "span_id": 2,
+        "parent_span_id": 1,
+        "name": "atlas.read",
+        "target": "same_page_atlas_web",
+        "level": "INFO",
+        "at_ms": 1788464623999,
+        "duration_ms": 0,
+        "fields": {
+          "source": "browser_crdt"
+        }
+      },
+      {
+        "sequence": 5,
+        "kind": "span_close",
+        "trace_id": 1,
+        "span_id": 2,
+        "parent_span_id": 1,
+        "name": "atlas.read",
+        "target": "same_page_atlas_web",
+        "level": "INFO",
+        "at_ms": 1788464623999,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "source": "browser_crdt"
+        }
+      },
+      {
+        "sequence": 6,
+        "kind": "span_exit",
+        "trace_id": 1,
+        "span_id": 1,
+        "parent_span_id": null,
+        "name": "atlas.snapshot",
+        "target": "same_page_atlas_web",
+        "level": "INFO",
+        "at_ms": 1788464623999,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "operation": "snapshot"
+        }
+      },
+      {
+        "sequence": 7,
+        "kind": "span_close",
+        "trace_id": 1,
+        "span_id": 1,
+        "parent_span_id": null,
+        "name": "atlas.snapshot",
+        "target": "same_page_atlas_web",
+        "level": "INFO",
+        "at_ms": 1788464623999,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "operation": "snapshot"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "measures": [
+      {
+        "name": "INFO same_page_atlas_web ",
+        "duration": 0,
+        "startTime": 629.8000000715256
+      },
+      {
+        "name": "\"atlas.read\" same_page_atlas_web ",
+        "duration": 0,
+        "startTime": 629.8000000715256
+      },
+      {
+        "name": "\"atlas.snapshot\" same_page_atlas_web ",
+        "duration": 0.10000002384185791,
+        "startTime": 629.8000000715256
+      }
+    ]
+  },
+  "benchmark": {
+    "samples": 5,
+    "iterations": 1024,
+    "disabled_ms": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "enabled_ms": [
+      19.199999928474426,
+      14.800000071525574,
+      13.599999904632568,
+      12.100000023841858,
+      11.699999928474426
+    ],
+    "disabled_median_ms": 0,
+    "enabled_median_ms": 13.599999904632568,
+    "overhead_median_ms": 13.599999904632568,
+    "overhead_us_per_iteration": 13.281249906867743
+  },
+  "overflow_trace": {
+    "schema": "same-page-trace-v1",
+    "capacity": 256,
+    "emitted": 4096,
+    "dropped": 3840,
+    "records": [
+      {
+        "sequence": 3841,
+        "kind": "span_open",
+        "trace_id": 961,
+        "span_id": 961,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 960
+        }
+      },
+      {
+        "sequence": 3842,
+        "kind": "event",
+        "trace_id": 961,
+        "span_id": 0,
+        "parent_span_id": 961,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14299680,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3843,
+        "kind": "span_exit",
+        "trace_id": 961,
+        "span_id": 961,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 960
+        }
+      },
+      {
+        "sequence": 3844,
+        "kind": "span_close",
+        "trace_id": 961,
+        "span_id": 961,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 960
+        }
+      },
+      {
+        "sequence": 3845,
+        "kind": "span_open",
+        "trace_id": 962,
+        "span_id": 962,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 961
+        }
+      },
+      {
+        "sequence": 3846,
+        "kind": "event",
+        "trace_id": 962,
+        "span_id": 0,
+        "parent_span_id": 962,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14329471,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3847,
+        "kind": "span_exit",
+        "trace_id": 962,
+        "span_id": 962,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 961
+        }
+      },
+      {
+        "sequence": 3848,
+        "kind": "span_close",
+        "trace_id": 962,
+        "span_id": 962,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 961
+        }
+      },
+      {
+        "sequence": 3849,
+        "kind": "span_open",
+        "trace_id": 963,
+        "span_id": 963,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 962
+        }
+      },
+      {
+        "sequence": 3850,
+        "kind": "event",
+        "trace_id": 963,
+        "span_id": 0,
+        "parent_span_id": 963,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14359293,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3851,
+        "kind": "span_exit",
+        "trace_id": 963,
+        "span_id": 963,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 962
+        }
+      },
+      {
+        "sequence": 3852,
+        "kind": "span_close",
+        "trace_id": 963,
+        "span_id": 963,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 962
+        }
+      },
+      {
+        "sequence": 3853,
+        "kind": "span_open",
+        "trace_id": 964,
+        "span_id": 964,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 963
+        }
+      },
+      {
+        "sequence": 3854,
+        "kind": "event",
+        "trace_id": 964,
+        "span_id": 0,
+        "parent_span_id": 964,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14389146,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3855,
+        "kind": "span_exit",
+        "trace_id": 964,
+        "span_id": 964,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 963
+        }
+      },
+      {
+        "sequence": 3856,
+        "kind": "span_close",
+        "trace_id": 964,
+        "span_id": 964,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 963
+        }
+      },
+      {
+        "sequence": 3857,
+        "kind": "span_open",
+        "trace_id": 965,
+        "span_id": 965,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 964
+        }
+      },
+      {
+        "sequence": 3858,
+        "kind": "event",
+        "trace_id": 965,
+        "span_id": 0,
+        "parent_span_id": 965,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14419030,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3859,
+        "kind": "span_exit",
+        "trace_id": 965,
+        "span_id": 965,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 964
+        }
+      },
+      {
+        "sequence": 3860,
+        "kind": "span_close",
+        "trace_id": 965,
+        "span_id": 965,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 964
+        }
+      },
+      {
+        "sequence": 3861,
+        "kind": "span_open",
+        "trace_id": 966,
+        "span_id": 966,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 965
+        }
+      },
+      {
+        "sequence": 3862,
+        "kind": "event",
+        "trace_id": 966,
+        "span_id": 0,
+        "parent_span_id": 966,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14448945,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3863,
+        "kind": "span_exit",
+        "trace_id": 966,
+        "span_id": 966,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 965
+        }
+      },
+      {
+        "sequence": 3864,
+        "kind": "span_close",
+        "trace_id": 966,
+        "span_id": 966,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 965
+        }
+      },
+      {
+        "sequence": 3865,
+        "kind": "span_open",
+        "trace_id": 967,
+        "span_id": 967,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 966
+        }
+      },
+      {
+        "sequence": 3866,
+        "kind": "event",
+        "trace_id": 967,
+        "span_id": 0,
+        "parent_span_id": 967,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14478891,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3867,
+        "kind": "span_exit",
+        "trace_id": 967,
+        "span_id": 967,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 966
+        }
+      },
+      {
+        "sequence": 3868,
+        "kind": "span_close",
+        "trace_id": 967,
+        "span_id": 967,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 966
+        }
+      },
+      {
+        "sequence": 3869,
+        "kind": "span_open",
+        "trace_id": 968,
+        "span_id": 968,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 967
+        }
+      },
+      {
+        "sequence": 3870,
+        "kind": "event",
+        "trace_id": 968,
+        "span_id": 0,
+        "parent_span_id": 968,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14508868,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3871,
+        "kind": "span_exit",
+        "trace_id": 968,
+        "span_id": 968,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 967
+        }
+      },
+      {
+        "sequence": 3872,
+        "kind": "span_close",
+        "trace_id": 968,
+        "span_id": 968,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 967
+        }
+      },
+      {
+        "sequence": 3873,
+        "kind": "span_open",
+        "trace_id": 969,
+        "span_id": 969,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 968
+        }
+      },
+      {
+        "sequence": 3874,
+        "kind": "event",
+        "trace_id": 969,
+        "span_id": 0,
+        "parent_span_id": 969,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14538876,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3875,
+        "kind": "span_exit",
+        "trace_id": 969,
+        "span_id": 969,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 968
+        }
+      },
+      {
+        "sequence": 3876,
+        "kind": "span_close",
+        "trace_id": 969,
+        "span_id": 969,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 968
+        }
+      },
+      {
+        "sequence": 3877,
+        "kind": "span_open",
+        "trace_id": 970,
+        "span_id": 970,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 969
+        }
+      },
+      {
+        "sequence": 3878,
+        "kind": "event",
+        "trace_id": 970,
+        "span_id": 0,
+        "parent_span_id": 970,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14568915,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3879,
+        "kind": "span_exit",
+        "trace_id": 970,
+        "span_id": 970,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 969
+        }
+      },
+      {
+        "sequence": 3880,
+        "kind": "span_close",
+        "trace_id": 970,
+        "span_id": 970,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "active": true,
+          "iteration": 969
+        }
+      },
+      {
+        "sequence": 3881,
+        "kind": "span_open",
+        "trace_id": 971,
+        "span_id": 971,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 970
+        }
+      },
+      {
+        "sequence": 3882,
+        "kind": "event",
+        "trace_id": 971,
+        "span_id": 0,
+        "parent_span_id": 971,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14598985,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3883,
+        "kind": "span_exit",
+        "trace_id": 971,
+        "span_id": 971,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 970
+        }
+      },
+      {
+        "sequence": 3884,
+        "kind": "span_close",
+        "trace_id": 971,
+        "span_id": 971,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 970
+        }
+      },
+      {
+        "sequence": 3885,
+        "kind": "span_open",
+        "trace_id": 972,
+        "span_id": 972,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 971
+        }
+      },
+      {
+        "sequence": 3886,
+        "kind": "event",
+        "trace_id": 972,
+        "span_id": 0,
+        "parent_span_id": 972,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14629086,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3887,
+        "kind": "span_exit",
+        "trace_id": 972,
+        "span_id": 972,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 971
+        }
+      },
+      {
+        "sequence": 3888,
+        "kind": "span_close",
+        "trace_id": 972,
+        "span_id": 972,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 971
+        }
+      },
+      {
+        "sequence": 3889,
+        "kind": "span_open",
+        "trace_id": 973,
+        "span_id": 973,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 972
+        }
+      },
+      {
+        "sequence": 3890,
+        "kind": "event",
+        "trace_id": 973,
+        "span_id": 0,
+        "parent_span_id": 973,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14659218,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3891,
+        "kind": "span_exit",
+        "trace_id": 973,
+        "span_id": 973,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 972
+        }
+      },
+      {
+        "sequence": 3892,
+        "kind": "span_close",
+        "trace_id": 973,
+        "span_id": 973,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 972
+        }
+      },
+      {
+        "sequence": 3893,
+        "kind": "span_open",
+        "trace_id": 974,
+        "span_id": 974,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 973
+        }
+      },
+      {
+        "sequence": 3894,
+        "kind": "event",
+        "trace_id": 974,
+        "span_id": 0,
+        "parent_span_id": 974,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14689381,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3895,
+        "kind": "span_exit",
+        "trace_id": 974,
+        "span_id": 974,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 973
+        }
+      },
+      {
+        "sequence": 3896,
+        "kind": "span_close",
+        "trace_id": 974,
+        "span_id": 974,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 973
+        }
+      },
+      {
+        "sequence": 3897,
+        "kind": "span_open",
+        "trace_id": 975,
+        "span_id": 975,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 974
+        }
+      },
+      {
+        "sequence": 3898,
+        "kind": "event",
+        "trace_id": 975,
+        "span_id": 0,
+        "parent_span_id": 975,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14719575,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3899,
+        "kind": "span_exit",
+        "trace_id": 975,
+        "span_id": 975,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 974
+        }
+      },
+      {
+        "sequence": 3900,
+        "kind": "span_close",
+        "trace_id": 975,
+        "span_id": 975,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 974
+        }
+      },
+      {
+        "sequence": 3901,
+        "kind": "span_open",
+        "trace_id": 976,
+        "span_id": 976,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 975
+        }
+      },
+      {
+        "sequence": 3902,
+        "kind": "event",
+        "trace_id": 976,
+        "span_id": 0,
+        "parent_span_id": 976,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14749800,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3903,
+        "kind": "span_exit",
+        "trace_id": 976,
+        "span_id": 976,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 975
+        }
+      },
+      {
+        "sequence": 3904,
+        "kind": "span_close",
+        "trace_id": 976,
+        "span_id": 976,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 975
+        }
+      },
+      {
+        "sequence": 3905,
+        "kind": "span_open",
+        "trace_id": 977,
+        "span_id": 977,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 976
+        }
+      },
+      {
+        "sequence": 3906,
+        "kind": "event",
+        "trace_id": 977,
+        "span_id": 0,
+        "parent_span_id": 977,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14780056,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3907,
+        "kind": "span_exit",
+        "trace_id": 977,
+        "span_id": 977,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 976
+        }
+      },
+      {
+        "sequence": 3908,
+        "kind": "span_close",
+        "trace_id": 977,
+        "span_id": 977,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 976
+        }
+      },
+      {
+        "sequence": 3909,
+        "kind": "span_open",
+        "trace_id": 978,
+        "span_id": 978,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 977
+        }
+      },
+      {
+        "sequence": 3910,
+        "kind": "event",
+        "trace_id": 978,
+        "span_id": 0,
+        "parent_span_id": 978,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14810343,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3911,
+        "kind": "span_exit",
+        "trace_id": 978,
+        "span_id": 978,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 977
+        }
+      },
+      {
+        "sequence": 3912,
+        "kind": "span_close",
+        "trace_id": 978,
+        "span_id": 978,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 977
+        }
+      },
+      {
+        "sequence": 3913,
+        "kind": "span_open",
+        "trace_id": 979,
+        "span_id": 979,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 978
+        }
+      },
+      {
+        "sequence": 3914,
+        "kind": "event",
+        "trace_id": 979,
+        "span_id": 0,
+        "parent_span_id": 979,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14840661,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3915,
+        "kind": "span_exit",
+        "trace_id": 979,
+        "span_id": 979,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 978
+        }
+      },
+      {
+        "sequence": 3916,
+        "kind": "span_close",
+        "trace_id": 979,
+        "span_id": 979,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 978
+        }
+      },
+      {
+        "sequence": 3917,
+        "kind": "span_open",
+        "trace_id": 980,
+        "span_id": 980,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 979
+        }
+      },
+      {
+        "sequence": 3918,
+        "kind": "event",
+        "trace_id": 980,
+        "span_id": 0,
+        "parent_span_id": 980,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14871010,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3919,
+        "kind": "span_exit",
+        "trace_id": 980,
+        "span_id": 980,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 979
+        }
+      },
+      {
+        "sequence": 3920,
+        "kind": "span_close",
+        "trace_id": 980,
+        "span_id": 980,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 979
+        }
+      },
+      {
+        "sequence": 3921,
+        "kind": "span_open",
+        "trace_id": 981,
+        "span_id": 981,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 980
+        }
+      },
+      {
+        "sequence": 3922,
+        "kind": "event",
+        "trace_id": 981,
+        "span_id": 0,
+        "parent_span_id": 981,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14901390,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3923,
+        "kind": "span_exit",
+        "trace_id": 981,
+        "span_id": 981,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 980
+        }
+      },
+      {
+        "sequence": 3924,
+        "kind": "span_close",
+        "trace_id": 981,
+        "span_id": 981,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 980
+        }
+      },
+      {
+        "sequence": 3925,
+        "kind": "span_open",
+        "trace_id": 982,
+        "span_id": 982,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 981
+        }
+      },
+      {
+        "sequence": 3926,
+        "kind": "event",
+        "trace_id": 982,
+        "span_id": 0,
+        "parent_span_id": 982,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14931801,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3927,
+        "kind": "span_exit",
+        "trace_id": 982,
+        "span_id": 982,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 981
+        }
+      },
+      {
+        "sequence": 3928,
+        "kind": "span_close",
+        "trace_id": 982,
+        "span_id": 982,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 981
+        }
+      },
+      {
+        "sequence": 3929,
+        "kind": "span_open",
+        "trace_id": 983,
+        "span_id": 983,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 982
+        }
+      },
+      {
+        "sequence": 3930,
+        "kind": "event",
+        "trace_id": 983,
+        "span_id": 0,
+        "parent_span_id": 983,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14962243,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3931,
+        "kind": "span_exit",
+        "trace_id": 983,
+        "span_id": 983,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 982
+        }
+      },
+      {
+        "sequence": 3932,
+        "kind": "span_close",
+        "trace_id": 983,
+        "span_id": 983,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 982
+        }
+      },
+      {
+        "sequence": 3933,
+        "kind": "span_open",
+        "trace_id": 984,
+        "span_id": 984,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 983
+        }
+      },
+      {
+        "sequence": 3934,
+        "kind": "event",
+        "trace_id": 984,
+        "span_id": 0,
+        "parent_span_id": 984,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 14992716,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3935,
+        "kind": "span_exit",
+        "trace_id": 984,
+        "span_id": 984,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 983
+        }
+      },
+      {
+        "sequence": 3936,
+        "kind": "span_close",
+        "trace_id": 984,
+        "span_id": 984,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 983
+        }
+      },
+      {
+        "sequence": 3937,
+        "kind": "span_open",
+        "trace_id": 985,
+        "span_id": 985,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 984
+        }
+      },
+      {
+        "sequence": 3938,
+        "kind": "event",
+        "trace_id": 985,
+        "span_id": 0,
+        "parent_span_id": 985,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15023220,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3939,
+        "kind": "span_exit",
+        "trace_id": 985,
+        "span_id": 985,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 984
+        }
+      },
+      {
+        "sequence": 3940,
+        "kind": "span_close",
+        "trace_id": 985,
+        "span_id": 985,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 984
+        }
+      },
+      {
+        "sequence": 3941,
+        "kind": "span_open",
+        "trace_id": 986,
+        "span_id": 986,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 985
+        }
+      },
+      {
+        "sequence": 3942,
+        "kind": "event",
+        "trace_id": 986,
+        "span_id": 0,
+        "parent_span_id": 986,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15053755,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3943,
+        "kind": "span_exit",
+        "trace_id": 986,
+        "span_id": 986,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 985
+        }
+      },
+      {
+        "sequence": 3944,
+        "kind": "span_close",
+        "trace_id": 986,
+        "span_id": 986,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 985
+        }
+      },
+      {
+        "sequence": 3945,
+        "kind": "span_open",
+        "trace_id": 987,
+        "span_id": 987,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 986
+        }
+      },
+      {
+        "sequence": 3946,
+        "kind": "event",
+        "trace_id": 987,
+        "span_id": 0,
+        "parent_span_id": 987,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15084321,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3947,
+        "kind": "span_exit",
+        "trace_id": 987,
+        "span_id": 987,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 986
+        }
+      },
+      {
+        "sequence": 3948,
+        "kind": "span_close",
+        "trace_id": 987,
+        "span_id": 987,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 986
+        }
+      },
+      {
+        "sequence": 3949,
+        "kind": "span_open",
+        "trace_id": 988,
+        "span_id": 988,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 987
+        }
+      },
+      {
+        "sequence": 3950,
+        "kind": "event",
+        "trace_id": 988,
+        "span_id": 0,
+        "parent_span_id": 988,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15114918,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3951,
+        "kind": "span_exit",
+        "trace_id": 988,
+        "span_id": 988,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 987
+        }
+      },
+      {
+        "sequence": 3952,
+        "kind": "span_close",
+        "trace_id": 988,
+        "span_id": 988,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 987
+        }
+      },
+      {
+        "sequence": 3953,
+        "kind": "span_open",
+        "trace_id": 989,
+        "span_id": 989,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 988
+        }
+      },
+      {
+        "sequence": 3954,
+        "kind": "event",
+        "trace_id": 989,
+        "span_id": 0,
+        "parent_span_id": 989,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15145546,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3955,
+        "kind": "span_exit",
+        "trace_id": 989,
+        "span_id": 989,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 988
+        }
+      },
+      {
+        "sequence": 3956,
+        "kind": "span_close",
+        "trace_id": 989,
+        "span_id": 989,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 988
+        }
+      },
+      {
+        "sequence": 3957,
+        "kind": "span_open",
+        "trace_id": 990,
+        "span_id": 990,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 989
+        }
+      },
+      {
+        "sequence": 3958,
+        "kind": "event",
+        "trace_id": 990,
+        "span_id": 0,
+        "parent_span_id": 990,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15176205,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3959,
+        "kind": "span_exit",
+        "trace_id": 990,
+        "span_id": 990,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "active": true,
+          "iteration": 989
+        }
+      },
+      {
+        "sequence": 3960,
+        "kind": "span_close",
+        "trace_id": 990,
+        "span_id": 990,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "active": true,
+          "iteration": 989
+        }
+      },
+      {
+        "sequence": 3961,
+        "kind": "span_open",
+        "trace_id": 991,
+        "span_id": 991,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 990
+        }
+      },
+      {
+        "sequence": 3962,
+        "kind": "event",
+        "trace_id": 991,
+        "span_id": 0,
+        "parent_span_id": 991,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15206895,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3963,
+        "kind": "span_exit",
+        "trace_id": 991,
+        "span_id": 991,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 990
+        }
+      },
+      {
+        "sequence": 3964,
+        "kind": "span_close",
+        "trace_id": 991,
+        "span_id": 991,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 990
+        }
+      },
+      {
+        "sequence": 3965,
+        "kind": "span_open",
+        "trace_id": 992,
+        "span_id": 992,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 991
+        }
+      },
+      {
+        "sequence": 3966,
+        "kind": "event",
+        "trace_id": 992,
+        "span_id": 0,
+        "parent_span_id": 992,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15237616,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3967,
+        "kind": "span_exit",
+        "trace_id": 992,
+        "span_id": 992,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 991
+        }
+      },
+      {
+        "sequence": 3968,
+        "kind": "span_close",
+        "trace_id": 992,
+        "span_id": 992,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 991
+        }
+      },
+      {
+        "sequence": 3969,
+        "kind": "span_open",
+        "trace_id": 993,
+        "span_id": 993,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 992
+        }
+      },
+      {
+        "sequence": 3970,
+        "kind": "event",
+        "trace_id": 993,
+        "span_id": 0,
+        "parent_span_id": 993,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15268368,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3971,
+        "kind": "span_exit",
+        "trace_id": 993,
+        "span_id": 993,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 992
+        }
+      },
+      {
+        "sequence": 3972,
+        "kind": "span_close",
+        "trace_id": 993,
+        "span_id": 993,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "active": true,
+          "iteration": 992
+        }
+      },
+      {
+        "sequence": 3973,
+        "kind": "span_open",
+        "trace_id": 994,
+        "span_id": 994,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 993
+        }
+      },
+      {
+        "sequence": 3974,
+        "kind": "event",
+        "trace_id": 994,
+        "span_id": 0,
+        "parent_span_id": 994,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15299151,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3975,
+        "kind": "span_exit",
+        "trace_id": 994,
+        "span_id": 994,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 993
+        }
+      },
+      {
+        "sequence": 3976,
+        "kind": "span_close",
+        "trace_id": 994,
+        "span_id": 994,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 993
+        }
+      },
+      {
+        "sequence": 3977,
+        "kind": "span_open",
+        "trace_id": 995,
+        "span_id": 995,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 994
+        }
+      },
+      {
+        "sequence": 3978,
+        "kind": "event",
+        "trace_id": 995,
+        "span_id": 0,
+        "parent_span_id": 995,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15329965,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3979,
+        "kind": "span_exit",
+        "trace_id": 995,
+        "span_id": 995,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 994
+        }
+      },
+      {
+        "sequence": 3980,
+        "kind": "span_close",
+        "trace_id": 995,
+        "span_id": 995,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 994
+        }
+      },
+      {
+        "sequence": 3981,
+        "kind": "span_open",
+        "trace_id": 996,
+        "span_id": 996,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 995
+        }
+      },
+      {
+        "sequence": 3982,
+        "kind": "event",
+        "trace_id": 996,
+        "span_id": 0,
+        "parent_span_id": 996,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15360810,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3983,
+        "kind": "span_exit",
+        "trace_id": 996,
+        "span_id": 996,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 995
+        }
+      },
+      {
+        "sequence": 3984,
+        "kind": "span_close",
+        "trace_id": 996,
+        "span_id": 996,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 995
+        }
+      },
+      {
+        "sequence": 3985,
+        "kind": "span_open",
+        "trace_id": 997,
+        "span_id": 997,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 996
+        }
+      },
+      {
+        "sequence": 3986,
+        "kind": "event",
+        "trace_id": 997,
+        "span_id": 0,
+        "parent_span_id": 997,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15391686,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3987,
+        "kind": "span_exit",
+        "trace_id": 997,
+        "span_id": 997,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 996
+        }
+      },
+      {
+        "sequence": 3988,
+        "kind": "span_close",
+        "trace_id": 997,
+        "span_id": 997,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 996
+        }
+      },
+      {
+        "sequence": 3989,
+        "kind": "span_open",
+        "trace_id": 998,
+        "span_id": 998,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 997
+        }
+      },
+      {
+        "sequence": 3990,
+        "kind": "event",
+        "trace_id": 998,
+        "span_id": 0,
+        "parent_span_id": 998,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15422593,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3991,
+        "kind": "span_exit",
+        "trace_id": 998,
+        "span_id": 998,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 997
+        }
+      },
+      {
+        "sequence": 3992,
+        "kind": "span_close",
+        "trace_id": 998,
+        "span_id": 998,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 997
+        }
+      },
+      {
+        "sequence": 3993,
+        "kind": "span_open",
+        "trace_id": 999,
+        "span_id": 999,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 998
+        }
+      },
+      {
+        "sequence": 3994,
+        "kind": "event",
+        "trace_id": 999,
+        "span_id": 0,
+        "parent_span_id": 999,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15453531,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3995,
+        "kind": "span_exit",
+        "trace_id": 999,
+        "span_id": 999,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 998
+        }
+      },
+      {
+        "sequence": 3996,
+        "kind": "span_close",
+        "trace_id": 999,
+        "span_id": 999,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 998
+        }
+      },
+      {
+        "sequence": 3997,
+        "kind": "span_open",
+        "trace_id": 1000,
+        "span_id": 1000,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 999
+        }
+      },
+      {
+        "sequence": 3998,
+        "kind": "event",
+        "trace_id": 1000,
+        "span_id": 0,
+        "parent_span_id": 1000,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15484500,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 3999,
+        "kind": "span_exit",
+        "trace_id": 1000,
+        "span_id": 1000,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 999
+        }
+      },
+      {
+        "sequence": 4000,
+        "kind": "span_close",
+        "trace_id": 1000,
+        "span_id": 1000,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 999
+        }
+      },
+      {
+        "sequence": 4001,
+        "kind": "span_open",
+        "trace_id": 1001,
+        "span_id": 1001,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1000
+        }
+      },
+      {
+        "sequence": 4002,
+        "kind": "event",
+        "trace_id": 1001,
+        "span_id": 0,
+        "parent_span_id": 1001,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15515500,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4003,
+        "kind": "span_exit",
+        "trace_id": 1001,
+        "span_id": 1001,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1000
+        }
+      },
+      {
+        "sequence": 4004,
+        "kind": "span_close",
+        "trace_id": 1001,
+        "span_id": 1001,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1000
+        }
+      },
+      {
+        "sequence": 4005,
+        "kind": "span_open",
+        "trace_id": 1002,
+        "span_id": 1002,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1001
+        }
+      },
+      {
+        "sequence": 4006,
+        "kind": "event",
+        "trace_id": 1002,
+        "span_id": 0,
+        "parent_span_id": 1002,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15546531,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4007,
+        "kind": "span_exit",
+        "trace_id": 1002,
+        "span_id": 1002,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1001
+        }
+      },
+      {
+        "sequence": 4008,
+        "kind": "span_close",
+        "trace_id": 1002,
+        "span_id": 1002,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624070,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1001
+        }
+      },
+      {
+        "sequence": 4009,
+        "kind": "span_open",
+        "trace_id": 1003,
+        "span_id": 1003,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1002
+        }
+      },
+      {
+        "sequence": 4010,
+        "kind": "event",
+        "trace_id": 1003,
+        "span_id": 0,
+        "parent_span_id": 1003,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15577593,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4011,
+        "kind": "span_exit",
+        "trace_id": 1003,
+        "span_id": 1003,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1002
+        }
+      },
+      {
+        "sequence": 4012,
+        "kind": "span_close",
+        "trace_id": 1003,
+        "span_id": 1003,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1002
+        }
+      },
+      {
+        "sequence": 4013,
+        "kind": "span_open",
+        "trace_id": 1004,
+        "span_id": 1004,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1003
+        }
+      },
+      {
+        "sequence": 4014,
+        "kind": "event",
+        "trace_id": 1004,
+        "span_id": 0,
+        "parent_span_id": 1004,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15608686,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4015,
+        "kind": "span_exit",
+        "trace_id": 1004,
+        "span_id": 1004,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1003
+        }
+      },
+      {
+        "sequence": 4016,
+        "kind": "span_close",
+        "trace_id": 1004,
+        "span_id": 1004,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1003
+        }
+      },
+      {
+        "sequence": 4017,
+        "kind": "span_open",
+        "trace_id": 1005,
+        "span_id": 1005,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1004
+        }
+      },
+      {
+        "sequence": 4018,
+        "kind": "event",
+        "trace_id": 1005,
+        "span_id": 0,
+        "parent_span_id": 1005,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15639810,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4019,
+        "kind": "span_exit",
+        "trace_id": 1005,
+        "span_id": 1005,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1004
+        }
+      },
+      {
+        "sequence": 4020,
+        "kind": "span_close",
+        "trace_id": 1005,
+        "span_id": 1005,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1004
+        }
+      },
+      {
+        "sequence": 4021,
+        "kind": "span_open",
+        "trace_id": 1006,
+        "span_id": 1006,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1005
+        }
+      },
+      {
+        "sequence": 4022,
+        "kind": "event",
+        "trace_id": 1006,
+        "span_id": 0,
+        "parent_span_id": 1006,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15670965,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4023,
+        "kind": "span_exit",
+        "trace_id": 1006,
+        "span_id": 1006,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1005
+        }
+      },
+      {
+        "sequence": 4024,
+        "kind": "span_close",
+        "trace_id": 1006,
+        "span_id": 1006,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1005
+        }
+      },
+      {
+        "sequence": 4025,
+        "kind": "span_open",
+        "trace_id": 1007,
+        "span_id": 1007,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1006
+        }
+      },
+      {
+        "sequence": 4026,
+        "kind": "event",
+        "trace_id": 1007,
+        "span_id": 0,
+        "parent_span_id": 1007,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15702151,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4027,
+        "kind": "span_exit",
+        "trace_id": 1007,
+        "span_id": 1007,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1006
+        }
+      },
+      {
+        "sequence": 4028,
+        "kind": "span_close",
+        "trace_id": 1007,
+        "span_id": 1007,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1006
+        }
+      },
+      {
+        "sequence": 4029,
+        "kind": "span_open",
+        "trace_id": 1008,
+        "span_id": 1008,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1007
+        }
+      },
+      {
+        "sequence": 4030,
+        "kind": "event",
+        "trace_id": 1008,
+        "span_id": 0,
+        "parent_span_id": 1008,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15733368,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4031,
+        "kind": "span_exit",
+        "trace_id": 1008,
+        "span_id": 1008,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "active": true,
+          "iteration": 1007
+        }
+      },
+      {
+        "sequence": 4032,
+        "kind": "span_close",
+        "trace_id": 1008,
+        "span_id": 1008,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "active": true,
+          "iteration": 1007
+        }
+      },
+      {
+        "sequence": 4033,
+        "kind": "span_open",
+        "trace_id": 1009,
+        "span_id": 1009,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1008
+        }
+      },
+      {
+        "sequence": 4034,
+        "kind": "event",
+        "trace_id": 1009,
+        "span_id": 0,
+        "parent_span_id": 1009,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15764616,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4035,
+        "kind": "span_exit",
+        "trace_id": 1009,
+        "span_id": 1009,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1008
+        }
+      },
+      {
+        "sequence": 4036,
+        "kind": "span_close",
+        "trace_id": 1009,
+        "span_id": 1009,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1008
+        }
+      },
+      {
+        "sequence": 4037,
+        "kind": "span_open",
+        "trace_id": 1010,
+        "span_id": 1010,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1009
+        }
+      },
+      {
+        "sequence": 4038,
+        "kind": "event",
+        "trace_id": 1010,
+        "span_id": 0,
+        "parent_span_id": 1010,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15795895,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4039,
+        "kind": "span_exit",
+        "trace_id": 1010,
+        "span_id": 1010,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1009
+        }
+      },
+      {
+        "sequence": 4040,
+        "kind": "span_close",
+        "trace_id": 1010,
+        "span_id": 1010,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1009
+        }
+      },
+      {
+        "sequence": 4041,
+        "kind": "span_open",
+        "trace_id": 1011,
+        "span_id": 1011,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1010
+        }
+      },
+      {
+        "sequence": 4042,
+        "kind": "event",
+        "trace_id": 1011,
+        "span_id": 0,
+        "parent_span_id": 1011,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15827205,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4043,
+        "kind": "span_exit",
+        "trace_id": 1011,
+        "span_id": 1011,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1010
+        }
+      },
+      {
+        "sequence": 4044,
+        "kind": "span_close",
+        "trace_id": 1011,
+        "span_id": 1011,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1010
+        }
+      },
+      {
+        "sequence": 4045,
+        "kind": "span_open",
+        "trace_id": 1012,
+        "span_id": 1012,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1011
+        }
+      },
+      {
+        "sequence": 4046,
+        "kind": "event",
+        "trace_id": 1012,
+        "span_id": 0,
+        "parent_span_id": 1012,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15858546,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4047,
+        "kind": "span_exit",
+        "trace_id": 1012,
+        "span_id": 1012,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1011
+        }
+      },
+      {
+        "sequence": 4048,
+        "kind": "span_close",
+        "trace_id": 1012,
+        "span_id": 1012,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1011
+        }
+      },
+      {
+        "sequence": 4049,
+        "kind": "span_open",
+        "trace_id": 1013,
+        "span_id": 1013,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1012
+        }
+      },
+      {
+        "sequence": 4050,
+        "kind": "event",
+        "trace_id": 1013,
+        "span_id": 0,
+        "parent_span_id": 1013,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15889918,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4051,
+        "kind": "span_exit",
+        "trace_id": 1013,
+        "span_id": 1013,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1012
+        }
+      },
+      {
+        "sequence": 4052,
+        "kind": "span_close",
+        "trace_id": 1013,
+        "span_id": 1013,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1012
+        }
+      },
+      {
+        "sequence": 4053,
+        "kind": "span_open",
+        "trace_id": 1014,
+        "span_id": 1014,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1013
+        }
+      },
+      {
+        "sequence": 4054,
+        "kind": "event",
+        "trace_id": 1014,
+        "span_id": 0,
+        "parent_span_id": 1014,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15921321,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4055,
+        "kind": "span_exit",
+        "trace_id": 1014,
+        "span_id": 1014,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1013
+        }
+      },
+      {
+        "sequence": 4056,
+        "kind": "span_close",
+        "trace_id": 1014,
+        "span_id": 1014,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1013
+        }
+      },
+      {
+        "sequence": 4057,
+        "kind": "span_open",
+        "trace_id": 1015,
+        "span_id": 1015,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1014
+        }
+      },
+      {
+        "sequence": 4058,
+        "kind": "event",
+        "trace_id": 1015,
+        "span_id": 0,
+        "parent_span_id": 1015,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15952755,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4059,
+        "kind": "span_exit",
+        "trace_id": 1015,
+        "span_id": 1015,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1014
+        }
+      },
+      {
+        "sequence": 4060,
+        "kind": "span_close",
+        "trace_id": 1015,
+        "span_id": 1015,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1014
+        }
+      },
+      {
+        "sequence": 4061,
+        "kind": "span_open",
+        "trace_id": 1016,
+        "span_id": 1016,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1015
+        }
+      },
+      {
+        "sequence": 4062,
+        "kind": "event",
+        "trace_id": 1016,
+        "span_id": 0,
+        "parent_span_id": 1016,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 15984220,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4063,
+        "kind": "span_exit",
+        "trace_id": 1016,
+        "span_id": 1016,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1015
+        }
+      },
+      {
+        "sequence": 4064,
+        "kind": "span_close",
+        "trace_id": 1016,
+        "span_id": 1016,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0.10000002384185791,
+        "fields": {
+          "active": true,
+          "iteration": 1015
+        }
+      },
+      {
+        "sequence": 4065,
+        "kind": "span_open",
+        "trace_id": 1017,
+        "span_id": 1017,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1016
+        }
+      },
+      {
+        "sequence": 4066,
+        "kind": "event",
+        "trace_id": 1017,
+        "span_id": 0,
+        "parent_span_id": 1017,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 16015716,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4067,
+        "kind": "span_exit",
+        "trace_id": 1017,
+        "span_id": 1017,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1016
+        }
+      },
+      {
+        "sequence": 4068,
+        "kind": "span_close",
+        "trace_id": 1017,
+        "span_id": 1017,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1016
+        }
+      },
+      {
+        "sequence": 4069,
+        "kind": "span_open",
+        "trace_id": 1018,
+        "span_id": 1018,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1017
+        }
+      },
+      {
+        "sequence": 4070,
+        "kind": "event",
+        "trace_id": 1018,
+        "span_id": 0,
+        "parent_span_id": 1018,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 16047243,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4071,
+        "kind": "span_exit",
+        "trace_id": 1018,
+        "span_id": 1018,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1017
+        }
+      },
+      {
+        "sequence": 4072,
+        "kind": "span_close",
+        "trace_id": 1018,
+        "span_id": 1018,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1017
+        }
+      },
+      {
+        "sequence": 4073,
+        "kind": "span_open",
+        "trace_id": 1019,
+        "span_id": 1019,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1018
+        }
+      },
+      {
+        "sequence": 4074,
+        "kind": "event",
+        "trace_id": 1019,
+        "span_id": 0,
+        "parent_span_id": 1019,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 16078801,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4075,
+        "kind": "span_exit",
+        "trace_id": 1019,
+        "span_id": 1019,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1018
+        }
+      },
+      {
+        "sequence": 4076,
+        "kind": "span_close",
+        "trace_id": 1019,
+        "span_id": 1019,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1018
+        }
+      },
+      {
+        "sequence": 4077,
+        "kind": "span_open",
+        "trace_id": 1020,
+        "span_id": 1020,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1019
+        }
+      },
+      {
+        "sequence": 4078,
+        "kind": "event",
+        "trace_id": 1020,
+        "span_id": 0,
+        "parent_span_id": 1020,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 16110390,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4079,
+        "kind": "span_exit",
+        "trace_id": 1020,
+        "span_id": 1020,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1019
+        }
+      },
+      {
+        "sequence": 4080,
+        "kind": "span_close",
+        "trace_id": 1020,
+        "span_id": 1020,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1019
+        }
+      },
+      {
+        "sequence": 4081,
+        "kind": "span_open",
+        "trace_id": 1021,
+        "span_id": 1021,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1020
+        }
+      },
+      {
+        "sequence": 4082,
+        "kind": "event",
+        "trace_id": 1021,
+        "span_id": 0,
+        "parent_span_id": 1021,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 16142010,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4083,
+        "kind": "span_exit",
+        "trace_id": 1021,
+        "span_id": 1021,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0.09999990463256836,
+        "fields": {
+          "active": true,
+          "iteration": 1020
+        }
+      },
+      {
+        "sequence": 4084,
+        "kind": "span_close",
+        "trace_id": 1021,
+        "span_id": 1021,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0.09999990463256836,
+        "fields": {
+          "active": true,
+          "iteration": 1020
+        }
+      },
+      {
+        "sequence": 4085,
+        "kind": "span_open",
+        "trace_id": 1022,
+        "span_id": 1022,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1021
+        }
+      },
+      {
+        "sequence": 4086,
+        "kind": "event",
+        "trace_id": 1022,
+        "span_id": 0,
+        "parent_span_id": 1022,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 16173661,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4087,
+        "kind": "span_exit",
+        "trace_id": 1022,
+        "span_id": 1022,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1021
+        }
+      },
+      {
+        "sequence": 4088,
+        "kind": "span_close",
+        "trace_id": 1022,
+        "span_id": 1022,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1021
+        }
+      },
+      {
+        "sequence": 4089,
+        "kind": "span_open",
+        "trace_id": 1023,
+        "span_id": 1023,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1022
+        }
+      },
+      {
+        "sequence": 4090,
+        "kind": "event",
+        "trace_id": 1023,
+        "span_id": 0,
+        "parent_span_id": 1023,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 16205343,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4091,
+        "kind": "span_exit",
+        "trace_id": 1023,
+        "span_id": 1023,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1022
+        }
+      },
+      {
+        "sequence": 4092,
+        "kind": "span_close",
+        "trace_id": 1023,
+        "span_id": 1023,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1022
+        }
+      },
+      {
+        "sequence": 4093,
+        "kind": "span_open",
+        "trace_id": 1024,
+        "span_id": 1024,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "active": true,
+          "iteration": 1023
+        }
+      },
+      {
+        "sequence": 4094,
+        "kind": "event",
+        "trace_id": 1024,
+        "span_id": 0,
+        "parent_span_id": 1024,
+        "name": "event examples/same-page-atlas/web/src/trace.rs:507",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": null,
+        "fields": {
+          "api_token": "[REDACTED]",
+          "checksum": 16237056,
+          "event": "atlas.trace_probe.tick",
+          "label": "probe",
+          "valid": true
+        }
+      },
+      {
+        "sequence": 4095,
+        "kind": "span_exit",
+        "trace_id": 1024,
+        "span_id": 1024,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1023
+        }
+      },
+      {
+        "sequence": 4096,
+        "kind": "span_close",
+        "trace_id": 1024,
+        "span_id": 1024,
+        "parent_span_id": null,
+        "name": "atlas.trace_probe",
+        "target": "same_page_atlas_web::trace",
+        "level": "INFO",
+        "at_ms": 1788464624071,
+        "duration_ms": 0,
+        "fields": {
+          "active": true,
+          "iteration": 1023
+        }
+      }
+    ]
+  },
+  "screenshot": {
+    "path": "examples/same-page-atlas/tests/wasm-trace/latest.png",
+    "sha256": "8037607ce9273e087b21f00a9a3726d002ff364b4017757ea36ab6c8dc5c68f6"
+  }
+}

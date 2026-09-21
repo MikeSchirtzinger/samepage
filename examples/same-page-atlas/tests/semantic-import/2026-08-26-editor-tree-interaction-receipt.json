@@ -1,0 +1,85 @@
+{
+  "schema": "atlas-editor-tree-interaction-receipt-v1",
+  "generated_at": "2026-08-26T22:30:34Z",
+  "surface": "http://127.0.0.1:8098/",
+  "browser": {
+    "engine": "real Chrome",
+    "cdp_port": 9222,
+    "trusted_pointer_and_keyboard_driver": "agent-browser attached over CDP",
+    "visual_capture": "browser-tools CDP screenshot"
+  },
+  "interaction_results": {
+    "empty_new_node_click_away": {
+      "editor_before": "draft",
+      "editor_after": null,
+      "nodes_before": 0,
+      "nodes_after": 0
+    },
+    "nonempty_new_node_click_away": {
+      "draft": "Click-away proof",
+      "nodes_before": 0,
+      "nodes_after": 1,
+      "saved_label": "Click-away proof"
+    },
+    "existing_node_direct_edit": {
+      "editor": "contenteditable plaintext-only",
+      "saved_label": "Edited in place"
+    },
+    "owl_badge_direct_edit": {
+      "editor": "contenteditable plaintext-only",
+      "saved_label": "Owl body renamed",
+      "restored_clean_state_label": "Owl body",
+      "live_animated_double_click": {
+        "event_is_trusted": true,
+        "event_target": "segment-badge",
+        "editor_opened": true,
+        "motion_remained": "Mechanical owl idle and loading cycle"
+      }
+    },
+    "object_tree_collapse": {
+      "visible_items_before": 11,
+      "visible_items_after_collapsing_left_foot": 8,
+      "left_foot_expanded_after": false,
+      "collapsed_state_survived_reload": true
+    }
+  },
+  "cold_restart_live_state": {
+    "schema_host": 9,
+    "schema_wasm": 9,
+    "nodes": 0,
+    "segments": 11,
+    "visible_tree_items": 11,
+    "root_label": "Owl body",
+    "root_motion": "Mechanical owl idle and loading cycle",
+    "segment_errors": 0,
+    "badge_hit_target": "segment-badge"
+  },
+  "visual_evidence": [
+    {
+      "path": "examples/same-page-atlas/.local/product-flow/screenshots/owl-badge-direct-editing-clean.png",
+      "sha256": "36d1e42b6480bee7b188070842356c39dfff22b1359299eb8e5128caf40f3826"
+    },
+    {
+      "path": "examples/same-page-atlas/.local/product-flow/screenshots/object-tree-collapsed-clean.png",
+      "sha256": "27e5ae1a24110f00dcd576f40b58e25658b5cc8c37235dfd0be272c2f03090a3"
+    },
+    {
+      "path": "examples/same-page-atlas/.local/product-flow/screenshots/editor-tree-live-8098-final.png",
+      "sha256": "13abb714b7a56b4bb1fa72f1f6847cb819e91849f9e2f7aadb73486459f5274f"
+    },
+    {
+      "path": "examples/same-page-atlas/.local/product-flow/screenshots/owl-badge-live-dblclick-final.png",
+      "sha256": "32d57038db01aab17c905eb7b6477fed026fde9330a6af6360028bd7d4f1cfff"
+    }
+  ],
+  "checks": {
+    "same_page_atlas_core_tests": "224 passed",
+    "same_page_atlas_host_tests": "147 passed",
+    "clippy_core_and_host_all_targets_warnings_denied": "passed",
+    "javascript_syntax": "passed",
+    "segment_picker_contracts": "passed",
+    "segmentation_contract_drift_gate": "passed",
+    "changed_rust_file_rustfmt": "passed"
+  },
+  "proof_boundary": "This receipt proves the editor and object-tree interactions against a real browser. It does not rerun MobileSAM segmentation. The final live page loads the existing materialized masks from the persisted state."
+}

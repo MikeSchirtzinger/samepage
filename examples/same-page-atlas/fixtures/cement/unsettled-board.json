@@ -1,0 +1,38 @@
+{
+  "entries": [
+    {
+      "assertion": {
+        "kind": "claim",
+        "id": "open-claim",
+        "text": "This assertion has not been signed off.",
+        "status": "supported"
+      },
+      "author": "agent",
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 1,
+      "mark": null
+    },
+    {
+      "assertion": {
+        "kind": "claim",
+        "id": "disputed-claim",
+        "text": "This assertion was disputed.",
+        "status": "contested"
+      },
+      "author": "agent",
+      "authored_at": "2026-07-31T11:01:00Z",
+      "authored_at_revision": 2,
+      "changed_at": 3,
+      "mark": [
+        "disagree",
+        "not what we agreed"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:02:00Z",
+      "marked_at_revision": 3
+    }
+  ],
+  "revision": 3,
+  "subject": "Not ready"
+}

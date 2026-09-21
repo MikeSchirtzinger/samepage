@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Altitude lens depth fixture",
+    "repository": {
+      "revision": "bc419924edf0aba5ad5e8b8d676c26e5099664e4"
+    }
+  },
+  "layout": {
+    "cols": 3,
+    "origin": [120, 150],
+    "cellW": 210,
+    "cellH": 100,
+    "gapX": 84,
+    "gapY": 72
+  },
+  "components": [
+    {
+      "id": "gateway",
+      "type": "frontend",
+      "label": "Browser gateway",
+      "sublabel": "Outer context",
+      "row": 0,
+      "col": 0
+    },
+    {
+      "id": "dispatcher",
+      "type": "backend",
+      "label": "Runtime dispatcher",
+      "sublabel": "Runtime boundary",
+      "row": 0,
+      "col": 1
+    },
+    {
+      "id": "atlas-service",
+      "type": "backend",
+      "label": "Atlas service",
+      "sublabel": "Service boundary",
+      "row": 1,
+      "col": 1
+    },
+    {
+      "id": "deep-claim",
+      "type": "security",
+      "label": "Pinned source check",
+      "sublabel": "Deep unsettled claim",
+      "tag": "depth four",
+      "row": 2,
+      "col": 1,
+      "source": {
+        "path": "examples/same-page-atlas/core/src/claims.rs",
+        "line": 400,
+        "endLine": 415
+      }
+    },
+    {
+      "id": "deep-proof",
+      "type": "database",
+      "label": "Receipt writer",
+      "sublabel": "Deep evidence neighbor",
+      "row": 2,
+      "col": 2
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Same Page platform",
+      "wraps": ["gateway", "dispatcher", "atlas-service", "deep-claim", "deep-proof"]
+    },
+    {
+      "kind": "region",
+      "label": "Runtime",
+      "wraps": ["dispatcher", "atlas-service", "deep-claim", "deep-proof"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Atlas service",
+      "wraps": ["atlas-service", "deep-claim", "deep-proof"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Import worker",
+      "wraps": ["deep-claim", "deep-proof"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "gateway-dispatch",
+      "from": "gateway",
+      "to": "dispatcher",
+      "label": "dispatches"
+    },
+    {
+      "id": "dispatch-service",
+      "from": "dispatcher",
+      "to": "atlas-service",
+      "label": "routes"
+    },
+    {
+      "id": "service-check",
+      "from": "atlas-service",
+      "to": "deep-claim",
+      "label": "verifies"
+    },
+    {
+      "id": "check-receipt",
+      "from": "deep-claim",
+      "to": "deep-proof",
+      "label": "records"
+    }
+  ]
+}

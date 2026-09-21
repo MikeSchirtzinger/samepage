@@ -1,0 +1,10 @@
+{
+  "_comment": "Terminal-first: `none` is an explicit idle provider. Its label is a plain provider name, never a status line. The page reports who is attached over MCP from the runtime, and a chat message sent with `none` selected is relayed to an attached agent. Point AGUI_ATLAS_PROVIDER at a real provider id, such as codex or claude, to give the atlas an in-page agent. The runtime adds locally available managed ACP agents to the registry either way.",
+  "providers": [
+    {
+      "id": "none",
+      "label": "None",
+      "api": "none"
+    }
+  ]
+}

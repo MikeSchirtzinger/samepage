@@ -1,0 +1,99 @@
+{
+  "kind": "state_machine",
+  "title": "explanation cursor",
+  "direction": "right",
+  "nodes": [
+    {
+      "id": "active",
+      "label": "active",
+      "shape": "ellipse",
+      "color": "green",
+      "emphasis": "strong",
+      "initial": true,
+      "path": "examples/same-page-atlas/core/src/lib.rs",
+      "lines": "9811-9817",
+      "note": "The status a flow is defined into unless its start beat is terminal. This machine is the cursor of a multi-beat flow, so active is the initial state. A single-beat definition whose start beat is terminal lands on completed instead, and that case is out of this fixture."
+    },
+    {
+      "id": "paused",
+      "label": "paused",
+      "shape": "rect",
+      "color": "amber",
+      "path": "examples/same-page-atlas/core/src/lib.rs",
+      "lines": "10105-10106",
+      "note": "Pause requires active and resume requires paused. A paused cursor refuses advance."
+    },
+    {
+      "id": "completed",
+      "label": "completed",
+      "shape": "rect",
+      "color": "blue",
+      "path": "examples/same-page-atlas/core/src/lib.rs",
+      "lines": "10052",
+      "note": "Advance sets completed when the transition has no next beat, or the next beat is terminal. Not a terminal state of this machine: restart leaves it."
+    },
+    {
+      "id": "stopped",
+      "label": "stopped",
+      "shape": "rect",
+      "color": "red",
+      "path": "examples/same-page-atlas/core/src/lib.rs",
+      "lines": "10120-10122",
+      "note": "Stop accepts active or paused. Not a terminal state of this machine: restart leaves it."
+    }
+  ],
+  "edges": [
+    {
+      "from": "active",
+      "to": "active",
+      "event": "advance",
+      "guard": "the next beat is not terminal"
+    },
+    {
+      "from": "active",
+      "to": "completed",
+      "event": "advance",
+      "guard": "there is no next beat, or the next beat is terminal"
+    },
+    {
+      "from": "active",
+      "to": "paused",
+      "event": "pause"
+    },
+    {
+      "from": "active",
+      "to": "stopped",
+      "event": "stop"
+    },
+    {
+      "from": "active",
+      "to": "active",
+      "event": "restart"
+    },
+    {
+      "from": "paused",
+      "to": "active",
+      "event": "resume"
+    },
+    {
+      "from": "paused",
+      "to": "stopped",
+      "event": "stop"
+    },
+    {
+      "from": "paused",
+      "to": "active",
+      "event": "restart"
+    },
+    {
+      "from": "completed",
+      "to": "active",
+      "event": "restart"
+    },
+    {
+      "from": "stopped",
+      "to": "active",
+      "event": "restart"
+    }
+  ]
+}
