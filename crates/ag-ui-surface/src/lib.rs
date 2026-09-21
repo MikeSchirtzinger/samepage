@@ -5639,6 +5639,42 @@ mod tests {
         agent
     }
 
+    /// The room has no JS test harness (no package.json, no test runner for
+    /// static/*.js), so this is the contract test for the presence chip
+    /// instead: both the one-shot `/provider` fetch a page loads with and the
+    /// `surface.agents` event the liveness tick republishes are the exact
+    /// same JSON (`attached_agents_json`), so proving the fields against
+    /// `provider_get`'s response proves both at once. A chip that read a
+    /// field this drops would fail silently in the browser with nothing
+    /// pointing back at the server change that broke it.
+    #[tokio::test]
+    async fn the_provider_and_surface_agents_payloads_carry_every_field_the_presence_chip_needs() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        attach(&rs, "agentseat");
+
+        let response = provider_get(State(rs.clone())).await.into_response();
+        let bytes = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("provider body");
+        let body: JsonValue = serde_json::from_slice(&bytes).expect("provider json");
+
+        for (path_name, entry) in [
+            ("agents[0]", &body["agents"][0]),
+            ("agent_liveness.attached[0]", &body["agent_liveness"]["attached"][0]),
+        ] {
+            for field in ["id", "label", "listening", "quiet", "quietForMs"] {
+                assert!(
+                    !entry[field].is_null(),
+                    "presence chip needs {field:?} in {path_name}: {body}"
+                );
+            }
+        }
+    }
+
     /// The registry was insert-only: one `insert` on `initialize` and no
     /// remove, no TTL, no last-seen stamp and no liveness probe anywhere. So
     /// the host believed an agent was there for the life of the process, and
