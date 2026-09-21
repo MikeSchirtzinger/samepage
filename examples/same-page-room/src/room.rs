@@ -548,6 +548,9 @@ impl RoomState {
 
     /// The byline for a write arriving through an agent-audience action.
     fn agent_byline(&self) -> Byline {
+        if let Some(actor) = ag_ui_surface::current_actor() {
+            return Byline::named(Author::of(actor.caller), actor.label, actor.participant_id);
+        }
         Byline::named(
             Author::of(*self.caller.lock()),
             self.caller_name.lock().clone(),
@@ -557,9 +560,11 @@ impl RoomState {
 
     /// The byline for a write arriving through a human-audience action.
     ///
-    /// Signed with whoever the runtime last said was calling, which for a
-    /// person is resolved from the resume token their browser holds — not from
-    /// anything in the request body. A byline a caller could fill in would make
+    /// Signed with the actor of the request being served when dispatch ran
+    /// under `ag_ui_surface::with_actor`, which every HTTP entry does. The
+    /// last-noted caller is only a fallback for paths with no request, such as
+    /// the in-page turn loop. For a person the identity is resolved from the
+    /// resume token their browser holds, never from the request body. A byline a caller could fill in would make
     /// every mark in the room worthless, since marks are the one thing an agent
     /// is refused.
     ///
@@ -567,6 +572,9 @@ impl RoomState {
     /// open tier does not get to require a handshake before someone can point
     /// at something.
     fn person_byline(&self) -> Byline {
+        if let Some(actor) = ag_ui_surface::current_actor() {
+            return Byline::named(Author::Human, actor.label, actor.participant_id);
+        }
         Byline::named(
             Author::Human,
             self.caller_name.lock().clone(),
@@ -3605,6 +3613,32 @@ mod tests {
     }
 
     /// The failure this whole change exists to fix: two people in one room.
+    #[tokio::test]
+    async fn a_caller_noted_mid_request_does_not_sign_someone_elses_write() {
+        // Two requests overlap: Mike's request has been noted and is between
+        // its note and its write when Alex's request notes itself. Mike's
+        // write must still carry Mike's name.
+        let (state, extension) = fresh("interleaved-callers");
+        let mike = person_actor("Mike", "person-a", 210);
+        let alex = person_actor("Alex", "person-b", 28);
+        extension.note_caller(&mike);
+        let args = json!({
+            "expected_revision": revision(&state),
+            "id": "his",
+            "title": "his",
+            "view": text_view("mine")
+        });
+        ag_ui_surface::with_actor(mike, async {
+            extension.note_caller(&alex);
+            call(&extension, &state, "room_put_pane", args).expect("Mike writes a pane");
+        })
+        .await;
+        let doc = state.doc.lock();
+        let his = doc.panes.iter().find(|p| p.id == "his").expect("his pane");
+        assert_eq!(his.by_name.as_deref(), Some("Mike"));
+        assert_eq!(his.by_id.as_deref(), Some("person-a"));
+    }
+
     #[test]
     fn two_people_do_not_share_a_byline() {
         let (state, extension) = fresh("two-people");

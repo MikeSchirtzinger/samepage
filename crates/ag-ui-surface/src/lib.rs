@@ -1200,6 +1200,34 @@ pub struct Actor {
     pub responsible: Option<String>,
 }
 
+tokio::task_local! {
+    /// The actor whose request is being served on this task.
+    ///
+    /// A request is one task, so a value scoped here cannot be observed by any
+    /// other request. That is the property `note_caller` alone cannot give: it
+    /// records the most recent caller on shared state, and between recording
+    /// and the write the handler makes there are awaits during which another
+    /// request can record itself. A byline read from the shared slot after such
+    /// an interleaving signs one participant's write with another's name.
+    static CURRENT_ACTOR: Actor;
+}
+
+/// Run `f` with `actor` as the actor of the current request.
+///
+/// Every HTTP entry that dispatches an action wraps the dispatch in this, so a
+/// surface reading [`current_actor`] inside an action handler sees the caller
+/// of that request and never a concurrent one.
+pub async fn with_actor<F: std::future::Future>(actor: Actor, f: F) -> F::Output {
+    CURRENT_ACTOR.scope(actor, f).await
+}
+
+/// The actor of the request being served, when dispatch ran under
+/// [`with_actor`]. `None` outside a request, such as an in-page turn loop or a
+/// unit test, where the surface falls back to whatever it last noted.
+pub fn current_actor() -> Option<Actor> {
+    CURRENT_ACTOR.try_with(|actor| actor.clone()).ok()
+}
+
 impl Actor {
     /// An actor that never said who it is — today's behaviour for every
     /// caller that has not attached with an identity.
@@ -2840,8 +2868,11 @@ async fn action_route_request(
     };
     let actor = Actor::anonymous(caller);
     st.surface.note_caller(&actor);
-    let (result, _, ok) =
-        turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, route.action, &body).await;
+    let (result, _, ok) = with_actor(
+        actor,
+        turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, route.action, &body),
+    )
+    .await;
     if !ok {
         return (
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -3186,11 +3217,14 @@ async fn mcp_post_handler(
         None => Actor::anonymous(Caller::Agent),
     };
     st.surface.note_caller(&actor);
-    match mcp::handle(
-        st.mcp_catalog.as_ref(),
-        st.rt.as_ref(),
-        st.surface.as_ref(),
-        message,
+    match with_actor(
+        actor,
+        mcp::handle(
+            st.mcp_catalog.as_ref(),
+            st.rt.as_ref(),
+            st.surface.as_ref(),
+            message,
+        ),
     )
     .await
     {
@@ -3664,8 +3698,11 @@ async fn tool_handler(
         _ => Actor::anonymous(caller),
     };
     st.surface.note_caller(&actor);
-    let (result, _was_query, ok) =
-        turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, name, &args).await;
+    let (result, _was_query, ok) = with_actor(
+        actor,
+        turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, name, &args),
+    )
+    .await;
     // A tool that rejected its own call (`Effect::Reject` — e.g. Vellum's
     // `render_choice_set` validation) answers 422 so the MCP/ACP bridge
     // surfaces it as a retryable tool error instead of a silent success.
