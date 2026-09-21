@@ -97,11 +97,22 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
             push(&mut lanes, LaneKind::Listener, "socket bind or serve() call");
         }
         if spawn_re.is_match(stripped) {
-            push(
-                &mut lanes,
-                LaneKind::Spawn,
-                "std::process::Command construction or .spawn()",
-            );
+            // `Command::new("node")` on one line and its `.spawn()` a few
+            // lines down are one child process, not two. A `.spawn()` that
+            // follows a construction within the same short statement is the
+            // same lane; a bare `.spawn()` on a command built elsewhere still
+            // counts on its own.
+            let continues_a_construction = stripped.trim_start().starts_with('.')
+                && lanes.iter().rev().take(1).any(|lane| {
+                    lane.kind == LaneKind::Spawn && line_no.saturating_sub(lane.evidence.line) <= 6
+                });
+            if !continues_a_construction {
+                push(
+                    &mut lanes,
+                    LaneKind::Spawn,
+                    "std::process::Command construction or .spawn()",
+                );
+            }
         }
         if http_client_re.is_match(stripped) && !stripped.contains("reqwest::") {
             push(&mut lanes, LaneKind::Outbound, "HTTP client constructed");
