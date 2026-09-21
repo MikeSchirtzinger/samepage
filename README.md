@@ -76,7 +76,11 @@ From the repository root:
 AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
 ```
 
-Open <http://127.0.0.1:8100>. There is no frontend build step.
+Open <http://127.0.0.1:8100>. There is no frontend build step: the typed
+protocol client builds itself on first run if `wasm-pack` is on `PATH`
+(install it with `cargo install wasm-pack`); without it, the room still
+starts and the page reports the protocol as unavailable instead of guessing
+at it in JavaScript.
 
 The room starts without an in-page model by default. Set `AGUI_MCP_TOKEN`
 before launch when an outside MCP client will attach. The value is any string

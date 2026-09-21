@@ -7,6 +7,7 @@
 
 import { AgUiClient, loadExtensions, whoAmI, rememberMe } from "/_agui/client.js";
 import "/_agui/provider-settings.js";
+import { relayedStatus, unansweredStatus, failureStatus, NO_AGENT_STATUS } from "/_agui/conversation.js";
 
 const client = new AgUiClient();
 // A handle for tests and for poking at the page from the console: the
@@ -28,6 +29,14 @@ const clientId = crypto.randomUUID();
 
 let ready = false;
 let room = null;
+/// Agents attached over /mcp, as `{ id, label, listening, quiet }`. Seeded
+/// from `/provider` and kept current by the `surface.agents` event.
+let attachedAgents = [];
+/// Chat nobody has collected, and how old the oldest of it is. Both come
+/// from the host with `surface.agents`, which the liveness tick republishes
+/// while nothing else is happening, so this stays current on its own.
+let unanswered = 0;
+let oldestUnansweredMs = null;
 
 function message(role, text, options = {}) {
   if (!text && !options.allowEmpty) return null;
@@ -71,22 +80,43 @@ function setRuntime(state, detail = "") {
     thinking: "agent thinking",
     awaiting: "waiting for you",
     failed: "agent failed",
+    attached: "agent attached",
+    unavailable: NO_AGENT_STATUS,
   };
   runtimeLabel.textContent = detail || labels[state] || state;
   connectionDot.classList.toggle("failed", state === "failed");
-  ready = ["ready", "done", "thinking", "awaiting"].includes(state);
+  // Either the in-page provider is live, or somebody is attached over /mcp
+  // and the runtime relays to them: a provider that cannot take a turn is
+  // not the same fact as nobody being here.
+  ready = ["ready", "done", "thinking", "awaiting"].includes(state) || attachedAgents.length > 0;
 }
 
 function showError(error) {
   const text = error instanceof Error ? error.message : String(error);
-  composerStatus.textContent = text;
-  message("agent", text, { author: "surface", error: true });
+  const status = failureStatus(text, attachedAgents);
+  composerStatus.textContent = status;
+  message("agent", status, { author: "surface", error: true });
+}
+
+/// The composer status line when nothing is actively in flight. A message
+/// nobody has collected outranks the lifecycle word: it is the fact a person
+/// watching this line is most likely waiting to find out.
+function idleComposerStatus() {
+  return unansweredStatus(attachedAgents, unanswered, oldestUnansweredMs)
+    || "Shift + Enter for a new line";
+}
+
+/// Repaint the idle status. Skipped while a send is in flight (the button is
+/// disabled), so an arriving surface.agents event cannot stomp on "Sending…".
+function repaintComposerStatus() {
+  if (sendButton.disabled) return;
+  composerStatus.textContent = idleComposerStatus();
 }
 
 async function send(question) {
   if (!question) return;
   if (!ready) {
-    composerStatus.textContent = "Choose or start an agent first.";
+    composerStatus.textContent = NO_AGENT_STATUS;
     return;
   }
   sendButton.disabled = true;
@@ -98,8 +128,13 @@ async function send(question) {
       // An idle provider has nothing to interrupt.
     }
     message("user", question);
-    await client.ask(question, clientId);
-    composerStatus.textContent = "Shift + Enter for a new line";
+    const accepted = await client.ask(question, clientId);
+    // The runtime says when it handed the message to attached agents rather
+    // than to an in-page provider. Say so, instead of leaving a person to
+    // wonder which of the two is thinking.
+    composerStatus.textContent = accepted && accepted.relayed === "mcp"
+      ? relayedStatus(attachedAgents)
+      : idleComposerStatus();
   } catch (error) {
     showError(error);
   } finally {
@@ -119,6 +154,9 @@ client.on("connection:error", () => {
   setRuntime("connecting");
 });
 client.on("RUN_STARTED", () => connectionDot.classList.add("live"));
+client.on("protocol:unavailable", ({ error }) => {
+  setRuntime("failed", `Typed protocol client unavailable: ${error}`);
+});
 // Assembled by the typed protocol client; the shell only paints it.
 client.on("transcript:text-started", beginStream);
 client.on("transcript:text-delta", appendStream);
@@ -143,6 +181,16 @@ client.on("surface.ask", (event) => {
 client.on("surface.narrate", (event) => {
   const value = event.value || {};
   message("agent", value.text || "", { author: value.by || "agent" });
+});
+client.on("surface.agents", (event) => {
+  const snapshot = event.value || {};
+  attachedAgents = snapshot.attached || [];
+  unanswered = snapshot.unanswered || 0;
+  oldestUnansweredMs = snapshot.oldestUnansweredMs ?? null;
+  if (snapshot.providerCanServe === false) {
+    setRuntime(attachedAgents.length === 0 ? (snapshot.providerState || "unavailable") : "attached");
+  }
+  repaintComposerStatus();
 });
 client.on("surface.history", (event) => {
   streaming.clear();
@@ -400,9 +448,18 @@ setInterval(presenceRefresh, 5000);
 async function start() {
   try {
     const provider = await client.getJson("/provider");
-    if (provider.ready) setRuntime("ready");
+    // Seeded here so a page that loads after an agent attached does not
+    // believe the room is empty until the next surface.agents tick.
+    attachedAgents = provider.agents || [];
+    const liveness = provider.agent_liveness || {};
+    unanswered = liveness.unanswered || 0;
+    oldestUnansweredMs = liveness.oldestUnansweredMs ?? null;
+    if (provider.provider_can_serve === false) {
+      setRuntime(attachedAgents.length === 0 ? "unavailable" : "attached");
+    } else if (provider.ready) setRuntime("ready");
     else if (provider.error) setRuntime("failed", provider.error);
     else if (provider.warming) setRuntime("warming");
+    repaintComposerStatus();
     await loadExtensions(client);
     client.connect();
   } catch (error) {

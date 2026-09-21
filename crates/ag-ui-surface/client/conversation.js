@@ -481,4 +481,4 @@ if (!customElements.get("agui-conversation")) {
   customElements.define("agui-conversation", AgUiConversation);
 }
 
-export { AgUiConversation };
+export { AgUiConversation, relayedStatus, unansweredStatus, failureStatus, NO_AGENT_STATUS };
