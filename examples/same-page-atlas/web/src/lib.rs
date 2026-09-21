@@ -1313,6 +1313,26 @@ fn err(error: impl ToString) -> JsValue {
     JsValue::from_str(&error.to_string())
 }
 
+#[wasm_bindgen]
+impl AtlasDoc {
+    /// One node's challenge standing, badge, and canonical read-back summary.
+    pub fn node_challenge(&self, node_id: &str) -> Result<String, JsValue> {
+        let challenge = atlas::read(&self.scene).map_err(err)?.challenge(node_id);
+        serde_json::to_string(&challenge).map_err(|error| err(error.to_string()))
+    }
+}
+
+#[wasm_bindgen]
+impl AtlasDoc {
+    /// One container's aggregate challenge standing over its whole subtree.
+    pub fn challenge_within(&self, node_id: &str) -> Result<String, JsValue> {
+        let challenge = atlas::read(&self.scene)
+            .map_err(err)?
+            .challenge_within(node_id);
+        serde_json::to_string(&challenge).map_err(|error| err(error.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1427,25 +1447,5 @@ mod tests {
         let error = encode_attention_payload(0.0, 0.0, 100.0, 100.0, 1.0, None, "follow", "hover")
             .expect_err("unknown source");
         assert!(error.contains("selection or composer"), "{error}");
-    }
-}
-
-#[wasm_bindgen]
-impl AtlasDoc {
-    /// One node's challenge standing, badge, and canonical read-back summary.
-    pub fn node_challenge(&self, node_id: &str) -> Result<String, JsValue> {
-        let challenge = atlas::read(&self.scene).map_err(err)?.challenge(node_id);
-        serde_json::to_string(&challenge).map_err(|error| err(error.to_string()))
-    }
-}
-
-#[wasm_bindgen]
-impl AtlasDoc {
-    /// One container's aggregate challenge standing over its whole subtree.
-    pub fn challenge_within(&self, node_id: &str) -> Result<String, JsValue> {
-        let challenge = atlas::read(&self.scene)
-            .map_err(err)?
-            .challenge_within(node_id);
-        serde_json::to_string(&challenge).map_err(|error| err(error.to_string()))
     }
 }
