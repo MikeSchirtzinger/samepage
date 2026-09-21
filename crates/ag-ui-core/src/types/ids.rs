@@ -147,6 +147,12 @@ impl Deref for ToolCallId {
     }
 }
 
+impl std::fmt::Display for ToolCallId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // Test whether tool call ID has same format as rest of AG-UI
