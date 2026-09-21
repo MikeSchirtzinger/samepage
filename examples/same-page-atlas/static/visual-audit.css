@@ -13,17 +13,42 @@ body[data-atlas-mode="author"] .atlas-pane {
   contain: paint;
 }
 
-/* Context remains readable at the available width. The button still opens the
-   shared question, but reading its full text does not require opening it. */
-.shared-context .context-question,
-.shared-context .context-question-text,
+/* Context remains readable at the available width, but "never truncate"
+   turned into "wrap one word per line" once the header had more competing
+   for the same row (mode strip, Legend). A min-width keeps the row itself
+   honest -- it must yield space rather than squeeze this below a readable
+   width -- and a two-line clamp with an ellipsis is the bounded fallback
+   past that; the full text is still one hover or focus away via `title`
+   (set in shared-context.js), so nothing is silently lost, just not always
+   fully on screen. */
+.shared-context .context-question {
+  min-width: 140px;
+}
+.shared-context .context-question-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-overflow: ellipsis;
+  min-width: 9ch;
+  flex: 1;
+}
 .exploration-heading strong {
   white-space: normal;
   overflow: visible;
   overflow-wrap: anywhere;
   text-overflow: clip;
 }
-.context-question-text { flex: 1; }
+/* architecture-compare.css sets min-width: 0 on .project-facts, loads
+   before this file, and loses here on purpose: a wrapping element with no
+   floor can be squeezed down to wrapping one character per line, which is
+   what a crowded header (mode strip, Legend) did to it once the scope
+   question's own new min-width pushed the squeeze somewhere else instead
+   of fixing it. flex-shrink stays 1 -- it still yields before header-actions
+   and the scope question, just not below a readable width. */
+.project-facts { min-width: 130px; flex-shrink: 1; }
 .runtime-state { flex-shrink: 0; }
 #runtime-state {
   min-width: 0;
