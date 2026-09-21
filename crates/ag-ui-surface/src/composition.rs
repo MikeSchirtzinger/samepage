@@ -305,6 +305,16 @@ pub trait Extension: Send + Sync + 'static {
         false
     }
 
+    /// Handed the host attention service once, at install time. See
+    /// [`Surface::bind_semantic_targets`]: an extension whose tools park on a
+    /// wait needs the handle to read the human's live selection from inside a
+    /// future that holds no surface reference. Context only, never authority.
+    fn bind_semantic_targets(
+        &self,
+        _service: &std::sync::Arc<crate::semantic_targets::SemanticTargetService>,
+    ) {
+    }
+
     /// Told who is about to call an action, immediately before dispatch. See
     /// [`Surface::note_caller`] — an extension that records authorship reads
     /// this to pick a byline. Broadcast to every extension, because the
@@ -661,6 +671,15 @@ impl Surface for CompositeSurface {
     fn note_caller(&self, actor: &crate::Actor) {
         for extension in &self.extensions {
             extension.note_caller(actor);
+        }
+    }
+
+    fn bind_semantic_targets(
+        &self,
+        service: &std::sync::Arc<crate::semantic_targets::SemanticTargetService>,
+    ) {
+        for extension in &self.extensions {
+            extension.bind_semantic_targets(service);
         }
     }
 

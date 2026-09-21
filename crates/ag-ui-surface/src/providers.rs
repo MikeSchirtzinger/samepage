@@ -83,6 +83,9 @@ pub enum ProviderConfigError {
 /// How the host drives a provider.
 #[derive(Debug, Clone)]
 pub enum Backend {
+    /// No in-page provider. Human chat may still be handled by an agent that
+    /// attaches over the runtime MCP endpoint.
+    None,
     /// A spawned ACP subprocess: `program` + `args` put it into agent mode.
     Acp { program: String, args: Vec<String> },
     /// A spawned Pi subprocess driven through `--mode rpc`. `builtin_tools`
@@ -101,6 +104,7 @@ impl Backend {
     /// Stable transport/adapter name exposed to setup and provider status UIs.
     pub fn adapter(&self) -> &'static str {
         match self {
+            Self::None => "none",
             Self::Acp { .. } => "acp",
             Self::PiRpc { .. } => "pi-rpc",
             Self::OpenAi => "openai-compatible",
@@ -116,7 +120,7 @@ impl Backend {
     pub fn program(&self) -> Option<&str> {
         match self {
             Self::Acp { program, .. } | Self::PiRpc { program, .. } => Some(program),
-            Self::OpenAi => None,
+            Self::None | Self::OpenAi => None,
         }
     }
 }
@@ -125,6 +129,8 @@ impl Backend {
 /// subscriptions uniformly (Pi's `ProviderAuth`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthKind {
+    /// No provider and therefore no credential.
+    None,
     /// The ACP subprocess handles its own credentials.
     Managed,
     /// A bring-your-own API key, sent as a bearer token.
@@ -368,7 +374,7 @@ fn builtin() -> Vec<Provider> {
                 false
             }
             Backend::Acp { .. } | Backend::PiRpc { .. } => true,
-            Backend::OpenAi => true,
+            Backend::None | Backend::OpenAi => true,
         })
         .collect()
 }
@@ -457,11 +463,41 @@ fn load_into(
                 "provider id {id:?} is duplicated or collides with a built-in"
             )));
         }
-        // Only the OpenAI Chat Completions wire is supported today.
+        // An explicit idle provider keeps the runtime available for agents
+        // attached over MCP without pretending a dead HTTP address is live.
         let api = entry
             .get("api")
             .and_then(Value::as_str)
             .unwrap_or("openai-completions");
+        if api == "none" {
+            for forbidden in ["base_url", "model", "api_key", "auth", "vision"] {
+                if entry.get(forbidden).is_some() {
+                    return Err(invalid(format!(
+                        "provider {id:?} with api \"none\" cannot set {forbidden}"
+                    )));
+                }
+            }
+            let label = entry
+                .get("label")
+                .and_then(Value::as_str)
+                .unwrap_or(&id)
+                .to_string();
+            providers.push(Provider {
+                id,
+                label,
+                auth_note: "No in-page provider".to_string(),
+                backend: Backend::None,
+                auth: AuthKind::None,
+                base_url: None,
+                model: None,
+                key_source: None,
+                env_vars: Vec::new(),
+                vision: false,
+            });
+            continue;
+        }
+        // Every other data-driven provider uses the OpenAI Chat Completions
+        // wire today.
         if api != "openai-completions" {
             return Err(invalid(format!(
                 "provider {id:?} uses unsupported api {api:?}"
