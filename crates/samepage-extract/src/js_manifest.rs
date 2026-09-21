@@ -158,6 +158,15 @@ pub fn extract_js(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<La
             });
         };
 
+        // An import names a module; it does not spawn or listen. Without this,
+        // `const { spawn } = require("child_process")` reads as a sidecar.
+        let head = stripped.trim_start();
+        if head.starts_with("import ")
+            || head.starts_with("export ")
+            || (head.contains("require(") && (head.starts_with("const ") || head.starts_with("let ") || head.starts_with("var ")))
+        {
+            continue;
+        }
         if listener_re.is_match(stripped) {
             push(LaneKind::Listener, ".listen()/createServer()/Bun.serve()/Deno.serve()");
         }

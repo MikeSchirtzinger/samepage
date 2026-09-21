@@ -38,16 +38,10 @@ fn exact_lane_set_over_the_fixture_tree() {
 
     let mut expected = vec![
         (LaneKind::Binary, "js-package/package.json".to_string(), 5),
-        (LaneKind::Spawn, "js-package/bin/cli.js".to_string(), 1),
         (LaneKind::Spawn, "js-package/bin/cli.js".to_string(), 4),
         (
             LaneKind::Binary,
             "rust-workspace/api/Cargo.toml".to_string(),
-            2,
-        ),
-        (
-            LaneKind::Spawn,
-            "rust-workspace/api/src/main.rs".to_string(),
             2,
         ),
         (
@@ -197,4 +191,25 @@ fn finds_known_lanes_in_this_repository() {
         turn_loop_spawn,
         "expected a Spawn lane in crates/ag-ui-surface/src/turn_loop/pi.rs (Command::new/.spawn())"
     );
+}
+
+#[test]
+fn an_import_of_command_is_not_a_spawn() {
+    let dir = std::env::temp_dir().join(format!("samepage-extract-import-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"imp\"\nversion = \"0.1.0\"\n").unwrap();
+    std::fs::write(
+        dir.join("src/main.rs"),
+        "use std::process::Command;\nfn main() {\n    let _c = Command::new(\"node\").spawn();\n}\n",
+    )
+    .unwrap();
+    let report = samepage_extract::scan(&dir).unwrap();
+    let spawns: Vec<u32> = report
+        .lanes
+        .iter()
+        .filter(|lane| lane.kind == samepage_extract::LaneKind::Spawn)
+        .map(|lane| lane.evidence.line)
+        .collect();
+    assert_eq!(spawns, vec![3], "only the call is a lane, never the import: {report:?}");
 }
