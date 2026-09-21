@@ -1,2 +1,8 @@
 .local/
 web/pkg/
+
+# Screenshots and captures never enter history here, same as the root
+# repository's policy (see examples/shared-site-review/static/captures/).
+# Visual-audit output and manual proof screenshots belong in .local/ or a
+# scratch directory outside the repository, not committed.
+*.png
