@@ -79,8 +79,11 @@ AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
 Open <http://127.0.0.1:8100>. There is no frontend build step.
 
 The room starts without an in-page model by default. Set `AGUI_MCP_TOKEN`
-before launch when an outside MCP client will attach. The client sends that
-value as `Authorization: Bearer local-room-token` to `POST /mcp`.
+before launch when an outside MCP client will attach. The value is any string
+you choose, not a credential issued by anyone. `local-room-token` above is
+only a placeholder. The client sends the same value as
+`Authorization: Bearer <your value>` to `POST /mcp`. Without the variable the
+room mints a random token per process that only its own subprocess can see.
 
 Initialization returns an `Mcp-Session-Id`. Every later MCP request must send
 that header and `MCP-Protocol-Version: 2025-06-18`. Omitting the session header

@@ -25,7 +25,7 @@ and enter the repository, then run the command above.
 The room starts without an in-page model. Attach an agent through `POST /mcp`,
 or set `AGUI_ROOM_PROVIDER` to a configured provider id when an in-page agent
 is wanted. An outside MCP client must use the same `AGUI_MCP_TOKEN` value as
-the server.
+the server. Pick any string; `local-room-token` is only a placeholder.
 
 State lives in `examples/same-page-room/.local/room.json` by default and
 survives restarts. `AGUI_ROOM_STATE` can point a demo or test at isolated

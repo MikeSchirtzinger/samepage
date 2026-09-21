@@ -60,7 +60,8 @@ receipt are separate claims. Report only the layers actually proven.
 An outside MCP client needs `AGUI_MCP_TOKEN` set before the room starts. The
 runtime still requires a bearer token when it generates one automatically, but
 only managed provider adapters receive that generated value. A terminal client
-therefore needs a value both it and the room know.
+therefore needs a value both it and the room know. Any string works;
+`local-room-token` is a placeholder, not an issued credential.
 
 The attachment sequence is:
 
