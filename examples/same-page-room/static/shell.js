@@ -9,6 +9,9 @@ import { AgUiClient, loadExtensions, whoAmI, rememberMe } from "/_agui/client.js
 import "/_agui/provider-settings.js";
 
 const client = new AgUiClient();
+// A handle for tests and for poking at the page from the console: the
+// transport, and through it the typed protocol client's counters.
+window.__agui = { client };
 const byId = (id) => document.getElementById(id);
 const transcript = byId("transcript");
 const emptyState = byId("conversation-empty");
@@ -116,9 +119,14 @@ client.on("connection:error", () => {
   setRuntime("connecting");
 });
 client.on("RUN_STARTED", () => connectionDot.classList.add("live"));
-client.on("TEXT_MESSAGE_START", beginStream);
-client.on("TEXT_MESSAGE_CONTENT", appendStream);
-client.on("TEXT_MESSAGE_END", (event) => streaming.delete(event.messageId));
+// Assembled by the typed protocol client; the shell only paints it.
+client.on("transcript:text-started", beginStream);
+client.on("transcript:text-delta", appendStream);
+client.on("transcript:text-finished", (update) => {
+  const stream = streaming.get(update.messageId);
+  streaming.delete(update.messageId);
+  if (stream) stream.body.textContent = update.text;
+});
 client.on("surface.tutor", (event) => {
   const value = event.value || {};
   setRuntime(value.state || "ready", value.state === "failed" ? value.question || "" : "");

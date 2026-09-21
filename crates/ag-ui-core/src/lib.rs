@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+pub mod assembly;
 pub mod error;
 pub mod event;
 mod state;

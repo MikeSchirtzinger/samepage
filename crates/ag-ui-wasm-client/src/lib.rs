@@ -1,21 +1,28 @@
-//! Browser AG-UI client. Subscribes to an SSE stream of AG-UI events via the
-//! built-in `EventSource` (automatic reconnect, free); POSTs writes via fetch.
-//! Deserializes incoming `data: {...}` payloads as `ag_ui_core::Event` so the
-//! browser and the agent CLI share the same Rust event types.
+//! Browser AG-UI client. Two things live here:
+//!
+//! - [`Protocol`]: the typed protocol client the runtime's shared browser
+//!   core (`/_agui/client.js`) drives. It owns one
+//!   `ag_ui_core::assembly::Assembler`; every SSE `data:` payload goes through
+//!   [`Protocol::push`], which parses it as `ag_ui_core::Event`, runs the
+//!   lifecycle state machine, and hands JavaScript one frame: the validated
+//!   event, the assembled transcript updates, and any anomalies it repaired.
+//!   JavaScript never interprets an event type string again.
+//! - [`subscribe_events`] / [`post_json`]: an `EventSource` + fetch transport
+//!   for wasm apps that own their own page (the canvas web crate).
 //!
 //! ## JS surface
 //!
 //! ```js
-//! import init, { subscribe_events, post_focus } from './ag_ui_wasm_client.js';
+//! import init, { Protocol } from '/_agui/protocol/ag_ui_wasm_client.js';
 //! await init();
-//! const sub = subscribe_events('/events', (evt) => {
-//!   // evt is the deserialized AG-UI Event as a JS object
-//!   if (evt.type === 'STATE_SNAPSHOT') applyFocus(evt.snapshot.node);
-//! });
-//! await post_focus('/focus', 'code/data-sources', 'human', 'tighten add-source UX');
-//! sub.close();
+//! const protocol = new Protocol();
+//! source.onmessage = (message) => {
+//!   const { event, updates, anomalies } = protocol.push(message.data);
+//!   for (const update of updates) render(update); // { kind: 'text-delta', ... }
+//! };
 //! ```
 
+use ag_ui_core::assembly::{Anomaly, Assembler, PushError, Update};
 use ag_ui_core::event::Event as AgUiEvent;
 use ag_ui_core::JsonValue;
 use js_sys::Function;
@@ -29,6 +36,136 @@ use web_sys::{EventSource, MessageEvent, Request, RequestInit, Response};
 #[wasm_bindgen(start)]
 pub fn init() {
     console_error_panic_hook::set_once();
+}
+
+/// What one pushed payload produced, in the shape JavaScript receives.
+#[derive(Debug, Serialize)]
+struct Frame<'a> {
+    event: &'a AgUiEvent,
+    updates: &'a [Update],
+    #[serde(skip_serializing_if = "<[Anomaly]>::is_empty")]
+    anomalies: &'a [Anomaly],
+}
+
+/// A refused payload, in the shape JavaScript receives as the thrown value.
+/// `kind` is `"parse"` for a payload that is not a valid AG-UI event, or the
+/// assembly error's own kebab-case kind (`"text-content-without-start"`).
+#[derive(Debug, Serialize)]
+struct Refusal {
+    kind: String,
+    message: String,
+    #[serde(flatten)]
+    detail: JsonValue,
+}
+
+impl From<PushError> for Refusal {
+    fn from(error: PushError) -> Self {
+        let message = error.to_string();
+        match error {
+            PushError::Parse(_) => Refusal {
+                kind: "parse".to_string(),
+                message,
+                detail: JsonValue::Null,
+            },
+            PushError::Assembly(assembly) => {
+                let mut detail = serde_json::to_value(&assembly).unwrap_or(JsonValue::Null);
+                let kind = detail
+                    .as_object_mut()
+                    .and_then(|fields| fields.remove("kind"))
+                    .and_then(|kind| kind.as_str().map(str::to_owned))
+                    .unwrap_or_else(|| "assembly".to_string());
+                Refusal {
+                    kind,
+                    message,
+                    detail,
+                }
+            }
+        }
+    }
+}
+
+/// The typed AG-UI protocol client for one event stream.
+///
+/// One `Protocol` per connection. Its assembler state survives an
+/// `EventSource` reconnect on purpose: the runtime replays an in-flight
+/// message as `TEXT_MESSAGE_START` + the whole text so far, and the
+/// assembler resets that message when the replayed start arrives.
+#[wasm_bindgen]
+#[derive(Default)]
+pub struct Protocol {
+    assembler: Assembler,
+}
+
+#[wasm_bindgen]
+impl Protocol {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Protocol {
+        Protocol::default()
+    }
+
+    /// Parse one SSE `data:` payload and run the lifecycle state machine.
+    ///
+    /// Returns `{ event, updates, anomalies? }`. Throws `{ kind, message, ... }`
+    /// when the payload is not a valid AG-UI event or when accepting it would
+    /// lose content; the assembler is unchanged in that case and the caller
+    /// should resync (reconnect and take the replay).
+    pub fn push(&mut self, raw: &str) -> Result<JsValue, JsValue> {
+        let (event, outcome) = self
+            .assembler
+            .push_json(raw)
+            .map_err(|error| to_js(&Refusal::from(error)))?;
+        let frame = Frame {
+            event: &event,
+            updates: &outcome.updates,
+            anomalies: &outcome.anomalies,
+        };
+        to_js_result(&frame)
+    }
+
+    /// `{ events, updates, anomalies, errors }` since construction.
+    pub fn counters(&self) -> Result<JsValue, JsValue> {
+        to_js_result(&self.assembler.counters())
+    }
+
+    /// The run lifecycle as the assembler last saw it, e.g.
+    /// `{ phase: "running", threadId, runId }`.
+    pub fn run(&self) -> Result<JsValue, JsValue> {
+        to_js_result(&self.assembler.run())
+    }
+
+    /// The accumulated text of a message that is still streaming, or
+    /// `undefined` once it has finished or if it never started.
+    pub fn text(&self, message_id: &str) -> Option<String> {
+        let id = message_id.parse().ok()?;
+        self.assembler.text(&id).map(str::to_owned)
+    }
+
+    /// Ids of the text messages currently streaming, oldest first.
+    pub fn open_text_ids(&self) -> Vec<String> {
+        self.assembler
+            .open_text_ids()
+            .map(ToString::to_string)
+            .collect()
+    }
+
+    /// Forget every open item. Counters are kept.
+    pub fn reset(&mut self) {
+        self.assembler.reset();
+    }
+}
+
+/// Serialize once in Rust and let the engine build the object: one serde
+/// pass plus one `JSON.parse`, no per-field reflection calls.
+fn to_js_result<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
+    let json = serde_json::to_string(value)
+        .map_err(|error| JsValue::from_str(&format!("serialize frame: {error}")))?;
+    js_sys::JSON::parse(&json)
+}
+
+/// Best effort conversion for a value that is itself an error: if it cannot
+/// be turned into an object, the thrown value is its message string.
+fn to_js(refusal: &Refusal) -> JsValue {
+    to_js_result(refusal).unwrap_or_else(|_| JsValue::from_str(&refusal.message))
 }
 
 /// Handle returned from `subscribe_events`. Callers must retain it for as long
@@ -204,13 +341,72 @@ async fn raw_post(url: &str, body_str: &str) -> Result<JsValue, JsValue> {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::indexing_slicing
+)]
 mod tests {
-    use super::parse_ag_ui_event;
+    use super::{parse_ag_ui_event, Frame, Refusal};
+    use ag_ui_core::assembly::{Assembler, PushError};
+    use serde_json::json;
+
+    const A: &str = "00000000-0000-0000-0000-00000000000a";
 
     #[test]
     fn typed_event_parser_rejects_malformed_and_unknown_events() {
         assert!(parse_ag_ui_event("not-json").is_err());
         assert!(parse_ag_ui_event(r#"{"type":"UNKNOWN_EVENT"}"#).is_err());
         assert!(parse_ag_ui_event(r#"{"missing":"type"}"#).is_err());
+    }
+
+    /// The frame is the JavaScript contract: the validated event under
+    /// `event`, assembled updates under `updates`, anomalies only when there
+    /// are any. Proven here natively; the wasm boundary only `JSON.parse`s it.
+    #[test]
+    fn a_frame_carries_the_event_the_updates_and_only_real_anomalies() {
+        let mut assembler = Assembler::new();
+        let raw =
+            json!({"type": "TEXT_MESSAGE_START", "messageId": A, "role": "assistant"}).to_string();
+        let (event, outcome) = assembler.push_json(&raw).unwrap();
+        let frame = serde_json::to_value(Frame {
+            event: &event,
+            updates: &outcome.updates,
+            anomalies: &outcome.anomalies,
+        })
+        .unwrap();
+        assert_eq!(frame["event"]["type"], "TEXT_MESSAGE_START");
+        assert_eq!(frame["updates"][0]["kind"], "text-started");
+        assert_eq!(frame["updates"][0]["messageId"], A);
+        assert!(frame.get("anomalies").is_none());
+
+        let (event, outcome) = assembler.push_json(&raw).unwrap();
+        let frame = serde_json::to_value(Frame {
+            event: &event,
+            updates: &outcome.updates,
+            anomalies: &outcome.anomalies,
+        })
+        .unwrap();
+        assert_eq!(frame["anomalies"][0]["kind"], "text-restarted");
+    }
+
+    #[test]
+    fn a_refusal_names_its_kind_and_keeps_the_typed_detail() {
+        let mut assembler = Assembler::new();
+        let raw = json!({"type": "TEXT_MESSAGE_CONTENT", "messageId": A, "delta": "x"}).to_string();
+        let error = assembler.push_json(&raw).unwrap_err();
+        let refusal = serde_json::to_value(Refusal::from(error)).unwrap();
+        assert_eq!(refusal["kind"], "text-content-without-start");
+        assert_eq!(refusal["messageId"], A);
+        assert!(refusal["message"]
+            .as_str()
+            .unwrap()
+            .contains("never started"));
+
+        let error = assembler.push_json("{nope").unwrap_err();
+        assert!(matches!(error, PushError::Parse(_)));
+        let refusal = serde_json::to_value(Refusal::from(error)).unwrap();
+        assert_eq!(refusal["kind"], "parse");
     }
 }
