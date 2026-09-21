@@ -7,7 +7,13 @@
 
 import { AgUiClient, loadExtensions, whoAmI, rememberMe } from "/_agui/client.js";
 import "/_agui/provider-settings.js";
-import { relayedStatus, unansweredStatus, failureStatus, NO_AGENT_STATUS } from "/_agui/conversation.js";
+import {
+  relayedStatus,
+  unansweredStatus,
+  failureStatus,
+  waitedFor,
+  NO_AGENT_STATUS,
+} from "/_agui/conversation.js";
 
 const client = new AgUiClient();
 // A handle for tests and for poking at the page from the console: the
@@ -191,6 +197,7 @@ client.on("surface.agents", (event) => {
     setRuntime(attachedAgents.length === 0 ? (snapshot.providerState || "unavailable") : "attached");
   }
   repaintComposerStatus();
+  renderAgentChips();
 });
 client.on("surface.history", (event) => {
   streaming.clear();
@@ -214,25 +221,17 @@ document.addEventListener("room:state", (event) => {
   byId("scale-value").textContent = `${Number(room.theme?.scale ?? 1).toFixed(2)}×`;
 });
 
-// A pane's button is a question the agent wrote for the person to ask back.
-document.addEventListener("room:ask", (event) => {
-  const text = event.detail?.text?.trim();
-  if (text) send(text);
-});
-
 const roomAlert = byId("room-alert");
 let roomAlertTimer = null;
 
-// Say it where it can actually be read. The two lines that used to be the
-// whole handler write inside `.side-pane`, which `body.terminal-first` hides,
-// and the body is always terminal-first. So every refusal the room produced,
-// revision conflicts, over-length gestures, malformed views, went to a hidden
-// element and the person saw their action simply not happen.
-document.addEventListener("room:error", (event) => {
-  const text = event.detail?.message || "the room rejected that";
-  composerStatus.textContent = text;
-  message("agent", text, { author: "room", error: true });
-  if (!roomAlert) return;
+// Say it where it can actually be read. `.side-pane`, which the composer
+// status lives in, is hidden by `body.terminal-first`, and the body is always
+// terminal-first. So every refusal the room produced, revision conflicts,
+// over-length gestures, malformed views, went to a hidden element and the
+// person saw their action simply not happen. `.room-alert` is visible in
+// every mode for exactly this reason.
+function showRoomAlert(text) {
+  if (!roomAlert || !text) return;
   roomAlert.textContent = text;
   roomAlert.hidden = false;
   if (roomAlertTimer) clearTimeout(roomAlertTimer);
@@ -241,6 +240,33 @@ document.addEventListener("room:error", (event) => {
   roomAlertTimer = setTimeout(() => {
     roomAlert.hidden = true;
   }, 9000);
+}
+
+/// What to tell the person BEFORE their pane-button ask goes anywhere, when
+/// nobody is actually going to read it: `null` while at least one attached
+/// agent is not quiet, so a reading agent gets no banner at all.
+function noAgentReadingAlert() {
+  if (attachedAgents.length === 0) return NO_AGENT_STATUS;
+  if (attachedAgents.some((agent) => !agent.quiet)) return null;
+  return relayedStatus(attachedAgents);
+}
+
+// A pane's button is a question the agent wrote for the person to ask back.
+// Unlike the composer, this ask has no status line of its own next to it, so
+// the one thing the person can lose track of, whether anyone is even reading
+// it, has to be said up front rather than discovered from silence.
+document.addEventListener("room:ask", (event) => {
+  const text = event.detail?.text?.trim();
+  if (!text) return;
+  showRoomAlert(noAgentReadingAlert());
+  send(text);
+});
+
+document.addEventListener("room:error", (event) => {
+  const text = event.detail?.message || "the room rejected that";
+  composerStatus.textContent = text;
+  message("agent", text, { author: "room", error: true });
+  showRoomAlert(text);
 });
 
 document.addEventListener("room:focus", (event) => {
@@ -360,6 +386,12 @@ function renderPresence(snapshot) {
   if (!presenceStrip || !Array.isArray(snapshot?.participants)) return;
   presenceStrip.replaceChildren();
   for (const entry of snapshot.participants) {
+    // An attached agent gets its own liveness-aware chip below, built from
+    // attachedAgents (surface.agents/`/provider`), not from this presence
+    // snapshot. Presence has its own 45s lease renewed by any `/mcp` call;
+    // the registry this reuses keeps an entry, quiet or not, until
+    // AGENT_DETACH_AFTER, and the chip has to survive that whole window.
+    if (entry.participant?.kind === "agent") continue;
     const you = Boolean(participantId) && entry.participant?.id === participantId;
     const label = entry.participant?.label || "someone";
     if (you) {
@@ -390,6 +422,44 @@ function renderPresence(snapshot) {
     chip.textContent = label;
     chip.title = `${label} · ${entry.status}`;
     presenceStrip.append(chip);
+  }
+  renderAgentChips();
+}
+
+/// The attached-agent half of the strip: one chip per agent in
+/// `attachedAgents`, reading (normal) or quiet (dimmed, with how long), and
+/// one muted line replacing nothing when no agent is attached at all. Called
+/// after `renderPresence` rebuilds the human chips, and on its own whenever
+/// `attachedAgents` changes (`surface.agents`), so it clears its own prior
+/// output first rather than assuming a fresh strip.
+function renderAgentChips() {
+  if (!presenceStrip) return;
+  for (const stale of presenceStrip.querySelectorAll(".presence-agent, .presence-note")) {
+    stale.remove();
+  }
+  for (const agent of attachedAgents) {
+    const label = agent.label || "agent";
+    const quiet = Boolean(agent.quiet);
+    const chip = document.createElement("span");
+    chip.className = `presence-chip presence-agent${quiet ? " quiet" : ""}`;
+    chip.append(document.createTextNode(label));
+    if (quiet) {
+      const age = waitedFor(agent.quietForMs ?? 0);
+      const suffix = document.createElement("small");
+      suffix.className = "presence-chip-suffix";
+      suffix.textContent = `quiet ${age}`;
+      chip.append(suffix);
+      chip.title = `${label} · quiet ${age}`;
+    } else {
+      chip.title = `${label} · reading /mcp`;
+    }
+    presenceStrip.append(chip);
+  }
+  if (attachedAgents.length === 0) {
+    const note = document.createElement("span");
+    note.className = "presence-note";
+    note.textContent = "No agent attached. Attach from a terminal at /mcp.";
+    presenceStrip.append(note);
   }
 }
 
@@ -460,6 +530,7 @@ async function start() {
     else if (provider.error) setRuntime("failed", provider.error);
     else if (provider.warming) setRuntime("warming");
     repaintComposerStatus();
+    renderAgentChips();
     await loadExtensions(client);
     client.connect();
   } catch (error) {

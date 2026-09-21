@@ -466,6 +466,13 @@ body.terminal-first .page-grid { grid-template-columns: minmax(0, 1fr); }
   color: var(--muted);
 }
 .presence-chip.active { color: var(--text, inherit); border-color: var(--accent); }
+/* An agent chip's own liveness, reusing the same surface.agents data the
+   composer's status line reads: reading is the normal chip, quiet dims it and
+   names how long, and the chip is simply absent once the registry drops the
+   agent at AGENT_DETACH_AFTER. */
+.presence-chip.presence-agent.quiet { opacity: 0.55; }
+.presence-chip-suffix { margin-left: 4px; opacity: 0.85; }
+.presence-note { color: var(--muted); font-size: calc(11.5px * var(--scale)); }
 
 .n-stack { display: flex; flex-direction: column; gap: 10px; }
 .n-html { display: flex; }
