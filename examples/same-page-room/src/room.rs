@@ -31,6 +31,20 @@ const MAX_PANES: usize = 24;
 const MAX_TITLE: usize = 120;
 const MAX_INTENT: usize = 600;
 const MAX_NOTE: usize = 600;
+/// What a gesture may report, which is not what a person may type.
+///
+/// `pointed` shared `MAX_NOTE` until this cap was split out, and 600
+/// characters is a sensible ceiling on a sentence somebody writes by hand. It
+/// is the wrong ceiling on a machine-composed referent: a sandbox reporting
+/// which region was touched, what its script computed, or what the surface
+/// currently holds needs room to say so. Three freehand strokes did not fit
+/// under the old one.
+///
+/// Still bounded, because every pane's `pointed` is persisted in the room
+/// document and re-sent to every browser on each change. The bound exists to
+/// keep that file and that message a sane size, not to limit what a gesture
+/// is allowed to mean.
+const MAX_POINTED: usize = 8_000;
 /// A byline is a label in a pane header, not a field. Past this it is dropped.
 const MAX_BYLINE: usize = 40;
 /// How long `await_room` parks by default, and the longest it will.
@@ -320,6 +334,21 @@ pub struct Pane {
     /// "somebody clicked Run" is not something either of them can act on.
     #[serde(default)]
     pub pointed: String,
+    /// What the thing they touched was sitting inside, innermost first.
+    ///
+    /// The element physically under the pointer is usually not the one they
+    /// mean. "This padding is wrong" is said while touching a decorative span,
+    /// about the container three levels above it. Sending only the top hit
+    /// forces the agent to guess which, so the whole stack under the point
+    /// travels and the agent picks by meaning.
+    ///
+    /// Roles and names rather than selectors, because a selector is unreadable
+    /// to a model and stops resolving the moment the agent rewrites the pane,
+    /// which it does constantly. Absent on every pane recorded before this
+    /// field existed, which is why it defaults rather than being required, an
+    /// older saved room still opens.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pointed_path: Vec<PointLevel>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pointed_by: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -330,6 +359,38 @@ pub struct Pane {
     #[serde(default)]
     pub stack: u64,
     pub revision: u64,
+}
+
+/// One level of what was under the point, as the page described itself.
+///
+/// Deliberately not a selector. `role` is the element's explicit `role` or the
+/// one its tag implies, `name` is its accessible name or, failing that, its
+/// own text, and `point` is the author's own `data-point` label when the
+/// level carries one. That last is the only identifier here the pane's
+/// author chose on purpose, so it is the only one worth trying to match
+/// against a later version of the same pane.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct PointLevel {
+    #[serde(default)]
+    pub role: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub point: Option<String>,
+}
+
+impl PointLevel {
+    /// How one level reads in a sentence. A role with no name is still worth
+    /// saying, "inside a list" locates something, but a level with neither is
+    /// not, and never reaches here.
+    fn describe(&self) -> String {
+        match (self.role.is_empty(), self.name.is_empty()) {
+            (false, false) => format!("{} “{}”", self.role, self.name),
+            (false, true) => format!("a {}", self.role),
+            (true, false) => format!("“{}”", self.name),
+            (true, true) => String::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -379,6 +440,7 @@ impl RoomDoc {
                     note_by: None,
                     note_by_name: None,
                     pointed: String::new(),
+                    pointed_path: Vec::new(),
                     pointed_by: None,
                     pointed_by_name: None,
                     stack: 0,
@@ -457,6 +519,7 @@ impl RoomDoc {
                     note_by: None,
                     note_by_name: None,
                     pointed: String::new(),
+                    pointed_path: Vec::new(),
                     pointed_by: None,
                     pointed_by_name: None,
                     stack: 0,
@@ -616,6 +679,7 @@ impl RoomState {
                     "note_by": pane.note_by,
                     "note_by_name": pane.note_by_name,
                     "pointed": pane.pointed,
+                    "pointed_path": pane.pointed_path,
                     "pointed_by": pane.pointed_by,
                     "pointed_by_name": pane.pointed_by_name,
                     "stack": pane.stack,
@@ -812,6 +876,7 @@ impl RoomState {
                         note_by: None,
                         note_by_name: None,
                         pointed: String::new(),
+                        pointed_path: Vec::new(),
                         pointed_by: None,
                         pointed_by_name: None,
                         stack: front + 1,
@@ -1072,10 +1137,17 @@ impl RoomState {
             .map(|note| checked("note", &note, 0, MAX_NOTE))
             .transpose()?;
         let pointed = optional_string(args, "pointed")?
-            .map(|pointed| checked("pointed", &pointed, 0, MAX_NOTE))
+            .map(|pointed| checked("pointed", &pointed, 0, MAX_POINTED))
             .transpose()?;
+        let pointed_path = point_path(args)?;
         if mark.is_none() && note.is_none() && pointed.is_none() {
             return Err("annotate_pane needs a mark, a note, or both".to_string());
+        }
+        // A path describes a point. Storing one without the point it belongs
+        // to would leave the pane claiming they touched something inside a
+        // container while saying nothing about what.
+        if !pointed_path.is_empty() && pointed.is_none() {
+            return Err("annotate_pane got a pointed_path with no pointed".to_string());
         }
 
         // Cloned out before the byline moves into `mutate`, which needs it for
@@ -1126,10 +1198,16 @@ impl RoomState {
                     said.push(format!("stopped pointing inside “{}”", pane.title));
                     pane.pointed_by = None;
                     pane.pointed_by_name = None;
+                    pane.pointed_path = Vec::new();
                 } else {
-                    said.push(format!("pointed at “{pointed}” inside “{}”", pane.title));
+                    said.push(format!(
+                        "pointed at “{pointed}”{} inside “{}”",
+                        enclosure(&pointed_path),
+                        pane.title
+                    ));
                     pane.pointed_by.clone_from(&marker);
                     pane.pointed_by_name.clone_from(&marker_name);
+                    pane.pointed_path = pointed_path;
                 }
                 pane.pointed = pointed;
             }
@@ -1233,10 +1311,19 @@ impl RoomState {
                 ));
             }
             out.push_str(
-                "A change credited to a `person` was made by a human in the browser, not by \
-                 you. More than one person can be in this room, so address them by the name \
-                 in the byline rather than as \"you\". `someone` means a person who has \
-                 not told the room what to call them.\n",
+                "A change credited to a `person` came from the browser rather than from \
+                 you. Marks, notes, drags, chat and a click on a `diagram` node are the \
+                 room's own controls and only a human can work them. A point inside an \
+                 `html` pane is weaker, because it is posted by the script you wrote: the \
+                 room admits one only when somebody has just used the browser for real, \
+                 and refuses it otherwise, so a point sent with nobody here never reaches \
+                 you. What that check cannot tell is which element they touched, or \
+                 whether they meant this point at all rather than your script sending its \
+                 own alongside their click. Treat a point as a report corroborated by \
+                 somebody being here, not as proof of what they chose. More than one \
+                 person can be in this room, so address them by the name in the byline \
+                 rather than as \"you\", and `someone` means a person who has not told \
+                 the room what to call them.\n",
             );
         }
 
@@ -1499,35 +1586,83 @@ impl Extension for RoomExtension {
     }
 }
 
-/// Prepended to every served `html` node. Reports what the person clicks —
-/// the nearest `data-point` label, or a text fallback — to the host page,
+/// Prepended to every served `html` node. Reports what the person clicks,
+/// the nearest `data-point` label, or a text fallback, to the host page,
 /// which records it as the pane's `pointed`, beside but never inside the note
 /// they type. The agent's own script may call
 /// `parent.postMessage({aguiPoint: "…"}, "*")` too, to report a composed
 /// result like the set of checked boxes.
 ///
 /// The text fallback makes pointing free for simple panes, but it also means
-/// every click anywhere is a write — and a write is a room revision. A pane with
-/// its own chrome (an accordion, tabs, a control panel) would write one on each
-/// expand, saying nothing. `data-quiet` on any ancestor suppresses the
+/// every click anywhere is a write, and a write is a room revision. A pane
+/// with its own chrome (an accordion, tabs, a control panel) would write one
+/// on each expand, saying nothing. `data-quiet` on any ancestor suppresses the
 /// fallback inside that subtree; an explicit `data-point` still reports, so
 /// opting a region out of chatter never costs a deliberate point.
+///
+/// The path travels with the point because the element under the pointer is
+/// usually not the one they mean, and only the page can see the difference.
+///
+/// `elementsFromPoint` rather than the target's ancestors alone: it returns
+/// every box containing the point, so it catches an overlay sitting on top of
+/// what they were aiming at as well as everything the target sits inside.
+/// Keyboard activation has no coordinates, and `elementsFromPoint(0,0)` would
+/// describe the top-left corner of the pane with total confidence, so that
+/// case falls back to the composed path, which is the ancestor chain and is
+/// correct for a key press by construction.
+///
+/// Roles are the tag's implied one unless the author wrote `role`, and names
+/// are an approximation of the accessible name rather than the real
+/// algorithm: `aria-label`, then the attributes that usually carry a label,
+/// then the element's own text. Good enough to say which of three buttons,
+/// and not claimed as more than that.
 const POINTER_BRIDGE_DOC: &str = concat!(
     "<!doctype html><meta charset=\"utf-8\">",
     "<style>html,body{margin:0;background:transparent}</style>",
-    "<script>document.addEventListener(\"click\",(event)=>{",
+    "<script>",
+    "const AGUI_ROLES={A:\"link\",BUTTON:\"button\",INPUT:\"field\",TEXTAREA:\"field\",",
+    "SELECT:\"field\",IMG:\"image\",UL:\"list\",OL:\"list\",LI:\"list item\",TABLE:\"table\",",
+    "TR:\"row\",TD:\"cell\",TH:\"cell\",FORM:\"form\",NAV:\"navigation\",HEADER:\"header\",",
+    "FOOTER:\"footer\",MAIN:\"main\",ASIDE:\"aside\",SECTION:\"section\",ARTICLE:\"article\",",
+    "DIALOG:\"dialog\",FIELDSET:\"group\",LEGEND:\"legend\",LABEL:\"label\",P:\"paragraph\",",
+    "H1:\"heading\",H2:\"heading\",H3:\"heading\",H4:\"heading\",H5:\"heading\",H6:\"heading\",",
+    "CANVAS:\"canvas\",SVG:\"graphic\",VIDEO:\"video\",AUDIO:\"audio\",SUMMARY:\"summary\",",
+    "DETAILS:\"disclosure\",PROGRESS:\"progress\",METER:\"meter\"};",
+    "const aguiAttr=(el,name)=>el.getAttribute?(el.getAttribute(name)||\"\"):\"\";",
+    "const aguiRole=(el)=>(aguiAttr(el,\"role\")||AGUI_ROLES[el.tagName]||\"\").trim().slice(0,120);",
+    "const aguiName=(el)=>{",
+    "const aria=aguiAttr(el,\"aria-label\")||aguiAttr(el,\"alt\")||aguiAttr(el,\"title\")",
+    "||aguiAttr(el,\"placeholder\")||aguiAttr(el,\"aria-placeholder\");",
+    "const text=aria||el.value||el.textContent||\"\";",
+    "return String(text).replace(/\\s+/g,\" \").trim().slice(0,120);};",
+    "const aguiPath=(event)=>{",
+    // A click carries coordinates; a key press does not, and `detail` is 0 for
+    // it. Asking elementsFromPoint about 0,0 in that case would answer about
+    // the corner of the pane rather than about what they activated.
+    "const positioned=event.detail>0&&(event.clientX>0||event.clientY>0);",
+    "const stack=positioned?document.elementsFromPoint(event.clientX,event.clientY)",
+    ":event.composedPath().filter((node)=>node&&node.nodeType===1);",
+    "const out=[];",
+    "for(const el of stack){",
+    "if(el===document.body||el===document.documentElement)break;",
+    "const level={role:aguiRole(el),name:aguiName(el),point:aguiAttr(el,\"data-point\")};",
+    "if(!level.role&&!level.name&&!level.point)continue;",
+    "out.push(level);",
+    "if(out.length>=6)break;}",
+    "return out;};",
+    "document.addEventListener(\"click\",(event)=>{",
     "const hit=event.target.closest(\"[data-point]\");",
     "if(!hit&&event.target.closest(\"[data-quiet]\"))return;",
     // Clicking the background is not pointing at anything. Without this the
     // fallback reads `body.textContent`, which is every text node in the
-    // document — including this script and the style above it, so a click on
+    // document, including this script and the style above it, so a click on
     // empty space reported the bridge's own source back as what the person
     // touched. Nobody could act on that, and it landed in their note.
     "const bare=event.target===document.body||event.target===document.documentElement;",
     "if(!hit&&bare)return;",
     "const label=hit?hit.getAttribute(\"data-point\")",
     ":(event.target.textContent||event.target.tagName||\"\").trim().slice(0,80);",
-    "if(label)parent.postMessage({aguiPoint:label},\"*\");",
+    "if(label)parent.postMessage({aguiPoint:label,aguiPath:aguiPath(event)},\"*\");",
     "},true);</script>"
 );
 
@@ -1854,7 +1989,20 @@ fn actions(state: Arc<RoomState>) -> Vec<ToolDef> {
                     "id": id,
                     "mark": { "type": "string", "enum": ["none", "question", "important", "agree", "disagree"] },
                     "note": { "type": "string", "maxLength": MAX_NOTE },
-                    "pointed": { "type": "string", "maxLength": MAX_NOTE }
+                    "pointed": { "type": "string", "maxLength": MAX_POINTED },
+                    "pointed_path": {
+                        "type": "array",
+                        "maxItems": MAX_POINT_DEPTH,
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "role": { "type": "string", "maxLength": MAX_POINT_FIELD },
+                                "name": { "type": "string", "maxLength": MAX_POINT_FIELD },
+                                "point": { "type": "string", "maxLength": MAX_POINT_FIELD }
+                            }
+                        }
+                    }
                 },
                 "required": ["expected_revision", "id"]
             }),
@@ -2134,7 +2282,7 @@ fn vocabulary_reference() -> JsonValue {
             "source": { "path": "repository-relative", "from": "1-based, optional", "to": "optional", "note": "re-read from disk on every render, so it cannot go stale" },
             "options": { "filter": "optional substring", "note": "renders the live catalog of runnable packages, with a live port probe" },
             "embed": { "url": "http(s)", "height": "120-2000 px", "note": "sandboxed; an agent-authored embed does not load until the person clicks it" },
-            "html": { "html": "raw HTML, max 48000 chars", "height": "120-2000 px, default 320", "note": "The no-build escape hatch: any interface the vocabulary lacks (checkboxes, a canvas experiment, a control panel), authored directly, rendered in a fully isolated sandbox (scripts run inside, nothing reaches the page). Put data-point=\"label\" on elements that matter: when the person clicks one, read_room reports it as what they pointed at inside this pane. That is separate from their note: a note is a sentence they chose to write, a point is a gesture the page caught, and reading one as the other misreads them. Your own script may also call parent.postMessage({aguiPoint: \"label\"}, \"*\") to report a composed result, e.g. every checked box. A click that lands on nothing in particular reports nothing; a click on an element without a data-point reports that element's own text, which is free for a simple pane but chatty for one with its own chrome. Put data-quiet on a wrapper to silence that subtree; an explicit data-point inside it still reports." },
+            "html": { "html": "raw HTML, max 48000 chars", "height": "120-2000 px, default 320", "note": "The no-build escape hatch: any interface the vocabulary lacks (checkboxes, a canvas experiment, a control panel), authored directly, rendered in a fully isolated sandbox (scripts run inside, nothing reaches the page). Put data-point=\"label\" on elements that matter: when the person clicks one, read_room reports it as what they pointed at inside this pane. That is separate from their note: a note is a sentence they chose to write, a point is a gesture the page caught, and reading one as the other misreads them. Your own script may also call parent.postMessage({aguiPoint: \"label\"}, \"*\") to report a composed result, e.g. every checked box, send it while they are acting, because a point is admitted only when somebody has just used the browser for real and is refused out loud otherwise, which is what keeps a point worth reading at all. read_room also reports what the point was inside, innermost first, so a click on a decorative span still locates the container they meant, give your containers an aria-label, a heading, or a role and they will read as something instead of as \"a group\". A canvas is one hit-testable box: a point inside it is a coordinate and nothing about what you drew, so use `diagram` or ordinary elements when you want the person to be able to point at parts of a picture. A click that lands on nothing in particular reports nothing; a click on an element without a data-point reports that element's own text, which is free for a simple pane but chatty for one with its own chrome, put data-quiet on a wrapper to silence that subtree; an explicit data-point inside it still reports." },
             "diagram": {
                 "nodes": "[{id, label optional (defaults to id), tone optional}]",
                 "edges": "[{from, to: node ids; label optional; arrow bool, default true}]",
@@ -2275,6 +2423,103 @@ fn optional_string(args: &JsonValue, field: &str) -> Result<Option<String>, Stri
             .map(|text| Some(text.to_string()))
             .ok_or_else(|| format!("{field} must be a string when supplied")),
     }
+}
+
+/// How many levels of enclosure travel with a point.
+///
+/// The useful referent is nearly always within a few steps of the thing under
+/// the pointer, and every level past that is tokens the agent pays for on
+/// every read. The browser stops collecting at this depth, and the host
+/// refuses more, because the browser is not the only thing that can call
+/// this.
+const MAX_POINT_DEPTH: usize = 6;
+/// A role or a name longer than this is prose, not a label.
+const MAX_POINT_FIELD: usize = 120;
+
+/// How many enclosing levels reach the sentence the agent reads. The rest
+/// stay on the wire for a browser that wants them. Two is enough to
+/// disambiguate "the third Save button" without turning one gesture into a
+/// paragraph.
+const ENCLOSURE_SHOWN: usize = 2;
+
+/// The path as a clause, or nothing at all when it says nothing.
+///
+/// The innermost level contributes only its role, because its name is almost
+/// always the label already quoted as the point itself, and repeating it
+/// reads as two separate things having been touched.
+fn enclosure(path: &[PointLevel]) -> String {
+    let mut parts = Vec::new();
+    if let Some(first) = path.first() {
+        if !first.role.is_empty() {
+            parts.push(format!("a {}", first.role));
+        }
+    }
+    for level in path.iter().skip(1).take(ENCLOSURE_SHOWN) {
+        let described = level.describe();
+        if !described.is_empty() {
+            parts.push(format!("inside {described}"));
+        }
+    }
+    if parts.is_empty() {
+        return String::new();
+    }
+    format!(", {}", parts.join(" "))
+}
+
+/// Parse the enclosure path that travels with a point.
+///
+/// Absent is normal and not an error: a point composed by the pane's own
+/// script has no path, and neither does one from a browser that predates
+/// this.
+fn point_path(args: &JsonValue) -> Result<Vec<PointLevel>, String> {
+    let levels = match args.get("pointed_path") {
+        None | Some(JsonValue::Null) => return Ok(Vec::new()),
+        Some(value) => value
+            .as_array()
+            .ok_or_else(|| "pointed_path must be an array when supplied".to_string())?,
+    };
+    if levels.len() > MAX_POINT_DEPTH {
+        return Err(format!(
+            "pointed_path has {} levels, more than the {MAX_POINT_DEPTH} that travel",
+            levels.len()
+        ));
+    }
+    let mut out = Vec::with_capacity(levels.len());
+    for (index, level) in levels.iter().enumerate() {
+        let level = level
+            .as_object()
+            .ok_or_else(|| format!("pointed_path level {index} must be an object"))?;
+        let text = |field: &str| -> Result<String, String> {
+            match level.get(field) {
+                None | Some(JsonValue::Null) => Ok(String::new()),
+                Some(value) => {
+                    let value = value.as_str().ok_or_else(|| {
+                        format!("pointed_path level {index} `{field}` must be a string")
+                    })?;
+                    checked(
+                        &format!("pointed_path level {index} `{field}`"),
+                        value,
+                        0,
+                        MAX_POINT_FIELD,
+                    )
+                }
+            }
+        };
+        let role = text("role")?;
+        let name = text("name")?;
+        let point = text("point")?;
+        // A level that describes nothing is not a level. Keeping it would pad
+        // the read-back with "inside something, inside something".
+        if role.is_empty() && name.is_empty() && point.is_empty() {
+            continue;
+        }
+        out.push(PointLevel {
+            role,
+            name,
+            point: (!point.is_empty()).then_some(point),
+        });
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -2601,13 +2846,23 @@ mod tests {
         );
         // Order matters: the `data-point` lookup happens first, so the early
         // return can only ever swallow the fallback.
-        let hit_at = POINTER_BRIDGE_DOC
+        //
+        // Scoped to the click handler. The bridge now defines helpers above
+        // it that legitimately read `textContent` (that is how a level's name
+        // is derived), and searching the whole document found one of those
+        // instead, which made this pass or fail on where a helper happened to
+        // sit rather than on the order the handler actually runs in.
+        let handler_at = POINTER_BRIDGE_DOC
+            .find(r#"document.addEventListener("click""#)
+            .expect("the bridge still listens for a click");
+        let handler = &POINTER_BRIDGE_DOC[handler_at..];
+        let hit_at = handler
             .find("const hit=")
             .expect("the bridge still looks for a data-point");
-        let quiet_at = POINTER_BRIDGE_DOC
+        let quiet_at = handler
             .find("data-quiet")
             .expect("the bridge still honours data-quiet");
-        let fallback_at = POINTER_BRIDGE_DOC
+        let fallback_at = handler
             .find("textContent")
             .expect("the bridge still has a text fallback");
         assert!(
@@ -2621,7 +2876,10 @@ mod tests {
         // node in the document, which includes the style and script this very
         // constant injects. Without the guard, clicking empty space reported
         // the bridge's own source back as what the person touched.
-        let bare_at = POINTER_BRIDGE_DOC
+        // Handler-relative for the same reason as above: `aguiPath` also
+        // stops at `document.body`, and comparing an offset from one search
+        // space against an offset from another compares nothing.
+        let bare_at = handler
             .find("document.body")
             .expect("the bridge still refuses a click on bare background");
         assert!(
@@ -2686,6 +2944,171 @@ mod tests {
         assert!(
             !source.contains("override with ${option.port_env}="),
             "an assignment with no value is not an actionable override"
+        );
+    }
+
+    /// The point they meant is usually not the element they touched, so the
+    /// enclosure travels and the read-back says it in words rather than in a
+    /// selector nobody can act on.
+    #[test]
+    fn a_point_reads_back_as_what_it_was_inside() {
+        let (state, extension) = fresh("point-path");
+        state.read().expect("establish the cursor");
+        extension.note_caller(&person_actor("Alex", "person-d", 28));
+        call(
+            &extension,
+            &state,
+            "room_annotate_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "start",
+                "pointed": "Save",
+                "pointed_path": [
+                    { "role": "button", "name": "Save", "point": "Save" },
+                    { "role": "form", "name": "Billing details" },
+                    { "role": "dialog", "name": "Settings" },
+                ],
+            }),
+        )
+        .expect("a person points at something inside something");
+
+        let read = state.read().expect("read back");
+        assert!(
+            read.contains(
+                "pointed at “Save”, a button inside form “Billing details” \
+                           inside dialog “Settings”"
+            ),
+            "the enclosure has to reach the sentence, or the agent is back to \
+             guessing which of three Save buttons:\n{read}"
+        );
+        assert!(
+            !read.contains("button “Save” inside"),
+            "the innermost level contributes its role only; repeating the name \
+             already quoted reads as two things having been touched:\n{read}"
+        );
+    }
+
+    /// Depth is bounded on the way in, because the browser is not the only
+    /// thing that can call this action.
+    #[test]
+    fn an_over_deep_point_path_is_refused_rather_than_truncated() {
+        let (state, extension) = fresh("point-path-depth");
+        extension.note_caller(&person_actor("Alex", "person-e", 28));
+        let deep: Vec<_> = (0..MAX_POINT_DEPTH + 1)
+            .map(|i| json!({ "role": "group", "name": format!("level {i}") }))
+            .collect();
+        let error = call(
+            &extension,
+            &state,
+            "room_annotate_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "start",
+                "pointed": "Save",
+                "pointed_path": deep,
+            }),
+        )
+        .expect_err("a path past the cap is refused");
+        assert!(
+            error.contains("more than the 6 that travel"),
+            "silently keeping the first six would be the truncation bug again, \
+             where an over-long value arrived looking like it had fit: {error}"
+        );
+    }
+
+    /// A path with no point describes an enclosure around nothing.
+    #[test]
+    fn a_path_without_a_point_is_refused() {
+        let (state, extension) = fresh("point-path-orphan");
+        extension.note_caller(&person_actor("Alex", "person-f", 28));
+        let error = call(
+            &extension,
+            &state,
+            "room_annotate_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "start",
+                "mark": "question",
+                "pointed_path": [{ "role": "button", "name": "Save" }],
+            }),
+        )
+        .expect_err("an orphan path is refused");
+        assert!(error.contains("pointed_path with no pointed"), "{error}");
+    }
+
+    /// The browser and the host each hold a copy of these bounds. They are the
+    /// kind of pair that drifts silently: the browser would start sending what
+    /// the host refuses, and the person would see an error about a gesture they
+    /// cannot connect to anything they did.
+    #[test]
+    fn the_browsers_point_caps_match_the_hosts() {
+        let source = include_str!("../static/extensions/room/index.js");
+        assert!(
+            source.contains(&format!("const POINT_DEPTH = {MAX_POINT_DEPTH};")),
+            "POINT_DEPTH in the browser must equal MAX_POINT_DEPTH ({MAX_POINT_DEPTH})"
+        );
+        assert!(
+            source.contains(&format!("const POINT_FIELD = {MAX_POINT_FIELD};")),
+            "POINT_FIELD in the browser must equal MAX_POINT_FIELD ({MAX_POINT_FIELD})"
+        );
+        assert!(
+            POINTER_BRIDGE_DOC.contains(&format!("out.length>={MAX_POINT_DEPTH}")),
+            "the injected bridge collects past the depth the host accepts"
+        );
+        assert!(
+            POINTER_BRIDGE_DOC.contains(&format!("slice(0,{MAX_POINT_FIELD})")),
+            "the injected bridge sends fields longer than the host accepts"
+        );
+    }
+
+    /// Keyboard activation has no coordinates. `elementsFromPoint(0, 0)` would
+    /// answer about the pane's top-left corner with complete confidence, which
+    /// is the failure mode this whole feature exists to avoid.
+    #[test]
+    fn the_bridge_does_not_ask_for_a_stack_when_there_is_no_pointer() {
+        assert!(
+            POINTER_BRIDGE_DOC.contains("event.detail>0&&(event.clientX>0||event.clientY>0)"),
+            "a key press must not be treated as having landed somewhere"
+        );
+        assert!(
+            POINTER_BRIDGE_DOC.contains("event.composedPath()"),
+            "the keyless path is the composed ancestor chain, which is correct \
+             for a key press by construction"
+        );
+    }
+
+    /// The gate lives in the browser, because it is the only place that can
+    /// see the activation, so Rust can only guard its shape. Three properties
+    /// have to hold and each has a way of quietly not holding.
+    #[test]
+    fn a_gesture_out_of_a_sandbox_is_admitted_only_against_real_input() {
+        let source = include_str!("../static/extensions/room/index.js");
+        assert!(
+            source.contains("if (!admitGesture(paneId)) return;"),
+            "a point that reaches `queued` without passing the gate is the whole \
+             defect back again"
+        );
+        assert!(
+            source.contains("activation.isActive"),
+            "the gate has to read transient activation"
+        );
+        // Comment lines are excluded on purpose: the reason sticky activation is
+        // wrong is worth writing down next to the gate, and a check that forbids
+        // naming it would forbid explaining it.
+        let sticky_in_code = source
+            .lines()
+            .filter(|line| !line.trim_start().starts_with("//"))
+            .any(|line| line.contains("hasBeenActive"));
+        assert!(
+            !sticky_in_code,
+            "sticky activation never expires, so it turns true on the first touch \
+             of the session and stays true, a gate reading it would pass every \
+             forgery after the first real click and still look like it worked"
+        );
+        assert!(
+            source.contains("refuseGesture(paneId, \"this browser cannot confirm"),
+            "a browser without the API must refuse rather than admit; admitting \
+             would be a fallback that restores the hole wherever the API is missing"
         );
     }
 
@@ -2859,6 +3282,41 @@ mod tests {
         assert!(
             doc.panes.iter().all(|pane| pane.spot.w >= layout::MIN_W),
             "every migrated pane lands at a usable size"
+        );
+        // `pointed_path` arrived after this record was already on disk. Its
+        // absence has to default rather than fail the load.
+        assert!(
+            doc.panes.iter().all(|pane| pane.pointed_path.is_empty()),
+            "a room written before pointed_path existed must still open"
+        );
+    }
+
+    /// `pointed_path` is newer than the room state format itself: a pane
+    /// persisted before it existed carries no such key at all, and that
+    /// record still has to open rather than fail closed.
+    #[test]
+    fn a_pane_saved_before_pointed_path_existed_still_opens() {
+        let body = json!({
+            "schema_version": SCHEMA_VERSION,
+            "revision": 1,
+            "intent": "predates pointed_path",
+            "theme": Theme::default(),
+            "log": [],
+            "panes": [{
+                "id": "old",
+                "title": "Old pane",
+                "author": "agent",
+                "view": { "kind": "text", "text": "hello" },
+                "spot": { "x": 0.0, "y": 0.0, "w": 400.0, "h": 300.0 },
+                "pointed": "Run",
+                "revision": 1
+            }]
+        });
+        let doc: RoomDoc = serde_json::from_value(body).expect("the older record parses");
+        assert_eq!(doc.panes[0].pointed, "Run");
+        assert!(
+            doc.panes[0].pointed_path.is_empty(),
+            "a record with no pointed_path key must default to no path, not fail to load"
         );
     }
 
@@ -3795,6 +4253,50 @@ mod tests {
         assert!(
             !read.contains("you marked"),
             "the reader is the agent; the person is not it:\n{read}"
+        );
+    }
+
+    /// The read-back must promise exactly what the gate delivers, and the gate
+    /// is narrower than it looks. `userActivation` proves somebody used the
+    /// browser moments ago. It does not prove which element they touched, and
+    /// an agent that waits for a real click can send its own point alongside
+    /// it. Both halves have to survive in the wording: the old sentence
+    /// asserted a human did it, which was false, and a sentence claiming the
+    /// gate settles it would be the same mistake one step later.
+    #[test]
+    fn the_read_back_does_not_vouch_for_a_gesture_it_cannot_verify() {
+        let (state, extension) = fresh("unverified-gesture");
+        state.read().expect("establish the cursor");
+        extension.note_caller(&person_actor("Alex", "person-c", 28));
+        call(
+            &extension,
+            &state,
+            "room_annotate_pane",
+            json!({ "expected_revision": revision(&state), "id": "start", "mark": "question" }),
+        )
+        .expect("a person marks a pane");
+
+        let read = state.read().expect("read back");
+        assert!(
+            !read.contains("was made by a human in the browser"),
+            "the room cannot verify this of a point, so it must not assert it of \
+             anything:\n{read}"
+        );
+        assert!(
+            read.contains("posted by the script you wrote"),
+            "the reader is the one party that can be fooled, so it is the party \
+             that has to be told:\n{read}"
+        );
+        assert!(
+            read.contains("refuses it otherwise"),
+            "the gate is the half that makes a point worth anything, and an agent \
+             that does not know a forgery is refused will not trust the ones that \
+             pass:\n{read}"
+        );
+        assert!(
+            read.contains("which element they touched"),
+            "the residual has to survive in the wording, or the gate reads as \
+             settling more than it does:\n{read}"
         );
     }
 
