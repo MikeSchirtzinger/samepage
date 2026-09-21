@@ -191,10 +191,28 @@ impl Workspace {
         Ok(json!({ "options": entries, "total": self.options.len() }))
     }
 
+    /// Why the catalog is empty, said precisely enough to act on. "Nothing
+    /// was discovered" hides whether the project is not Rust, is a library, or
+    /// simply was not read.
+    pub fn why_nothing_runs(&self) -> String {
+        let manifest = self.root.join("Cargo.toml");
+        if !manifest.is_file() {
+            return format!(
+                "No runnable packages: {} has no Cargo.toml. The catalog reads Cargo \
+                 workspaces and single-crate packages only, so a project in another \
+                 language shows nothing here. Its files can still be opened with `source`.",
+                self.root.display()
+            );
+        }
+        "No runnable packages: the Cargo manifest names no member with a binary. A \
+         library crate is the platform, not a thing to open."
+            .to_string()
+    }
+
     /// A plain-text version of the catalog for the agent's read-back.
     pub fn describe_options(&self) -> String {
         if self.options.is_empty() {
-            return "No runnable packages were discovered in this workspace.".to_string();
+            return self.why_nothing_runs();
         }
         let mut lines = Vec::new();
         for option in &self.options {
@@ -302,14 +320,21 @@ fn discover(root: &Path) -> Vec<RunnableOption> {
         return Vec::new();
     };
     let mut options = Vec::new();
-    for member in members(&manifest) {
+    // A root with no workspace but a package of its own is a workspace of one.
+    // Most projects the room is pointed at look like that.
+    let mut members = members(&manifest);
+    if members.is_empty() && manifest.contains("[package]") {
+        members.push(".".to_string());
+    }
+    for member in members {
         let directory = root.join(&member);
         let Ok(package_manifest) = fs::read_to_string(directory.join("Cargo.toml")) else {
             continue;
         };
-        // A runnable option is one with a binary. Library crates are the
-        // platform, not a thing to open.
-        if !package_manifest.contains("[[bin]]") {
+        // A runnable option is one with a binary: declared, or implied by the
+        // conventional entry file. Library crates are the platform, not a
+        // thing to open.
+        if !has_binary(&directory, &package_manifest) {
             continue;
         }
         let Some(package) = manifest_value(&package_manifest, "name") else {
@@ -329,7 +354,7 @@ fn discover(root: &Path) -> Vec<RunnableOption> {
         options.push(RunnableOption {
             command: format!("cargo run -p {package}"),
             package,
-            path: member,
+            path: if member == "." { String::new() } else { member },
             description,
             port,
             port_env,
@@ -339,6 +364,14 @@ fn discover(root: &Path) -> Vec<RunnableOption> {
     }
     options.sort_by(|left, right| left.package.cmp(&right.package));
     options
+}
+
+/// Whether a package builds a program: a declared `[[bin]]`, or the
+/// conventional entry file Cargo treats as one without a declaration.
+fn has_binary(directory: &Path, package_manifest: &str) -> bool {
+    package_manifest.contains("[[bin]]")
+        || directory.join("src/main.rs").is_file()
+        || directory.join("src/bin").is_dir()
 }
 
 /// A deliberately small TOML reader. Pulling in a parser to read a members
@@ -459,6 +492,59 @@ mod tests {
         Workspace::open(root).expect("workspace opens")
     }
 
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "same-page-room-catalog-{}-{name}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("scratch dir");
+        dir
+    }
+
+    #[test]
+    fn a_single_crate_with_a_main_is_a_workspace_of_one() {
+        let dir = scratch("single-crate");
+        fs::write(
+            dir.join("Cargo.toml"),
+            "[package]\nname = \"lonely\"\nversion = \"0.1.0\"\ndescription = \"one crate, one binary\"\n",
+        )
+        .expect("manifest");
+        fs::create_dir_all(dir.join("src")).expect("src");
+        fs::write(dir.join("src/main.rs"), "fn main() {}\n").expect("main");
+        let workspace = Workspace::open(&dir).expect("open");
+        assert_eq!(workspace.option_count(), 1, "{}", workspace.describe_options());
+        let text = workspace.describe_options();
+        assert!(text.contains("lonely"), "{text}");
+        assert!(text.contains("cargo run -p lonely"), "{text}");
+    }
+
+    #[test]
+    fn a_library_crate_says_so_instead_of_saying_nothing_was_found() {
+        let dir = scratch("library-crate");
+        fs::write(
+            dir.join("Cargo.toml"),
+            "[package]\nname = \"platform\"\nversion = \"0.1.0\"\n",
+        )
+        .expect("manifest");
+        fs::create_dir_all(dir.join("src")).expect("src");
+        fs::write(dir.join("src/lib.rs"), "").expect("lib");
+        let workspace = Workspace::open(&dir).expect("open");
+        assert_eq!(workspace.option_count(), 0);
+        let text = workspace.describe_options();
+        assert!(text.contains("library crate"), "{text}");
+    }
+
+    #[test]
+    fn a_project_without_cargo_names_the_missing_manifest() {
+        let dir = scratch("not-rust");
+        fs::write(dir.join("package.json"), "{}").expect("package.json");
+        let workspace = Workspace::open(&dir).expect("open");
+        let text = workspace.describe_options();
+        assert!(text.contains("has no Cargo.toml"), "{text}");
+        assert!(text.contains("`source`"), "{text}");
+    }
+
     #[test]
     fn reads_a_real_excerpt_fresh_from_disk() {
         let value = workspace()
@@ -538,8 +624,9 @@ mod tests {
         let expected: std::collections::BTreeSet<String> = members(&workspace_manifest)
             .into_iter()
             .filter(|member| {
-                fs::read_to_string(workspace.root().join(member).join("Cargo.toml"))
-                    .is_ok_and(|manifest| manifest.contains("[[bin]]"))
+                let directory = workspace.root().join(member);
+                fs::read_to_string(directory.join("Cargo.toml"))
+                    .is_ok_and(|manifest| has_binary(&directory, &manifest))
             })
             .collect();
         assert_eq!(
