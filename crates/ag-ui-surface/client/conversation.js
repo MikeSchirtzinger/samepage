@@ -68,11 +68,64 @@ const STATE_LABELS = {
   thinking: "agent thinking",
   awaiting: "waiting for you",
   failed: "agent failed",
+  attached: "agent attached",
+  unavailable: "No agent is connected. Attach from a terminal at /mcp.",
 };
 
-/// States in which sending is meaningful. `warming` and `failed` are not: the
-/// provider has no session to receive the turn.
+/// States in which sending is meaningful for the in-page provider. `warming`
+/// and `failed` are not: it has no session to receive the turn. An agent
+/// attached over /mcp is a separate lane and is checked separately, because a
+/// provider that cannot take a turn is not the same fact as nobody being here.
 const READY_STATES = ["ready", "done", "thinking", "awaiting"];
+const NO_AGENT_STATUS = "No agent is connected. Attach from a terminal at /mcp.";
+
+/// What to say once a message has gone to the attached agents instead of to an
+/// in-page provider.
+///
+/// Routed is not delivered. This used to say `sent to agentseat over /mcp`
+/// whatever the far end was doing, which is a true statement about routing
+/// that a person reads as one about delivery; measured, somebody read it for
+/// nine minutes while the seat it named had closed. The host now says which
+/// agents are actually listening, so the difference can be said out loud.
+function relayedStatus(attached) {
+  if (!attached || attached.length === 0) return "waiting for an answer";
+  const live = attached.filter((agent) => !agent.quiet);
+  const name = attached.length === 1
+    ? (attached[0].label || "the attached agent")
+    : `the ${attached.length} agents attached`;
+  if (live.length === 0) return `sent to ${name}, nobody is reading /mcp right now`;
+  return `sent to ${name} over /mcp`;
+}
+
+/// How long something has been waiting, in words rather than milliseconds.
+function waitedFor(ms) {
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes >= 1) return `${minutes}m`;
+  return `${Math.max(1, Math.floor(ms / 1000))}s`;
+}
+
+/// The standing truth about a message nobody has collected.
+///
+/// The host has always computed this age; it rendered it only into the text
+/// the collecting agent eventually read, so the one person who could not find
+/// out that nobody had picked their message up was the person waiting for the
+/// answer.
+function unansweredStatus(attached, unanswered, oldestMs) {
+  if (!unanswered) return null;
+  const live = (attached || []).filter((agent) => !agent.quiet);
+  if (live.length > 0) return null;
+  const age = Number.isFinite(oldestMs) ? ` (${waitedFor(oldestMs)})` : "";
+  return `sent, not picked up${age}`;
+}
+
+/// What to say when a send failed. `NO_AGENT_STATUS` used to be pasted over
+/// every failure, which is a claim about /mcp derived from a dead TCP socket.
+/// The failure's own words go first, and the attach hint is added only when
+/// nobody is in fact attached.
+function failureStatus(detail, attached) {
+  if (attached && attached.length > 0) return detail;
+  return `${detail} ${NO_AGENT_STATUS}`;
+}
 
 class AgUiConversation extends HTMLElement {
   static observedAttributes = ["hint", "placeholder"];
@@ -99,6 +152,14 @@ class AgUiConversation extends HTMLElement {
       globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
     this.streaming = new Map();
     this.state = "connecting";
+    /// Agents attached over /mcp, as `{ id, label }`. Seeded from `/provider`
+    /// and kept current by the `surface.agents` event.
+    this.attachedAgents = [];
+    /// Chat nobody has collected, and how old the oldest of it is. Both come
+    /// from the host with `surface.agents`, which the liveness tick republishes
+    /// while nothing else is happening, so this stays current on its own.
+    this.unanswered = 0;
+    this.oldestUnansweredMs = null;
     this.ownsClient = false;
     this._client = null;
   }
@@ -143,7 +204,27 @@ class AgUiConversation extends HTMLElement {
       this.ownsClient = true;
     }
     this.subscribe();
+    this.refreshAttachedAgents();
     if (this.ownsClient) this._client.connect();
+  }
+
+  /// Seed the attached-agent list. The live `surface.agents` event only fires
+  /// on a change, so a page that loads after an agent attached would otherwise
+  /// believe the room was empty until the next attach.
+  async refreshAttachedAgents() {
+    try {
+      const provider = await this._client.getJson("/provider");
+      this.attachedAgents = provider.agents || [];
+      const liveness = provider.agent_liveness || {};
+      this.unanswered = liveness.unanswered || 0;
+      this.oldestUnansweredMs = liveness.oldestUnansweredMs ?? null;
+      if (provider.provider_can_serve === false) {
+        this.state = this.attachedAgents.length === 0 ? "unavailable" : "attached";
+      }
+      this.setState(this.state);
+    } catch {
+      /* the header reports transport trouble; the composer does not guess */
+    }
   }
 
   disconnectedCallback() {
@@ -197,6 +278,20 @@ class AgUiConversation extends HTMLElement {
       on("surface.narrate", (event) => {
         const value = event.value || {};
         this.message("agent", value.text || "", { author: value.by || "agent" });
+      }),
+      on("surface.agents", (event) => {
+        const snapshot = event.value || {};
+        this.attachedAgents = snapshot.attached || [];
+        this.unanswered = snapshot.unanswered || 0;
+        this.oldestUnansweredMs = snapshot.oldestUnansweredMs ?? null;
+        if (snapshot.providerCanServe === false) {
+          this.state = this.attachedAgents.length === 0
+            ? (snapshot.providerState || "unavailable")
+            : "attached";
+        }
+        // The composer may have been refusing to send while the provider was
+        // down; an attach changes that answer, so repaint the status line.
+        if (!this.ui.send.disabled) this.setState(this.state);
       }),
       on("surface.history", (event) => {
         // A replayed transcript replaces what is on screen rather than
@@ -262,9 +357,24 @@ class AgUiConversation extends HTMLElement {
 
   setState(state, detail = "") {
     this.state = state;
+    // A message nobody has collected outranks the lifecycle word. `ready` is
+    // a claim that a turn will be served, and while every attached agent is
+    // quiet with a question waiting, it is the wrong thing to show a person
+    // who is watching this line to find out whether they were heard.
+    const unserved = unansweredStatus(
+      this.attachedAgents,
+      this.unanswered,
+      this.oldestUnansweredMs,
+    );
+    const attachedStatus = !READY_STATES.includes(state) && this.attachedAgents.length
+      ? this.attachedAgents.some((agent) => !agent.quiet)
+        ? "Agent attached. Messages go to the shared conversation."
+        : "Agent attached but quiet. Messages will wait for pickup."
+      : null;
     this.ui.status.textContent =
-      detail || STATE_LABELS[state] || "Shift + Enter for a new line";
+      unserved || attachedStatus || detail || STATE_LABELS[state] || "Shift + Enter for a new line";
     this.classList.toggle("failed", state === "failed");
+    this.classList.toggle("unserved", Boolean(unserved));
     this.dispatchEvent(
       new CustomEvent("runtime-state", { detail: { state, detail }, bubbles: true })
     );
@@ -274,8 +384,10 @@ class AgUiConversation extends HTMLElement {
     this.classList.toggle("live", live);
   }
 
+  /// Can this composer hand a message to anybody? Either the in-page provider
+  /// is live, or somebody is attached over /mcp and the runtime relays to them.
   get ready() {
-    return READY_STATES.includes(this.state);
+    return READY_STATES.includes(this.state) || this.attachedAgents.length > 0;
   }
 
   // ── the anchor: what "this" currently means ─────────────────────────────
@@ -300,7 +412,9 @@ class AgUiConversation extends HTMLElement {
     const question = this.ui.input.value.trim();
     if (!question || this.ui.send.disabled) return;
     if (!this.ready) {
-      this.ui.status.textContent = "Choose or start an agent first.";
+      // Reachable only when nothing is attached: an attached agent makes the
+      // composer ready regardless of the in-page provider's lifecycle.
+      this.ui.status.textContent = NO_AGENT_STATUS;
       return;
     }
     this.ui.send.disabled = true;
@@ -316,12 +430,19 @@ class AgUiConversation extends HTMLElement {
       }
       this.message("you", question);
       this.ui.input.value = "";
-      await this._client.ask(question, this.origin);
-      this.ui.status.textContent = STATE_LABELS[this.state] || "";
+      const accepted = await this._client.ask(question, this.origin);
+      // The runtime says when it handed the message to attached agents rather
+      // than to an in-page provider. Say so, instead of leaving a person to
+      // wonder which of the two is thinking.
+      this.ui.status.textContent =
+        accepted && accepted.relayed === "mcp"
+          ? relayedStatus(this.attachedAgents)
+          : STATE_LABELS[this.state] || "";
     } catch (error) {
-      const text = error instanceof Error ? error.message : String(error);
-      this.ui.status.textContent = text;
-      this.message("agent", text, { author: "surface", error: true });
+      const detail = error instanceof Error ? error.message : String(error);
+      const status = failureStatus(detail, this.attachedAgents);
+      this.ui.status.textContent = status;
+      this.message("agent", status, { author: "surface", error: true });
     } finally {
       this.ui.send.disabled = false;
     }

@@ -13,9 +13,9 @@
 
 use parking_lot::{Mutex, RwLock};
 use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use tokio::sync::{broadcast, mpsc, oneshot};
 
@@ -38,13 +38,23 @@ use crate::{DecisionReply, EffectResult, ReplyKind};
 /// is exactly the failure this exists to prevent. It is display only —
 /// authority still comes from [`crate::Caller`], and `participant_id` is
 /// minted here rather than accepted from the client.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct AttachedAgent {
     pub session: String,
     pub participant_id: String,
     pub label: String,
     pub client_name: String,
     pub client_version: Option<String>,
+    /// Whether this agent is still here, shared with every clone.
+    ///
+    /// The registry used to be insert-only: one `insert` at `initialize`, no
+    /// remove, no TTL, no last-seen stamp, no liveness probe. So a host that
+    /// had ever seen an agent believed it was there for the life of the
+    /// process, the header repainted `attached, ready` from that belief, and
+    /// a person watched nine minutes of `ready` while nobody was reading. An
+    /// `Arc` because the map hands out clones and a stamp on a clone has to
+    /// be a stamp on the record.
+    pub liveness: Arc<AgentLiveness>,
     /// The [`Principal`](crate::identity::Principal) key of the person who
     /// brought this agent, when the surface knows it.
     ///
@@ -54,6 +64,134 @@ pub struct AttachedAgent {
     /// writes are attributable to a model but to no one accountable, which is a
     /// record of what happened with the responsible party cropped out.
     pub responsible: Option<String>,
+}
+
+impl PartialEq for AttachedAgent {
+    /// Identity, not liveness: two reads of the same session are the same
+    /// agent whether or not a call landed between them.
+    fn eq(&self, other: &Self) -> bool {
+        self.session == other.session
+            && self.participant_id == other.participant_id
+            && self.label == other.label
+            && self.client_name == other.client_name
+            && self.client_version == other.client_version
+            && self.responsible == other.responsible
+    }
+}
+
+impl Eq for AttachedAgent {}
+
+impl AttachedAgent {
+    /// How long since this agent last spoke to the host, when it is not in a
+    /// call right now. `None` while a call is in flight, which is the only
+    /// honest answer for an agent parked in a blocking read: it is silent and
+    /// it is listening.
+    pub fn quiet_for(&self) -> Option<Duration> {
+        self.liveness.quiet_for()
+    }
+
+    /// Is this agent inside a call right now, blocking read included?
+    pub fn listening(&self) -> bool {
+        self.liveness.in_flight() > 0
+    }
+}
+
+/// Evidence that an attached agent still exists.
+///
+/// Two facts, and the second is why a last-seen stamp alone is not enough:
+/// `await_input` and `chat_read` park for up to ten minutes, so an agent that
+/// has said nothing for nine minutes may be the most attentive thing on the
+/// host. In-flight calls are counted, so silence while parked reads as
+/// listening and silence with nothing in flight reads as quiet. A client that
+/// dies mid-park drops its connection, axum drops the request future, and the
+/// guard's `Drop` takes the count back down.
+#[derive(Debug)]
+pub struct AgentLiveness {
+    last_seen: Mutex<Instant>,
+    in_flight: AtomicUsize,
+    started: Mutex<Instant>,
+}
+
+/// Longest a single MCP call can run and still be evidence of anything.
+///
+/// Above the ten-minute ceiling on one blocking read, with slack. Past it, an
+/// in-flight call is not a listening agent: it is a request nobody closed.
+/// A killed client is supposed to drop its connection and take the guard with
+/// it, but whether the far end's death reaches this process is a property of
+/// the transport, and a liveness signal that depends on that is a liveness
+/// signal that can hang open. This is the backstop for exactly that case.
+pub const MAX_CALL_LIFETIME: Duration = Duration::from_secs(11 * 60);
+
+impl Default for AgentLiveness {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AgentLiveness {
+    pub fn new() -> Self {
+        Self::seen_at(Instant::now())
+    }
+
+    /// One whose last call was at `when`. The only way to reach a past
+    /// `Instant`, which is what a test of a TTL needs and what a host
+    /// reconstructing a session from a record would need.
+    pub fn seen_at(when: Instant) -> Self {
+        Self {
+            last_seen: Mutex::new(when),
+            in_flight: AtomicUsize::new(0),
+            started: Mutex::new(when),
+        }
+    }
+
+    /// This agent just spoke.
+    pub fn touch(&self) {
+        *self.last_seen.lock() = Instant::now();
+    }
+
+    pub fn in_flight(&self) -> usize {
+        self.in_flight.load(AtomicOrdering::Acquire)
+    }
+
+    pub fn quiet_for(&self) -> Option<Duration> {
+        if self.in_flight() == 0 {
+            return Some(self.last_seen.lock().elapsed());
+        }
+        let running = self.started.lock().elapsed();
+        (running > MAX_CALL_LIFETIME).then_some(running)
+    }
+
+    /// Move the current call's start back in time. The only way to reach a
+    /// past `Instant` for the hung-call backstop, which otherwise could only
+    /// be tested by waiting eleven minutes.
+    pub fn pretend_call_started(&self, when: Instant) {
+        *self.started.lock() = when;
+    }
+
+    /// Count one call for as long as the returned guard lives. The guard is
+    /// what makes a dropped connection observable: nothing else on this path
+    /// gets told that the far end went away.
+    pub fn call(self: &Arc<Self>) -> AgentCallGuard {
+        self.touch();
+        *self.started.lock() = Instant::now();
+        self.in_flight.fetch_add(1, AtomicOrdering::AcqRel);
+        AgentCallGuard {
+            liveness: self.clone(),
+        }
+    }
+}
+
+/// Holds an agent's in-flight count up for the life of one MCP call.
+#[derive(Debug)]
+pub struct AgentCallGuard {
+    liveness: Arc<AgentLiveness>,
+}
+
+impl Drop for AgentCallGuard {
+    fn drop(&mut self) {
+        self.liveness.in_flight.fetch_sub(1, AtomicOrdering::AcqRel);
+        self.liveness.touch();
+    }
 }
 
 /// One suspended [`Effect::EmitAndAwait`](crate::Effect::EmitAndAwait),
@@ -106,6 +244,12 @@ pub const FOCUS_TTL: std::time::Duration = std::time::Duration::from_secs(30);
 /// cannot leak into the next turn.
 pub(crate) struct TurnRequest {
     pub text: String,
+    /// Exactly what a person typed, when a person typed it. `text` may carry a
+    /// resolved-referent preamble the model needs and a human never wrote, and
+    /// a mission carries no human words at all. Kept separately so a turn that
+    /// dies on an unreachable endpoint can be handed to an attached agent in
+    /// the words it was actually asked in.
+    pub human: Option<String>,
     pub cancel: broadcast::Receiver<()>,
 }
 
@@ -280,6 +424,15 @@ pub struct RuntimeState {
     /// §8.1, the one M5-blocking correction over Leak 4's single-slot design).
     /// Vellum only ever holds one key; the map costs it nothing.
     pub decision: Mutex<HashMap<String, PendingDecision>>,
+    /// Chat a person sent that no in-page provider could take, waiting for an
+    /// agent attached over `/mcp`.
+    ///
+    /// A `OnceLock` because the relay's actions have to be on the Surface
+    /// before the action schemas compile, which happens before this struct
+    /// exists. `serve` builds one relay, hands its actions to the Surface, and
+    /// installs the same handle here. Tests that never call `serve` get a fresh
+    /// one on first use, so `chat_relay()` is always safe to call.
+    chat_relay: OnceLock<Arc<crate::chat_relay::ChatRelay>>,
 }
 
 /// The receiver halves `RuntimeState::new` keeps internal senders for —
@@ -431,6 +584,7 @@ impl RuntimeState {
             mcp_protocol_version: Mutex::new(None),
             current_focus: Mutex::new(None),
             decision: Mutex::new(HashMap::new()),
+            chat_relay: OnceLock::new(),
         });
 
         (
@@ -442,6 +596,24 @@ impl RuntimeState {
                 narr_rx,
             },
         )
+    }
+
+    /// The relay holding chat no in-page provider could take. Lazily built so
+    /// a runtime that never called [`crate::App::serve`] (a bare unit test
+    /// against [`RuntimeState`] directly) still has one to post into.
+    pub fn chat_relay(&self) -> &Arc<crate::chat_relay::ChatRelay> {
+        self.chat_relay
+            .get_or_init(|| Arc::new(crate::chat_relay::ChatRelay::new()))
+    }
+
+    /// Adopt the relay whose actions are already on the Surface.
+    pub(crate) fn install_chat_relay(
+        &self,
+        relay: Arc<crate::chat_relay::ChatRelay>,
+    ) -> Result<(), String> {
+        self.chat_relay
+            .set(relay)
+            .map_err(|_| "a chat relay was already installed".to_string())
     }
 
     /// Validate, compile, and install the effective action catalog exactly

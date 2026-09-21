@@ -91,6 +91,10 @@ pub mod activity;
 /// presence and attention are context, never authority.
 pub mod semantic_targets;
 
+/// Chat that reaches an agent attached over `/mcp`, when no in-page provider
+/// is doing the talking.
+pub mod chat_relay;
+
 /// Who someone is, as distinct from what they may do.
 ///
 /// Separate from [`Caller`] on purpose, and separate from `semantic_targets`
@@ -1325,6 +1329,10 @@ pub struct ActionDef {
     /// metadata avoids treating every query as visual: `read_board` and
     /// Colab's status queries remain text-only while `read_canvas` opts in.
     pub include_state_snapshot: bool,
+    /// Let the runtime-owned chat relay wake this action while its asynchronous
+    /// query is parked. The action still owns its ordinary wake condition; this
+    /// flag only adds incoming human chat as another reason to return.
+    pub wake_on_chat: bool,
     /// Called once per tool invocation with the call's JSON arguments;
     /// returns the [`Effect`] the runtime should dispatch. `Fn`, not
     /// `FnOnce` — a tool is called many times over a session.
@@ -1363,6 +1371,7 @@ impl ActionDef {
             parameters,
             audience: ActionAudience::Both,
             include_state_snapshot: false,
+            wake_on_chat: false,
             apply: Arc::new(apply),
         }
     }
@@ -1385,6 +1394,12 @@ impl ActionDef {
     /// when the state has no renderer.
     pub fn with_state_snapshot(mut self) -> Self {
         self.include_state_snapshot = true;
+        self
+    }
+
+    /// Wake a parked asynchronous query when new human chat reaches the relay.
+    pub fn wake_on_chat(mut self) -> Self {
+        self.wake_on_chat = true;
         self
     }
 }
@@ -1967,6 +1982,11 @@ impl App {
         let surface: Arc<dyn Surface> = Arc::from(self.surface.ok_or(
             AppError::MissingConfiguration("App::surface(...) is required"),
         )?);
+        // Innermost wrapper, so the attention host and the activity journal
+        // both carry the chat actions and both forward `note_caller` down to
+        // the relay that signs an agent's reply.
+        let (surface, chat_relay) =
+            chat_relay::install(surface).map_err(AppError::InvalidConfiguration)?;
         let attention_tx = self.sse_tx.clone();
         let (surface, semantic_targets) = semantic_targets::install(surface, move |snapshot| {
             let event = AgUiEvent::<JsonValue>::Custom(CustomEvent {
@@ -2131,6 +2151,12 @@ impl App {
         );
         rt.install_compiled_action_schemas(action_schemas)
             .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?;
+        rt.install_chat_relay(chat_relay.clone())
+            .map_err(AppError::InvalidConfiguration)?;
+        // Weak on purpose: the runtime owns the relay, and a reply posts back
+        // through the runtime. Two strong handles would keep both alive
+        // forever.
+        chat_relay.attach_runtime(Arc::downgrade(&rt));
 
         // Resolve the initial active endpoint for the starting provider
         // (OpenAI-backed only; ACP providers manage their own credentials).
@@ -2204,7 +2230,12 @@ impl App {
             .route("/extensions", get(extensions_handler))
             .route("/activity", get(activity_handler))
             .route("/activity/events", get(activity_events_handler))
-            .route("/mcp", get(mcp_get_handler).post(mcp_post_handler))
+            .route(
+                "/mcp",
+                get(mcp_get_handler)
+                    .post(mcp_post_handler)
+                    .delete(mcp_delete_handler),
+            )
             .route("/ws", get(ws_handler))
             .route("/events", get(sse_handler))
             .route("/debug/stats", get(stats_handler))
@@ -2294,6 +2325,7 @@ impl App {
         // queue that connection until `axum::serve` begins polling below.
         let runtime_tasks = RuntimeTaskGuard::new(vec![
             tokio::spawn(narration::narration_worker(channels.narr_rx)),
+            tokio::spawn(agent_liveness_worker(rt.clone())),
             tokio::spawn(turn_loop::run_supervisor(
                 rt.clone(),
                 surface,
@@ -3048,6 +3080,7 @@ async fn mission_post_glue(st: RouterState, route: Arc<RouteDef>, body: JsonValu
         .to_string();
     let turn = runtime_state::TurnRequest {
         text: text.clone(),
+        human: None,
         cancel: rt.interrupt_tx.subscribe(),
     };
     narration::begin_human_turn(
@@ -3168,6 +3201,42 @@ async fn mcp_get_handler(State(st): State<RouterState>, headers: HeaderMap) -> R
     StatusCode::METHOD_NOT_ALLOWED.into_response()
 }
 
+/// End a session on purpose. The Streamable HTTP transport says a client that
+/// is done SHOULD say so; this is the host taking it at its word.
+///
+/// The one clean edge in the lifecycle: an agent that closes deliberately
+/// leaves immediately instead of waiting out [`AGENT_DETACH_AFTER`], and the
+/// page is told in the same breath. Everything else is inference from silence.
+async fn mcp_delete_handler(State(st): State<RouterState>, headers: HeaderMap) -> Response {
+    if !mcp::origin_allowed(&headers) {
+        return (StatusCode::FORBIDDEN, "untrusted MCP Origin").into_response();
+    }
+    if !mcp::authorized(&headers, &st.rt.mcp_token) {
+        return (StatusCode::UNAUTHORIZED, "invalid MCP bearer token").into_response();
+    }
+    let Some(session) = mcp::session_id(&headers) else {
+        return (StatusCode::BAD_REQUEST, "missing Mcp-Session-Id").into_response();
+    };
+    let Some(agent) = st.rt.mcp_agents.lock().remove(&session) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    if let Some(service) = st.semantic_targets.as_deref() {
+        // Its pointer and presence go with it. Leaving a ring or presence chip
+        // for someone who explicitly left contradicts the transport state.
+        if let Err(error) = service.depart(Participant::agent(&agent.participant_id, &agent.label))
+        {
+            tracing::warn!(%error, "could not remove a detaching agent's presence");
+        }
+    }
+    tracing::info!(
+        participant = %agent.participant_id,
+        label = %agent.label,
+        "agent detached from /mcp"
+    );
+    publish_attached_agents(&st.rt);
+    StatusCode::NO_CONTENT.into_response()
+}
+
 async fn mcp_post_handler(
     State(st): State<RouterState>,
     headers: HeaderMap,
@@ -3226,7 +3295,16 @@ async fn mcp_post_handler(
         None => Actor::anonymous(Caller::Agent),
     };
     st.surface.note_caller(&actor);
-    match with_actor(
+    // Held for the whole call, blocking reads included. `await_input` and
+    // `chat_read` park for up to ten minutes, so a last-seen stamp on its own
+    // would read an agent's most attentive state as its most absent one: it
+    // is silent precisely because it is listening. The guard is also where a
+    // dropped connection becomes observable, since dropping this future drops
+    // it. Nothing is published on either edge: quiet is a ninety-second fact
+    // and `agent_liveness_worker` repaints it, so publishing twice per tool
+    // call would put an event on every page for every write an agent makes.
+    let call = acting.as_ref().map(|agent| agent.liveness.call());
+    let handled = with_actor(
         actor,
         mcp::handle(
             st.mcp_catalog.as_ref(),
@@ -3235,8 +3313,11 @@ async fn mcp_post_handler(
             message,
         ),
     )
-    .await
-    {
+    .await;
+    // Explicit, so the count falls when the work is done rather than after
+    // the response has been serialized.
+    drop(call);
+    match handled {
         mcp::Reply::Accepted => StatusCode::ACCEPTED.into_response(),
         mcp::Reply::Json(mut value) => {
             let Some(identity) = attaching else {
@@ -3309,6 +3390,7 @@ fn attach_mcp_agent(st: &RouterState, identity: mcp::ClientIdentity) -> Attached
         label: label.clone(),
         client_name: identity.name,
         client_version: identity.version,
+        liveness: Arc::new(runtime_state::AgentLiveness::new()),
         // Nothing on the MCP handshake carries this yet, so an agent attaching
         // to an open room is nobody's. The meetings tier is where this becomes
         // required rather than known, and where an attach without it is refused.
@@ -3543,6 +3625,122 @@ fn unique_label(proposed: &str, taken: &[String]) -> String {
 }
 
 /// Renew an attached agent's presence lease because it just acted.
+/// An agent past this quiet a chat routed to it may still be worth naming as
+/// listening; past it, the header stops calling it that.
+pub const AGENT_QUIET_AFTER: std::time::Duration = std::time::Duration::from_secs(90);
+/// An agent quiet this long is dropped from the registry outright rather than
+/// kept around as a stale entry nothing will ever answer from.
+pub const AGENT_DETACH_AFTER: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+
+/// Drop every agent that has been quiet past [`AGENT_DETACH_AFTER`]. Returns
+/// the labels dropped, for logging.
+pub(crate) fn detach_quiet_agents(rt: &runtime_state::RuntimeState) -> Vec<String> {
+    let mut dropped = Vec::new();
+    rt.mcp_agents.lock().retain(|_, agent| {
+        let gone = agent
+            .quiet_for()
+            .is_some_and(|quiet| quiet >= AGENT_DETACH_AFTER);
+        if gone {
+            dropped.push(agent.label.clone());
+        }
+        !gone
+    });
+    dropped
+}
+
+/// Everyone attached over `/mcp`, as the page needs to read it.
+///
+/// The header used to have no way to learn this at all, so it mirrored the
+/// conversation panel's lifecycle and latched whatever failure sentence it saw
+/// last. A page that can name who is attached does not have to guess.
+///
+/// Each agent now carries whether it is actually listening. `attached` alone
+/// was a true statement about the past being read as a statement about the
+/// present: an agent seat closed mid-session and the header said
+/// `agentseat attached, ready` for nine minutes while nobody was reading.
+fn attached_agents_json(rt: &runtime_state::RuntimeState) -> JsonValue {
+    detach_quiet_agents(rt);
+    let mut agents: Vec<JsonValue> = rt
+        .mcp_agents
+        .lock()
+        .values()
+        .map(|agent| {
+            let quiet = agent.quiet_for();
+            json!({
+                "id": agent.participant_id,
+                "label": agent.label,
+                "listening": agent.listening(),
+                "quiet": quiet.is_some_and(|quiet| quiet >= AGENT_QUIET_AFTER),
+                "quietForMs": quiet.map(|quiet| quiet.as_millis() as u64),
+            })
+        })
+        .collect();
+    agents.sort_by(|a, b| {
+        a["label"]
+            .as_str()
+            .unwrap_or_default()
+            .cmp(b["label"].as_str().unwrap_or_default())
+    });
+    // The age the relay already computes, said to the human side too. It was
+    // rendered only into the text the collecting agent eventually read, so the
+    // one person who could not find out that nobody had picked their message
+    // up was the person waiting for the answer.
+    let waiting = rt.chat_relay().waiting();
+    let oldest = waiting.iter().map(|turn| turn.age()).max();
+    let provider_can_serve = in_page_provider_can_serve(rt);
+    let provider_state = if rt.provider_error.lock().is_some() {
+        "failed"
+    } else if provider_can_serve {
+        "ready"
+    } else if rt.warming.load(Ordering::Relaxed) {
+        "warming"
+    } else {
+        "unavailable"
+    };
+    json!({
+        "attached": agents,
+        "unanswered": waiting.len(),
+        "oldestUnansweredMs": oldest.map(|age| age.as_millis() as u64),
+        "providerCanServe": provider_can_serve,
+        "providerState": provider_state,
+    })
+}
+
+/// Tell every connected page who is attached right now.
+fn publish_attached_agents(rt: &Arc<runtime_state::RuntimeState>) {
+    narration::surface_event(rt, "surface.agents", attached_agents_json(rt));
+}
+
+/// Repaint the page's picture of who is listening while nothing is happening.
+///
+/// Every other publish is edge-triggered by a call arriving or returning, and
+/// the case this exists for is the absence of both: an agent that went away
+/// produces no event, so without a tick the header keeps its last true-about-
+/// the-past sentence forever. Only publishes when the answer changed, so a
+/// quiet room stays quiet on the wire.
+async fn agent_liveness_worker(rt: Arc<runtime_state::RuntimeState>) {
+    let mut last = attached_agents_json(&rt);
+    let mut ticker = tokio::time::interval(std::time::Duration::from_secs(15));
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    ticker.tick().await;
+    loop {
+        ticker.tick().await;
+        let now = attached_agents_json(&rt);
+        if now == last {
+            continue;
+        }
+        last = now.clone();
+        narration::surface_event(&rt, "surface.agents", now);
+    }
+}
+
+/// Whether the runtime's own in-page provider can take a turn right now, as
+/// distinct from an agent being attached over `/mcp`. `/ask` prefers this path
+/// when it can serve, and falls back to the chat relay only when it cannot.
+fn in_page_provider_can_serve(rt: &runtime_state::RuntimeState) -> bool {
+    rt.ready.load(Ordering::Relaxed) && rt.provider_error.lock().is_none()
+}
+
 fn refresh_mcp_presence(st: &RouterState, session: &str) {
     let agent = st.rt.mcp_agents.lock().get(session).cloned();
     let (Some(agent), Some(service)) = (agent, st.semantic_targets.as_deref()) else {
@@ -3582,15 +3780,6 @@ async fn ask_handler(
         return Json(json!({ "ok": false, "error": "question too long" }));
     }
     let _turn_guard = rt.turn_accept_lock.lock().await;
-    if !rt.ready.load(Ordering::Relaxed) {
-        return Json(json!({ "ok": false, "error": "tutor still warming up" }));
-    }
-    // Barge-in is an explicit two-step protocol: `/interrupt` waits until the
-    // old output authority is revoked, then `/ask` may accept one new turn.
-    // Never trust browser call ordering enough to queue overlapping turns.
-    if rt.busy.load(Ordering::SeqCst) {
-        return Json(json!({ "ok": false, "busy": true }));
-    }
     // The learner sees exactly what they typed; the MODEL gets the same text
     // with a resolved-referent preamble when they just pointed at something
     // (see `RuntimeState::current_focus` and `POST /semantic` below).
@@ -3636,20 +3825,67 @@ async fn ask_handler(
     };
     let by_id = asker.as_ref().map(|person| person.participant_id.as_str());
     let origin = body.get("origin").and_then(|v| v.as_str()).unwrap_or("");
+    let ask_event = json!({ "by": by, "by_id": by_id, "text": question, "origin": origin });
+
+    // Terminal-first: an agent attached over `/mcp` is a first-class chat
+    // responder. A person goes to the composer before anything else on the
+    // page, and on an instance whose in-page provider is a placeholder that
+    // was the one lane that could not work: the turn went to a configured
+    // endpoint nobody was listening on, and the socket error was rendered in
+    // words that named a different subsystem while an agent was in fact
+    // attached and working. So when there is no in-page provider that can
+    // take this turn and an agent is attached, the question goes to the
+    // agent instead.
+    // Pruned first. A question routed to a registry entry whose process is
+    // gone is a message with no destination, announced as delivered.
+    detach_quiet_agents(rt);
+    let (attached_agents, listening_agents) = {
+        let agents = rt.mcp_agents.lock();
+        (
+            agents.len(),
+            agents
+                .values()
+                .filter(|agent| {
+                    agent.listening() || agent.quiet_for().is_some_and(|q| q < AGENT_QUIET_AFTER)
+                })
+                .count(),
+        )
+    };
+    if attached_agents > 0 && !in_page_provider_can_serve(rt) {
+        // The human's line lands in the transcript on exactly the path the
+        // provider turn uses, so every other client still sees who asked what.
+        narration::push_history_and_surface_event(rt, by, &question, "surface.ask", ask_event);
+        // `thinking` without taking the busy flag. An attached agent is not a
+        // turn this runtime can cancel or time out, and a person who is waiting
+        // on one must stay able to send again.
+        narration::tutor_event(rt, "thinking", Some(&question));
+        rt.chat_relay().post(by, by_id, &for_model);
+        return Json(json!({
+            "ok": true,
+            "relayed": "mcp",
+            "agents": attached_agents,
+            // Routed is not delivered. `sent to agentseat over /mcp` was a
+            // true statement about routing that read as one about delivery,
+            // and a person read it while the seat it named had closed.
+            "listening": listening_agents
+        }));
+    }
+
+    if !rt.ready.load(Ordering::Relaxed) {
+        return Json(json!({ "ok": false, "error": "tutor still warming up" }));
+    }
+    // Barge-in is an explicit two-step protocol: `/interrupt` waits until the
+    // old output authority is revoked, then `/ask` may accept one new turn.
+    // Never trust browser call ordering enough to queue overlapping turns.
+    if rt.busy.load(Ordering::SeqCst) {
+        return Json(json!({ "ok": false, "busy": true }));
+    }
     let turn = runtime_state::TurnRequest {
         text: for_model,
+        human: Some(question.clone()),
         cancel: rt.interrupt_tx.subscribe(),
     };
-    narration::begin_human_turn(
-        rt,
-        by,
-        &question,
-        Some((
-            "surface.ask",
-            json!({ "by": by, "by_id": by_id, "text": question, "origin": origin }),
-        )),
-        Some(&question),
-    );
+    narration::begin_human_turn(rt, by, &question, Some(("surface.ask", ask_event)), Some(&question));
     if rt.ask_tx.send(turn).is_err() {
         narration::fail_turn(rt, "tutor unavailable");
         return Json(json!({ "ok": false, "error": "tutor unavailable" }));
@@ -4241,12 +4477,20 @@ async fn provider_get(State(st): State<RouterState>) -> impl IntoResponse {
         .iter()
         .map(|p| json!({ "id": p.id, "label": p.label, "auth": p.auth_note }))
         .collect();
+    let agents = attached_agents_json(rt);
     Json(json!({
         "current": current,
         "ready": rt.ready.load(Ordering::Relaxed),
         "warming": rt.warming.load(Ordering::Relaxed),
         "error": error,
-        "providers": list
+        "providers": list,
+        // What the header and the composer need, so neither describes an
+        // unreachable HTTP endpoint as "no agent". The whole object, not just
+        // the list: a page loading after an agent went quiet has to be able to
+        // learn that from its first request, not only from the next tick.
+        "agents": agents["attached"].clone(),
+        "agent_liveness": agents,
+        "provider_can_serve": in_page_provider_can_serve(rt)
     }))
 }
 
@@ -5219,9 +5463,413 @@ mod tests {
             label: "reviewer".to_string(),
             client_name: "claimed-client".to_string(),
             client_version: Some("1.0".to_string()),
+            liveness: Arc::new(runtime_state::AgentLiveness::new()),
             responsible: None,
         };
         assert_eq!(Actor::attached(Caller::Agent, &agent).byline(), "reviewer");
+    }
+
+    /// An agent that attached over `/mcp` and is sitting in the room.
+    fn attached_agent(label: &str) -> runtime_state::AttachedAgent {
+        runtime_state::AttachedAgent {
+            session: format!("session-{label}"),
+            participant_id: format!("agent-{label}"),
+            label: label.to_string(),
+            client_name: "test-client".to_string(),
+            client_version: None,
+            responsible: None,
+            liveness: Arc::new(runtime_state::AgentLiveness::new()),
+        }
+    }
+
+    fn attach(rs: &RouterState, label: &str) -> runtime_state::AttachedAgent {
+        let agent = attached_agent(label);
+        rs.rt
+            .mcp_agents
+            .lock()
+            .insert(agent.session.clone(), agent.clone());
+        agent
+    }
+
+    /// An agent whose last call was `ago` in the past and which is not in a
+    /// call now: exactly the state a closed terminal seat leaves behind.
+    fn quiet_agent(label: &str, ago: std::time::Duration) -> runtime_state::AttachedAgent {
+        let mut agent = attached_agent(label);
+        agent.liveness = Arc::new(runtime_state::AgentLiveness::seen_at(
+            std::time::Instant::now() - ago,
+        ));
+        agent
+    }
+
+    /// The registry was insert-only: one `insert` on `initialize` and no
+    /// remove, no TTL, no last-seen stamp and no liveness probe anywhere. So
+    /// the host believed an agent was there for the life of the process, and
+    /// the page repainted `attached, ready` from that belief for nine
+    /// minutes while the seat had closed.
+    #[tokio::test]
+    async fn an_agent_that_stopped_calling_is_reported_quiet_not_ready() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        let agent = quiet_agent("agentseat", std::time::Duration::from_secs(9 * 60));
+        rs.rt.mcp_agents.lock().insert(agent.session.clone(), agent);
+
+        let published = attached_agents_json(&rs.rt);
+        let listed = published["attached"].as_array().expect("agent list");
+        assert_eq!(listed.len(), 1, "nine minutes quiet is not gone yet");
+        assert_eq!(listed[0]["label"], "agentseat");
+        assert_eq!(listed[0]["quiet"], true, "{published}");
+        assert_eq!(listed[0]["listening"], false, "{published}");
+        assert!(
+            listed[0]["quietForMs"].as_u64().expect("an age") >= 9 * 60 * 1000,
+            "the page is given the age, not just the fact: {published}"
+        );
+    }
+
+    /// The other half of the rule, and the reason a last-seen stamp alone
+    /// would have been wrong: `await_input` and `chat_read` park for up to ten
+    /// minutes, so an agent that has said nothing for nine of them may be the
+    /// most attentive thing on the host. A call in flight says so.
+    #[tokio::test]
+    async fn an_agent_parked_in_a_blocking_call_is_listening_not_quiet() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        let agent = quiet_agent("agentseat", std::time::Duration::from_secs(9 * 60));
+        let liveness = agent.liveness.clone();
+        rs.rt.mcp_agents.lock().insert(agent.session.clone(), agent);
+
+        let parked = liveness.call();
+        let while_parked = attached_agents_json(&rs.rt);
+        assert_eq!(while_parked["attached"][0]["listening"], true);
+        assert_eq!(while_parked["attached"][0]["quiet"], false);
+
+        drop(parked);
+        let after = attached_agents_json(&rs.rt);
+        assert_eq!(after["attached"][0]["listening"], false);
+        assert_eq!(
+            after["attached"][0]["quiet"], false,
+            "the call that just returned resets the clock: {after}"
+        );
+    }
+
+    /// The in-flight count has to come back down when a call ends, including
+    /// the end nobody chose: a client that dies mid-park leaves this future to
+    /// be dropped, and `Drop` is the only thing that hears about it.
+    #[test]
+    fn a_dropped_call_stops_counting_as_a_listening_agent() {
+        let liveness = Arc::new(runtime_state::AgentLiveness::seen_at(
+            std::time::Instant::now() - std::time::Duration::from_secs(9 * 60),
+        ));
+        let parked = liveness.call();
+        assert_eq!(liveness.in_flight(), 1);
+        assert!(
+            liveness.quiet_for().is_none(),
+            "a parked agent is listening"
+        );
+        drop(parked);
+        assert_eq!(liveness.in_flight(), 0);
+        assert!(
+            liveness
+                .quiet_for()
+                .is_some_and(|quiet| quiet.as_secs() < 5),
+            "the call that just ended is the newest evidence there is"
+        );
+    }
+
+    /// And the backstop for the case the drop never comes. Whether a far end's
+    /// death reaches this process is a property of the transport, so a
+    /// liveness signal resting on it alone is one that can hang open forever.
+    /// Past the longest call that could legitimately still be running, an
+    /// in-flight request stops being evidence of anybody.
+    #[test]
+    fn a_call_that_outlives_the_longest_legitimate_park_stops_proving_liveness() {
+        let liveness = Arc::new(runtime_state::AgentLiveness::seen_at(
+            std::time::Instant::now() - runtime_state::MAX_CALL_LIFETIME,
+        ));
+        let _hung = liveness.call();
+        assert!(
+            liveness.quiet_for().is_none(),
+            "a fresh call is not hung, however old the session is"
+        );
+
+        let stale = Arc::new(runtime_state::AgentLiveness::seen_at(
+            std::time::Instant::now(),
+        ));
+        let _guard = stale.call();
+        stale.pretend_call_started(
+            std::time::Instant::now()
+                - runtime_state::MAX_CALL_LIFETIME
+                - std::time::Duration::from_secs(1),
+        );
+        assert!(
+            stale
+                .quiet_for()
+                .is_some_and(|quiet| quiet > runtime_state::MAX_CALL_LIFETIME),
+            "a request nobody closed is not a listening agent"
+        );
+    }
+
+    /// Past the detach ceiling the registry stops naming a destination that
+    /// does not exist, and the chat lane stops routing to it.
+    #[tokio::test]
+    async fn an_agent_quiet_past_the_ceiling_is_detached_and_chat_stops_claiming_it() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        let agent = quiet_agent(
+            "agentseat",
+            AGENT_DETACH_AFTER + std::time::Duration::from_secs(1),
+        );
+        rs.rt.mcp_agents.lock().insert(agent.session.clone(), agent);
+        rs.rt.ready.store(false, Ordering::Relaxed);
+        *rs.rt.provider_error.lock() = Some("endpoint refused the connection".to_string());
+
+        let published = attached_agents_json(&rs.rt);
+        assert!(
+            published["attached"].as_array().expect("list").is_empty(),
+            "an agent quiet past the ceiling is not attached: {published}"
+        );
+        assert!(
+            rs.rt.mcp_agents.lock().is_empty(),
+            "and it is out of the registry, not merely hidden"
+        );
+
+        let response = ask_handler(
+            State(rs.clone()),
+            axum::http::HeaderMap::new(),
+            Json(json!({ "question": "is anyone there" })),
+        )
+        .await
+        .into_response();
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("ask body");
+        let body: JsonValue = serde_json::from_slice(&body).expect("ask json");
+        assert_ne!(
+            body["relayed"], "mcp",
+            "nothing may be relayed to an agent that is gone: {body}"
+        );
+    }
+
+    /// A deliberate close leaves immediately rather than waiting out the TTL,
+    /// and takes its pointer with it.
+    #[tokio::test]
+    async fn a_deleted_mcp_session_detaches_its_agent() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        let agent = attach(&rs, "agentseat");
+
+        let mut headers = axum::http::HeaderMap::new();
+        headers.insert(
+            axum::http::header::AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", rs.rt.mcp_token)).expect("bearer"),
+        );
+        headers.insert(
+            axum::http::HeaderName::from_static(mcp::SESSION_ID_HEADER),
+            HeaderValue::from_str(&agent.session).expect("session header"),
+        );
+        let response = mcp_delete_handler(State(rs.clone()), headers.clone()).await;
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        assert!(rs.rt.mcp_agents.lock().is_empty());
+
+        let again = mcp_delete_handler(State(rs.clone()), headers).await;
+        assert_eq!(
+            again.status(),
+            StatusCode::NOT_FOUND,
+            "a second close reports honestly rather than inventing a session"
+        );
+    }
+
+    /// The host has always computed a waiting message's age; it rendered it
+    /// only into the text the collecting agent eventually read. The person
+    /// waiting for the answer was the one party who could not find out that
+    /// nobody had picked it up.
+    #[tokio::test]
+    async fn an_uncollected_message_reaches_the_human_side_with_its_age() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        let agent = quiet_agent("agentseat", std::time::Duration::from_secs(9 * 60));
+        rs.rt.mcp_agents.lock().insert(agent.session.clone(), agent);
+        rs.rt.chat_relay().post("you", None, "did that land?");
+
+        let published = attached_agents_json(&rs.rt);
+        assert_eq!(published["unanswered"], 1, "{published}");
+        assert!(
+            published["oldestUnansweredMs"].as_u64().is_some(),
+            "the age the relay already computes has to leave the agent lane: {published}"
+        );
+        assert_eq!(published["attached"][0]["quiet"], true);
+    }
+
+    /// FIX-B red assertion (b), first half: a chat message sent with no live
+    /// in-page provider must be retrievable by an attached agent. It used to be
+    /// handed to a configured endpoint nobody was listening on and then lost.
+    #[tokio::test]
+    async fn chat_with_no_live_provider_reaches_the_attached_agent() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, mut channels) = test_router_state_with_channels(surface);
+        attach(&rs, "agentseat");
+        // What the dead placeholder provider looks like once a turn has failed
+        // against it: still selected, no longer able to serve.
+        rs.rt.ready.store(false, Ordering::Relaxed);
+        *rs.rt.provider_error.lock() = Some("endpoint refused the connection".to_string());
+
+        let response = ask_handler(
+            State(rs.clone()),
+            axum::http::HeaderMap::new(),
+            Json(json!({ "question": "Give me an architecture review diagram." })),
+        )
+        .await
+        .into_response();
+        let bytes = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .unwrap();
+        let accepted: JsonValue = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(accepted["ok"], true, "{accepted}");
+        assert_eq!(accepted["relayed"], "mcp", "{accepted}");
+        assert_eq!(accepted["agents"], 1);
+
+        let waiting = rs.rt.chat_relay().waiting();
+        assert_eq!(waiting.len(), 1, "the agent must be able to collect it");
+        assert!(
+            waiting[0].text.contains("architecture review diagram"),
+            "{}",
+            waiting[0].text
+        );
+        assert!(rs.rt.chat_relay().has_unread());
+        assert!(
+            channels.ask_rx.try_recv().is_err(),
+            "a dead provider must not also receive the turn"
+        );
+
+        // The people on the page still see who asked what.
+        let _replay_guard = rs.rt.transcript_replay_lock.lock();
+        assert_eq!(
+            rs.rt.history.lock()[0]["text"],
+            "Give me an architecture review diagram."
+        );
+    }
+
+    /// A relayed question must not take the turn lock. Nothing can cancel or
+    /// time out an attached agent, so a busy flag set here would wedge the
+    /// composer for the rest of the session.
+    #[tokio::test]
+    async fn a_relayed_question_leaves_the_composer_usable() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let rs = test_router_state(surface);
+        attach(&rs, "agentseat");
+        rs.rt.ready.store(false, Ordering::Relaxed);
+
+        for question in ["first", "second"] {
+            let response = ask_handler(
+                State(rs.clone()),
+                axum::http::HeaderMap::new(),
+                Json(json!({ "question": question })),
+            )
+            .await
+            .into_response();
+            let bytes = axum::body::to_bytes(response.into_body(), 4096)
+                .await
+                .unwrap();
+            let accepted: JsonValue = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(accepted["relayed"], "mcp", "{accepted}");
+        }
+        assert!(!rs.rt.busy.load(Ordering::SeqCst));
+        assert_eq!(rs.rt.chat_relay().waiting().len(), 2);
+    }
+
+    /// With nobody attached the old refusal is still the right one: there is
+    /// genuinely no one to relay to.
+    #[tokio::test]
+    async fn chat_without_an_attached_agent_still_refuses_a_dead_provider() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let rs = test_router_state(surface);
+        rs.rt.ready.store(false, Ordering::Relaxed);
+
+        let response = ask_handler(
+            State(rs.clone()),
+            axum::http::HeaderMap::new(),
+            Json(json!({ "question": "anybody?" })),
+        )
+        .await
+        .into_response();
+        let bytes = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .unwrap();
+        let refused: JsonValue = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(refused["ok"], false, "{refused}");
+        assert!(rs.rt.chat_relay().waiting().is_empty());
+    }
+
+    /// A live in-page provider keeps the turn. The relay is the lane for a
+    /// provider that cannot serve, not a hijack of one that can.
+    #[tokio::test]
+    async fn a_live_provider_still_takes_the_turn_with_an_agent_attached() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, mut channels) = test_router_state_with_channels(surface);
+        attach(&rs, "agentseat");
+        rs.rt.warming.store(false, Ordering::Relaxed);
+        rs.rt.ready.store(true, Ordering::Relaxed);
+
+        let _accepted = ask_handler(
+            State(rs.clone()),
+            axum::http::HeaderMap::new(),
+            Json(json!({ "question": "who answers this?" })),
+        )
+        .await;
+        assert!(
+            channels.ask_rx.try_recv().is_ok(),
+            "a live provider must still receive the turn"
+        );
+        assert!(rs.rt.chat_relay().waiting().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_human_caller_cannot_speak_through_the_chat_relay() {
+        let inner: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (surface, relay) = chat_relay::install(inner).expect("chat relay installs");
+        let rs = test_router_state(surface);
+        rs.rt.install_chat_relay(relay.clone()).unwrap();
+        relay.attach_runtime(Arc::downgrade(&rs.rt));
+
+        let (result, _query, ok) = turn_loop::dispatch_tool(
+            &rs.rt,
+            rs.surface.as_ref(),
+            Caller::Human,
+            chat_relay::REPLY_ACTION,
+            &json!({ "text": "not mine to say" }),
+        )
+        .await;
+        assert!(!ok, "{result}");
+        assert!(result.contains("not available"), "{result}");
     }
 
     /// Two people are two participants even when they have not said who they
