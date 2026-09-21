@@ -743,9 +743,15 @@ impl RoomState {
             // Work out the rectangle before touching the document: a placement
             // is resolved against where everything else currently sits.
             let current = existing.map(|index| doc.panes[index].spot);
+            // A named size applies to a new pane only. Once the pane exists
+            // the rectangle is the person's: they may have dragged it larger,
+            // and an agent rewriting the contents must not snap it back to
+            // whatever shape it last named. `arrange_room` still resizes.
+            // Asking to resize a pane and rewriting what is inside one are
+            // different acts, and only the first should move geometry.
             let (width, height) = match (size, current) {
-                (Some(size), _) => size,
-                (None, Some(spot)) => (spot.w, spot.h),
+                (Some(size), None) => size,
+                (_, Some(spot)) => (spot.w, spot.h),
                 (None, None) => (layout::DEFAULT_W, layout::DEFAULT_H),
             };
             let spot = match (&place, current) {
@@ -3637,6 +3643,69 @@ mod tests {
         let his = doc.panes.iter().find(|p| p.id == "his").expect("his pane");
         assert_eq!(his.by_name.as_deref(), Some("Mike"));
         assert_eq!(his.by_id.as_deref(), Some("person-a"));
+    }
+
+    #[test]
+    fn a_rewrite_keeps_the_size_the_person_dragged() {
+        let (state, extension) = fresh("size-survives-rewrite");
+        call(
+            &extension,
+            &state,
+            "put_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "board",
+                "title": "Board",
+                "size": "medium",
+                "view": text_view("first"),
+            }),
+        )
+        .expect("the agent puts a pane up");
+
+        // The person pulls it out to a rectangle of their own choosing.
+        call(
+            &extension,
+            &state,
+            "room_arrange",
+            json!({
+                "expected_revision": revision(&state),
+                "panes": [{ "id": "board", "spot": { "x": 40.0, "y": 60.0, "w": 900.0, "h": 620.0 } }]
+            }),
+        )
+        .expect("the person drags it larger");
+
+        // The agent rewrites the contents and names a size again, exactly as
+        // it would between two moves of a game.
+        call(
+            &extension,
+            &state,
+            "put_pane",
+            json!({
+                "expected_revision": revision(&state),
+                "id": "board",
+                "title": "Board",
+                "size": "medium",
+                "view": text_view("second"),
+            }),
+        )
+        .expect("the agent rewrites the pane");
+
+        let doc = state.doc.lock();
+        let pane = doc
+            .panes
+            .iter()
+            .find(|pane| pane.id == "board")
+            .expect("board");
+        assert_eq!(
+            (pane.spot.w, pane.spot.h),
+            (900.0, 620.0),
+            "the agent's named size overwrote the rectangle the person dragged"
+        );
+        assert_eq!(
+            (pane.spot.x, pane.spot.y),
+            (40.0, 60.0),
+            "and it must not have moved either"
+        );
     }
 
     #[test]

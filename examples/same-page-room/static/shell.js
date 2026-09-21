@@ -164,10 +164,27 @@ document.addEventListener("room:ask", (event) => {
   if (text) send(text);
 });
 
+const roomAlert = byId("room-alert");
+let roomAlertTimer = null;
+
+// Say it where it can actually be read. The two lines that used to be the
+// whole handler write inside `.side-pane`, which `body.terminal-first` hides,
+// and the body is always terminal-first. So every refusal the room produced,
+// revision conflicts, over-length gestures, malformed views, went to a hidden
+// element and the person saw their action simply not happen.
 document.addEventListener("room:error", (event) => {
   const text = event.detail?.message || "the room rejected that";
   composerStatus.textContent = text;
   message("agent", text, { author: "room", error: true });
+  if (!roomAlert) return;
+  roomAlert.textContent = text;
+  roomAlert.hidden = false;
+  if (roomAlertTimer) clearTimeout(roomAlertTimer);
+  // Long enough to read a sentence, then out of the way. It is a report, not
+  // a dialog, and it must never sit on top of the room waiting to be dismissed.
+  roomAlertTimer = setTimeout(() => {
+    roomAlert.hidden = true;
+  }, 9000);
 });
 
 document.addEventListener("room:focus", (event) => {
