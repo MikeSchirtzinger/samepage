@@ -34,6 +34,16 @@ const GRID = 8;
 /// Empty space left past the furthest pane so there is always canvas to drag
 /// into without having to make room first.
 const SLACK = 600;
+/// How long one pane stays quiet after a refused gesture. A script forging
+/// points is looping by construction, so the refusal has to be visible once
+/// and then stop, or the alert becomes the denial of service. Longer than the
+/// nine seconds #room-alert stays up, so the person never sees a queue.
+const REFUSAL_QUIET_MS = 10_000;
+/// Mirrors MAX_POINT_DEPTH and MAX_POINT_FIELD in room.rs. Kept in step by a
+/// test there that reads this file, because the host refuses anything past
+/// them and a browser sending more would produce an error nobody can act on.
+const POINT_DEPTH = 6;
+const POINT_FIELD = 120;
 
 /// A short stable key for a string, so a frame's URL changes exactly when its
 /// content does. Not a cryptographic hash and does not need to be.
@@ -985,8 +995,14 @@ export async function activate(ctx) {
   // presented them with the last thing they clicked, to be deleted before they
   // could write anything.
   window.addEventListener("message", (event) => {
+    // No truncation here. This used to `.slice(0, 560)`, which silently cut a
+    // gesture down before it could reach the room, three freehand strokes
+    // arrived as exactly 560 characters and looked like they had fit. The
+    // host owns the limit (MAX_POINTED) and rejects an over-length point out
+    // loud, which is now visible, so a report is either delivered whole or
+    // refused where the person can see it.
     const label = event.data && typeof event.data.aguiPoint === "string"
-      ? event.data.aguiPoint.trim().slice(0, 560)
+      ? event.data.aguiPoint.trim()
       : "";
     if (!label) return;
     const frame = [...document.querySelectorAll("iframe.html-frame")]
@@ -999,8 +1015,105 @@ export async function activate(ctx) {
     // room spins revisions forever.
     const current = state?.panes?.find((pane) => pane.id === paneId)?.pointed;
     if (current === label) return;
-    queued(() => ["room_annotate_pane", { id: paneId, pointed: label }]);
+    if (!admitGesture(paneId)) return;
+    // No corroboration flag travels with this. A field saying "a person did
+    // this" would be one more claim to trust, and the room already has too
+    // many. The gate refuses at the boundary instead, so a stored point is
+    // one that passed rather than one that says it did.
+    const path = pointPath(event.data);
+    queued(() => ["room_annotate_pane", {
+      id: paneId,
+      pointed: label,
+      ...(path.length ? { pointed_path: path } : {}),
+    }]);
   });
+
+  /// What the point was sitting inside, innermost first.
+  ///
+  /// Sanitised here rather than trusted, even though the bridge that builds
+  /// it is ours: the agent's own script can post `aguiPath` alongside its
+  /// `aguiPoint`, and this is the boundary where the difference stops
+  /// mattering. The host refuses a malformed one outright, so anything that
+  /// would be rejected there is dropped here instead of costing a round trip
+  /// and a visible error the person cannot act on.
+  function pointPath(data) {
+    if (!Array.isArray(data?.aguiPath)) return [];
+    return data.aguiPath
+      .slice(0, POINT_DEPTH)
+      .map((level) => ({
+        role: text(level?.role),
+        name: text(level?.name),
+        point: text(level?.point),
+      }))
+      .filter((level) => level.role || level.name || level.point)
+      .map((level) => {
+        // `point` is omitted rather than sent empty, matching the host's
+        // shape where its absence means the author never labelled that
+        // level.
+        if (!level.point) delete level.point;
+        return level;
+      });
+  }
+
+  function text(value) {
+    return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, POINT_FIELD) : "";
+  }
+
+  /// The admission gate on a gesture out of a sandbox.
+  ///
+  /// Every other person-attributed write in this room is made with the
+  /// room's own controls, which only a human can work. A point is the
+  /// exception: it arrives by `postMessage` from a frame whose script the
+  /// agent wrote, so the agent can post one with nobody in the room. That was
+  /// reproducible, a pane whose only script was a timer, a browser that
+  /// touched nothing, and the room recorded a person pointing at what the
+  /// pane wanted it to.
+  ///
+  /// `navigator.userActivation.isActive` is the one signal that survives the
+  /// trip. Genuine activation propagates out of a sandboxed child through
+  /// every ancestor unfiltered by origin, and the frame's own script cannot
+  /// set it. `isTrusted` cannot be used instead: it is unforgeable, but it
+  /// lives on the identity of the Event object and does not survive being
+  /// serialized across a message.
+  ///
+  /// Transient (`isActive`) and never sticky (`hasBeenActive`). Sticky turns
+  /// true the first time anybody touches the page and then stays true for the
+  /// life of the document, which would admit every forgery after the first
+  /// real click and read like a working gate.
+  ///
+  /// What this does NOT prove, and the read-back must not imply: which
+  /// element, which action, or that this point is the one they touched. An
+  /// agent that waits for a real click can ride it. That is a smaller hole
+  /// than needing nobody present at all, and it is the whole of what a
+  /// same-origin capture layer above the frame would have closed, at the cost
+  /// of the frame no longer being touchable.
+  function admitGesture(paneId) {
+    const activation = navigator.userActivation;
+    if (!activation) {
+      // Refused rather than admitted. Letting it through here would be a
+      // fallback that quietly restores the hole on whichever browser lacks
+      // the API, and a gate with a browser-shaped bypass is not a gate.
+      refuseGesture(paneId, "this browser cannot confirm a person is here (no navigator.userActivation), so a point out of a sandbox cannot be trusted and was not recorded");
+      return false;
+    }
+    if (!activation.isActive) {
+      refuseGesture(paneId, "a point arrived from inside a pane with no recent input behind it, so it was not recorded as yours, an agent's script can send one on its own");
+      return false;
+    }
+    return true;
+  }
+
+  /// A refused gesture is shown, not swallowed. The person needs to know when
+  /// something claimed to be theirs, and swallowing it would leave a forging
+  /// agent invisible. Throttled per pane, because the script doing this is in
+  /// a loop by construction and an unthrottled alert would bury the room.
+  const lastRefusal = new Map();
+  function refuseGesture(paneId, message) {
+    const now = Date.now();
+    if (now - (lastRefusal.get(paneId) ?? -Infinity) < REFUSAL_QUIET_MS) return;
+    lastRefusal.set(paneId, now);
+    document.dispatchEvent(new CustomEvent("room:error", { detail: { message } }));
+  }
 
   /// Everything the person has said about a pane, each in its own voice.
   ///
