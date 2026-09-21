@@ -2108,9 +2108,27 @@ impl App {
         .map_err(AppError::InvalidConfiguration)?;
         validate_static_directories(&static_dir, pkg_dir.as_deref(), &mounts)
             .map_err(AppError::InvalidConfiguration)?;
-        let protocol_pkg_dir = protocol_pkg::resolve(self.protocol_pkg_dir.as_deref())
-            .await
-            .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?;
+        // A missing typed protocol client does not refuse to start the server.
+        // The page still has to load to report anything at all, and the
+        // browser core already has an honest way to say the protocol is
+        // unavailable: `loadProtocol()`'s fetch of `/_agui/protocol/*` 404s,
+        // `connect()` emits `protocol:unavailable`, and the page shows that
+        // state rather than silently guessing at the wire format in
+        // JavaScript. Serving nothing under the prefix is what makes that
+        // path honest instead of a second, quieter kind of pretending.
+        let protocol_pkg_dir = match protocol_pkg::resolve(self.protocol_pkg_dir.as_deref()).await
+        {
+            Ok(dir) => dir,
+            Err(error) => {
+                tracing::error!(
+                    %error,
+                    "the typed protocol client is unavailable; the page will report \
+                     protocol:unavailable instead of falling back to interpreting the \
+                     AG-UI protocol in JavaScript"
+                );
+                protocol_pkg_fallback(self.protocol_pkg_dir.as_deref())
+            }
+        };
         let dev_reload_roots: Vec<dev_reload::Root> = if self.dev_reload {
             let mut roots = vec![dev_reload::Root {
                 prefix: "/".to_string(),
@@ -2723,6 +2741,22 @@ fn validate_http_layout(
         prefixes.push(prefix.as_str());
     }
     Ok(())
+}
+
+/// What to serve under [`protocol_pkg::ROUTE_PREFIX`] when
+/// [`protocol_pkg::resolve`] refuses (missing, stale with no `wasm-pack` to
+/// rebuild it, or a checkout `wasm-pack` build itself failed).
+///
+/// An explicit [`App::protocol_pkg_dir`] is honored even though nothing was
+/// built there: a bare `ServeDir` on a directory missing the two files it
+/// expects simply 404s per request, which is exactly what turns into the
+/// browser core's `protocol:unavailable`, so there is nothing to special-case
+/// here. Left unset, it falls back to the same default checkout layout
+/// [`protocol_pkg::resolve`] itself would have used.
+fn protocol_pkg_fallback(explicit: Option<&Path>) -> PathBuf {
+    explicit
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| protocol_pkg::default_layout().1)
 }
 
 /// Fail before binding if a configured static root cannot actually be served.
@@ -7453,6 +7487,26 @@ mod tests {
         )
         .unwrap_err()
         .contains("duplicate surface route"));
+    }
+
+    /// The new decision `App::serve` makes when the typed protocol client is
+    /// unavailable: what to serve under [`protocol_pkg::ROUTE_PREFIX`] so the
+    /// page still loads and the browser core discovers the failure itself
+    /// (via a 404 on the missing files) instead of the whole server refusing
+    /// to start. This is the staleness/refusal path's non-fatal half; the
+    /// staleness decision itself (missing vs. stale vs. current, rebuild vs.
+    /// serve-stale-with-a-warning vs. refuse) is covered by
+    /// `protocol_pkg::tests::*`, most directly
+    /// `staleness_compares_the_package_against_its_sources` and
+    /// `a_missing_or_stale_default_is_rebuilt_when_it_can_be_and_served_stale_when_it_cannot`.
+    #[test]
+    fn an_unavailable_protocol_client_falls_back_to_a_directory_that_will_404_not_a_server_refusal()
+    {
+        let explicit = Path::new("/deploy/protocol");
+        assert_eq!(protocol_pkg_fallback(Some(explicit)), explicit.to_path_buf());
+
+        let (_crate_dir, default_dir) = protocol_pkg::default_layout();
+        assert_eq!(protocol_pkg_fallback(None), default_dir);
     }
 
     #[test]
