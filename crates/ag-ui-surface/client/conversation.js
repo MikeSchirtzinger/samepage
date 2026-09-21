@@ -256,11 +256,20 @@ class AgUiConversation extends HTMLElement {
         this.setState("connecting");
       }),
       on("RUN_STARTED", () => this.setLive(true)),
-      on("TEXT_MESSAGE_START", (event) => this.beginStream(event)),
-      on("TEXT_MESSAGE_CONTENT", (event) =>
-        this.appendStream(event.messageId, event.delta)
+      // The streamed lifecycle is assembled by the typed protocol client;
+      // this element only paints what it says. `text-finished` carries the
+      // whole message, so the bubble ends holding exactly what was assembled.
+      on("transcript:text-started", (update) => this.beginStream(update)),
+      on("transcript:text-delta", (update) =>
+        this.appendStream(update.messageId, update.delta)
       ),
-      on("TEXT_MESSAGE_END", (event) => this.streaming.delete(event.messageId)),
+      on("transcript:text-finished", (update) => this.finishStream(update)),
+      on("protocol:anomaly", (anomaly) =>
+        console.warn("[agui-conversation] stream repaired:", anomaly)
+      ),
+      on("protocol:unavailable", ({ error }) =>
+        this.setState("failed", `Typed protocol client unavailable: ${error}`)
+      ),
       on("surface.tutor", (event) => {
         const value = event.value || {};
         this.setState(
@@ -327,20 +336,39 @@ class AgUiConversation extends HTMLElement {
     return body;
   }
 
-  beginStream(event) {
-    if (!event.messageId || this.streaming.has(event.messageId)) return;
-    const body = this.message(event.role === "user" ? "you" : "agent", "", {
+  beginStream(update) {
+    const existing = this.streaming.get(update.messageId);
+    if (existing) {
+      // A started message that is already on screen was restarted by the
+      // protocol client (the runtime replays an in-flight message from the
+      // top on reconnect). The bubble follows: emptied, then refilled.
+      existing.textContent = "";
+      return;
+    }
+    const body = this.message(update.role === "user" ? "you" : "agent", "", {
       allowEmpty: true,
     });
-    if (body) this.streaming.set(event.messageId, body);
+    if (body) this.streaming.set(update.messageId, body);
   }
 
   appendStream(id, delta) {
-    if (!id || !delta) return;
-    if (!this.streaming.has(id)) this.beginStream({ messageId: id });
-    const body = this.streaming.get(id);
-    if (!body) return;
+    let body = this.streaming.get(id);
+    if (!body) {
+      // The protocol client vouches that this message started; the bubble is
+      // missing only because `surface.history` rebuilt the transcript.
+      this.beginStream({ messageId: id, role: "assistant" });
+      body = this.streaming.get(id);
+      if (!body) return;
+    }
     body.textContent += delta;
+    this.ui.transcript.scrollTop = this.ui.transcript.scrollHeight;
+  }
+
+  finishStream(update) {
+    const body = this.streaming.get(update.messageId);
+    this.streaming.delete(update.messageId);
+    if (!body) return;
+    body.textContent = update.text;
     this.ui.transcript.scrollTop = this.ui.transcript.scrollHeight;
   }
 
