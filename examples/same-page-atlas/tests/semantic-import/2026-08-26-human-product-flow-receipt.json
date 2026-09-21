@@ -1,0 +1,102 @@
+{
+  "schema": "atlas-human-image-object-product-flow/v1",
+  "status": "PASS",
+  "measured_at": "2026-08-26",
+  "surface": {
+    "url": "http://127.0.0.1:8098/",
+    "browser": "real Chrome over direct CDP",
+    "webgpu": true,
+    "worker": true
+  },
+  "source": {
+    "url": "/assets/visual-instinct-infographic.png",
+    "sha256": "21e3e650e1dfea74d09d5fca62b1da25431db3b4dac1bb3757f72583e04d917a",
+    "size": [1536, 1024]
+  },
+  "selection": {
+    "trusted_pointer": true,
+    "points": [
+      {
+        "coordinates": [768, 674],
+        "label": "positive"
+      }
+    ],
+    "optional_refinement_points": 0,
+    "model_preparation_and_encode_ms": 1014.7000000029802,
+    "source_fetch_ms": 22.099999994039536,
+    "preprocess_ms": 19.200000002980232,
+    "encode_ms": 246.0,
+    "prompt_decode_ms": 79.79999999701977,
+    "predicted_iou_raw": 0.9740854501724243,
+    "source_mask_area_pixels": 183710,
+    "source_mask_box": [543, 224, 992, 817],
+    "materialized_mask_size": [242, 320]
+  },
+  "execution": {
+    "model_id": "mobilesam-vit-t",
+    "encoder_sha256": "d80de6055095e7ba5551e6c15aaa8981b05dca77d6ae77ee82e51e2746a87e3d",
+    "decoder_sha256": "a21b65b6e1b75e2c6265b36835747a0ab9169ec1ed725139a78ce90297f95126",
+    "requested_provider": "webgpu",
+    "adapter": {
+      "vendor": "apple",
+      "architecture": "metal-3"
+    },
+    "execution_location": "browser-worker",
+    "alternate_provider_configured": false,
+    "fallback_used": false,
+    "mock_used": false
+  },
+  "atlas_object": {
+    "id": "000e5d6f97cbe69d-00000000",
+    "receipt_stable_object_id": "000e5d6f97cbe69d-00000000",
+    "label": "Owl",
+    "created_by": "human",
+    "touched_by": "human",
+    "semantics_source": "human-prompt",
+    "status": "materialized",
+    "generation": 1,
+    "position_before_drag": [446.0, 153.5],
+    "position_after_drag": [566.0, 214.0],
+    "trusted_drag_delta": [120.0, 60.5],
+    "animation_after_trusted_control": "pulse"
+  },
+  "persistence": {
+    "cold_host_restart": true,
+    "stable_id_preserved": true,
+    "mask_preserved": true,
+    "position_preserved": true,
+    "animation_preserved": true
+  },
+  "replica_proof": {
+    "host_browser_structured_projection_equal": true,
+    "host_browser_description_equal": true,
+    "semantic_readback_contains_human_authorship": true,
+    "browser_runtime_errors": 0,
+    "verdict": "ATLAS_HUMAN_PRODUCT_FLOW_PASS"
+  },
+  "visual_evidence": {
+    "path": ".local/product-flow/05-verified-moved-pulsing.png",
+    "sha256": "112da7dcbf312ae1076467cfa196f20d11ee413ee78a6e2874836b3a5cfc9de7",
+    "bytes": 2186248
+  },
+  "validation": [
+    "cargo test -p same-page-atlas-core",
+    "cargo test -p same-page-atlas",
+    "cargo clippy -p same-page-atlas-core -p same-page-atlas --all-targets -- -D warnings",
+    "cargo clippy -p same-page-atlas-web --target wasm32-unknown-unknown -- -D warnings",
+    "cargo fmt -p same-page-atlas-core -p same-page-atlas-web -- --check",
+    "cargo check -p same-page-atlas-web --target wasm32-unknown-unknown",
+    "examples/same-page-atlas/build-web.sh",
+    "node examples/same-page-atlas/tests/semantic-import/test-segment-picker.mjs",
+    "python3 dev/agent-harness/check.py --json",
+    "dev/atlas-segmentation-contract check",
+    "credo-lint with zero hard violations",
+    "nonneg-check"
+  ],
+  "boundaries": [
+    "WebGPU is the only configured execution provider, but per-node GPU execution is not proven.",
+    "The raw predicted IoU and visual inspection are not annotated semantic-accuracy evidence.",
+    "This human flow creates one whole-object mask. Separate wing masks remain an agent action in this slice.",
+    "Gate 5 remains FROZEN_NOT_RUN."
+  ]
+}

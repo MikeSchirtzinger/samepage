@@ -65,6 +65,39 @@ pub(crate) fn narrate_provider_chunk(rt: &Arc<RuntimeState>, session_id: &str, t
     narrate_provider_chunk_with_boundary_hook(rt, session_id, text, || {});
 }
 
+/// Hold one provider text delta as a candidate final response. Authorization
+/// is checked at the same boundary as ordinary streamed narration.
+pub(crate) fn defer_provider_chunk(rt: &Arc<RuntimeState>, session_id: &str, text: &str) {
+    if text.is_empty() {
+        return;
+    }
+    let _replay_guard = rt.transcript_replay_lock.lock();
+    if rt.stream_active_session.lock().as_deref() != Some(session_id) {
+        return;
+    }
+    rt.deferred_agent_text.lock().push_str(text);
+}
+
+/// A new tool call proves any text accumulated before it was not the final
+/// response. Drop that scratch narration before collecting the next segment.
+pub(crate) fn discard_deferred_provider_text(rt: &Arc<RuntimeState>) {
+    let _replay_guard = rt.transcript_replay_lock.lock();
+    rt.deferred_agent_text.lock().clear();
+}
+
+/// Publish the last post-tool text segment as one learner-facing message.
+pub(crate) fn publish_deferred_provider_text(rt: &Arc<RuntimeState>, session_id: &str) {
+    let _replay_guard = rt.transcript_replay_lock.lock();
+    if rt.stream_active_session.lock().as_deref() != Some(session_id) {
+        rt.deferred_agent_text.lock().clear();
+        return;
+    }
+    let text = std::mem::take(&mut *rt.deferred_agent_text.lock());
+    if !text.is_empty() {
+        narrate_chunk_locked(rt, &text);
+    }
+}
+
 pub(crate) fn narrate_provider_chunk_with_boundary_hook(
     rt: &Arc<RuntimeState>,
     session_id: &str,

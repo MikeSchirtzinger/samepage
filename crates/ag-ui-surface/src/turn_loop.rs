@@ -723,6 +723,16 @@ async fn run_provider(
         provider_id,
     );
     let outcome = match backend {
+        providers::Backend::None => {
+            rt.ready.store(false, Ordering::Relaxed);
+            rt.warming.store(false, Ordering::Relaxed);
+            *rt.provider_error.lock() = None;
+            crate::narration::tutor_event(rt, "unavailable", None);
+            match switch_rx.recv().await {
+                Some(new_id) => Outcome::Switch(new_id),
+                None => Outcome::Exited,
+            }
+        }
         providers::Backend::Acp { program, args } => {
             acp::run_one(
                 rt,

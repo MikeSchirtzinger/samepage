@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-learner-catalog-v1",
+  "title": "Saved refreshers",
+  "topics": [
+    {
+      "id": "epsilon-neighborhoods",
+      "title": "Epsilon neighborhoods",
+      "summary": "Follow subtraction, distance, and comparison to decide whether a point belongs to a neighborhood.",
+      "source_id": "epsilon-hypersphere-lesson-v2",
+      "href": "http://127.0.0.1:8124/?experiment=epsilon-hypersphere-live&segment-recipe=epsilon-hypersphere-lesson-v2&atlas-mode=learn"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "runtime-exception-control",
+  "description": "Instrument-only negative control for uncaught browser exceptions.",
+  "host": null,
+  "browser": {
+    "port": 9222,
+    "start_command": [
+      "browser-start"
+    ],
+    "stop_command": [
+      "browser-stop"
+    ]
+  },
+  "gates": [],
+  "phases": [
+    {
+      "id": "uncaught-runtime-exception",
+      "url": "data:text/html,%3C%21doctype%20html%3E%3Cmeta%20charset%3Dutf-8%3E%3Ctitle%3ERuntime%20exception%20control%3C/title%3E%3Cstyle%3Ebody%7Bfont%3A24px%20system-ui%3Bpadding%3A48px%7Dinput%7Bwidth%3A600px%7D%3C/style%3E%3Clabel%3ERuntime%20exception%20control%3Cbr%3E%3Cinput%20id%3Dcontrol%20type%3Drange%20min%3D0%20max%3D100%20value%3D0%3E%3C/label%3E%3Cscript%3EsetTimeout%28%28%29%3D%3E%7Bthrow%20new%20Error%28%27atlas-experiment-negative-control%27%29%7D%2C0%29%3C/script%3E",
+      "driver": "dev/atlas-experiment-lib/drivers/trusted-range-control.mjs",
+      "timeout_ms": 20000,
+      "restart_host": false,
+      "input": {
+        "selector": "#control",
+        "fraction": 0.8,
+        "steps": 8,
+        "minimum_value": 70
+      }
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "schema": "same-page-atlas-oracle-import-receipt-v1",
+  "scope": "bounded product learning test during roadmap Phase 2",
+  "result": "pass",
+  "run_date": "2026-08-25",
+  "source": {
+    "path": "static/assets/visual-instinct-infographic.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "21e3e650e1dfea74d09d5fca62b1da25431db3b4dac1bb3757f72583e04d917a",
+    "prompt": "Create a landscape visual reasoning infographic with a central mechanical owl and the exact stages SEE, BIND, ACT, VERIFY. Use deep navy, teal, amber, and restrained editorial diagram styling. Include the exact title VISUAL INSTINCT. No logos or watermark."
+  },
+  "object": {
+    "id": "001ec9b332f18bcb-00000000",
+    "label": "Mechanical owl",
+    "created_by": "codex-atlas-oracle-final",
+    "semantic_fields": {
+      "tags": ["visual-instinct", "identity-anchor"],
+      "ocr": ["VISUAL INSTINCT"],
+      "prompt_box": [500, 180, 1040, 900]
+    }
+  },
+  "generation_1": {
+    "status": "materialized",
+    "model_id": "mobilesam-vit-t",
+    "encoder_sha256": "d80de6055095e7ba5551e6c15aaa8981b05dca77d6ae77ee82e51e2746a87e3d",
+    "decoder_sha256": "a21b65b6e1b75e2c6265b36835747a0ab9169ec1ed725139a78ce90297f95126",
+    "execution_location": "browser-worker",
+    "backend_requested": "webgpu",
+    "adapter": { "vendor": "apple", "architecture": "metal-3" },
+    "predicted_iou": 0.994176745414734,
+    "mask_size": [238, 320],
+    "mask_source_box": [543, 225, 1012, 855],
+    "total_ms": 1229.3,
+    "fallback_used": false,
+    "mock_used": false,
+    "measurement_command": "curl -sS http://127.0.0.1:8098/atlas/segments | jq ."
+  },
+  "browser_gesture": {
+    "kind": "real_pointer_drag",
+    "from_screen": [526, 450],
+    "to_screen": [720, 510],
+    "host_read_after_gesture": {
+      "id": "001ec9b332f18bcb-00000000",
+      "x": 314,
+      "y": 220,
+      "touched_by": "human",
+      "generation": 1,
+      "status": "materialized"
+    },
+    "measurement_command": "agent-browser mouse move/down/move/up, then curl /atlas/segments"
+  },
+  "agent_move": {
+    "action": "atlas_segment_move",
+    "id": "001ec9b332f18bcb-00000000",
+    "x": 720,
+    "y": 180,
+    "animation": "pulse",
+    "generation": 1,
+    "animation_read_back": "atlas-segment-pulse"
+  },
+  "generation_2": {
+    "status": "materialized",
+    "same_object_id": true,
+    "occlusion_box": [680, 500, 860, 680],
+    "occlusion_applied": true,
+    "predicted_iou": 0.9939831495285034,
+    "mask_size": [241, 320],
+    "mask_source_box": [543, 225, 992, 822],
+    "total_ms": 481.0,
+    "stable_object_id_in_worker_receipt": "001ec9b332f18bcb-00000000",
+    "fallback_used": false,
+    "mock_used": false,
+    "measurement_command": "atlas_segment_regenerate, then curl /atlas/segments and browser-eval window.atlas.segment"
+  },
+  "replica_proof": {
+    "structured_segment_equal": true,
+    "describe_character_for_character_equal": true,
+    "host_schema": 4,
+    "browser_schema": 4,
+    "browser_worker_errors": []
+  },
+  "cold_host_restart": {
+    "browser_stopped_before_restart": true,
+    "persisted_object_id": "001ec9b332f18bcb-00000000",
+    "persisted_generation": 2,
+    "persisted_status": "materialized",
+    "persisted_occlusion_receipt": true,
+    "measurement_command": "stop Chrome, restart the host with the same state path, then curl /atlas/segments before reopening a browser"
+  },
+  "negative_controls": {
+    "missing_model_startup_exit": 1,
+    "missing_model_startup_refused": true,
+    "stale_generation_rejected_by_core_test": true,
+    "wrong_graph_rejected_by_core_test": true,
+    "wrong_rle_pixel_count_rejected_by_core_test": true
+  },
+  "screenshots": [
+    {
+      "path": ".local/oracle-run-final/generation-1.png",
+      "sha256": "e61924da2ea15ac47847c028995984fdee0ab5038e6240236f215cd0db9fbdc4"
+    },
+    {
+      "path": ".local/oracle-run-final/generation-2-occluded-fit.png",
+      "sha256": "d3ce88c22eb740034561da6b5e0b2aa1949ca0690e84929e84a8c5ddfd57c81c"
+    }
+  ]
+}

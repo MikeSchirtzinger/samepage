@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <!-- 'wasm-unsafe-eval' is what lets the page instantiate its own CRDT
+       replica; everything else stays same-origin. -->
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'"
+  >
+  <script src="/page-validation.js"></script>
+  <meta name="color-scheme" content="dark">
+  <title>Same Page Atlas · AG-UI</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/workbench.css">
+  <link rel="stylesheet" href="/workspace.css">
+  <link rel="stylesheet" href="/shared-context.css">
+  <link rel="stylesheet" href="/workspace-polish.css">
+  <link rel="stylesheet" href="/architecture-review.css">
+  <link rel="stylesheet" href="/architecture-compare.css">
+  <link rel="stylesheet" href="/themes.css">
+  <link rel="stylesheet" href="/visual-audit.css">
+  <script type="module" src="/theme.js"></script>
+  <script type="module" src="/shell.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">◎</span>
+      <span>
+        <strong>Same Page<span class="brand-product"> / Atlas</span></strong>
+        <small id="project-label">A shared space for understanding</small>
+      </span>
+    </div>
+    <div class="header-spacer"></div>
+    <details id="page-validation" class="page-validation" data-status="pending">
+      <summary aria-live="polite">Page checks pending</summary>
+      <div class="page-validation-body"></div>
+    </details>
+    <!-- Current state only. Whatever this reads is true right now: who is
+         attached over /mcp, and what the in-page provider is doing. It is
+         never left holding one moment's error sentence. -->
+    <div
+      class="runtime-state"
+      id="runtime-status"
+      role="status"
+      aria-live="polite"
+      aria-label="Who is here and what the in-page provider is doing"
+      title="Agents attached over /mcp, and the in-page provider's state"
+    >
+      <span class="connection-dot" id="connection-dot"></span>
+      <span id="runtime-state">connecting</span>
+    </div>
+    <div class="header-actions" aria-label="Page actions">
+      <button class="quiet-button" id="workspace-discuss" type="button" title="Open discussion alongside the canvas">Discuss</button>
+      <button class="quiet-button" id="workspace-decisions" type="button">Decisions</button>
+
+      <details class="workspace-file-menu">
+        <summary>Workspace</summary>
+        <div class="workspace-file-actions">
+      <button class="quiet-button" id="activity-toggle" type="button" aria-expanded="false" aria-controls="activity-drawer">Activity</button>
+      <button class="quiet-button" id="presentation-toggle" type="button" aria-pressed="false">Present</button>
+      <button class="quiet-button" id="export-button" type="button" title="Download the whole page as a .excalidraw document">
+        Export
+      </button>
+      <button class="quiet-button" id="import-button" type="button" title="Bring a .excalidraw drawing onto the atlas">
+        Import
+      </button>
+      <input class="sr-only" id="import-file" type="file" accept=".excalidraw,application/json,.json">
+      <button class="quiet-button agree-button" id="agree-button" type="button" title="Compare what each replica reads back">
+        Compare replicas
+      </button>
+          <agui-provider-settings></agui-provider-settings>
+        </div>
+      </details>
+
+    </div>
+  </header>
+
+  <main class="page-grid" id="page-grid">
+    <section class="atlas-pane" aria-label="Shared atlas">
+      <div class="atlas-toolbar">
+        <span class="canvas-heading">
+          <strong>Explore</strong>
+          <span>Draw, connect, question</span>
+        </span>
+        <details class="canvas-help">
+          <summary>Help</summary>
+          <div class="canvas-help-body" id="atlas-hint">
+            <p>Drag to select. Scroll to pan. Pinch or Ctrl + scroll to zoom. Hold Space or the mouse wheel to pan with any tool.</p>
+            <p><kbd>V</kbd> select <kbd>H</kbd> hand <kbd>P</kbd> pen <kbd>R</kbd> box <kbd>A</kbd> arrow <kbd>T</kbd> text</p>
+            <p><kbd>?</kbd> question <kbd>!</kbd> disagree <kbd>*</kbd> emphasize</p>
+          </div>
+        </details>
+        <span class="sync-state" id="sync-state">replica offline</span>
+      </div>
+      <div id="atlas-view" class="atlas-view" tabindex="0">
+        <div class="extension-loading" role="status">Loading the shared replica…</div>
+      </div>
+    </section>
+
+    <div
+      class="pane-resizer"
+      data-resize="dock"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Width of the workspace dock. Arrow keys resize, Enter collapses, Home resets."
+      tabindex="0"
+    >
+      <button class="pane-collapse" type="button" data-collapse="dock" aria-expanded="true">
+        <span aria-hidden="true">›</span>
+        <span class="sr-only">Hide the workspace dock</span>
+      </button>
+    </div>
+
+    <aside class="workspace-dock" data-pane="dock" aria-label="Board, inspector, and conversation">
+      <button class="pane-rail" type="button" data-expand="dock">
+        <span aria-hidden="true">Workspace</span>
+        <span class="sr-only">Show the workspace dock</span>
+      </button>
+      <header class="dock-header">
+        <div class="dock-heading">
+          <p class="eyebrow">Think together</p>
+          <span>Discuss, explore, refine</span>
+        </div>
+        <div class="dock-tabs" role="tablist" aria-label="Workspace view">
+          <button type="button" role="tab" data-dock-tab="chat" aria-controls="dock-chat">Discuss</button>
+          <button type="button" role="tab" data-dock-tab="guide" aria-controls="dock-guide">Explore</button>
+          <button type="button" role="tab" data-dock-tab="board" aria-controls="dock-board">Board</button>
+          <button type="button" role="tab" data-dock-tab="inspector" aria-controls="dock-inspector">Inspect</button>
+          <button type="button" role="tab" data-dock-tab="learn" aria-controls="dock-learn">Learn</button>
+        </div>
+      </header>
+
+      <section class="board-pane dock-panel" id="dock-board" data-dock-panel="board" role="tabpanel" aria-label="What we are saying about it">
+        <div class="dock-panel-note">
+          <span>Questions, alternatives, and evidence</span>
+        </div>
+        <div id="board-view" class="board-view">
+          <div class="extension-loading" role="status">Loading the board…</div>
+        </div>
+      </section>
+
+      <section class="inspector dock-panel" id="dock-inspector" data-dock-panel="inspector" role="tabpanel" aria-labelledby="inspector-title">
+        <header>
+          <p class="eyebrow">Selected</p>
+          <h2 id="inspector-title">Nothing selected</h2>
+        </header>
+        <div id="inspector-body" class="inspector-body">
+          <p class="muted">Click a node to see who put it there and read the source it claims.</p>
+        </div>
+      </section>
+
+      <section class="dock-panel" id="dock-guide" data-dock-panel="guide" role="tabpanel" aria-label="Visual explanation" hidden>
+        <p class="guide-empty muted">An explanation can walk through the picture one step at a time. Ask in Discuss to begin.</p>
+      </section>
+      <section class="conversation dock-panel" id="dock-chat" data-dock-panel="chat" role="tabpanel" aria-labelledby="conversation-title">
+        <header>
+          <p class="eyebrow">Discussion</p>
+          <h2 id="conversation-title">What are we trying to understand?</h2>
+        </header>
+        <!-- The transcript, the composer, barge-in, and the "pointing at …"
+             bar are the runtime's, not this app's. What stays here is the one
+             sentence that says what this particular surface is for. -->
+        <agui-conversation
+          id="conversation"
+          layout="docked"
+          hint="Start with a question, explore an alternative, or point at something on the canvas. You do not need to create a node."
+          placeholder="Ask, challenge, or explore an idea…"
+        ></agui-conversation>
+      </section>
+
+      <section class="learning-pane dock-panel" id="dock-learn" data-dock-panel="learn" role="tabpanel" aria-labelledby="learning-title">
+        <header>
+          <p class="eyebrow">Temporary tangents</p>
+          <h2 id="learning-title">Learning refreshers</h2>
+        </header>
+        <div id="learning-view" class="learning-view">
+          <div class="extension-loading" role="status">Loading refreshers…</div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <dialog class="agree-dialog" id="agree-dialog" aria-labelledby="agree-title">
+    <header>
+      <h2 id="agree-title">Are we looking at the same thing?</h2>
+      <button class="icon-button" id="close-agree" type="button" aria-label="Close">×</button>
+    </header>
+    <p class="muted" id="agree-verdict"></p>
+    <div class="agree-columns">
+      <section>
+        <h3>Your replica (in this page)</h3>
+        <pre id="agree-mine"></pre>
+      </section>
+      <section>
+        <h3>The agent's read-back (from the host)</h3>
+        <pre id="agree-theirs"></pre>
+      </section>
+    </div>
+  </dialog>
+</body>
+</html>

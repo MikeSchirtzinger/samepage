@@ -1,0 +1,58 @@
+{
+  "conflicts": [],
+  "meta": {
+    "artifact": "atlas-cement-obligations-fragment",
+    "atlas_document_revision": "Bfv8hqfW66QPAtOO74mpp-APAvO4w9mEt_IJWIz5g_KW3KYPAoa-9r_z8MMCBA",
+    "authority": "docs/decisions/0011-persistence.md",
+    "cemented_at": "2026-09-04T20:21:39Z",
+    "note": "Merge and ratify this fragment deliberately before treating it as repository enforcement.",
+    "version": "0.1.0"
+  },
+  "obligations": [
+    {
+      "checker": {
+        "checks": [
+          {
+            "args": {
+              "expected": {
+                "kind": "at_least",
+                "value": 1
+              },
+              "glob": [
+                "crates/ag-ui-surface/src/activity.rs"
+              ],
+              "pattern": "^const MAX_EVENTS: usize = 800;$"
+            },
+            "backend": "rg_match_count"
+          }
+        ],
+        "mode": "typed"
+      },
+      "descends_from": {
+        "atlas_document_revision": "Bfv8hqfW66QPAtOO74mpp-APAvO4w9mEt_IJWIz5g_KW3KYPAoa-9r_z8MMCBA",
+        "claim_id": "0013c9b84b30dc73-00000004",
+        "decision": "docs/decisions/0011-persistence.md",
+        "node_id": "0013c9b84b30dc73-00000001",
+        "source": {
+          "file": "crates/ag-ui-surface/src/activity.rs",
+          "lines": "28",
+          "revision": "37dbb17a09005b3ca9ae4ea6309c6964a48a693d"
+        }
+      },
+      "id": "ATLAS-PERSISTENCE-01",
+      "rule": {
+        "kind": "atlas_verified_claim",
+        "params": {
+          "basis": "verified",
+          "claim": "The activity journal keeps at most 800 events in memory"
+        }
+      },
+      "signal": {
+        "advisory": false,
+        "gate": "cemented_decision_source",
+        "wiring": "repository_artifact"
+      }
+    }
+  ],
+  "open_questions": []
+}
