@@ -14,6 +14,7 @@ members = [
   "crates/ag-ui-canvas-server",
   "crates/ag-ui-surface",
   "crates/ag-ui-record",
+  "crates/samepage-extract",
   "examples/same-page-room",
 ]
 
