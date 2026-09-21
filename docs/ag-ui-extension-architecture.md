@@ -275,9 +275,11 @@ checked-in packages, commands, extension mechanics, and proof vocabulary. The
 Same Page Room can project host-resolved source anchors without requiring a
 hand-built page for every subsystem.
 
-The enforcement layer currently called Govern will likely ship under a
-different name because its crates.io name is taken, but its machine-checked
-agreements still keep people and agents aligned while stopping project drift.
+The enforcement layer is [G8](https://github.com/MikeSchirtzinger/g8),
+pronounced "gate". It turns what people and agents agreed on here into
+machine-checked obligations that coding agents build against. Cement the
+agreement before the code exists. Every gate starts red. Building the code is
+the act of turning the gates green, and a gate that goes red again is drift.
 
 ## Capability ladder
 

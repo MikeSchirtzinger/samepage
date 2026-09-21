@@ -44,6 +44,12 @@ Open <http://127.0.0.1:8100>. The room has no frontend build step. Static
 assets are served by the Rust process, and panes are data interpreted by the
 already compiled renderer.
 
+The command does not return. If you are an agent, run it in the background
+with its output captured, wait for `listening on http://127.0.0.1:8100`, then
+open that address for the person or tell them to. To make the room about a
+different project, set `AGUI_PROJECT_ROOT` to that project's root before
+starting.
+
 Use these repository gates for code changes:
 
 ```bash
@@ -136,6 +142,8 @@ running room.
 - Never make a fallback, mock, copied receipt, or disabled feature count as
   proof.
 
-The enforcement layer currently called Govern will likely ship under a
-different name because its crates.io name is taken, but its machine-checked
-agreements still keep people and agents aligned while stopping project drift.
+The enforcement layer is [G8](https://github.com/MikeSchirtzinger/g8),
+pronounced "gate". It turns what people and agents agreed on here into
+machine-checked obligations that coding agents build against. Cement the
+agreement before the code exists. Every gate starts red. Building the code is
+the act of turning the gates green, and a gate that goes red again is drift.
