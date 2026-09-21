@@ -94,6 +94,36 @@ Read [AGENTS.md](AGENTS.md) for the attachment contract and repository rules.
 The room agent's standing contract is
 [`examples/same-page-room/prompt.md`](examples/same-page-room/prompt.md).
 
+## Point it at your own project
+
+The room is about one project at a time. By default that is this repository.
+To get on the same page about a different one, name its root at launch:
+
+```bash
+AGUI_PROJECT_ROOT=/path/to/your/project \
+AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
+```
+
+Every `source` pane then reads files under that root and nowhere else, and the
+"what this workspace can run" pane lists that project's runnable packages.
+Today that catalog understands Cargo workspaces only. A single-crate or
+non-Rust project shows no runnable packages until its files are opened through
+`source` panes.
+
+## If a coding agent is starting the room for you
+
+The run command above does not return. An agent running it in the foreground
+blocks on it. The recipe for an agent is:
+
+1. Start the room in the background and capture its log.
+2. Wait for the line `listening on http://127.0.0.1:8100`.
+3. Open that address for the person, or tell them to.
+4. Attach over `POST /mcp` with the same token, as described in
+   [AGENTS.md](AGENTS.md), and call `read_room` before writing anything.
+
+The person looks at the browser. The agent looks at `read_room`. That is the
+whole point: two seats, one artifact.
+
 ## Proof commands
 
 ```bash
@@ -108,9 +138,11 @@ Those are separate claims and need separate evidence.
 
 ## Naming
 
-The enforcement layer currently called Govern will likely ship under a
-different name because its crates.io name is taken, but its machine-checked
-agreements still keep people and agents aligned while stopping project drift.
+The enforcement layer is [G8](https://github.com/MikeSchirtzinger/g8),
+pronounced "gate". It turns what people and agents agreed on here into
+machine-checked obligations that coding agents build against. Cement the
+agreement before the code exists. Every gate starts red. Building the code is
+the act of turning the gates green, and a gate that goes red again is drift.
 
 The internal crates still carry their `ag-ui-*` extraction names while the
 public API consolidates under SamePage.
