@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Same Page Atlas Host",
+    "repository": {
+      "revision": "38012ed3dd144bfc29b34d4ba508b79e1af9b6b8"
+    }
+  },
+  "components": [
+    {
+      "id": "mcp-clients",
+      "type": "external",
+      "label": "MCP clients",
+      "sublabel": "attach through /mcp",
+      "pos": [40, 300],
+      "size": [160, 76]
+    },
+    {
+      "id": "browser-replica",
+      "type": "frontend",
+      "label": "Browser replica",
+      "sublabel": "human CRDT peer over /ws",
+      "pos": [560, 40],
+      "size": [160, 76]
+    },
+    {
+      "id": "host-composition",
+      "type": "backend",
+      "label": "Host composition",
+      "sublabel": "surface assembly and guarded boot import",
+      "pos": [300, 300],
+      "size": [160, 76],
+      "source": {
+        "path": "examples/same-page-atlas/src/main.rs",
+        "line": 244,
+        "endLine": 269
+      }
+    },
+    {
+      "id": "atlas-state",
+      "type": "backend",
+      "label": "Atlas state",
+      "sublabel": "shared scene and read cursor",
+      "pos": [560, 300],
+      "size": [160, 76],
+      "source": {
+        "path": "examples/same-page-atlas/src/atlas.rs",
+        "line": 140,
+        "endLine": 180
+      }
+    },
+    {
+      "id": "claims-read-back",
+      "type": "database",
+      "label": "Claims read-back",
+      "sublabel": "basis and human verdicts",
+      "pos": [820, 300],
+      "size": [160, 76],
+      "source": {
+        "path": "examples/same-page-atlas/core/src/claims.rs",
+        "line": 549,
+        "endLine": 603
+      }
+    },
+    {
+      "id": "archify-import",
+      "type": "backend",
+      "label": "Archify import",
+      "sublabel": "validated atomic landing",
+      "pos": [560, 560],
+      "size": [160, 76],
+      "source": {
+        "path": "examples/same-page-atlas/src/atlas.rs",
+        "line": 745,
+        "endLine": 793
+      }
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Same Page Atlas host",
+      "wraps": [
+        "host-composition",
+        "atlas-state",
+        "claims-read-back",
+        "archify-import"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "mcp-clients",
+      "to": "host-composition",
+      "label": "POST /mcp"
+    },
+    {
+      "from": "browser-replica",
+      "to": "atlas-state",
+      "label": "/ws sync"
+    },
+    {
+      "from": "host-composition",
+      "to": "atlas-state",
+      "label": "composes"
+    },
+    {
+      "from": "atlas-state",
+      "to": "claims-read-back",
+      "label": "atlas_read"
+    },
+    {
+      "from": "atlas-state",
+      "to": "archify-import",
+      "label": "boot import"
+    },
+    {
+      "from": "archify-import",
+      "to": "claims-read-back",
+      "label": "writes claims"
+    }
+  ]
+}

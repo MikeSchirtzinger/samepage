@@ -1,0 +1,120 @@
+{
+  "schema": "atlas-expressive-segment-motion/v1",
+  "status": "PASS",
+  "measured_at": "2026-08-26",
+  "surface": {
+    "url": "http://127.0.0.1:8098/?flow=expressive-motion-live-cold-restart",
+    "browser": "Chrome 151 over Browser tools and direct CDP",
+    "host": "fresh native debug build",
+    "wasm": "fresh wasm32-unknown-unknown release build",
+    "state": "live owl state after disposable-state proof",
+    "doc_schema_version": 8
+  },
+  "problem_reproduced": {
+    "legacy_owner_animation": "tap-parts",
+    "legacy_children_animated": 10,
+    "legacy_children_included": [
+      "2 wings",
+      "2 feet",
+      "6 claws"
+    ],
+    "agent_move_required_position_resend": true,
+    "expressive_parameters_available": false
+  },
+  "human_route": {
+    "selection": "Shift-click exact parts in the Objects tree",
+    "trusted_claw_clicks": 6,
+    "selected_ids": [
+      "000c782703b5afcc-00000004",
+      "000c782703b5afcc-00000005",
+      "000c782703b5afcc-00000006",
+      "000c782703b5afcc-00000007",
+      "000c782703b5afcc-00000008",
+      "000c782703b5afcc-00000009"
+    ],
+    "describe_motion_trusted": true,
+    "chat_prefill": "Animate claw 1, claw 2, claw 3, claw 4, claw 5, claw 6: ",
+    "chat_anchor": "6 selected: claw 1, claw 2, claw 3, and 3 more",
+    "chat_focused": true,
+    "stop_motion_trusted": true,
+    "stop_motion_reached_host": true,
+    "stop_motion_positions_unchanged": true
+  },
+  "agent_route": {
+    "action": "atlas_segment_motion",
+    "owner_id": "00140e0bede9ac35-00000000",
+    "program_schema": "atlas-segment-motion-v1",
+    "label": "Wing flap with claw loading",
+    "tracks": 3,
+    "targets": 8,
+    "left_wing_track": "mirrored negative rotation around inner pivot",
+    "right_wing_track": "mirrored positive rotation around inner pivot",
+    "claw_track": "six exact targets with 120 millisecond stagger",
+    "saved_positions_changed": false,
+    "tool_response_proof_boundary": "stored shared state only, browser inspection still required"
+  },
+  "negative_control": {
+    "owner": "claw 1 part",
+    "illegal_target": "claw 2 sibling",
+    "rejected": true,
+    "error_contains": "cannot target segment",
+    "full_segment_endpoint_unchanged": true
+  },
+  "browser_rendering": {
+    "running_custom_targets": 8,
+    "mirrored_wing_transforms_observed": true,
+    "distinct_claw_transform_states_observed": 11,
+    "feet_targeted": false,
+    "feet_computed_transform": "none",
+    "feet_running_animations": 0,
+    "root_targeted": false,
+    "legacy_tap_parts_cleared": true,
+    "console_errors": 0,
+    "visually_inspected": true
+  },
+  "offline_guard": {
+    "replica_status": "Replica offline. Reconnecting...",
+    "atlas_view_inert": true,
+    "trusted_stop_click_mutated_local_state": false,
+    "trusted_stop_click_added_input_event": false,
+    "persisted_motion_remained_visible_locally": true
+  },
+  "persistence": {
+    "disposable_cold_restart": true,
+    "live_cold_restart": true,
+    "motion_label_preserved": true,
+    "track_count_preserved": 3,
+    "target_count_preserved": 8,
+    "host_and_browser_descriptions_equal": true,
+    "live_state_sha256": "0924fd3430ac66e1a5a173a502855b13dfa24621502bfc020a95a5bd758c99fc"
+  },
+  "visual_evidence": {
+    "path": ".local/product-flow/screenshots/final-expressive-owl-motion.png",
+    "sha256": "79a32d5c2362fe3d338fab42fede184949ec5b5de78a5540fd84e06f69e52150",
+    "bytes": 450230
+  },
+  "validation": {
+    "same_page_atlas_core_tests": 223,
+    "same_page_atlas_host_tests": 146,
+    "javascript_picker_contract": "PASS",
+    "javascript_syntax": "PASS",
+    "rustfmt": "PASS",
+    "host_and_core_clippy_warnings_denied": "PASS",
+    "wasm_clippy_warnings_denied": "PASS",
+    "fresh_wasm_build": "PASS",
+    "segmentation_contract_drift_check": "PASS",
+    "agent_harness": "PASS",
+    "nonnegotiable_propagation": "PASS",
+    "changed_public_files_credo_hard_violations": 0,
+    "readme_inherited_title_case_warning": 1
+  },
+  "boundaries": [
+    "This is a validated general 2D keyframe primitive, not a timeline editor or 3D rig.",
+    "This motion slice reused existing receipt-backed real MobileSAM masks and did not run new segmentation inference.",
+    "WebGPU remains the only configured segmentation provider, but per-node GPU execution is not proven.",
+    "The ChromeAgent recording was retained, but its promotion helper was unavailable, so no promoted replay is claimed.",
+    "Mask agreement and visual inspection are not annotated semantic-accuracy evidence.",
+    "Gate 5 remains FROZEN_NOT_RUN."
+  ],
+  "verdict": "ATLAS_EXPRESSIVE_OWL_MOTION_PASS"
+}

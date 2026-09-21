@@ -16,6 +16,9 @@ members = [
   "crates/ag-ui-record",
   "crates/samepage-extract",
   "examples/same-page-room",
+  "examples/same-page-atlas",
+  "examples/same-page-atlas/core",
+  "examples/same-page-atlas/web",
 ]
 
 [workspace.package]

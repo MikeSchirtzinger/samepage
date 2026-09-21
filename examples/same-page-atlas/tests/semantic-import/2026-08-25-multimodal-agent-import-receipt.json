@@ -1,0 +1,144 @@
+{
+  "schema": "same-page-atlas-multimodal-agent-import-receipt-v1",
+  "scope": "bounded product learning test during roadmap Phase 2",
+  "result": "pass",
+  "run_date": "2026-08-25",
+  "source": {
+    "path": "static/assets/visual-instinct-infographic.png",
+    "width": 1536,
+    "height": 1024,
+    "sha256": "21e3e650e1dfea74d09d5fca62b1da25431db3b4dac1bb3757f72583e04d917a",
+    "prompt": "Create a landscape visual reasoning infographic with a central mechanical owl and the exact stages SEE, BIND, ACT, VERIFY. Use deep navy, teal, amber, and restrained editorial diagram styling. Include the exact title VISUAL INSTINCT. No logos or watermark."
+  },
+  "semantic_agent": {
+    "trust": "participant-claimed",
+    "host_attested": false,
+    "provider": "OpenAI Codex",
+    "model": "gpt-5.6-sol",
+    "request_id": "01a03aa4-0543-7461-ab75-04695909ebe7",
+    "execution_location": "external-multimodal-agent",
+    "input_mime_type": "image/png",
+    "source_sha256": "21e3e650e1dfea74d09d5fca62b1da25431db3b4dac1bb3757f72583e04d917a",
+    "output_sha256": "79f0f9f12b7a08a00a9dab805ac431f42bef6977f370134509fe7ba9eabee255",
+    "semantic_output": {
+      "label": "Mechanical owl",
+      "tags": ["visual-reasoning", "central-subject", "teal-amber"],
+      "ocr": ["VISUAL INSTINCT"],
+      "prompt_box": [530, 205, 1005, 845]
+    },
+    "fallback_used": false,
+    "mock_used": false,
+    "measurement_command": "inspect the pinned PNG with the active multimodal model, then call atlas_segment_agent_import over the runtime MCP endpoint"
+  },
+  "object": {
+    "id": "0009a072867c44b5-00000000",
+    "label": "Mechanical owl",
+    "created_by": "Codex multimodal agent",
+    "semantic_fields": {
+      "tags": ["visual-reasoning", "central-subject", "teal-amber"],
+      "ocr": ["VISUAL INSTINCT"],
+      "prompt_box": [530, 205, 1005, 845]
+    }
+  },
+  "generation_1": {
+    "status": "materialized",
+    "model_id": "mobilesam-vit-t",
+    "encoder_sha256": "d80de6055095e7ba5551e6c15aaa8981b05dca77d6ae77ee82e51e2746a87e3d",
+    "decoder_sha256": "a21b65b6e1b75e2c6265b36835747a0ab9169ec1ed725139a78ce90297f95126",
+    "execution_location": "browser-worker",
+    "backend_requested": "webgpu",
+    "adapter": { "vendor": "apple", "architecture": "metal-3" },
+    "predicted_iou_raw": 1.003535509109497,
+    "predicted_iou_contract": "raw-regression-output-not-probability",
+    "predicted_iou_raw_in_unit_interval": false,
+    "mask_size": [241, 320],
+    "mask_source_box": [543, 225, 992, 821],
+    "total_ms": 1494.39999999851,
+    "fallback_used": false,
+    "mock_used": false,
+    "measurement_command": "browser-eval window.atlas.segment after the pinned Worker materialized generation 1"
+  },
+  "browser_gesture": {
+    "kind": "real_pointer_drag",
+    "from_screen": [526, 454],
+    "to_screen": [720, 515],
+    "host_read_after_gesture": {
+      "id": "0009a072867c44b5-00000000",
+      "x": 314,
+      "y": 221,
+      "touched_by": "human",
+      "generation": 1,
+      "status": "materialized"
+    },
+    "measurement_command": "agent-browser mouse move, down, move, up on the real Chrome tab, then curl /atlas/segments"
+  },
+  "agent_move": {
+    "action": "atlas_segment_move",
+    "id": "0009a072867c44b5-00000000",
+    "x": 650,
+    "y": 120,
+    "animation": "pulse",
+    "generation": 1,
+    "animation_read_back": "atlas-segment-pulse"
+  },
+  "generation_2": {
+    "status": "materialized",
+    "same_object_id": true,
+    "occlusion_box": [680, 500, 860, 680],
+    "occlusion_applied": true,
+    "predicted_iou_raw": 1.0049277544021606,
+    "predicted_iou_contract": "raw-regression-output-not-probability",
+    "predicted_iou_raw_in_unit_interval": false,
+    "mask_size": [241, 320],
+    "mask_source_box": [543, 225, 992, 822],
+    "total_ms": 528.8000000007451,
+    "stable_object_id_in_worker_receipt": "0009a072867c44b5-00000000",
+    "fallback_used": false,
+    "mock_used": false,
+    "measurement_command": "atlas_segment_regenerate, then curl /atlas/segments and browser-eval window.atlas.segment"
+  },
+  "replica_proof": {
+    "structured_segment_equal": true,
+    "describe_character_for_character_equal": true,
+    "host_schema": 5,
+    "browser_schema": 5,
+    "browser_worker_errors": []
+  },
+  "cold_host_restart": {
+    "browser_stopped_before_restart": true,
+    "persisted_object_id": "0009a072867c44b5-00000000",
+    "persisted_generation": 2,
+    "persisted_status": "materialized",
+    "persisted_semantic_model": "gpt-5.6-sol",
+    "persisted_occlusion_receipt": true,
+    "measurement_command": "browser-stop --clean, stop the host, restart with the same state path, confirm port 9222 is closed, then curl /atlas/segments before reopening a browser"
+  },
+  "negative_controls": {
+    "semantic_output_digest_mismatch_rejected_before_mint": true,
+    "semantic_mock_or_fallback_rejected_by_core_tests": true,
+    "wrong_semantic_source_rejected_by_core_test": true,
+    "missing_model_startup_exit": 1,
+    "missing_model_startup_refused": true,
+    "stale_generation_rejected_by_core_test": true,
+    "wrong_graph_rejected_by_core_test": true,
+    "wrong_rle_pixel_count_rejected_by_core_test": true
+  },
+  "red_controls_preserved": {
+    "initial_worker_error": "MobileSAM returned invalid predicted IoU 1.003535509109497.",
+    "root_cause": "the pinned MobileSAM IoU head emits a finite raw regression score and does not guarantee the unit interval",
+    "repair": "preserve the raw finite score and bind predictedIoUContract plus predictedIoURawInUnitInterval in the Worker receipt",
+    "silent_clamp_used": false,
+    "early_empty_snapshot_was_not_treated_as_persistence_failure": true,
+    "temporary_duplicate_removed_through_atlas_action": true
+  },
+  "screenshots": [
+    {
+      "path": ".local/multimodal-agent-run/generation-1.png",
+      "sha256": "ad9d3497b346ad7e82b182c00f5d047721baa362d4b91ee3e6d382be530238cd"
+    },
+    {
+      "path": ".local/multimodal-agent-run/generation-2-occluded-fit.png",
+      "sha256": "795d100b2248a10e2bb594600112378a126563ff88204ebcadd58a0c3ab2c6a3"
+    }
+  ]
+}

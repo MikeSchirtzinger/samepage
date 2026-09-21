@@ -1,0 +1,17 @@
+{
+  "accepted_claim_ids": [
+    "0013c9b84b30dc73-00000004",
+    "0013c9b84b30dc73-00000005",
+    "0013c9b84b30dc73-00000006"
+  ],
+  "adr_path": "docs/decisions/0011-persistence.md",
+  "atlas_document_revision": "Bfv8hqfW66QPAtOO74mpp-APAvO4w9mEt_IJWIz5g_KW3KYPAoa-9r_z8MMCBA",
+  "cemented_at": "2026-09-04T20:21:39Z",
+  "kind": "same-page-atlas-cement-receipt",
+  "obligations_fragment_path": "docs/decisions/obligations-persistence.json",
+  "schema_version": 1,
+  "selected_node_ids": [
+    "0013c9b84b30dc73-00000001",
+    "0013c9b84b30dc73-00000002"
+  ]
+}

@@ -1,0 +1,155 @@
+{
+  "schema": "atlas-polished-nested-owl-motion/v1",
+  "status": "PASS",
+  "measured_at": "2026-08-26",
+  "surface": {
+    "url": "http://127.0.0.1:8098/",
+    "browser": "real Chrome over direct CDP",
+    "schema_version": 9,
+    "host_schema_version": 9,
+    "wasm_schema_version": 9,
+    "zoom_percent": 200
+  },
+  "hierarchy": {
+    "root": {
+      "id": "00140e0bede9ac35-00000000",
+      "label": "Owl body"
+    },
+    "root_children": [
+      "Left wing",
+      "Right wing",
+      "Left foot",
+      "Right foot"
+    ],
+    "left_foot_children": [
+      "Claw 1",
+      "Claw 2",
+      "Claw 3"
+    ],
+    "right_foot_children": [
+      "Claw 4",
+      "Claw 5",
+      "Claw 6"
+    ],
+    "maximum_part_depth": 3,
+    "drag_to_nest": "PASS",
+    "drag_to_root_then_back": "PASS",
+    "world_position_preserved": true,
+    "appearance_generation_preserved": true
+  },
+  "human_workflow": {
+    "trusted_drag_route": "PASS",
+    "selected_parent": "Left foot",
+    "existing_child_masks_visible_in_picker": 3,
+    "next_default_name": "Part 4",
+    "repeated_child_selection_stays_in_one_picker": true,
+    "labels_hidden_when_not_selected": true,
+    "picker_ready_in_real_chrome": true
+  },
+  "agent_workflow": {
+    "reparent_tool": "atlas_segment_reparent",
+    "motion_tool": "atlas_segment_motion",
+    "motion_owner": "00140e0bede9ac35-00000000",
+    "motion_schema": "atlas-segment-motion-v1",
+    "motion_label": "Mechanical owl idle and loading cycle",
+    "track_count": 6,
+    "target_count": 11,
+    "motion_controls": [
+      "translation",
+      "rotation",
+      "scale",
+      "delay",
+      "stagger",
+      "custom cubic Bezier easing",
+      "looping",
+      "ordered keyframes"
+    ],
+    "saved_positions_unchanged": true
+  },
+  "renderer": {
+    "rendered_segments": 11,
+    "running_animations": 11,
+    "paint_errors": 0,
+    "visible_badges_at_rest": 0,
+    "root_child_masks_subtracted": 4,
+    "left_foot_child_masks_subtracted": 3,
+    "right_foot_child_masks_subtracted": 3,
+    "nested_svg_motion_inheritance": true,
+    "wing_joint_continuity_visually_verified": true,
+    "duplicate_child_pixels_visually_rejected": true
+  },
+  "persistence": {
+    "cold_host_restart": true,
+    "state_sha256_before_restart": "b9e006cc806c67d044478f284dac95042d0d94532cff58f546fb56aba4576c4a",
+    "state_sha256_after_restart": "b9e006cc806c67d044478f284dac95042d0d94532cff58f546fb56aba4576c4a",
+    "stable_ids_preserved": true,
+    "labels_preserved": true,
+    "nested_hierarchy_preserved": true,
+    "motion_program_preserved": true,
+    "running_animations_after_restart": 11,
+    "paint_errors_after_restart": 0
+  },
+  "visual_evidence": {
+    "final_frame": {
+      "path": ".local/product-flow/screenshots/polished-owl-final.png",
+      "sha256": "3695630433ace2fb95940a686ea2e0e4c0000c5404d8bce7ce6c6a867c2f27e0",
+      "bytes": 854775
+    },
+    "frame_contact_sheet": {
+      "path": ".local/product-flow/screenshots/polished-owl-contact-sheet.png",
+      "sha256": "a0bf238adc3f756afe2ad4969b04ea179022d8ccc1d72ca758e5ca9c584317d9",
+      "bytes": 995326,
+      "frames": 32
+    },
+    "motion_video": {
+      "path": ".local/product-flow/screenshots/polished-owl-cycle.mp4",
+      "sha256": "a72412db55bf27025ab345c6e60f702cd5a20ea9801d975f612e3eaff1853c4d",
+      "bytes": 673487
+    },
+    "human_drag_before": {
+      "path": ".local/product-flow/screenshots/human-claw-at-root.png",
+      "sha256": "8309866643ca1ca56347da9b76da700f2519a6535734af42cc421de0f2efdf06",
+      "bytes": 281873
+    },
+    "human_drag_after": {
+      "path": ".local/product-flow/screenshots/human-claw-nested.png",
+      "sha256": "82fb92f507b3047551d7d3839fc521bec840541cae4568aba0401e4df07a6ddb",
+      "bytes": 282304
+    },
+    "nested_picker": {
+      "path": ".local/product-flow/screenshots/human-add-nested-part.png",
+      "sha256": "6fa662eb27db7234253583042a3ebff013c20507b6185134281641041665c901",
+      "bytes": 2888840
+    },
+    "after_cold_restart": {
+      "path": ".local/product-flow/screenshots/polished-owl-after-cold-restart.png",
+      "sha256": "4640057e5d5f5b9f7b88b3dfe425060d25c35425721276dc8d0c7d99cc98071f",
+      "bytes": 841703
+    }
+  },
+  "validation": {
+    "same_page_atlas_core_tests": 224,
+    "same_page_atlas_host_tests": 146,
+    "javascript_picker_contract_tests": 1,
+    "javascript_syntax": "PASS",
+    "rustfmt": "PASS",
+    "host_and_core_clippy_warnings_denied": "PASS",
+    "wasm_clippy_warnings_denied": "PASS",
+    "wasm_build": "PASS",
+    "segmentation_contract_drift_check": "PASS",
+    "agent_harness": "PASS",
+    "git_diff_check": "PASS",
+    "nonnegotiable_propagation": "PASS",
+    "credo_hard_violations": 0,
+    "credo_existing_warnings": 1
+  },
+  "proof_boundaries": [
+    "This receipt proves nested anatomy, generic bounded 2D keyframe motion, human drag-to-nest, real Chrome rendering, and persistence.",
+    "This receipt does not claim a new segmentation inference. It animates the existing real MobileSAM masks already stored in the product-flow state.",
+    "The auxiliary Playwright runner closed during WebGPU initialization. Real Chrome was the browser-ML and visual proof surface.",
+    "The motion primitive is bounded 2D composition, not a timeline editor, 3D rig, or modeling surface.",
+    "Mask agreement and visual inspection are not annotated semantic-accuracy evidence.",
+    "Gate 5 remains FROZEN_NOT_RUN."
+  ],
+  "verdict": "ATLAS_POLISHED_NESTED_OWL_MOTION_PASS"
+}

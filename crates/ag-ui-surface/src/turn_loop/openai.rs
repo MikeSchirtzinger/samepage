@@ -544,6 +544,13 @@ async fn run_turn(
                 messages.push(Value::Object(msg));
 
                 if tool_calls.is_empty() {
+                    if rt
+                        .final_response_only
+                        .load(std::sync::atomic::Ordering::Relaxed)
+                        && !text.is_empty()
+                    {
+                        narrate_chunk(rt, &text);
+                    }
                     break Ok(());
                 }
                 // Dispatch each call via `Surface::tools()` and feed a result
@@ -883,7 +890,12 @@ async fn stream_completion(
             if let Some(content) = delta.get("content").and_then(Value::as_str) {
                 if !content.is_empty() {
                     append_limited(&mut text, content, MAX_ASSISTANT_TEXT, "assistant text")?;
-                    narrate_chunk(rt, content);
+                    if !rt
+                        .final_response_only
+                        .load(std::sync::atomic::Ordering::Relaxed)
+                    {
+                        narrate_chunk(rt, content);
+                    }
                 }
             }
 

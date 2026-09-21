@@ -1,0 +1,63 @@
+.architecture-compare { width: min(1180px, calc(100vw - 48px)); max-height: calc(100dvh - 48px); padding: 0; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--panel); font: 14px/1.5 var(--font-ui); }
+.architecture-compare::backdrop { background: rgb(0 0 0 / 65%); }
+.comparison-heading { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px 8px; }
+.comparison-heading h2 { font-size: 23px; margin: 0; }
+.comparison-heading .icon-button { color: var(--ink); width: 36px; height: 36px; }
+.comparison-controls { display: flex; gap: 12px; padding: 8px 24px; }
+.comparison-controls select { flex: 1; min-width: 0; }
+.architecture-compare select, .architecture-compare input { border: 1px solid var(--line); border-radius: 5px; background: var(--panel-2); color: var(--ink); font: inherit; padding: 8px; min-width: 0; }
+.comparison-notice { color: var(--muted); margin: 8px 24px 16px; min-height: 21px; }
+.comparison-body { padding: 0 24px 24px; }
+.comparison-stale { border: 1px solid var(--accent); padding: 12px; border-radius: 5px; }
+.comparison-counts { display: flex; flex-wrap: wrap; gap: 14px 28px; padding: 14px 0; border-block: 1px solid var(--line); color: var(--muted); }
+.comparison-counts strong { font-size: 24px; color: var(--ink); font-weight: 500; margin-right: 4px; }
+.comparison-legend, .comparison-boundary { font-size: 13px; color: var(--muted); }
+.comparison-diagrams { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.comparison-diagrams section { min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; }
+.comparison-diagrams h3 { margin: 14px 18px 0; font-size: 16px; }
+.comparison-graph { display: block; width: 100%; }
+.comparison-graph path[class^="edge-"] { fill: none; stroke-width: 2; }
+.comparison-graph .edge-kept { stroke: var(--muted); opacity: .5; }
+.comparison-graph .edge-added { stroke: #28a879; stroke-width: 3; }
+.comparison-graph .edge-removed { stroke: #de6d70; stroke-width: 3; stroke-dasharray: 6 4; }
+.arrow-kept { fill: var(--muted); }.arrow-added { fill: #28a879; }.arrow-removed { fill: #de6d70; }
+.comparison-node { cursor: pointer; }
+.comparison-node rect { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+.comparison-node text { fill: var(--ink); font: 15px var(--font-ui); }
+.comparison-node.node-direct rect { stroke: #c89036; stroke-width: 2; }
+.comparison-node.node-upstream rect { stroke: #6a9cd4; stroke-width: 2; }
+.comparison-node:hover rect, .comparison-node:focus rect { stroke: var(--accent); stroke-width: 3; }
+.comparison-impact { margin-top: 24px; padding-top: 2px; }
+.comparison-component-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.comparison-component-list button { border: 1px solid #c89036; border-radius: 5px; background: var(--panel-2); color: var(--ink); padding: 7px 11px; font: inherit; cursor: pointer; }
+.impact-upstream { color: var(--muted); overflow-wrap: anywhere; }
+.comparison-relationships { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.comparison-relationships th { font-weight: 500; color: var(--muted); padding: 8px; }
+.comparison-relationships td { border-top: 1px solid var(--line); padding: 12px 8px; overflow-wrap: anywhere; }
+.comparison-relationships td:first-child { width: 53%; }
+.comparison-relationships strong { font-weight: 500; display: block; }
+.comparison-relationships td span { display: block; color: var(--muted); margin-top: 4px; }
+.relationship-added td:nth-child(3) { color: #28a879; }.relationship-removed td:nth-child(3) { color: #de6d70; }
+.comparison-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 18px 0; border-top: 1px solid var(--line); }
+.comparison-add select { flex: 1 1 180px; width: 180px; }.comparison-add input { flex: 1 1 160px; }
+.comparison-empty { color: var(--muted); }
+.comparison-name { margin-top: 12px; color: var(--muted); font-size: 13px; }
+.comparison-name form { display: flex; gap: 8px; margin-top: 8px; }.comparison-name input { flex: 1; }
+.architecture-compare :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.project-facts { position: relative; min-width: 0; font-size: 12px; color: var(--muted); margin-left: 22px; }
+/* Wraps rather than ellipsizes: this flex row has no reserved width for it,
+   so its own max-width is never the binding constraint, the header's
+   available space is, and an ellipsis still leaves scrollWidth wider than
+   clientWidth whatever the box shrinks to. Wrapped text does not. */
+.project-facts > summary { cursor: pointer; white-space: normal; overflow-wrap: break-word; max-width: 460px; line-height: 1.3; }
+.project-facts-content { position: absolute; z-index: 130; width: min(400px, calc(100vw - 40px)); left: 0; top: 30px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 25%); color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
+.project-facts-content code { font-size: 11px; white-space: pre-wrap; }
+@media (max-width: 1100px) { .project-facts > summary { max-width: 225px; }.project-facts { margin-left: 12px; } }
+@media (max-width: 760px) {
+  .architecture-compare { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; }
+  .comparison-heading, .comparison-controls { padding-inline: 16px; }.comparison-notice { margin-inline: 16px; }.comparison-body { padding-inline: 16px; }
+  .comparison-diagrams { grid-template-columns: 1fr; gap: 14px; }.comparison-counts { gap: 8px 16px; font-size: 12px; }.comparison-counts strong { font-size: 20px; }
+  .comparison-node text { font-size: 20px; }
+  .comparison-relationships { font-size: 12px; }.comparison-relationships th, .comparison-relationships td { padding: 8px 4px; }.comparison-relationships .quiet-button { padding: 6px; font-size: 12px; }.comparison-relationships td:first-child { width: 43%; }
+  .project-facts { order: 10; flex-basis: 100%; margin: 0; }.project-facts > summary { max-width: 100%; }.project-facts-content { top: 24px; }
+}

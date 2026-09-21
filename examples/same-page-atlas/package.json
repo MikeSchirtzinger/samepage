@@ -1,0 +1,10 @@
+{
+  "name": "same-page-atlas-semantic-import-runtime",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Pinned browser runtime for the Atlas MobileSAM learning test",
+  "dependencies": {
+    "onnxruntime-web": "1.27.0"
+  }
+}

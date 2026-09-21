@@ -1,0 +1,41 @@
+{
+  "diagram": {
+    "kind": "hierarchy",
+    "containers": [
+      { "id": "host", "label": "Atlas host" }
+    ],
+    "nodes": [
+      { "id": "persistence", "label": "Persistence", "group": "host" },
+      { "id": "journal", "label": "Activity journal", "group": "host" }
+    ],
+    "edges": [
+      { "from": "persistence", "to": "journal", "label": "stores events in" }
+    ]
+  },
+  "selection": ["persistence", "journal"],
+  "claims": [
+    {
+      "about": "persistence",
+      "text": "The activity journal keeps at most 800 events in memory",
+      "basis": "verified",
+      "path": "crates/ag-ui-surface/src/activity.rs",
+      "lines": "28",
+      "revision": "37dbb17a09005b3ca9ae4ea6309c6964a48a693d",
+      "verdict": "accepted"
+    },
+    {
+      "about": "persistence",
+      "text": "Persistence and the activity journal form one operational boundary",
+      "basis": "inferred",
+      "path": "crates/ag-ui-surface/src/activity.rs",
+      "verdict": "accepted"
+    },
+    {
+      "about": "journal",
+      "text": "The retained event cap is sufficient for this example",
+      "basis": "assumed",
+      "verdict": "accepted"
+    }
+  ],
+  "agreed": ["persistence", "journal"]
+}
