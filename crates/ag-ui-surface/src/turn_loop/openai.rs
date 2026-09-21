@@ -450,6 +450,7 @@ async fn run_openai_session(
                     &cfg,
                     &mut messages,
                     &q.text,
+                    q.human.as_deref(),
                     &mut q.cancel,
                 ).await;
             }
@@ -463,6 +464,7 @@ async fn run_openai_session(
                     &cfg,
                     &mut messages,
                     &prompt,
+                    None,
                     &mut m.cancel,
                 ).await;
             }
@@ -483,6 +485,7 @@ async fn run_turn(
     cfg: &OpenAiConfig,
     messages: &mut Vec<Value>,
     user_text: &str,
+    human_text: Option<&str>,
     cancel: &mut tokio::sync::broadcast::Receiver<()>,
 ) {
     messages.push(json!({ "role": "user", "content": user_text }));
@@ -690,12 +693,34 @@ async fn run_turn(
     );
     if let Err(e) = result {
         warn!("openai turn error: {e}");
-        let friendly = friendly_error(&e);
+        // Ghosts first. The registry used to be insert-only, so "somebody IS
+        // here" could be a memory of an agent whose process had gone, and the
+        // question would be handed to nobody and announced as handed over.
+        crate::detach_quiet_agents(rt);
+        let attached_agents = rt.mcp_agents.lock().len();
+        // The endpoint never answered and somebody IS here. Do not drop the
+        // question on the floor: hand it to the agents that are attached, and
+        // then the sentence below is a description of what happened rather
+        // than a guess about a subsystem this failure knows nothing about.
+        if is_unreachable(&e) && attached_agents > 0 {
+            if let Some(question) = human_text {
+                rt.chat_relay().post("you", None, question);
+            }
+        }
+        let friendly = friendly_error(&e, attached_agents);
         emit_narrate(rt, &friendly);
         crate::narration::fail_turn(rt, &friendly);
         return;
     }
     finish_turn(rt);
+}
+
+fn is_unreachable(e: &str) -> bool {
+    let l = e.to_lowercase();
+    l.contains("connect")
+        || l.contains("dns")
+        || l.contains("timed out")
+        || l.contains("error sending request")
 }
 
 fn parse_tool_arguments(name: &str, raw: &str) -> Result<Value, String> {
@@ -1064,7 +1089,13 @@ async fn bounded_response_body(response: reqwest::Response, limit: usize) -> Str
 
 /// Map a raw API error to one short spoken line for the learner and name the
 /// configuration action that can resolve it.
-fn friendly_error(e: &str) -> String {
+///
+/// `attached_agents` is how many agents are attached over `/mcp` right now. It
+/// is a parameter rather than a lookup because the sentence this function used
+/// to return for an unreachable endpoint was "No agent is connected", which is
+/// a claim about `/mcp` made from a fact about a TCP socket. It may only be
+/// said when it is true.
+fn friendly_error(e: &str, attached_agents: usize) -> String {
     if e.starts_with("Claude subscription unavailable:")
         || e.starts_with("Claude subscription request failed")
     {
@@ -1089,12 +1120,17 @@ fn friendly_error(e: &str) -> String {
     } else if l.contains("404") || (l.contains("model") && l.contains("not")) {
         "That model wasn't found at this endpoint. Check the model name in Agents & connections."
             .to_string()
-    } else if l.contains("connect")
-        || l.contains("dns")
-        || l.contains("timed out")
-        || l.contains("error sending request")
-    {
-        "Couldn't reach the endpoint. Check the base URL in Agents & connections.".to_string()
+    } else if is_unreachable(e) {
+        match attached_agents {
+            0 => "No agent is connected. Attach from a terminal at /mcp.".to_string(),
+            1 => "The in-page provider did not answer. Your message is waiting for \
+                  the agent attached over /mcp."
+                .to_string(),
+            count => format!(
+                "The in-page provider did not answer. Your message is waiting for \
+                 the {count} agents attached over /mcp."
+            ),
+        }
     } else {
         format!(
             "The model call failed: {}",
