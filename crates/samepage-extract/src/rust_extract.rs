@@ -8,7 +8,7 @@ use std::path::Path;
 use regex::Regex;
 
 use crate::util::{
-    cfg_test_ranges, fn_spans, local_depth_at, sha256_hex, strip_line_comment, trimmed_snippet,
+    cfg_test_ranges, fn_spans, local_depth_at, sha256_hex, blank_string_literals, strip_line_comment, trimmed_snippet,
 };
 use crate::{Evidence, Lane, LaneKind, ScanError};
 
@@ -20,7 +20,12 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
         r"TcpListener::bind|UdpSocket::bind|axum::Server::bind|\bserve\s*\(|\b\w*(?i:listener|socket)\w*\s*\.bind\s*\(",
     )
     .unwrap();
-    let spawn_re = Regex::new(r"Command::new\s*\(|tokio::process::Command|std::process::Command|\.spawn\s*\(\s*\)").unwrap();
+    // A constructor or a call. `cmd: &mut tokio::process::Command` in a
+    // signature is a type, not a child process.
+    let spawn_re = Regex::new(
+        r"Command::new\s*\(|process::Command::new\s*\(|\.spawn\s*\(\s*\)",
+    )
+    .unwrap();
     let background_re =
         Regex::new(r"tokio::spawn\s*\(|std::thread::spawn\s*\(|\bthread::spawn\s*\(").unwrap();
 
@@ -29,12 +34,11 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
     // flagged HashMap::get and axum route registrations; a lane that might be
     // a map lookup is not a lane a person can trust.
     // `reqwest::Url` in a signature is a type, not a call.
-    let reqwest_re =
-        Regex::new(r"reqwest::(Client|ClientBuilder|blocking|get\s*\(|post\s*\()").unwrap();
-    let http_client_re = Regex::new(
-        r"reqwest::Client|Client::builder\(\)|Client::new\(\)\s*\.\s*(get|post|put|delete|patch|request)\s*\(|Client::new\(\)",
+    let reqwest_re = Regex::new(
+        r"reqwest::(Client::(new|builder)\s*\(|ClientBuilder::new\s*\(|blocking::|get\s*\(|post\s*\()",
     )
     .unwrap();
+    let http_client_re = Regex::new(r"\bClient::builder\s*\(\)|\bClient::new\s*\(\)").unwrap();
 
     let test_ranges = cfg_test_ranges(contents);
     let spans = fn_spans(contents);
@@ -59,10 +63,14 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
         }
 
         let line = raw_line.trim_end_matches(['\n', '\r']);
-        let stripped = strip_line_comment(line);
-        if stripped.trim().is_empty() {
+        let with_strings = strip_line_comment(line);
+        if with_strings.trim().is_empty() {
             continue;
         }
+        // Patterns are matched with string contents blanked; the snippet keeps
+        // the real text.
+        let blanked = blank_string_literals(with_strings);
+        let stripped: &str = &blanked;
         // An import names a type; it does not bind, spawn, or connect. Without
         // this, `use std::process::Command;` reads as a sidecar.
         let head = stripped.trim_start();
@@ -77,7 +85,7 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
                 evidence: Evidence {
                     path: rel_path.to_path_buf(),
                     line: line_no,
-                    snippet: trimmed_snippet(stripped),
+                    snippet: trimmed_snippet(with_strings),
                     sha256: sha.clone(),
                 },
                 package: None,
@@ -138,7 +146,7 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
                 evidence: Evidence {
                     path: rel_path.to_path_buf(),
                     line: line_no,
-                    snippet: trimmed_snippet(stripped),
+                    snippet: trimmed_snippet(with_strings),
                     sha256: sha.clone(),
                 },
                 package: None,

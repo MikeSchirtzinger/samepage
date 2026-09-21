@@ -7,7 +7,7 @@ use std::path::Path;
 use regex::Regex;
 use serde_json::Value;
 
-use crate::util::{depth_at, line_at, line_number_at, sha256_hex, strip_line_comment, trimmed_snippet};
+use crate::util::{depth_at, line_at, line_number_at, sha256_hex, blank_string_literals, strip_line_comment, trimmed_snippet};
 use crate::walk::Walked;
 use crate::{Evidence, Lane, LaneKind, ScanError};
 
@@ -138,10 +138,14 @@ pub fn extract_js(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<La
         offset += raw_line.len();
 
         let line = raw_line.trim_end_matches(['\n', '\r']);
-        let stripped = strip_line_comment(line);
-        if stripped.trim().is_empty() {
+        let with_strings = strip_line_comment(line);
+        if with_strings.trim().is_empty() {
             continue;
         }
+        // Patterns are matched with string contents blanked; the snippet keeps
+        // the real text.
+        let blanked = blank_string_literals(with_strings);
+        let stripped: &str = &blanked;
 
         let mut push = |kind: LaneKind, detail: &str| {
             lanes.push(Lane {
@@ -150,7 +154,7 @@ pub fn extract_js(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<La
                 evidence: Evidence {
                     path: rel_path.to_path_buf(),
                     line: line_no,
-                    snippet: trimmed_snippet(stripped),
+                    snippet: trimmed_snippet(with_strings),
                     sha256: sha.clone(),
                 },
                 package: None,

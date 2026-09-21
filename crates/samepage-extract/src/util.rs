@@ -97,6 +97,43 @@ pub fn trimmed_snippet(line: &str) -> String {
         trimmed.chars().take(200).collect()
     }
 }
+/// The same line with the contents of every string literal blanked to
+/// spaces, so a pattern written inside a string (this crate's own regexes, a
+/// log message that mentions `Command::new`) is not read as a call. Quotes
+/// stay in place so offsets and snippets still line up. A `"` inside a
+/// character literal or a raw string with `#` guards is not understood; the
+/// worst case there is a line read as it was before this existed.
+pub fn blank_string_literals(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut in_str: Option<char> = None;
+    let mut escaped = false;
+    for ch in line.chars() {
+        match in_str {
+            Some(q) => {
+                if escaped {
+                    escaped = false;
+                    out.push(' ');
+                } else if ch == '\\' {
+                    escaped = true;
+                    out.push(' ');
+                } else if ch == q {
+                    in_str = None;
+                    out.push(ch);
+                } else {
+                    out.push(' ');
+                }
+            }
+            None => {
+                if ch == '"' || ch == '\'' || ch == '`' {
+                    in_str = Some(ch);
+                }
+                out.push(ch);
+            }
+        }
+    }
+    out
+}
+
 
 /// Strips a `//` line comment from a line of Rust or JS/TS source, so a
 /// pattern written only in prose doesn't get picked up as a real call site.
@@ -388,6 +425,15 @@ pub fn line_number_at(source: &str, offset: usize) -> u32 {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn string_contents_are_blanked_but_quotes_and_code_stay() {
+        let line = "let re = Regex::new(\"Command::new\"); Command::new(\"x\")";
+        let blanked = super::blank_string_literals(line);
+        assert!(!blanked.contains("(\"Command"), "{blanked}");
+        assert!(blanked.contains("; Command::new(\""), "{blanked}");
+        assert_eq!(blanked.chars().count(), line.chars().count());
+    }
+
     use super::*;
 
     #[test]
