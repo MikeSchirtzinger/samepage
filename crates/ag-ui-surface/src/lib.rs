@@ -612,6 +612,15 @@ pub trait Surface: Send + Sync + 'static {
     /// [`turn_loop::dispatch_tool`], and it does not consult this.
     fn note_caller(&self, _actor: &Actor) {}
 
+    /// Receive a handle to the installed semantic-target service once
+    /// [`semantic_targets::install`] has built it.
+    ///
+    /// The default does nothing. A surface that wants to read its own
+    /// awareness state later, for example a wait tool that parks on
+    /// [`semantic_targets::SemanticTargetService::human_attention_revision`],
+    /// overrides this to stash the handle rather than reconstructing one.
+    fn bind_semantic_targets(&self, _service: &Arc<semantic_targets::SemanticTargetService>) {}
+
     /// Resolve one declared semantic focus event. The default preserves the
     /// original single-Surface behavior. [`CompositeSurface`] overrides this
     /// to route the id only to the extension that owns `event`, avoiding id
@@ -4002,15 +4011,28 @@ async fn semantic_targets_focus_handler(
             )
                 .into_response(),
         };
-    let target = match body
-        .get("target")
+    // One gesture, one body. A marquee sends `targets` with the set in the
+    // order the human built it; a plain click sends `target`. Accepting both
+    // keeps a set from arriving as N separate acts of attention, each waking
+    // every parked agent again.
+    let targets = match body
+        .get("targets")
         .cloned()
-        .ok_or_else(|| "missing semantic target".to_string())
-        .and_then(|value| {
-            serde_json::from_value::<SemanticTargetRef>(value)
-                .map_err(|error| format!("invalid semantic target: {error}"))
+        .map(|value| {
+            serde_json::from_value::<Vec<SemanticTargetRef>>(value)
+                .map_err(|error| format!("invalid semantic target set: {error}"))
+        })
+        .unwrap_or_else(|| {
+            body.get("target")
+                .cloned()
+                .ok_or_else(|| "missing semantic target".to_string())
+                .and_then(|value| {
+                    serde_json::from_value::<SemanticTargetRef>(value)
+                        .map_err(|error| format!("invalid semantic target: {error}"))
+                })
+                .map(|target| vec![target])
         }) {
-        Ok(target) => target,
+        Ok(targets) => targets,
         Err(error) => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -4023,10 +4045,11 @@ async fn semantic_targets_focus_handler(
         .get("message")
         .and_then(JsonValue::as_str)
         .map(str::to_string);
-    match service.attend(participant, mode, target, message) {
-        Ok(target) => Json(json!({
+    match service.attend_many(participant, mode, targets, message) {
+        Ok(resolved) => Json(json!({
             "ok": true,
-            "target": target,
+            "target": resolved.first(),
+            "targets": resolved,
             "snapshot": service.snapshot()
         }))
         .into_response(),

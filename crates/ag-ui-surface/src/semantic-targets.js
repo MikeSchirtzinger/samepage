@@ -53,14 +53,39 @@ function listenersFor(namespace) {
   return namespaceListeners.get(namespace);
 }
 
-function notifySelections(snapshot) {
-  if (!attached) return;
+/// A gesture may cover a set. The echo carries the whole set, in order.
+///
+/// Handing a listener only the first member would make every marquee collapse
+/// back to one selection the moment the host echoed it, which is a shrinking
+/// selection nobody asked for. `targetIds` is the ordered set; `targetId` and
+/// the spread `extensionId`/`targetId` pair stay exactly what they were, so a
+/// listener that only understands one target still reads the first member.
+function selectionFromSnapshot(snapshot) {
+  if (!attached) return null;
   const mine = (snapshot.participants || []).find((entry) =>
     entry.participant?.kind === "human"
       && entry.participant?.id === attached.participant.id
       && entry.active
   );
-  const selected = mine?.attention?.target?.target || null;
+  const attention = mine?.attention;
+  const primary = attention?.target?.target || null;
+  if (!primary) return null;
+  const all = [attention.target, ...(attention.additionalTargets || [])];
+  return {
+    ...primary,
+    targetIds: all
+      .filter((entry) => entry?.target?.extensionId === primary.extensionId)
+      .map((entry) => entry.target.targetId),
+    labels: all
+      .filter((entry) => entry?.target?.extensionId === primary.extensionId)
+      .map((entry) => entry.label),
+    count: all.length,
+  };
+}
+
+function notifySelections(snapshot) {
+  if (!attached) return;
+  const selected = selectionFromSnapshot(snapshot);
   for (const [namespace, listeners] of namespaceListeners) {
     const value = selected?.extensionId === namespace ? selected : null;
     for (const listener of listeners) listener(value);
@@ -150,6 +175,13 @@ function renderAgentAttention(snapshot) {
     overlay.hidden = true;
     return;
   }
+  if (registration.project?.()?.kind === "nowhere") {
+    // The surface says there is no honest place for this: not a rectangle to
+    // ring and not an edge to point from. Drawing anything here would be a
+    // confident mark on the wrong thing.
+    overlay.hidden = true;
+    return;
+  }
 
   // `reveal` asks to bring the target into view. `scrollIntoView` is only the
   // right answer for a pane that scrolls; a surface moved by a CSS-transform
@@ -159,16 +191,40 @@ function renderAgentAttention(snapshot) {
     const signature = `${keyOf(target)}:${active.attention.message || ""}`;
     if (signature !== revealSignature) {
       revealSignature = signature;
-      const moved = registration.reveal?.();
+      // Who is asking decides what a surface is allowed to do about it. A
+      // surface may hold the camera against an agent and still honour the
+      // same call when the human clicks the offer below, so the initiator
+      // travels with the request rather than being guessed at.
+      const moved = registration.reveal?.({ initiator: "agent" });
       if (!moved) {
         registration.element.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      } else {
+        // A camera-backed surface may animate the move. Recompute the ring
+        // after that animation so the highlight lands on the revealed target,
+        // not where it was when the movement began.
+        setTimeout(() => {
+          if (latest === snapshot) renderAgentAttention(snapshot);
+        }, 320);
       }
     }
   }
 
-  const rect = registration.element.getBoundingClientRect();
-  const bounds = clipBoundsFor(registration.element);
-  const visible = bounds ? intersectRects(rect, bounds) : rect;
+  // A surface that owns a camera answers where its own target is. The DOM
+  // read below is right for a pane that scrolls and wrong for one moved by a
+  // CSS transform: `getBoundingClientRect` is correct at the instant it is
+  // called and nothing recomputes it when the camera moves, which is why the
+  // ring used to keep the pixels it was handed while the board slid away.
+  // `project` is that surface's own answer, recomputed from the camera every
+  // time this runs.
+  const projected = registration.project?.() ?? null;
+  const rect = projected?.kind === "visible"
+    ? { left: projected.left, top: projected.top, width: projected.width, height: projected.height,
+      right: projected.left + projected.width, bottom: projected.top + projected.height }
+    : registration.element.getBoundingClientRect();
+  const bounds = projected ? null : clipBoundsFor(registration.element);
+  const visible = projected
+    ? (projected.kind === "visible" ? rect : null)
+    : (bounds ? intersectRects(rect, bounds) : rect);
 
   overlayLabel.textContent = active.attention.message
     || `Agent: ${active.attention.anchor?.label || registration.label}`;
@@ -185,15 +241,21 @@ function renderAgentAttention(snapshot) {
     // Nothing to ring. Say so at the edge of the pane the target lives in,
     // pointing the way, instead of drawing a ring somewhere it would lie.
     //
-    // The label is clickable rather than self-revealing on purpose. Moving
-    // the human's viewport because an agent pointed is the agent taking the
-    // camera; telling them which way it is and letting them take it is the
-    // same information without the seizure.
-    const edgeLeft = clamp(rect.left + rect.width / 2, bounds.left + 12, bounds.right - 12);
-    const edgeTop = clamp(rect.top + rect.height / 2, bounds.top + 12, bounds.bottom - 12);
-    const arrow = rect.right < bounds.left ? "←"
-      : rect.left > bounds.right ? "→"
-        : rect.bottom < bounds.top ? "↑" : "↓";
+    // Pointing and guiding are different promises. A point preserves the
+    // current camera and offers a clickable edge label. A deliberate reveal
+    // uses the registered camera hook above and may pan or zoom as part of a
+    // walkthrough.
+    // Both halves of this come from the surface when it owns a camera: the
+    // point on the pane edge and the direction to point. The DOM branch below
+    // it is the fallback for a surface that scrolls.
+    const edgeLeft = projected ? projected.x
+      : clamp(rect.left + rect.width / 2, bounds.left + 12, bounds.right - 12);
+    const edgeTop = projected ? projected.y
+      : clamp(rect.top + rect.height / 2, bounds.top + 12, bounds.bottom - 12);
+    const arrow = projected ? ARROWS[projected.direction]
+      : rect.right < bounds.left ? "←"
+        : rect.left > bounds.right ? "→"
+          : rect.bottom < bounds.top ? "↑" : "↓";
     overlay.classList.add("offscreen");
     overlay.style.left = `${edgeLeft}px`;
     overlay.style.top = `${edgeTop}px`;
@@ -210,7 +272,7 @@ function renderAgentAttention(snapshot) {
     overlayLabel.classList.toggle("actionable", canGo);
     overlayLabel.onclick = canGo
       ? () => {
-        registration.reveal();
+        registration.reveal({ initiator: "human" });
         overlay.hidden = true;
       }
       : null;
@@ -231,6 +293,7 @@ function renderAgentAttention(snapshot) {
 }
 
 const clamp = (value, low, high) => Math.min(Math.max(value, low), Math.max(low, high));
+const ARROWS = { left: "←", right: "→", up: "↑", down: "↓" };
 
 function acceptSnapshot(snapshot) {
   if (!snapshot || snapshot.schemaVersion !== 1) return;
@@ -310,7 +373,14 @@ export function semanticTargetNamespace(extensionId) {
     /// `reveal` is optional and only matters for surfaces that do not scroll:
     /// return truthy from it once you have brought the target into view, and
     /// the default `scrollIntoView` is skipped.
-    register({ id, label, element, spatial = false, reveal }) {
+    /// `project` is optional and only matters for a surface whose content is
+    /// moved by a camera rather than by scrolling. Return the client-space
+    /// placement for this target, recomputed from that camera: either
+    /// `{kind: "visible", left, top, width, height}`, `{kind: "edge", x, y,
+    /// direction}`, or `{kind: "nowhere"}`. Supplying it means the ring is
+    /// recomputed on every camera write instead of being frozen at the pixels
+    /// it happened to be handed.
+    register({ id, label, element, spatial = false, reveal, project }) {
       if (!validId(id)) throw new Error(`invalid semantic target id for ${extensionId}`);
       if (!label || !(element instanceof Element)) {
         throw new Error(`semantic target ${extensionId}:${id} needs label and Element`);
@@ -318,12 +388,26 @@ export function semanticTargetNamespace(extensionId) {
       if (reveal !== undefined && typeof reveal !== "function") {
         throw new Error(`semantic target ${extensionId}:${id} reveal must be a function`);
       }
+      if (project !== undefined && typeof project !== "function") {
+        throw new Error(`semantic target ${extensionId}:${id} project must be a function`);
+      }
       const target = { extensionId, targetId: id };
       const key = keyOf(target);
-      registrations.set(key, { target, label, element, spatial: Boolean(spatial), reveal });
+      registrations.set(key, { target, label, element, spatial: Boolean(spatial), reveal, project });
       owned.add(key);
       if (latest) renderAgentAttention(latest);
       return Object.freeze({ ...target });
+    },
+
+    /// Redraw every anchored overlay from the surface's current camera.
+    ///
+    /// This is the recompute path the ring never had. Call it from wherever
+    /// the surface writes its camera and from its own size observer; do NOT
+    /// call it from a frame loop. A `requestAnimationFrame` poll paints
+    /// nothing in a background or headless tab, which is exactly where an
+    /// agent checks its own work.
+    reproject() {
+      if (latest) renderAgentAttention(latest);
     },
 
     unregister(id) {
@@ -338,10 +422,24 @@ export function semanticTargetNamespace(extensionId) {
     },
 
     async select(targetId, message = "") {
-      if (!validId(targetId)) throw new Error(`invalid semantic target id for ${extensionId}`);
+      return this.selectMany([targetId], message);
+    },
+
+    /// Select a whole set as ONE gesture, in the order the human built it.
+    ///
+    /// One request, not one per member: the host takes a single sequence
+    /// number for it, so an agent parked on a wait is woken once and reads a
+    /// set, instead of being woken N times and reading N selections of one.
+    async selectMany(targetIds, message = "") {
+      const ids = Array.from(new Set(Array.isArray(targetIds) ? targetIds : [targetIds]));
+      if (ids.length === 0) throw new Error(`semantic selection for ${extensionId} is empty`);
+      for (const id of ids) {
+        if (!validId(id)) throw new Error(`invalid semantic target id for ${extensionId}`);
+      }
       return post("/semantic-targets/focus", humanBody({
         mode: "selection",
-        target: { extensionId, targetId },
+        target: { extensionId, targetId: ids[0] },
+        targets: ids.map((targetId) => ({ extensionId, targetId })),
         message,
       }));
     },
