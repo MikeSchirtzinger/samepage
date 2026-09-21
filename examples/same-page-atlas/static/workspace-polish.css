@@ -13,7 +13,10 @@ body[data-atlas-mode="author"] .page-grid.dock-collapsed > .pane-resizer { displ
 .workspace-file-actions button { text-align: left; width: 100%; }
 .workspace-file-actions agui-provider-settings { margin-top: 8px; }
 .runtime-state { max-width: 130px; font-size: 12px; }
-.shared-context { flex: 1; min-width: 120px; border: 0; padding: 0; gap: 12px; background: transparent; }
+/* 260px is enough room for the scope toggle plus a readable one-to-two-line
+   question at once; below that the question used to lose the fight for
+   space and wrap to one word per line instead of the row giving way. */
+.shared-context { flex: 1; min-width: 260px; border: 0; padding: 0; gap: 12px; background: transparent; }
 .shared-context button { border: 0; padding: 5px 0; background: transparent; }
 .shared-context .context-question { font-size: 14px; min-width: 0; text-align: left; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .shared-context .context-question:hover { color: var(--accent); }

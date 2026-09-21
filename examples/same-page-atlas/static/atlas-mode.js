@@ -88,7 +88,20 @@ export function installAtlasModeStrip() {
     if (legend.matches(":popover-open")) positionLegend();
   });
 
-  document.querySelector(".header-spacer")?.before(strip, legendToggle);
+  // A genuinely separate row below the header, not a wrapped flex child
+  // inside it: .app-header runs flex-wrap: nowrap at desktop widths (see
+  // workspace-polish.css), by design, so a wrapped-flex-item approach here
+  // would either fight that rule or depend on removing it elsewhere. Two
+  // more items competing with the scope question, page checks, and
+  // workspace actions for the SAME line is exactly what squeezed the
+  // question down to one word per line once these joined it; a sibling
+  // element under the header can never re-create that competition, at any
+  // width (see styles.css/.atlas-mode-row and the word-wrap-collapse check
+  // in tests/visual-audit/run-audit.mjs).
+  const row = document.createElement("div");
+  row.className = "atlas-mode-row";
+  row.append(strip, legendToggle);
+  document.querySelector(".app-header")?.after(row);
   document.body.append(legend);
 
   function paint(mode, count) {

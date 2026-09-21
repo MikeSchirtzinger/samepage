@@ -1476,6 +1476,20 @@ body[data-map-mode="cement"] .atlas-undeclared-frame {
 /* ── mode strip + legend (header) ──────────────────────────────────────
    Replaces the lone scope word that used to sit here: which Map mode is
    active is the thing worth one word of header space now. */
+/* A dedicated row under the header, always, not only once the header row
+   overflows: the mode strip and Legend button used to compete with the
+   scope question, page checks, and workspace actions for the same line,
+   which is what squeezed the question to one word per line. A block-level
+   sibling of .app-header (not a flex child inside it) never shares a row
+   with the header's own content, at any width, and does not depend on
+   .app-header's own flex-wrap (nowrap by design at desktop widths in
+   author mode; see workspace-polish.css). */
+.atlas-mode-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
 .atlas-mode-strip { display: flex; align-items: center; gap: 2px; margin-right: 6px; flex: 0 0 auto; }
 .atlas-mode-button {
   font: 600 12px/1.3 var(--font-ui); padding: 4px 8px; border-radius: 999px;
@@ -2794,8 +2808,10 @@ button.atlas-change:focus-visible { border-color: var(--accent); }
 .page-validation { position: relative; margin-right: 12px; font-size: 12px; flex-shrink: 0; }
 
 /* `.project-facts` itself (architecture-compare.css) now wraps instead of
-   ellipsizing for the same reason; see that file. This just keeps it from
-   growing unreasonably wide once it can wrap. */
+   ellipsizing for the same reason; see that file. A max-width keeps it from
+   growing unreasonably wide once it can wrap. Its min-width floor lives in
+   visual-audit.css, the last-loaded stylesheet: architecture-compare.css
+   sets min-width: 0 and, loading after this file, would otherwise win. */
 .project-facts { max-width: 200px; }
 .page-validation summary { cursor: pointer; color: #a7b4c7; white-space: nowrap; }
 .page-validation[data-status="failed"] summary { color: #ffb7ad; }
