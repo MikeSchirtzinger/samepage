@@ -22,7 +22,7 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
-DEFAULT_MANIFEST = "dev/atlas-experiment-lib/experiments/visual-instinct-mobilesam.json"
+DEFAULT_MANIFEST = "dev/atlas-experiment-lib/experiments/same-page-atlas-epsilon-lesson.json"
 TAB_PATTERN = re.compile(r"(?:export\s+)?BROWSER_TAB_ID=([A-Fa-f0-9]+)")
 TAB_CREATE_TIMEOUT_SECONDS = 10
 PLACEHOLDERS = frozenset({"repo_root", "run_dir", "state_dir", "phase_dir"})

@@ -78,8 +78,14 @@ browser-eval "(() => {
 
 browser-screenshot "$here/latest.png" >"$work/screenshot.txt"
 
+bun="${BUN_BIN:-bun}"
+if ! command -v "$bun" >/dev/null 2>&1; then
+  echo "bun is required (install it, or set BUN_BIN to its path): https://bun.sh" >&2
+  exit 1
+fi
+
 cd "$repo"
-/Users/mike/.bun/bin/bun "$here/write-receipt.mjs" \
+"$bun" "$here/write-receipt.mjs" \
   "$work/ready.json" \
   "$work/probe.json" \
   "$work/browser-version.json" \
