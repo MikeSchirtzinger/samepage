@@ -58,6 +58,7 @@ crates/
   ag-ui-eval               deterministic and real-agent evaluation runner
 examples/
   same-page-room           runnable shared room on port 8100
+  same-page-atlas          runnable shared map of a project on port 8098
 docs/
   ag-ui-surface-spec.md
   ag-ui-extension-architecture.md
@@ -98,6 +99,40 @@ Read [AGENTS.md](AGENTS.md) for the attachment contract and repository rules.
 The room agent's standing contract is
 [`examples/same-page-room/prompt.md`](examples/same-page-room/prompt.md).
 
+## Run the map
+
+The room is one shared surface. The atlas is another: instead of panes it
+draws a map of a project, agent and person editing the same CRDT document.
+From the repository root:
+
+```bash
+cargo run -p same-page-atlas
+```
+
+Open <http://127.0.0.1:8098>. Like the room, there is no separate frontend
+build step: the app builds its own browser replica with `build-web.sh` the
+first time `web/pkg` is missing, as long as `wasm-pack` and `wasm-opt` are on
+`PATH`. Without them it refuses to start rather than serve a page with no
+CRDT peer. Point it at your own project the same way as the room:
+
+```bash
+AGUI_PROJECT_ROOT=/path/to/your/project cargo run -p same-page-atlas
+```
+
+The map has three modes, always visible in the header alongside a page-check
+status such as "Page checks passed":
+
+- **Explain** is a sketch. The agent lays out what it believes a project looks
+  like, with no source binding yet.
+- **Map** is where a card earns proof. A verified card is bound to a real
+  file, revision, and line range the host checked; an undeclared card is
+  a lane the extractor found in the running project (a listener, a spawned
+  process) that no card has claimed yet, and cannot be dismissed as long as it
+  is unaccounted for.
+- **Cement** turns an agreed part of the map into [G8](https://github.com/MikeSchirtzinger/g8)
+  obligations: checks that start red and turn green only as the real code that
+  satisfies them gets built.
+
 ## Point it at your own project
 
 The room is about one project at a time. By default that is this repository.
@@ -134,6 +169,7 @@ whole point: two seats, one artifact.
 cargo check --workspace
 cargo clippy --workspace --all-targets
 cargo test -p same-page-room
+cargo test -p same-page-atlas
 cargo test -p ag-ui-record
 ```
 

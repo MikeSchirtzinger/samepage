@@ -24,6 +24,8 @@ paths are:
 - `crates/ag-ui-eval`: Evaluation runner and receipt types.
 - `examples/same-page-room`: The runnable SamePage application in this
   repository.
+- `examples/same-page-atlas`: A second runnable surface: a shared map of a
+  project instead of a pane layout, on port 8098.
 - `docs/ag-ui-surface-spec.md`: Runtime design and implementation record.
 - `docs/ag-ui-extension-architecture.md`: Extension and composition contract.
 - `docs/evaluation-layers.md`: Separation between conformance, real-agent
@@ -56,10 +58,38 @@ Use these repository gates for code changes:
 cargo check --workspace
 cargo clippy --workspace --all-targets
 cargo test -p same-page-room
+cargo test -p same-page-atlas
 ```
 
 Compilation, tests, browser rendering, a real model action, and a durable
 receipt are separate claims. Report only the layers actually proven.
+
+## Run and validate the atlas
+
+`examples/same-page-atlas` is the second surface: agent and person edit one
+CRDT map of a project rather than a pane layout.
+
+```bash
+cargo run -p same-page-atlas
+```
+
+Open <http://127.0.0.1:8098>. The atlas needs a real browser replica, not an
+optional one: it builds `web/pkg` itself with `build-web.sh` the first time
+that directory is missing, provided `wasm-pack` and `wasm-opt` are on `PATH`,
+and refuses to start rather than serve a collaborative-looking page with no
+CRDT peer. Point it at a different project with `AGUI_PROJECT_ROOT`, the same
+as the room.
+
+The header names three modes and a page-check status:
+
+- **Explain**: the agent's sketch of a project, not yet bound to source.
+- **Map**: a claimed card is a sketch; a verified card is bound to a real
+  file, revision, and line range the host checked against git; an undeclared
+  card is a lane the extractor found running (a listener, a spawned process)
+  that no card claims and that cannot be dismissed while it stays that way.
+- **Cement**: writes [G8](https://github.com/MikeSchirtzinger/g8) obligations
+  for an agreed part of the map. Obligations start red and turn green as the
+  code that satisfies them gets built.
 
 ## Attach an agent through MCP
 
