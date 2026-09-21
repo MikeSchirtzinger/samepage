@@ -445,6 +445,18 @@ body.terminal-first .runtime-state,
 body.terminal-first agui-provider-settings { display: none; }
 body.terminal-first .page-grid { grid-template-columns: minmax(0, 1fr); }
 
+/* Visible in every mode, including terminal-first, which hides `.side-pane`
+   and with it the only place the room used to report a refusal. */
+.room-alert {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  z-index: 60; max-width: min(760px, 92vw);
+  padding: 10px 14px; border-radius: 10px;
+  background: #2a1618; border: 1px solid #6d2b30; color: #ffd9da;
+  font-size: calc(13px * var(--scale, 1)); line-height: 1.45;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.room-alert[hidden] { display: none; }
+
 .presence-strip { display: flex; align-items: center; gap: 6px; margin-left: 14px; }
 .presence-chip {
   padding: 2px 10px;
