@@ -43,30 +43,13 @@ languages were recognized.
   counts on its own, the same way it would for a reviewer scanning the file
   by eye.
 - **Outbound (E4).** A network call this codebase makes to somewhere else:
-  an HTTP client construction used with `.get(`/`.post(` in the same file,
-  a raw `TcpStream::connect`, `ureq::`, `hyper::Client`; on the JS side,
-  `fetch(` to a non-relative URL or a variable, `WebSocket(`,
-  `http.request(`, `axios`. **The noisiest lane kind here.** The
-  `Client::new()` + `.get(`/`.post(` heuristic gates on a whole file
-  containing both, then flags every `.get(`/`.post(` in that file — so a
-  file that builds a `reqwest::Client` anywhere and separately happens to
-  call `HashMap::get(` or wire up an axum route with `.post(handler)` gets a
-  lane for those too. Scanning this repository's own `ag-ui-surface` crate
-  produced dozens of `Outbound` lanes from exactly this: real reqwest calls
-  mixed in with unrelated map lookups and route registrations in the same
-  file. Treat a run of `Outbound` lanes in one file as "look here," not as a
-  verified call list.
-- **Background (E5).** A task started once, near a program's top level,
-  that keeps running after the request or event that triggered its start:
-  `tokio::spawn`/`std::thread::spawn` at a function's own top level in
-  `main` (or a function `main` calls whose name reads like an entry point —
-  `serve`, `run`, `start`, `boot`, `worker`, `loop`, `tick`); on the JS side,
-  a module-top-level `setInterval(`, `cron`, `queue.process(`. **The weakest
-  heuristic in the crate.** There is no real call graph: "a function `main`
-  calls" is resolved by a single textual search for `name(` inside `main`'s
-  body, so an entry point invoked indirectly (behind a trait object, a
-  callback registry, a macro) will be missed, and in principle a same-named
-  function `main` does *not* call could be a false positive.
+  an HTTP client constructed or called on that line (`reqwest::Client`,
+  `Client::builder()`, `Client::new().get(`), a raw `TcpStream::connect`,
+  `ureq::`, `hyper::Client`; on the JS side, `fetch(` to a non-relative URL
+  or a variable, `WebSocket(`, `http.request(`, `axios`. Evidence is the line
+  itself. A bare `.get(` or `.post(` is never a lane, since a map lookup or
+  an axum route registration looks the same, and a type mention such as
+  `reqwest::Url` in a signature is not a lane either.
 
 ## What static extraction misses
 

@@ -24,9 +24,17 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
     let background_re =
         Regex::new(r"tokio::spawn\s*\(|std::thread::spawn\s*\(|\bthread::spawn\s*\(").unwrap();
 
-    let file_has_client_new = contents.contains("Client::new()");
-    let file_has_get_or_post = contents.contains(".get(") || contents.contains(".post(");
-    let reqwest_pattern_active = file_has_client_new && file_has_get_or_post;
+    // Only a line that names an HTTP client on its own is outbound evidence.
+    // A file-wide rule ("Client::new() somewhere, so every .get( is a request")
+    // flagged HashMap::get and axum route registrations; a lane that might be
+    // a map lookup is not a lane a person can trust.
+    // `reqwest::Url` in a signature is a type, not a call.
+    let reqwest_re =
+        Regex::new(r"reqwest::(Client|ClientBuilder|blocking|get\s*\(|post\s*\()").unwrap();
+    let http_client_re = Regex::new(
+        r"reqwest::Client|Client::builder\(\)|Client::new\(\)\s*\.\s*(get|post|put|delete|patch|request)\s*\(|Client::new\(\)",
+    )
+    .unwrap();
 
     let test_ranges = cfg_test_ranges(contents);
     let spans = fn_spans(contents);
@@ -87,19 +95,11 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
                 "std::process::Command construction or .spawn()",
             );
         }
-        if reqwest_pattern_active
-            && (stripped.contains("Client::new()")
-                || stripped.contains(".get(")
-                || stripped.contains(".post("))
-        {
-            push(
-                &mut lanes,
-                LaneKind::Outbound,
-                "reqwest::Client constructed and used (.get()/.post() elsewhere in file)",
-            );
+        if http_client_re.is_match(stripped) && !stripped.contains("reqwest::") {
+            push(&mut lanes, LaneKind::Outbound, "HTTP client constructed");
         }
-        if stripped.contains("reqwest::") {
-            push(&mut lanes, LaneKind::Outbound, "reqwest:: call");
+        if reqwest_re.is_match(stripped) {
+            push(&mut lanes, LaneKind::Outbound, "reqwest:: client or call");
         }
         if stripped.contains("TcpStream::connect") {
             push(&mut lanes, LaneKind::Outbound, "raw TcpStream::connect");

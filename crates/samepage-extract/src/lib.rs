@@ -94,17 +94,12 @@ pub enum LaneKind {
     /// `child_process` / `spawn`/`exec`/`execFile`/`fork`/`Bun.spawn`/
     /// `Worker` on the JS side.
     Spawn,
-    /// E4: an outbound network call this codebase makes to somewhere else —
-    /// an HTTP client construction and call, a raw `TcpStream::connect`, a
-    /// `fetch(` to a non-relative URL, a `WebSocket(` construction. The
-    /// noisiest lane kind in this crate: the `Client::new()` + `.get(`/
-    /// `.post(` heuristic gates on a whole file containing both, then flags
-    /// every `.get(`/`.post(` in that file, so a file that builds a
-    /// `reqwest::Client` anywhere and *also* happens to call
-    /// `HashMap::get(` or wire up an axum route with `.post(handler)` will
-    /// get a lane for those too — confirmed against this crate's own
-    /// self-scan (see the README). Treat a run of `Outbound` lanes in one
-    /// file as "look here," not as a verified list of calls.
+    /// E4: an outbound network call this codebase makes to somewhere else:
+    /// an HTTP client constructed or called on that line, a raw
+    /// `TcpStream::connect`, a `fetch(` to a non-relative URL, a
+    /// `WebSocket(` construction. Evidence is per line. A `.get(` on its own
+    /// is never a lane, because a map lookup looks the same; a type mention
+    /// such as `reqwest::Url` in a signature is not a lane either.
     Outbound,
     /// E5: a task started once, at or near a program's top level, that
     /// keeps running after the request or event that triggered its start
