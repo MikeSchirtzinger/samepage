@@ -1629,6 +1629,62 @@ mod tests {
         assert!(service.snapshot().participants.is_empty());
     }
 
+    /// F6, the other half of one chip per person: closing a tab is not a
+    /// deliberate departure (nothing calls `depart`, the browser just stops
+    /// sending its 15-20s presence heartbeat), so the chip has to fall off on
+    /// its own. The stated bound is [`PRESENCE_LEASE_MS`]: 45 seconds.
+    ///
+    /// Two connections of the same person (two tabs, sharing one resume
+    /// cookie once F6's server-side identity fix is in) both check in as the
+    /// SAME participant id, so this also proves the dedup holds even while
+    /// one of the two tabs is still open: a closed tab's absence must not
+    /// remove a person who has another connection still present.
+    #[test]
+    fn a_closed_tabs_presence_lease_drops_the_chip_within_the_stated_bound() {
+        let now = Arc::new(AtomicU64::new(0));
+        let service = fixture_service(now.clone(), Arc::new(Mutex::new(Vec::new())));
+        let person = Participant::human("person-1", "Mike");
+
+        // Two tabs, same person: both check in at t=0.
+        service.present(person.clone()).expect("tab one checks in");
+        service.present(person.clone()).expect("tab two checks in");
+        assert_eq!(
+            service.snapshot().participants.len(),
+            1,
+            "two tabs of one person are one chip while both are open"
+        );
+
+        // Tab one closes silently (no depart). Tab two keeps heartbeating on
+        // its own 20s cadence; because both connections share one participant
+        // id, tab two's heartbeat renews the ONE record either tab could have
+        // written.
+        for beat in 1..=3u64 {
+            now.store(beat * 20_000, Ordering::Relaxed);
+            service.present(person.clone()).expect("tab two heartbeat");
+        }
+        assert_eq!(
+            service.snapshot().participants.len(),
+            1,
+            "the still-open tab keeps the chip present past the closed tab's own lease"
+        );
+
+        // Now the last tab closes too: nothing checks in again. The chip must
+        // still be there for up to PRESENCE_LEASE_MS (45s) past the final
+        // heartbeat, and gone once that bound passes.
+        let last_heartbeat = 3 * 20_000;
+        now.store(last_heartbeat + PRESENCE_LEASE_MS - 1, Ordering::Relaxed);
+        assert_eq!(
+            service.snapshot().participants.len(),
+            1,
+            "still inside the {PRESENCE_LEASE_MS}ms bound"
+        );
+        now.store(last_heartbeat + PRESENCE_LEASE_MS + 1, Ordering::Relaxed);
+        assert!(
+            service.snapshot().participants.is_empty(),
+            "past the {PRESENCE_LEASE_MS}ms bound, a closed tab's chip must be gone"
+        );
+    }
+
     /// The measured red assertion: a marquee over four cards was gone ninety
     /// seconds later with zero interaction, because a thirty-second pointer
     /// lease was the store for a held selection. The browser heartbeat is

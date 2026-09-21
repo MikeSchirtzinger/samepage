@@ -4192,6 +4192,30 @@ fn browser_participant(body: &JsonValue) -> Result<Participant, Response> {
     Ok(Participant::human(id, label))
 }
 
+/// The participant a browser's own presence, focus, and clear calls act as.
+///
+/// Prefers the resume-cookie-resolved person over anything the request body
+/// claims. A client-supplied `participantId` used to be the whole identity: it
+/// is what let a race at join time (two tabs open on a cold cookie jar, each
+/// independently admitted before either `Set-Cookie` landed) leave one tab
+/// holding an id nothing else in the room ever agreed to, and presence never
+/// asked the cookie again to notice. The cookie is what the browser actually
+/// holds right now, and two tabs of the same browser always hold the same one,
+/// so resolving it fresh on every call is what makes them one chip instead of
+/// two. `browser_participant` remains the fallback for a caller that has not
+/// joined (no resume cookie yet resolves to anyone).
+#[allow(clippy::result_large_err)]
+fn browser_person_participant(
+    st: &RouterState,
+    headers: &HeaderMap,
+    body: &JsonValue,
+) -> Result<Participant, Response> {
+    if let Some(person) = person_from(st, headers) {
+        return Ok(Participant::human(person.participant_id, person.name));
+    }
+    browser_participant(body)
+}
+
 async fn semantic_targets_get_handler(State(st): State<RouterState>) -> Response {
     let service = match semantic_target_service(&st) {
         Ok(service) => service,
@@ -4202,13 +4226,14 @@ async fn semantic_targets_get_handler(State(st): State<RouterState>) -> Response
 
 async fn semantic_targets_presence_handler(
     State(st): State<RouterState>,
+    headers: HeaderMap,
     Json(body): Json<JsonValue>,
 ) -> Response {
     let service = match semantic_target_service(&st) {
         Ok(service) => service,
         Err(response) => return response,
     };
-    let participant = match browser_participant(&body) {
+    let participant = match browser_person_participant(&st, &headers, &body) {
         Ok(participant) => participant,
         Err(response) => return response,
     };
@@ -4224,13 +4249,14 @@ async fn semantic_targets_presence_handler(
 
 async fn semantic_targets_focus_handler(
     State(st): State<RouterState>,
+    headers: HeaderMap,
     Json(body): Json<JsonValue>,
 ) -> Response {
     let service = match semantic_target_service(&st) {
         Ok(service) => service,
         Err(response) => return response,
     };
-    let participant = match browser_participant(&body) {
+    let participant = match browser_person_participant(&st, &headers, &body) {
         Ok(participant) => participant,
         Err(response) => return response,
     };
@@ -4299,13 +4325,14 @@ async fn semantic_targets_focus_handler(
 
 async fn semantic_targets_clear_handler(
     State(st): State<RouterState>,
+    headers: HeaderMap,
     Json(body): Json<JsonValue>,
 ) -> Response {
     let service = match semantic_target_service(&st) {
         Ok(service) => service,
         Err(response) => return response,
     };
-    let participant = match browser_participant(&body) {
+    let participant = match browser_person_participant(&st, &headers, &body) {
         Ok(participant) => participant,
         Err(response) => return response,
     };
@@ -5872,6 +5899,71 @@ mod tests {
         assert!(result.contains("not available"), "{result}");
     }
 
+    /// F6: two tabs of the same browser are one chip, not two.
+    ///
+    /// A tab's own idea of its participant id can be stale (a race at join
+    /// time, before either tab's `Set-Cookie` had landed, used to leave one
+    /// tab holding an id nobody else in the room agreed to). This proves the
+    /// server no longer trusts that claim at all: two presence check-ins that
+    /// carry the SAME resume cookie but two DIFFERENT, mutually contradictory
+    /// `participantId`/`participantLabel` bodies still collapse to the one
+    /// person the cookie names.
+    #[tokio::test]
+    async fn two_connections_holding_the_same_person_token_present_as_one_chip() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let rs = test_router_state_with_semantic_targets(surface);
+
+        let joined = join_handler(State(rs.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let cookie = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.split(';').next())
+            .expect("joining mints a resume cookie")
+            .to_string();
+        let bytes = axum::body::to_bytes(joined.into_body(), 4096)
+            .await
+            .expect("join body");
+        let person: JsonValue = serde_json::from_slice(&bytes).expect("join json");
+        let real_id = person["id"].as_str().expect("participant id").to_string();
+
+        let mut tab_headers = HeaderMap::new();
+        tab_headers.insert(
+            header::COOKIE,
+            HeaderValue::from_str(&cookie).expect("cookie header"),
+        );
+
+        for (fake_id, fake_label) in [("tab-a-stale-id", "Tab A"), ("tab-b-stale-id", "Tab B")] {
+            let response = semantic_targets_presence_handler(
+                State(rs.clone()),
+                tab_headers.clone(),
+                Json(json!({ "participantId": fake_id, "participantLabel": fake_label })),
+            )
+            .await;
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        let snapshot = rs
+            .semantic_targets
+            .as_deref()
+            .expect("semantic targets installed")
+            .snapshot();
+        assert_eq!(
+            snapshot.participants.len(),
+            1,
+            "two connections holding the same person token must be one chip: {snapshot:?}"
+        );
+        assert_eq!(
+            snapshot.participants[0].participant.id, real_id,
+            "the cookie-resolved person wins over whatever a stale tab claimed"
+        );
+    }
+
     /// Two people are two participants even when they have not said who they
     /// are, which is the whole difference between a byline and a pronoun.
     #[test]
@@ -6280,6 +6372,16 @@ mod tests {
 
     fn test_router_state(surface: Arc<dyn Surface>) -> RouterState {
         test_router_state_with_channels(surface).0
+    }
+
+    /// A router state with a real, installed semantic-target service, for the
+    /// presence handlers that refuse to run without one.
+    fn test_router_state_with_semantic_targets(surface: Arc<dyn Surface>) -> RouterState {
+        let (surface, semantic_targets) =
+            semantic_targets::install(surface, |_snapshot| {}).expect("semantic targets install");
+        let mut rs = test_router_state(surface);
+        rs.semantic_targets = semantic_targets;
+        rs
     }
 
     fn websocket_surface_with_human_route() -> Arc<dyn Surface> {
