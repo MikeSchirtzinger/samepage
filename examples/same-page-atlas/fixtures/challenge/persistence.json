@@ -1,0 +1,44 @@
+{
+  "diagram": {
+    "kind": "hierarchy",
+    "containers": [
+      { "id": "host", "label": "Atlas host" }
+    ],
+    "nodes": [
+      { "id": "persistence", "label": "Persistence", "group": "host" },
+      { "id": "journal", "label": "Activity journal", "group": "host" }
+    ],
+    "edges": [
+      { "from": "persistence", "to": "journal" }
+    ]
+  },
+  "claims": [
+    {
+      "about": "host",
+      "text": "The host owns persistence and the activity journal",
+      "basis": "inferred",
+      "verdict": "open"
+    },
+    {
+      "about": "persistence",
+      "text": "The journal keeps at most 800 events in memory",
+      "basis": "verified",
+      "path": "crates/ag-ui-surface/src/activity.rs",
+      "lines": "28",
+      "verdict": "accepted"
+    },
+    {
+      "about": "persistence",
+      "text": "Eviction is by age, oldest first",
+      "basis": "inferred",
+      "verdict": "rejected",
+      "mark": { "glyph": "?", "text": "where is the age compared?" }
+    },
+    {
+      "about": "persistence",
+      "text": "Nothing reads the journal but the trace panel",
+      "basis": "assumed",
+      "verdict": "open"
+    }
+  ]
+}

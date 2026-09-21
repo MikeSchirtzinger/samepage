@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "id": "same-page-atlas-evidence-loop",
+  "description": "Second-topic proof of the reusable explanation flow over real MobileSAM segments, one-shot browser motion, trusted controls, refusal, speech-clock alignment, no model reload during playback, and restart persistence.",
+  "host": {
+    "command": [
+      "cargo",
+      "run",
+      "-p",
+      "same-page-atlas"
+    ],
+    "cwd": ".",
+    "environment": {
+      "AGUI_ADDR": "127.0.0.1:8124",
+      "AGUI_ACTIVITY_STATE": "{state_dir}/activity.json",
+      "AGUI_ATLAS_MODEL_DIR": "{repo_root}/examples/visual-instinct-lab/.local/models",
+      "AGUI_ATLAS_ORT_DIR": "{repo_root}/examples/same-page-atlas/node_modules/onnxruntime-web/dist",
+      "AGUI_ATLAS_PROVIDER": "none",
+      "AGUI_ATLAS_STATE": "{state_dir}/atlas.json",
+      "AGUI_AUTH": "{state_dir}/auth.json",
+      "AGUI_BOARD_STATE": "{state_dir}/board.json",
+      "AGUI_MCP_TOKEN": "atlas-evidence-loop-proof",
+      "CARGO_TARGET_DIR": "{repo_root}/.local/atlas-experiment-cargo-target"
+    },
+    "ready_url": "http://127.0.0.1:8124/",
+    "ready_timeout_ms": 180000,
+    "shutdown_timeout_ms": 5000
+  },
+  "browser": {
+    "port": 9222,
+    "start_command": [
+      "browser-start"
+    ],
+    "stop_command": [
+      "browser-stop"
+    ]
+  },
+  "gates": [
+    {
+      "id": "agent-harness",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "python3",
+        "dev/agent-harness/check.py",
+        "--json"
+      ]
+    },
+    {
+      "id": "segmentation-contract-drift",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "dev/atlas-segmentation-contract",
+        "check"
+      ]
+    },
+    {
+      "id": "core-human-mask-source-controls",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas-core",
+        "human_mask",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "generic-explanation-core",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas-core",
+        "segment_tests::one_generic_explanation_flow_advances_with_utterance_and_selection_evidence",
+        "--",
+        "--exact",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "generic-explanation-host-actions",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas",
+        "atlas::tests::explanation_actions_use_the_shared_core_and_report_the_same_cursor",
+        "--",
+        "--exact",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "generic-learner-mode-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas",
+        "learner_mode_is_a_topic_neutral_boundary_from_authoring",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "generic-learner-navigation-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas",
+        "learner_navigation_is_local_catalog_driven_and_cross_topic",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "browser-product-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas",
+        "--bin",
+        "same-page-atlas",
+        "browser_product_flow_accepts_a_real_mask_through_the_human_replica",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "browser-wasm-build",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "./examples/same-page-atlas/build-web.sh"
+      ]
+    },
+    {
+      "id": "picker-unit-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "node",
+        "examples/same-page-atlas/tests/semantic-import/test-segment-picker.mjs"
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "id": "human-segments-agent-motion",
+      "url": "http://127.0.0.1:8124/?experiment=evidence-loop&segment-recipe=evidence-loop-stages-v1",
+      "driver": "dev/atlas-experiment-lib/drivers/same-page-atlas-evidence-loop.mjs",
+      "timeout_ms": 240000,
+      "restart_host": false,
+      "input": {
+        "mode": "create",
+        "base_url": "http://127.0.0.1:8124",
+        "mcp_token": "atlas-evidence-loop-proof",
+        "expected": {
+          "source_id": "evidence-loop-stages-v1",
+          "source_sha256": "c202a6867f401f943266da0587fdf3ab6925ebc81891edfe862ab6729ee19442",
+          "source_size": [
+            1536,
+            1024
+          ],
+          "mask_timeout_ms": 120000,
+          "point_boxes": {
+            "root": [
+              560,
+              300,
+              980,
+              690
+            ],
+            "observe": [
+              610,
+              10,
+              925,
+              290
+            ],
+            "segment": [
+              1025,
+              330,
+              1355,
+              650
+            ],
+            "act": [
+              600,
+              680,
+              935,
+              1000
+            ],
+            "verify": [
+              180,
+              330,
+              515,
+              650
+            ]
+          },
+          "points": {
+            "root": [
+              768,
+              500
+            ],
+            "observe": [
+              768,
+              145
+            ],
+            "segment": [
+              1190,
+              480
+            ],
+            "act": [
+              768,
+              850
+            ],
+            "verify": [
+              355,
+              480
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "restart-persistence",
+      "url": "http://127.0.0.1:8124/?experiment=evidence-loop-persistence&atlas-mode=learn",
+      "driver": "dev/atlas-experiment-lib/drivers/same-page-atlas-evidence-loop.mjs",
+      "timeout_ms": 60000,
+      "restart_host": true,
+      "input": {
+        "mode": "persistence",
+        "base_url": "http://127.0.0.1:8124",
+        "mcp_token": "atlas-evidence-loop-proof",
+        "expected": {
+          "source_sha256": "c202a6867f401f943266da0587fdf3ab6925ebc81891edfe862ab6729ee19442"
+        }
+      }
+    }
+  ]
+}

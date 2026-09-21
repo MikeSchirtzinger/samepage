@@ -1,0 +1,87 @@
+{
+  "schema": "same-page-atlas-wing-flap-v1",
+  "observed_at": "2026-08-25",
+  "source": {
+    "url": "/assets/visual-instinct-infographic.png",
+    "sha256": "21e3e650e1dfea74d09d5fca62b1da25431db3b4dac1bb3757f72583e04d917a",
+    "size": [1536, 1024]
+  },
+  "object": {
+    "id": "0009a072867c44b5-00000000",
+    "label": "Mechanical owl",
+    "generation": 3,
+    "status": "materialized",
+    "semantics_source": "multimodal-agent",
+    "semantic_model": "gpt-5.6-sol",
+    "created_by": "Codex multimodal agent"
+  },
+  "runtime": {
+    "model_id": "mobilesam-vit-t",
+    "encoder_sha256": "d80de6055095e7ba5551e6c15aaa8981b05dca77d6ae77ee82e51e2746a87e3d",
+    "decoder_sha256": "a21b65b6e1b75e2c6265b36835747a0ab9169ec1ed725139a78ce90297f95126",
+    "execution_location": "browser-worker",
+    "backend": "webgpu",
+    "adapter": {
+      "vendor": "apple",
+      "architecture": "metal-3"
+    },
+    "alternate_provider_configured": false,
+    "fallback_used": false,
+    "mock_used": false,
+    "encoder_runs": 1,
+    "decoder_runs": 3,
+    "total_ms": 1501.5
+  },
+  "body": {
+    "prompt_box": [530, 205, 1005, 845],
+    "predicted_iou_raw": 1.003535509109497,
+    "predicted_iou_raw_in_unit_interval": false,
+    "mask_source_box": [543, 225, 992, 821],
+    "mask_size": [241, 320]
+  },
+  "wings": [
+    {
+      "role": "left-wing",
+      "prompt_box": [540, 430, 700, 770],
+      "predicted_iou_raw": 0.9874894618988036,
+      "mask_source_box": [544, 437, 665, 757],
+      "mask_size": [121, 320],
+      "fallback_used": false,
+      "mock_used": false
+    },
+    {
+      "role": "right-wing",
+      "prompt_box": [840, 430, 1000, 770],
+      "predicted_iou_raw": 0.9782201051712036,
+      "mask_source_box": [873, 436, 992, 756],
+      "mask_size": [119, 320],
+      "fallback_used": false,
+      "mock_used": false
+    }
+  ],
+  "interaction": {
+    "control": "range slider",
+    "input_event_count": 15,
+    "all_input_events_trusted": true,
+    "observed_extremes": [-1, 1],
+    "final_flap": 1,
+    "left_transform": "rotate(35deg)",
+    "right_transform": "rotate(-35deg)",
+    "last_edited_by": "human"
+  },
+  "replicas": {
+    "host_and_browser_structured_state_equal": true,
+    "host_and_browser_description_equal": true,
+    "doc_schema_version": 6
+  },
+  "screenshots": {
+    "wings_down": {
+      "path": ".local/wing-flap-run/wings-down-final.png",
+      "sha256": "cc90a384ea454d1fd51c0e3c15ff212afdf104da7ba91c3702b2b2ef67de9271"
+    },
+    "wings_up": {
+      "path": ".local/wing-flap-run/wings-up-final.png",
+      "sha256": "c287a8f40784bca5fd6e9439d68c77317a274264b913b462f773da8a91b79c85"
+    }
+  }
+}

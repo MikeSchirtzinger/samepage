@@ -1,0 +1,36 @@
+.architecture-review { background: var(--panel-2); border-left: 1px solid var(--line); min-height: 0; min-width: 0; display: flex; flex-direction: column; grid-column: 2; grid-row: 1; width: 380px; }
+body[data-atlas-mode="author"] .page-grid.review-open { grid-template-columns: minmax(0, 1fr) 380px; }
+.page-grid.review-open > .workspace-dock, .page-grid.review-open > .pane-resizer { display: none; }
+.architecture-review header { display: flex; align-items: center; justify-content: space-between; padding: 15px 18px 8px; }
+.architecture-review h2 { font-size: 18px; margin: 0; }
+.architecture-review .icon-button { width: 36px; height: 36px; }
+.review-controls { display: flex; gap: 8px; padding: 8px 18px 16px; border-bottom: 1px solid var(--line); }
+.review-controls select { min-width: 0; flex: 1; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); color: var(--ink); padding: 7px; font: 13px var(--font-ui); }
+.review-controls button { font-size: 12px; }
+.review-content { overflow-y: auto; min-height: 0; padding: 0 18px 24px; font-size: 13px; overflow-wrap: anywhere; }
+.review-repository { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.review-freshness, .review-connections, .review-gap, .review-boundary { color: var(--muted); }
+.review-counts { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; }
+.review-counts > div { display: flex; flex-direction: column; gap: 3px; }
+.review-counts strong { font-size: 25px; font-weight: 500; }
+.review-counts span { font-size: 12px; color: var(--muted); }
+.review-boundary { padding: 12px; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; }
+.review-object { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.review-object p { margin-block: 8px; }
+.review-object-title { font: 600 16px var(--font-ui); color: var(--ink); background: transparent; border: 0; text-align: left; padding: 4px 0; cursor: pointer; overflow-wrap: anywhere; }
+.review-object-title:hover { color: var(--accent); }
+.review-source { font: 12px/1.6 var(--font-mono); }
+.review-error { color: var(--danger); }
+.review-object details { margin-block: 10px; }
+.review-object summary { cursor: pointer; color: var(--accent); padding-block: 5px; }
+.review-object h3 { font-size: 13px; margin-bottom: 5px; }
+.architecture-review :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 1000px) {
+  .architecture-review { width: 340px; }
+  body[data-atlas-mode="author"] .page-grid.review-open { grid-template-columns: minmax(0, 1fr) 340px; }
+}
+@media (max-width: 760px) {
+  .architecture-review { position: fixed; inset: 0; z-index: 110; width: 100%; border: 0; }
+  body[data-atlas-mode="author"] .page-grid.review-open { grid-template-columns: minmax(0, 1fr); }
+  #workspace-decisions { display: none; }
+}

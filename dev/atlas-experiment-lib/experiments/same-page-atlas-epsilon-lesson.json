@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "id": "same-page-atlas-epsilon-lesson",
+  "description": "Real human MobileSAM segmentation, an authored explanation flow, signed-in managed agent teaching, one-click learner answers with structured backend context, bounded attention cues, read-back equality, and restart persistence for an Epsilon hypersphere lesson.",
+  "host": {
+    "command": [
+      "cargo",
+      "run",
+      "-p",
+      "same-page-atlas"
+    ],
+    "cwd": ".",
+    "environment": {
+      "AGUI_ADDR": "127.0.0.1:8124",
+      "AGUI_ACTIVITY_STATE": "{state_dir}/activity.json",
+      "AGUI_ATLAS_MODEL_DIR": "{repo_root}/examples/visual-instinct-lab/.local/models",
+      "AGUI_ATLAS_ORT_DIR": "{repo_root}/examples/same-page-atlas/node_modules/onnxruntime-web/dist",
+      "AGUI_ATLAS_PROVIDER": "claude",
+      "AGUI_ATLAS_STATE": "{state_dir}/atlas.json",
+      "AGUI_AUTH": "{state_dir}/auth.json",
+      "AGUI_BOARD_STATE": "{state_dir}/board.json",
+      "AGUI_FINAL_RESPONSE_ONLY": "true",
+      "AGUI_MCP_TOKEN": "atlas-epsilon-lesson-proof",
+      "AGUI_PROMPT_APPEND": "{repo_root}/examples/same-page-atlas/tests/epsilon-hypersphere/agent-prompt.md",
+      "CARGO_TARGET_DIR": "{repo_root}/.local/atlas-experiment-cargo-target"
+    },
+    "ready_url": "http://127.0.0.1:8124/",
+    "ready_timeout_ms": 180000,
+    "shutdown_timeout_ms": 5000
+  },
+  "browser": {
+    "port": 9222,
+    "start_command": [
+      "dev/atlas-browser-start"
+    ],
+    "stop_command": [
+      "browser-stop"
+    ]
+  },
+  "gates": [
+    {
+      "id": "agent-harness",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "python3",
+        "dev/agent-harness/check.py",
+        "--json"
+      ]
+    },
+    {
+      "id": "segmentation-contract-drift",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "dev/atlas-segmentation-contract",
+        "check"
+      ]
+    },
+    {
+      "id": "core-human-mask-source-controls",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas-core",
+        "human_mask",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "generic-explanation-core",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas-core",
+        "segment_tests::one_generic_explanation_flow_advances_with_utterance_and_selection_evidence",
+        "--",
+        "--exact",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "lesson-prompt-append-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas",
+        "a_lesson_appendix_extends_the_shared_prompt_without_copying_it",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "lesson-direct-interaction-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas",
+        "the_epsilon_lesson_uses_direct_answers_and_attention_instead_of_decorative_motion",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "generic-learner-mode-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas",
+        "learner_mode_is_a_topic_neutral_boundary_from_authoring",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "generic-learner-navigation-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "same-page-atlas",
+        "learner_navigation_is_local_catalog_driven_and_cross_topic",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "final-response-only-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "ag-ui-surface",
+        "final_response_only_discards_pre_tool_prose_and_publishes_the_last_segment",
+        "--",
+        "--nocapture"
+      ]
+    },
+    {
+      "id": "browser-wasm-build",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "./examples/same-page-atlas/build-web.sh"
+      ]
+    },
+    {
+      "id": "picker-unit-contract",
+      "phase": "before",
+      "required": true,
+      "command": [
+        "node",
+        "examples/same-page-atlas/tests/semantic-import/test-segment-picker.mjs"
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "id": "create-and-teach",
+      "url": "http://127.0.0.1:8124/?experiment=epsilon-hypersphere&segment-recipe=epsilon-hypersphere-lesson-v2",
+      "driver": "dev/atlas-experiment-lib/drivers/same-page-atlas-epsilon-lesson.mjs",
+      "timeout_ms": 1200000,
+      "restart_host": false,
+      "input": {
+        "mode": "create-and-teach",
+        "base_url": "http://127.0.0.1:8124",
+        "mcp_token": "atlas-epsilon-lesson-proof",
+        "expected": {
+          "source_id": "epsilon-hypersphere-lesson-v2",
+          "source_sha256": "df945fefbeef9c05140f9454607e789aadd4fff0f4c74c610ee64292c75ee8f8",
+          "source_size": [
+            1536,
+            1024
+          ],
+          "mask_timeout_ms": 120000,
+          "point_boxes": {
+            "root": [0, 0, 1536, 1024],
+            "subtract": [20, 160, 485, 690],
+            "measure": [530, 160, 1005, 690],
+            "inside": [1040, 160, 1515, 690],
+            "l2": [250, 760, 430, 945],
+            "linf": [1125, 760, 1290, 945]
+          },
+          "points": {
+            "root": [775, 145],
+            "subtract": [315, 392],
+            "measure": [738, 393],
+            "inside": [1450, 300],
+            "l2": [340, 775],
+            "linf": [1204, 780]
+          }
+        }
+      }
+    },
+    {
+      "id": "restart-persistence",
+      "url": "http://127.0.0.1:8124/?experiment=epsilon-hypersphere-persistence&segment-recipe=epsilon-hypersphere-lesson-v2&atlas-mode=learn",
+      "driver": "dev/atlas-experiment-lib/drivers/same-page-atlas-epsilon-lesson.mjs",
+      "timeout_ms": 120000,
+      "restart_host": true,
+      "input": {
+        "mode": "persistence",
+        "base_url": "http://127.0.0.1:8124",
+        "mcp_token": "atlas-epsilon-lesson-proof"
+      }
+    }
+  ]
+}

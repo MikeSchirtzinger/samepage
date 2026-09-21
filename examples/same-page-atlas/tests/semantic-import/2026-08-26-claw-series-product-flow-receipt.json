@@ -1,0 +1,138 @@
+{
+  "schema": "atlas-claw-series-product-flow/v1",
+  "status": "PASS",
+  "measured_at": "2026-08-26",
+  "surface": {
+    "url": "http://127.0.0.1:8099/?flow=claw-series-cold-restart",
+    "browser": "real Chrome over direct CDP",
+    "host": "fresh native debug build",
+    "wasm": "fresh wasm32-unknown-unknown build",
+    "state": "disposable isolated Atlas state"
+  },
+  "human_workflow": {
+    "baseline": {
+      "direct_interactions": 45,
+      "root_selection": 4,
+      "six_separate_part_picker_passes": 24,
+      "six_individual_motion_and_pivot_edits": 17,
+      "walkthrough_scope": "One root and one complete part pass were exercised in the prior UI. The remaining five passes were counted from the identical forced-close state transition."
+    },
+    "part_series_and_group_behavior": {
+      "direct_interactions": 20,
+      "root_selection": 4,
+      "open_part_series": 1,
+      "name_first_part_once": 1,
+      "six_point_and_accept_pairs": 12,
+      "finish_series": 1,
+      "tap_parts": 1,
+      "real_chrome_run_completed": true
+    },
+    "interaction_reduction": {
+      "count": 25,
+      "percent": 55.6
+    }
+  },
+  "root_object": {
+    "id": "0006452677d07743-00000000",
+    "label": "Owl",
+    "parent_id": null,
+    "source_points": [[768, 618]],
+    "source_mask_box": [544, 225, 992, 816],
+    "animation": "tap-parts"
+  },
+  "part_series": {
+    "labels": ["Claw 1", "Claw 2", "Claw 3", "Claw 4", "Claw 5", "Claw 6"],
+    "ids": [
+      "0006452677d07743-00000001",
+      "0006452677d07743-00000002",
+      "0006452677d07743-00000003",
+      "0006452677d07743-00000004",
+      "0006452677d07743-00000005",
+      "0006452677d07743-00000006"
+    ],
+    "source_points": [
+      [641, 799],
+      [678, 799],
+      [721, 799],
+      [815, 799],
+      [856, 799],
+      [893, 799]
+    ],
+    "source_mask_boxes": [
+      [633, 775, 670, 819],
+      [668, 769, 701, 823],
+      [712, 772, 738, 820],
+      [798, 771, 826, 821],
+      [835, 769, 868, 823],
+      [868, 774, 903, 819]
+    ],
+    "picker_stayed_open_between_accepts": true,
+    "accepted_masks_visible_while_selecting": 6,
+    "next_generated_label_after_six": "Claw 7",
+    "finish_returned_selection_to_root": true
+  },
+  "group_behavior": {
+    "control": "Tap parts",
+    "owner": "root object",
+    "child_controls_exposed": false,
+    "materialized_parts": 6,
+    "deterministic_order": "source mask center from left to right, then stable ID",
+    "css_tap_indices": [0, 1, 2, 3, 4, 5],
+    "stagger_delay_milliseconds": 140,
+    "sampled_transforms_changed_over_time": true,
+    "different_parts_were_active_across_samples": true
+  },
+  "execution": {
+    "model_id": "mobilesam-vit-t",
+    "encoder_sha256": "d80de6055095e7ba5551e6c15aaa8981b05dca77d6ae77ee82e51e2746a87e3d",
+    "decoder_sha256": "a21b65b6e1b75e2c6265b36835747a0ab9169ec1ed725139a78ce90297f95126",
+    "requested_provider": "webgpu",
+    "execution_location": "browser-worker",
+    "segments_observed": 7,
+    "fallback_used": false,
+    "mock_used": false
+  },
+  "persistence": {
+    "cold_host_restart": true,
+    "root_and_six_parts_preserved": true,
+    "stable_ids_preserved": true,
+    "hierarchy_preserved": true,
+    "tap_parts_preserved": true,
+    "tap_order_preserved": true,
+    "host_and_browser_replica_readback": "identical",
+    "browser_runtime_errors": 0
+  },
+  "visual_evidence": {
+    "path": ".local/product-flow/screenshots/2026-08-26-claw-series-tapping.png",
+    "sha256": "b40f301d4d402c22bcbdf7e36a3bb865453c1a8314dd5b9ca2b20f7b08648a42",
+    "bytes": 1387355,
+    "visually_inspected": true
+  },
+  "validation": {
+    "same_page_atlas_core_tests": 222,
+    "same_page_atlas_host_tests": 144,
+    "focused_tap_parts_test": 1,
+    "javascript_picker_contract": "PASS",
+    "rustfmt": "PASS",
+    "host_and_core_clippy_warnings_denied": "PASS",
+    "wasm_clippy_warnings_denied": "PASS",
+    "fresh_wasm_build": "PASS",
+    "fresh_native_host_build": "PASS",
+    "segmentation_contract_drift_check": "PASS",
+    "agent_harness": "PASS",
+    "nonnegotiable_propagation": "PASS",
+    "changed_surface_credo_hard_violations": 0,
+    "inherited_full_core_file_credo_hard_violations": 85,
+    "inherited_full_host_file_credo_hard_violations": 19
+  },
+  "boundaries": [
+    "Part series is a deterministic interaction generalization, not a prompt interpreter or animation model.",
+    "Tap parts is one bounded root-owned behavior. It does not introduce a timeline, keyframes, or a general animation editor.",
+    "WebGPU is the only configured execution provider, but per-node GPU execution is not proven. ONNX Runtime reported shape-related CPU node assignments.",
+    "Mask agreement and visual inspection are not annotated semantic-accuracy evidence.",
+    "Prompted behavior remains a backup for requests that do not map to a small bounded behavior preset.",
+    "The scoped public text is free of Credo hard violations. The dirty worktree's full core and host files retain unrelated pre-existing hard violations and were not rewritten in this slice.",
+    "Gate 5 remains FROZEN_NOT_RUN."
+  ],
+  "verdict": "ATLAS_CLAW_SERIES_PRODUCT_FLOW_PASS"
+}

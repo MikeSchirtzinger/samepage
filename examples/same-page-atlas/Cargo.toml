@@ -1,0 +1,36 @@
+[package]
+name = "same-page-atlas"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "A shared, CRDT-backed map of a repository that a human and an agent draw on together — both writers, one page."
+publish = false
+
+[[bin]]
+name = "same-page-atlas"
+path = "src/main.rs"
+
+[dependencies]
+ag-ui-surface = { workspace = true }
+ag-ui-canvas = { workspace = true }
+# Only to name `yrs::Subscription`, the type `Scene::on_update` returns.
+# `sync` adds the Send/Sync bounds that let the Scene live behind a Mutex
+# shared across tokio worker threads (same reason teaching-canvas carries it).
+yrs = { workspace = true, features = ["sync"] }
+same-page-atlas-core = { path = "core" }
+samepage-extract = { path = "../../crates/samepage-extract" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+parking_lot = { workspace = true }
+base64 = "0.22"
+sha2 = "0.10"
+toml = "0.8"
+uuid = { workspace = true }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,20 @@
+[package]
+name = "same-page-atlas-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The shared atlas model: one CRDT projection and one mutation vocabulary, compiled for both the host (agent writer) and the browser (human writer)."
+publish = false
+
+[dependencies]
+ag-ui-canvas = { workspace = true }
+base64 = "0.22"
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+yrs = { workspace = true }
+
+[lints]
+workspace = true

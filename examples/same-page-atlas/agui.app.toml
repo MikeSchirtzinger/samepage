@@ -1,0 +1,28 @@
+schema_version = 1
+
+[app]
+id = "same-page-atlas"
+profile = "wasm"
+
+[[extensions]]
+id = "atlas"
+version = "0.1.0"
+enabled = true
+required = true
+capabilities = ["dom", "wasm", "webgpu", "crdt-sync"]
+# The repository the map is about. Declared here because the atlas reads and
+# verifies real source: `repo_list`, `repo_read`, `atlas_import`, and the
+# verification behind every source-backed node. The host must provide it or
+# composition fails before the socket binds.
+services = ["repository"]
+
+# The assertion board. Composed into the same host as the map rather than run
+# as its own server: one action catalog, one /mcp, one event stream. It is
+# optional because a map with no conversation about it is still a map, while a
+# missing CRDT replica would make the atlas a read-only lie.
+[[extensions]]
+id = "board"
+version = "0.1.0"
+enabled = true
+required = false
+capabilities = ["dom"]

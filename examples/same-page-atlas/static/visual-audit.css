@@ -1,0 +1,101 @@
+/* The drawing surface owns clipping. Layout containers do not clip menus or
+   navigation. Paint containment preserves the camera boundary without making
+   the surface an implicitly scrollable ancestor when a child receives focus. */
+body[data-atlas-mode="author"] .page-grid,
+body[data-atlas-mode="author"] .page-grid.dock-collapsed,
+body[data-atlas-mode="author"] .page-grid.exploration-focused.dock-collapsed,
+body[data-atlas-mode="author"] .atlas-pane {
+  overflow: visible;
+}
+.atlas-view,
+.minimap-canvas {
+  overflow: visible;
+  contain: paint;
+}
+
+/* Context remains readable at the available width. The button still opens the
+   shared question, but reading its full text does not require opening it. */
+.shared-context .context-question,
+.shared-context .context-question-text,
+.exploration-heading strong {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+.context-question-text { flex: 1; }
+.runtime-state { flex-shrink: 0; }
+#runtime-state {
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.3;
+}
+
+/* Closed menus have no positioned layout. The open state retains the existing
+   anchoring and size constraints for the actual visible menu. */
+details:not([open]) > .tool-inks,
+details:not([open]) > .view-options-panel {
+  position: static;
+  inset: auto;
+}
+.minimap.collapsed .minimap-close {
+  position: static;
+  inset: auto;
+}
+.minimap.docked.collapsed { overflow: visible; }
+.atlas-frame .node-source { pointer-events: auto; }
+
+/* Small functional labels need solid contrast as the drawing moves beneath
+   them. Shortcut badges have their own background instead of faded glyphs
+   over the tool icon, and zoom controls use an opaque surface. */
+.tool-shortcut {
+  opacity: 1;
+  color: var(--ink);
+  background: var(--panel);
+  padding-inline: 1px;
+  border-radius: 2px;
+}
+.draw-tools .tool svg {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+}
+.zoom-controls {
+  background: var(--panel);
+  backdrop-filter: none;
+}
+.zoom-percent { color: var(--ink); }
+
+/* The popover's default fit-content height otherwise grows with the entire
+   source excerpt, pushing paging controls beyond the screen. Only code scrolls. */
+.source-viewer {
+  box-sizing: border-box;
+  height: calc(100dvh - 32px);
+  min-height: 0;
+}
+.source-viewer-context,
+.source-notice { max-width: 64ch; }
+.source-viewer button:disabled {
+  opacity: 1;
+  color: var(--muted);
+  border-style: dashed;
+}
+
+@media (max-width: 760px) {
+  .source-viewer { height: calc(100dvh - 16px); }
+  body[data-atlas-mode="author"] .atlas-pane .exploration-nav {
+    height: auto;
+    min-height: 44px;
+  }
+  body[data-atlas-mode="author"] .in-exploration {
+    grid-template-rows: auto minmax(180px, 1fr) auto;
+  }
+  .in-exploration .exploration-nav-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
