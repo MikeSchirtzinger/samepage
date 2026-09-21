@@ -1,0 +1,7 @@
+{
+  "name": "sidecar-cli",
+  "version": "1.0.0",
+  "bin": {
+    "sidecar-cli": "./bin/cli.js"
+  }
+}
