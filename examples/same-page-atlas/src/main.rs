@@ -263,7 +263,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let recipe = AppRecipe::from_file(&recipe_path)?;
-    let app = App::new()
+    let mut app = App::new()
         .try_surface(move |transport| {
             // Two artifacts, one host. The map is what the project is made of;
             // the board is what we are saying about it. They compose rather
@@ -307,8 +307,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .final_response_only(final_response_only)
         .static_dir(static_dir)
         .pkg_dir(pkg_dir)
-        .mount("/model-assets", model_dir)
-        .mount("/ort", ort_dir)
         .agent_cwd(agent_cwd)
         .voice(false)
         .hitl(Hitl {
@@ -316,6 +314,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             decisions: false,
             focus: true,
         });
+    // Mounted only when present: these directories hold Visual Instinct's
+    // MobileSAM weights and onnxruntime, neither committed here (see the
+    // semantic_import_available check above). A static mount whose root
+    // does not exist is a hard configuration error the same as a missing
+    // static_dir/pkg_dir, so mounting it unconditionally would turn an
+    // optional feature back into a boot requirement.
+    if model_dir.is_dir() {
+        app = app.mount("/model-assets", model_dir);
+    }
+    if ort_dir.is_dir() {
+        app = app.mount("/ort", ort_dir);
+    }
 
     // Paste-ready MCP attach recipe. The runtime prints its own "agents attach
     // at" line too; this one states the token source so an operator knows
