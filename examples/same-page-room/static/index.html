@@ -9,7 +9,7 @@
        relaxed: no inline script, no remote script, no remote image. -->
   <meta
     http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src http: https:"
+    content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src http: https:"
   >
   <title>Same Page Room · AG-UI</title>
   <link rel="stylesheet" href="/styles.css">

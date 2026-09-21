@@ -56,6 +56,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let agent_cwd =
         config::optional_path("AGUI_AGENT_CWD")?.unwrap_or_else(|| project_root.clone());
     let addr = config::string_or("AGUI_ADDR", "127.0.0.1:8100")?;
+    // Development: reload the page when a served file changes. The room's
+    // state is on the host, so a reload costs nothing but the reconnect.
+    let dev_reload = config::bool_or("AGUI_DEV_RELOAD", || false)?;
 
     // Read at startup rather than compiled in, so the standing instructions can
     // be edited and the server restarted without a rebuild.
@@ -93,6 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .auth(Arc::new(AuthStore::open(auth_path)?))
         .prompt(prompt)
         .static_dir(static_dir)
+        .dev_reload(dev_reload)
         .agent_cwd(agent_cwd)
         .voice(false)
         .hitl(Hitl {
