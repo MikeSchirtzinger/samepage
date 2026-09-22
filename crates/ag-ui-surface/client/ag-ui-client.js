@@ -9,6 +9,7 @@
 // validated event by its type (`RUN_STARTED`, a CUSTOM event by its name) and
 // the assembled facts as `transcript:<kind>` (`transcript:text-delta`).
 
+
 export const AGUI_CLIENT_VERSION = "1";
 
 /// The in-flight join, so a page joins the room exactly once.
@@ -94,6 +95,7 @@ export class AgUiClient extends EventTarget {
     this.protocol = null;
     this.ready = null;
     this.reconnectEnabled = false;
+    this.beforeAction = null;
   }
 
   on(topic, handler) {
@@ -223,7 +225,8 @@ export class AgUiClient extends EventTarget {
     return readJson(response);
   }
 
-  action(name, args = {}) {
+  async action(name, args = {}) {
+    if (this.beforeAction) await this.beforeAction(name);
     return this.postJson("/surface/action", { name, args });
   }
 
@@ -266,163 +269,5 @@ async function readJson(response) {
   return body;
 }
 
-export async function loadExtensions(client, { manifestUrl = "/extensions" } = {}) {
-  if (!(client instanceof AgUiClient)) {
-    throw new TypeError("loadExtensions requires an AgUiClient");
-  }
-  const manifest = validateManifest(await client.getJson(manifestUrl));
-  const loaded = [];
-  const seen = new Set();
 
-  for (const extension of manifest.extensions) {
-    if (seen.has(extension.id)) {
-      loaded.push(extensionFailure(extension, null, `duplicate extension id: ${extension.id}`));
-      continue;
-    }
-    seen.add(extension.id);
-    const mount = document.getElementById(extension.mount);
-
-    if (extension.loading === "host") {
-      loaded.push({ id: extension.id, status: "host", extension, mount, instance: null });
-      continue;
-    }
-
-    if (!mount) {
-      loaded.push(extensionFailure(extension, null, `mount #${extension.mount} was not found`));
-      continue;
-    }
-    mount.dataset.extensionId = extension.id;
-    mount.dataset.extensionState = "loading";
-
-    try {
-      if (!extension.module) throw new Error("lazy extension has no module URL");
-      const moduleUrl = sameOriginUrl(extension.module);
-      const imported = await import(moduleUrl.href);
-      const activate = imported.activate || imported.default;
-      if (typeof activate !== "function") {
-        throw new Error("entry module must export activate(ctx) or a default function");
-      }
-      const extensionClient = Object.freeze({
-        on: (topic, handler) => client.on(topic, handler),
-      });
-      const context = Object.freeze({
-        client: extensionClient,
-        extension: Object.freeze({ ...extension }),
-        mount,
-        // Who this browser is, so an extension can tell this person's own
-        // writing from everybody else's. Handed down rather than fetched per
-        // extension: joining is the one request that must happen exactly once
-        // per page, and every caller doing it themselves is how one browser
-        // became several participants.
-        whoAmI,
-        action: (name, args) => {
-          if (!extension.actions.includes(name)) {
-            throw new Error(`extension ${extension.id} is not allowed to invoke action ${name}`);
-          }
-          return client.action(name, args);
-        },
-        semantic: (name, value) => client.semantic(name, value),
-      });
-      const instance = (await activate(context)) || null;
-      mount.dataset.extensionState = "ready";
-      const result = { id: extension.id, status: "ready", extension, mount, instance };
-      loaded.push(result);
-      emitDocument("agui:extension-loaded", result);
-    } catch (error) {
-      const result = extensionFailure(extension, mount, error);
-      loaded.push(result);
-      if (extension.required) showRequiredFailure(mount, result.error);
-    }
-  }
-
-  const runtime = {
-    manifest,
-    loaded,
-    byId: new Map(loaded.map((entry) => [entry.id, entry])),
-    errors: loaded.filter((entry) => entry.status === "error"),
-  };
-  emitDocument("agui:extensions-ready", runtime);
-  return runtime;
-}
-
-export function validateManifest(manifest) {
-  if (!manifest || manifest.protocol !== "ag-ui" || manifest.schemaVersion !== 1) {
-    throw new Error("unsupported AG-UI extension manifest");
-  }
-  if (!Array.isArray(manifest.extensions)) {
-    throw new Error("extension manifest is missing extensions[]");
-  }
-  for (const extension of manifest.extensions) {
-    if (!extension || typeof extension.id !== "string" || typeof extension.mount !== "string") {
-      throw new Error("extension manifest contains an invalid descriptor");
-    }
-    if (extension.loading !== "lazy" && extension.loading !== "host") {
-      throw new Error(`extension ${extension.id} has an unsupported loading mode`);
-    }
-    for (const field of ["actions", "events", "capabilities"]) {
-      if (!Array.isArray(extension[field]) || !extension[field].every((value) => typeof value === "string")) {
-        throw new Error(`extension ${extension.id} has invalid ${field}`);
-      }
-    }
-    if (extension.loading === "lazy") sameOriginUrl(extension.module);
-    if (extension.wasm) {
-      sameOriginUrl(extension.wasm.js);
-      sameOriginUrl(extension.wasm.wasm);
-    }
-  }
-  return manifest;
-}
-
-function sameOriginUrl(path) {
-  if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//")) {
-    throw new Error(`extension asset must be a same-origin absolute path: ${String(path)}`);
-  }
-  const url = new URL(path, location.href);
-  if (url.origin !== location.origin) {
-    throw new Error(`cross-origin extension asset rejected: ${url.href}`);
-  }
-  return url;
-}
-
-function extensionFailure(extension, mount, error) {
-  const message = error instanceof Error ? error.message : String(error);
-  if (mount) mount.dataset.extensionState = "error";
-  const result = { id: extension.id, status: "error", extension, mount, error: message };
-  console.error(`[ag-ui] extension ${extension.id} failed:`, error);
-  emitDocument("agui:extension-error", result);
-  return result;
-}
-
-function showRequiredFailure(mount, message) {
-  const error = document.createElement("div");
-  error.className = "agui-extension-error";
-  error.setAttribute("role", "alert");
-  error.textContent = `Extension unavailable: ${message}`;
-
-  if (!mount || mount.tagName === "CANVAS") {
-    if (mount) mount.setAttribute("aria-label", `Required extension failed: ${message}`);
-    // A canvas cannot contain fallback DOM, and full-screen canvases commonly
-    // cover ordinary siblings. Keep required failures visibly above the app so
-    // a broken renderer can never look like a successfully blank surface.
-    Object.assign(error.style, {
-      position: "fixed",
-      inset: "1rem 1rem auto",
-      zIndex: "2147483647",
-      padding: "0.75rem 1rem",
-      border: "1px solid #ef4444",
-      borderRadius: "0.5rem",
-      background: "#450a0a",
-      color: "#fecaca",
-      font: "600 0.875rem/1.4 system-ui, sans-serif",
-    });
-    (mount?.parentElement || document.body || document.documentElement).appendChild(error);
-    return;
-  }
-
-  mount.setAttribute("aria-label", `Required extension failed: ${message}`);
-  mount.replaceChildren(error);
-}
-
-function emitDocument(name, detail) {
-  document.dispatchEvent(new CustomEvent(name, { detail }));
-}
+export { loadExtensions, validateManifest } from "/_agui/extension-loader.js";

@@ -40,6 +40,14 @@ impl ActionSchemas {
                     action.name
                 ));
             }
+            for alias in &action.aliases {
+                if !valid_action_name(alias) || alias == &action.name {
+                    return Err(format!(
+                        "action {:?} has invalid alias {:?}",
+                        action.name, alias
+                    ));
+                }
+            }
 
             let schema = &action.parameters;
             if !schema.is_object() || schema.get("type").and_then(Value::as_str) != Some("object") {
@@ -62,6 +70,15 @@ impl ActionSchemas {
                 )
             })?;
             validators.insert(action.name.clone(), validator);
+        }
+
+        let mut names = std::collections::HashSet::new();
+        for action in actions {
+            for name in std::iter::once(&action.name).chain(action.aliases.iter()) {
+                if !names.insert(name) {
+                    return Err(format!("action name or alias {:?} collides globally", name));
+                }
+            }
         }
 
         Ok(Self { validators })
@@ -201,6 +218,24 @@ mod tests {
         let error = ActionSchemas::compile(&[invalid]).unwrap_err();
         assert!(error.contains("human_invalid"), "{error}");
         assert!(error.contains("invalid input schema"), "{error}");
+    }
+
+    #[test]
+    fn aliases_cannot_collide_with_any_preferred_name_or_alias() {
+        let schema = json!({"type":"object"});
+        for actions in [
+            vec![
+                action("card_place", schema.clone()).alias("atlas_place"),
+                action("atlas_place", schema.clone()),
+            ],
+            vec![
+                action("card_place", schema.clone()).alias("atlas_place"),
+                action("card_link", schema.clone()).alias("atlas_place"),
+            ],
+        ] {
+            let error = ActionSchemas::compile(&actions).unwrap_err();
+            assert!(error.contains("collides globally"), "{error}");
+        }
     }
 
     #[test]

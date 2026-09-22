@@ -18,8 +18,8 @@ use crate::services::{
     DocumentClaim, DocumentRegistry, ExtensionDependency, ServiceRegistry, ServiceRequirement,
 };
 use crate::{
-    ActionRouteDef, ClientModule, HttpMethod, RouteDef, StateBacking, StateSnapshot, Surface,
-    SurfaceState, SurfaceStore, ToolDef,
+    ActionRouteDef, ClientModule, DocumentMount, HttpMethod, RouteDef, StateBacking, StateSnapshot,
+    Surface, SurfaceState, SurfaceStore, ToolDef,
 };
 use crate::{SemanticTarget, SemanticTargetRef};
 
@@ -213,6 +213,10 @@ pub trait Extension: Send + Sync + 'static {
     /// browser module allowlist.
     fn client_module(&self) -> Option<ClientModule>;
 
+    fn document_mount(&self) -> Option<DocumentMount> {
+        None
+    }
+
     /// Capability vocabulary granted by the recipe. For a browser extension,
     /// this must exactly match its `ClientModule.capabilities` so neither the
     /// recipe nor `/extensions` understates what is enabled.
@@ -340,6 +344,7 @@ pub struct CompositeSurface {
     has_store: bool,
     actions: Vec<ToolDef>,
     modules: Vec<ClientModule>,
+    document: Option<DocumentMount>,
 }
 
 impl CompositeSurface {
@@ -486,9 +491,20 @@ impl CompositeSurface {
         let mut binary_owner: Option<String> = None;
         let mut actions = Vec::new();
         let mut modules = Vec::new();
+        let mut document = None;
         let mut children = Vec::new();
 
         for (extension, required_override) in extensions {
+            if let Some(mount) = extension.document_mount() {
+                mount
+                    .validate()
+                    .map_err(CompositionError::InvalidExtensions)?;
+                if document.replace(mount).is_some() {
+                    return Err(CompositionError::InvalidExtensions(
+                        "more than one extension declares the browser document".into(),
+                    ));
+                }
+            }
             validate_id("extension", extension.id())
                 .map_err(CompositionError::InvalidExtensions)?;
             if extension.version().trim().is_empty() {
@@ -534,11 +550,13 @@ impl CompositeSurface {
                         extension.id()
                     )));
                 }
-                if !action_names.insert(action.name.clone()) {
-                    return Err(CompositionError::InvalidExtensions(format!(
-                        "action {:?} is owned by more than one extension",
-                        action.name
-                    )));
+                for name in std::iter::once(&action.name).chain(action.aliases.iter()) {
+                    if !action_names.insert(name.clone()) {
+                        return Err(CompositionError::InvalidExtensions(format!(
+                            "action name or alias {:?} is owned by more than one extension",
+                            name
+                        )));
+                    }
                 }
                 actions.push(action.clone());
             }
@@ -655,6 +673,7 @@ impl CompositeSurface {
             has_store,
             actions,
             modules,
+            document,
         })
     }
 }
@@ -685,6 +704,10 @@ impl Surface for CompositeSurface {
 
     fn client_modules(&self) -> Vec<ClientModule> {
         self.modules.clone()
+    }
+
+    fn document_mount(&self) -> Option<DocumentMount> {
+        self.document.clone()
     }
 
     fn store(&self) -> Option<&dyn SurfaceStore> {
@@ -874,6 +897,59 @@ impl SurfaceState for CompositeState {
             })?);
         }
         Ok(frames)
+    }
+
+    fn ws_receive_as(&self, actor: &crate::Actor, data: &[u8]) -> Result<Vec<Vec<u8>>, String> {
+        let mut extensions = self
+            .extensions
+            .iter()
+            .filter(|extension| extension.binary_transport())
+            .peekable();
+        if extensions.peek().is_none() {
+            return Err(crate::BINARY_TRANSPORT_NOT_IMPLEMENTED.to_string());
+        }
+        let mut frames = Vec::new();
+        for extension in extensions {
+            frames.extend(
+                extension
+                    .state()
+                    .ws_receive_as(actor, data)
+                    .map_err(|error| {
+                        format!("extension `{}` receive failed: {error}", extension.id())
+                    })?,
+            );
+        }
+        Ok(frames)
+    }
+
+    fn ws_receive_as_split(
+        &self,
+        actor: &crate::Actor,
+        data: &[u8],
+    ) -> Result<crate::WsInbound, String> {
+        let mut extensions = self
+            .extensions
+            .iter()
+            .filter(|extension| extension.binary_transport())
+            .peekable();
+        if extensions.peek().is_none() {
+            return Err(crate::BINARY_TRANSPORT_NOT_IMPLEMENTED.to_string());
+        }
+        let mut inbound = crate::WsInbound {
+            replies: Vec::new(),
+            broadcasts: Vec::new(),
+        };
+        for extension in extensions {
+            let next = extension
+                .state()
+                .ws_receive_as_split(actor, data)
+                .map_err(|error| {
+                    format!("extension `{}` receive failed: {error}", extension.id())
+                })?;
+            inbound.replies.extend(next.replies);
+            inbound.broadcasts.extend(next.broadcasts);
+        }
+        Ok(inbound)
     }
 
     fn reconnect_events(&self) -> Vec<(String, JsonValue)> {

@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use axum::body::Bytes;
-use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
+use axum::extract::ws::{CloseFrame, Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, Request, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
@@ -112,6 +112,10 @@ pub mod identity;
 
 /// Startup-compiled ActionDef schemas shared by every invocation origin.
 mod action_schema;
+mod capability_manifest;
+pub use capability_manifest::{
+    ArtifactFile, CapabilityArtifact, DocumentMount, CAPABILITY_SCHEMA_VERSION,
+};
 
 /// Runtime-owned Model Context Protocol projection and request handling. The
 /// public application API stays [`ActionDef`]/[`Surface::tools`]; this module
@@ -192,6 +196,8 @@ impl Drop for RuntimeTaskGuard {
 /// every application gets the same core without copying a generated asset into
 /// its own static directory.
 const AGUI_CLIENT_JS: &str = include_str!("../client/ag-ui-client.js");
+const CAPABILITY_LOADER_JS: &str = include_str!("../client/capability-loader.js");
+const EXTENSION_LOADER_JS: &str = include_str!("../client/extension-loader.js");
 const PROVIDER_SETTINGS_JS: &str = include_str!("../client/provider-settings.js");
 const PROVIDER_SETTINGS_CSS: &str = include_str!("../client/provider-settings.css");
 const CONVERSATION_JS: &str = include_str!("../client/conversation.js");
@@ -378,6 +384,22 @@ pub trait SurfaceState: Send + Sync + 'static {
         Err(BINARY_TRANSPORT_NOT_IMPLEMENTED.to_string())
     }
 
+    /// Receive a frame with the actor established by the host at upgrade.
+    /// Existing surfaces keep their binary protocol through the default.
+    fn ws_receive_as(&self, actor: &Actor, data: &[u8]) -> Result<Vec<Vec<u8>>, String> {
+        let _ = actor;
+        self.ws_receive(data)
+    }
+
+    /// Distinguish sync answers for this connection from committed updates
+    /// for all peers. The default preserves legacy broadcast semantics.
+    fn ws_receive_as_split(&self, actor: &Actor, data: &[u8]) -> Result<WsInbound, String> {
+        self.ws_receive_as(actor, data).map(|broadcasts| WsInbound {
+            replies: Vec::new(),
+            broadcasts,
+        })
+    }
+
     /// Named SSE custom-event replay entries for a freshly-connected/
     /// reloading client, derived from this state's own UI *chrome* — "chrome"
     /// in the interface-design sense (the panels/toolbars/widgets that frame
@@ -548,6 +570,11 @@ pub trait Surface: Send + Sync + 'static {
     /// view while the protocol core remains unchanged.
     fn client_modules(&self) -> Vec<ClientModule>;
 
+    /// The single shared browser document package, when this app has one.
+    fn document_mount(&self) -> Option<DocumentMount> {
+        None
+    }
+
     /// The durable projection. For teaching-canvas: peripheral learner model
     /// (None or small). For Vellum: the PRIMARY state — the ADR log — and
     /// `state()` is its live projection. Optional by capability, NOT by
@@ -693,6 +720,12 @@ pub struct StateSnapshot {
     pub chrome: Option<serde_json::Value>,
 }
 
+/// Frames emitted by one authenticated binary input.
+pub struct WsInbound {
+    pub replies: Vec<Vec<u8>>,
+    pub broadcasts: Vec<Vec<u8>>,
+}
+
 /// The browser-side half of one enabled extension.
 ///
 /// This is deliberately runtime metadata, not a remote plugin descriptor. The
@@ -721,6 +754,12 @@ pub struct ClientModule {
     /// A compiled wasm renderer bundle to mount, if the Surface's view is
     /// *drawn* (not DOM-manipulated). `None` for a DOM-native Surface.
     pub wasm: Option<WasmMount>,
+    /// Independently verified capability or document package. Legacy modules
+    /// keep using `wasm` without claiming integrity verification.
+    pub artifact: Option<CapabilityArtifact>,
+    /// Host-provided adapter with a C1 NativeOnly descriptor and no browser package.
+    pub native_only: Option<JsonValue>,
+    pub on_demand: bool,
     /// The DOM id the shell reserves for this Surface to mount/draw into —
     /// teaching-canvas: the `<canvas>` element id; a DOM Surface: the container
     /// wrapping its own view.
@@ -754,6 +793,9 @@ impl ClientModule {
             version: version.into(),
             module: Some(module.into()),
             wasm: None,
+            artifact: None,
+            native_only: None,
+            on_demand: false,
             mount_id: mount_id.into(),
             events: Vec::new(),
             actions: None,
@@ -774,6 +816,9 @@ impl ClientModule {
             version: version.into(),
             module: None,
             wasm: None,
+            artifact: None,
+            native_only: None,
+            on_demand: false,
             mount_id: mount_id.into(),
             events: Vec::new(),
             actions: None,
@@ -784,6 +829,22 @@ impl ClientModule {
 
     pub fn wasm(mut self, wasm: WasmMount) -> Self {
         self.wasm = Some(wasm);
+        self
+    }
+
+    pub fn verified_artifact(mut self, artifact: CapabilityArtifact) -> Self {
+        self.artifact = Some(artifact);
+        self.on_demand = true;
+        self
+    }
+
+    pub fn native_adapter_descriptor(mut self, descriptor: JsonValue) -> Self {
+        self.native_only = Some(descriptor);
+        self
+    }
+
+    pub fn on_demand(mut self) -> Self {
+        self.on_demand = true;
         self
     }
 
@@ -872,6 +933,28 @@ impl ClientModule {
                 }
             }
         }
+        if let Some(artifact) = &self.artifact {
+            artifact.validate(&self.id, &self.version, self.module.as_deref())?;
+            if self.wasm.is_some() {
+                return Err(format!(
+                    "extension {} declares both legacy wasm and verified artifact",
+                    self.id
+                ));
+            }
+        } else if self.on_demand {
+            return Err(format!(
+                "extension {} requests on-demand loading without verified artifact",
+                self.id
+            ));
+        }
+        if self.native_only.is_some()
+            && (self.artifact.is_some() || self.module.is_some() || self.wasm.is_some())
+        {
+            return Err(format!(
+                "extension {} native adapter must be host-provided without browser artifact",
+                self.id
+            ));
+        }
         Ok(())
     }
 }
@@ -896,6 +979,10 @@ pub struct WasmMount {
 pub struct ExtensionManifest {
     pub schema_version: u32,
     pub protocol: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capability_schema_version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub document: Option<DocumentMount>,
     pub extensions: Vec<ExtensionDescriptor>,
 }
 
@@ -914,6 +1001,10 @@ pub struct ExtensionDescriptor {
     pub required: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wasm: Option<WasmMount>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact: Option<CapabilityArtifact>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub native_only: Option<JsonValue>,
 }
 
 impl ExtensionManifest {
@@ -928,6 +1019,25 @@ impl ExtensionManifest {
         let mut ids = std::collections::HashSet::new();
         let mut mounts = std::collections::HashSet::new();
         let mut extensions = Vec::with_capacity(modules.len());
+        capability_manifest::validate_artifact_set(
+            modules.iter().map(|module| {
+                (
+                    module.id.as_str(),
+                    module.version.as_str(),
+                    module.artifact.as_ref(),
+                    module.native_only.as_ref(),
+                )
+            }),
+            surface.tools(),
+        )?;
+        let has_artifacts = modules.iter().any(|module| module.artifact.is_some());
+        let document = surface.document_mount();
+        if let Some(mount) = &document {
+            mount.validate()?;
+        }
+        if has_artifacts && document.is_none() {
+            return Err("capability artifacts require one shared document mount".into());
+        }
 
         let composed = modules.len() > 1;
         for module in modules {
@@ -958,7 +1068,27 @@ impl ExtensionManifest {
                     actions
                 }
             };
-            let loading = if module.module.is_some() {
+            if let Some(artifact) = &module.artifact {
+                let mut declared: Vec<&str> = artifact.descriptor["actions"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|action| action["audience"] == "human" || action["audience"] == "both")
+                    .filter_map(|action| action["name"].as_str())
+                    .collect();
+                let mut exposed: Vec<&str> = actions.iter().map(String::as_str).collect();
+                declared.sort_unstable();
+                exposed.sort_unstable();
+                if declared != exposed {
+                    return Err(format!(
+                        "extension {} browser action inventory differs from its capability descriptor",
+                        module.id
+                    ));
+                }
+            }
+            let loading = if module.on_demand {
+                "on-demand"
+            } else if module.module.is_some() {
                 "lazy"
             } else {
                 "host"
@@ -974,12 +1104,17 @@ impl ExtensionManifest {
                 capabilities: module.capabilities,
                 required: module.required,
                 wasm: module.wasm,
+                artifact: module.artifact,
+                native_only: module.native_only,
             });
         }
 
         Ok(Self {
             schema_version: 1,
             protocol: "ag-ui".to_string(),
+            capability_schema_version: (has_artifacts || document.is_some())
+                .then_some(CAPABILITY_SCHEMA_VERSION),
+            document,
             extensions,
         })
     }
@@ -991,6 +1126,18 @@ fn validate_extension_assets(
     pkg_dir: Option<&Path>,
     mounts: &[(String, PathBuf)],
 ) -> Result<(), String> {
+    if let Some(document) = &manifest.document {
+        for (kind, url) in [
+            ("document JS", document.js.as_str()),
+            ("document WASM", document.wasm.as_str()),
+        ] {
+            let path = extension_asset_path(url, static_dir, pkg_dir, mounts)
+                .ok_or_else(|| format!("{kind} {url:?} has no matching static mount"))?;
+            if !path.is_file() {
+                return Err(format!("{kind} {url:?} is missing at {}", path.display()));
+            }
+        }
+    }
     for extension in &manifest.extensions {
         let mut assets = Vec::new();
         if let Some(module) = &extension.module {
@@ -999,6 +1146,11 @@ fn validate_extension_assets(
         if let Some(wasm) = &extension.wasm {
             assets.push(("wasm JS", wasm.js.as_str()));
             assets.push(("wasm binary", wasm.wasm.as_str()));
+        }
+        if let Some(artifact) = &extension.artifact {
+            for file in [&artifact.entry, &artifact.glue, &artifact.wasm] {
+                assets.push(("verified artifact", file.url.as_str()));
+            }
         }
         for (kind, url) in assets {
             let Some(path) = extension_asset_path(url, static_dir, pkg_dir, mounts) else {
@@ -1317,6 +1469,8 @@ impl Actor {
 #[derive(Clone)]
 pub struct ActionDef {
     pub name: String,
+    /// Accepted compatibility names. Discovery and journals use `name`.
+    pub aliases: Vec<String>,
     pub description: String,
     /// JSON-Schema object for the tool's arguments — an MCP `inputSchema` /
     /// OpenAI function `parameters` object. It must declare root `type=object`.
@@ -1374,6 +1528,7 @@ impl ActionDef {
     ) -> Self {
         Self {
             name: name.into(),
+            aliases: Vec::new(),
             description: description.into(),
             parameters,
             audience: ActionAudience::Both,
@@ -1385,6 +1540,11 @@ impl ActionDef {
 
     pub fn audience(mut self, audience: ActionAudience) -> Self {
         self.audience = audience;
+        self
+    }
+
+    pub fn alias(mut self, name: impl Into<String>) -> Self {
+        self.aliases.push(name.into());
         self
     }
 
@@ -2126,8 +2286,7 @@ impl App {
         // state rather than silently guessing at the wire format in
         // JavaScript. Serving nothing under the prefix is what makes that
         // path honest instead of a second, quieter kind of pretending.
-        let protocol_pkg_dir = match protocol_pkg::resolve(self.protocol_pkg_dir.as_deref()).await
-        {
+        let protocol_pkg_dir = match protocol_pkg::resolve(self.protocol_pkg_dir.as_deref()).await {
             Ok(dir) => dir,
             Err(error) => {
                 tracing::error!(
@@ -2306,6 +2465,11 @@ impl App {
         let hitl = self.hitl.unwrap_or_default();
         let mut router: Router<RouterState> = Router::new()
             .route("/_agui/client.js", get(agui_client_handler))
+            .route(
+                "/_agui/capability-loader.js",
+                get(capability_loader_handler),
+            )
+            .route("/_agui/extension-loader.js", get(extension_loader_handler))
             .route(
                 "/_agui/provider-settings.js",
                 get(provider_settings_handler),
@@ -3256,6 +3420,26 @@ async fn agui_client_handler() -> impl IntoResponse {
     )
 }
 
+async fn capability_loader_handler() -> impl IntoResponse {
+    (
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/javascript; charset=utf-8"),
+        )],
+        CAPABILITY_LOADER_JS,
+    )
+}
+
+async fn extension_loader_handler() -> impl IntoResponse {
+    (
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/javascript; charset=utf-8"),
+        )],
+        EXTENSION_LOADER_JS,
+    )
+}
+
 async fn provider_settings_handler() -> impl IntoResponse {
     (
         [(
@@ -3618,8 +3802,7 @@ fn human_replica_credential_is_valid(st: &RouterState, headers: &HeaderMap) -> b
         headers,
         &human_route_cookie(st.rt.port),
         st.human_route_token.as_ref(),
-    )
-        || person_from(st, headers).is_some()
+    ) || person_from(st, headers).is_some()
 }
 
 fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
@@ -4113,7 +4296,13 @@ async fn ask_handler(
         human: Some(question.clone()),
         cancel: rt.interrupt_tx.subscribe(),
     };
-    narration::begin_human_turn(rt, by, &question, Some(("surface.ask", ask_event)), Some(&question));
+    narration::begin_human_turn(
+        rt,
+        by,
+        &question,
+        Some(("surface.ask", ask_event)),
+        Some(&question),
+    );
     if rt.ask_tx.send(turn).is_err() {
         narration::fail_turn(rt, "tutor unavailable");
         return Json(json!({ "ok": false, "error": "tutor unavailable" }));
@@ -5241,7 +5430,7 @@ async fn auth_post(State(st): State<RouterState>, Json(body): Json<JsonValue>) -
             byok_candidate.model.clone(),
         );
     } else if matches!(provider.backend, providers::Backend::OpenAi) {
-        // A `models.json` preset (OpenRouter, Groq, …): let the ⚙ form swap its
+            // A `models.json` preset (OpenRouter, Groq, …): let the settings form swap its
         // model without editing the file. Empty string clears the override
         // (reverts to the preset's shipped model). Persist it with the provider
         // credential so the selected model also survives a restart.
@@ -5596,11 +5785,21 @@ async fn ws_handler(
     if !websocket_origin_allowed(&headers) {
         return (StatusCode::FORBIDDEN, "untrusted WebSocket Origin").into_response();
     }
-    // This authenticates the human replica at the door. CRDT operations remain
-    // replica-signed inside the document; this does not authenticate each op.
+    // Bind authority to this connection, never to a field in a binary frame.
     if st.human_route_cookie_enabled && !human_replica_credential_is_valid(&st, &headers) {
         return (StatusCode::FORBIDDEN, "human replica credential required").into_response();
     }
+    let person = person_from(&st, &headers);
+    if st.extensions.document.is_some() && person.is_none() {
+        return (
+            StatusCode::FORBIDDEN,
+            "joined person credential required for document frames",
+        )
+            .into_response();
+    }
+    let actor = person
+        .map(|person| Actor::person(Caller::Human, &person))
+        .unwrap_or_else(|| Actor::anonymous(Caller::Human));
 
     // Subscribe before capturing the authoritative replay so a mutation that
     // races this pre-upgrade check is present in either the replay or the
@@ -5616,7 +5815,7 @@ async fn ws_handler(
         }
     };
     upgrade
-        .on_upgrade(move |socket| ws_connection(st.rt, st.surface, socket, frames, hello))
+        .on_upgrade(move |socket| ws_connection(st.rt, st.surface, socket, frames, hello, actor))
         .into_response()
 }
 
@@ -5624,6 +5823,19 @@ fn websocket_origin_allowed(headers: &HeaderMap) -> bool {
     // Keep browser transport on the same loopback-origin policy as MCP.
     // Native clients omit Origin and remain supported.
     mcp::origin_allowed(headers)
+}
+
+fn ws_refusal_close_reason(error: &str) -> String {
+    const PREFIX: &str = "samepage.refused:";
+    let detail = error.find(PREFIX).map(|at| &error[at..]).unwrap_or(PREFIX);
+    let mut reason = String::new();
+    for ch in detail.chars() {
+        if reason.len() + ch.len_utf8() > 123 {
+            break;
+        }
+        reason.push(ch);
+    }
+    reason
 }
 
 /// The one binary transport route, fully generic: subscribe to the runtime's
@@ -5637,6 +5849,7 @@ async fn ws_connection(
     socket: WebSocket,
     mut frames: broadcast::Receiver<Vec<u8>>,
     hello: Vec<Vec<u8>>,
+    actor: Actor,
 ) {
     rt.activity.record_connection(
         "connection.websocket",
@@ -5680,16 +5893,23 @@ async fn ws_connection(
             },
             inbound = stream.next() => match inbound {
                 Some(Ok(WsMessage::Binary(data))) => {
-                    let replies = match surface.state().ws_receive(&data) {
-                        Ok(replies) => replies,
+                    let inbound = match surface.state().ws_receive_as_split(&actor, &data) {
+                        Ok(inbound) => inbound,
                         Err(error) => {
                             tracing::warn!(%error, "rejecting invalid websocket state frame");
-                            let _ = sink.send(WsMessage::Close(None)).await;
+                            let close = error.contains("samepage.refused:").then(|| CloseFrame {
+                                code: 4409,
+                                reason: ws_refusal_close_reason(&error).into(),
+                            });
+                            let _ = sink.send(WsMessage::Close(close)).await;
                             return;
                         }
                     };
-                    for reply in replies {
-                        let _ = rt.ws_tx.send(reply);
+                    for reply in inbound.replies {
+                        if sink.send(WsMessage::Binary(reply.into())).await.is_err() { return; }
+                    }
+                    for broadcast in inbound.broadcasts {
+                        let _ = rt.ws_tx.send(broadcast);
                     }
                 }
                 Some(Ok(WsMessage::Close(_))) | Some(Err(_)) | None => return,
@@ -5781,7 +6001,10 @@ mod tests {
 
         for (path_name, entry) in [
             ("agents[0]", &body["agents"][0]),
-            ("agent_liveness.attached[0]", &body["agent_liveness"]["attached"][0]),
+            (
+                "agent_liveness.attached[0]",
+                &body["agent_liveness"]["attached"][0],
+            ),
         ] {
             for field in ["id", "label", "listening", "quiet", "quietForMs"] {
                 assert!(
@@ -6928,6 +7151,50 @@ mod tests {
         assert_eq!(status_line, "HTTP/1.1 403 Forbidden");
     }
 
+    #[tokio::test]
+    async fn document_websocket_requires_a_joined_person_even_with_navigation_cookie() {
+        let mut state = test_router_state(websocket_surface_with_human_route());
+        let mut manifest = (*state.extensions).clone();
+        manifest.document = Some(DocumentMount {
+            pkg_name: "fixture".into(),
+            js: "/doc.js".into(),
+            js_sha256: "a".repeat(64),
+            js_bytes: 1,
+            wasm: "/doc.wasm".into(),
+            sha256: "a".repeat(64),
+            bytes: 1,
+            abi: "samepage.document.v1".into(),
+            layout_version: 1,
+        });
+        state.extensions = Arc::new(manifest);
+        let navigation_cookie = format!(
+            "{}={}",
+            human_route_cookie(state.rt.port),
+            state.human_route_token
+        );
+        assert_eq!(
+            websocket_upgrade_status_line(state.clone(), Some(navigation_cookie)).await,
+            "HTTP/1.1 403 Forbidden"
+        );
+        let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let person_cookie = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_string();
+        assert_eq!(
+            websocket_upgrade_status_line(state, Some(person_cookie)).await,
+            "HTTP/1.1 101 Switching Protocols"
+        );
+    }
+
     #[test]
     fn two_apps_on_one_host_do_not_share_a_credential_cookie() {
         // Browsers ignore the port when scoping cookies. One fixed name meant
@@ -6940,12 +7207,11 @@ mod tests {
     async fn websocket_upgrade_accepts_navigation_and_admitted_participant_credentials() {
         let state = test_router_state(websocket_surface_with_human_route());
 
-        let navigation_cookie =
-            format!(
-                "{}={}",
-                human_route_cookie(state.rt.port),
-                state.human_route_token.as_ref()
-            );
+        let navigation_cookie = format!(
+            "{}={}",
+            human_route_cookie(state.rt.port),
+            state.human_route_token.as_ref()
+        );
         assert_eq!(
             websocket_upgrade_status_line(state.clone(), Some(navigation_cookie)).await,
             "HTTP/1.1 101 Switching Protocols"
@@ -6969,6 +7235,166 @@ mod tests {
             websocket_upgrade_status_line(state, Some(participant_cookie)).await,
             "HTTP/1.1 101 Switching Protocols"
         );
+    }
+
+    #[test]
+    fn legacy_ws_receive_as_split_delegates_to_broadcast() {
+        struct Legacy;
+        impl SurfaceState for Legacy {
+            fn backing(&self) -> StateBacking {
+                StateBacking::Crdt
+            }
+            fn describe(&self) -> Result<String, String> {
+                Ok(String::new())
+            }
+            fn snapshot(&self) -> Result<StateSnapshot, String> {
+                Ok(StateSnapshot {
+                    backing: StateBacking::Crdt,
+                    body: json!({}),
+                    chrome: None,
+                })
+            }
+            fn ws_receive(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, String> {
+                Ok(vec![data.to_vec()])
+            }
+        }
+        let actor = Actor::anonymous(Caller::Human);
+        let result = Legacy.ws_receive_as_split(&actor, b"legacy").unwrap();
+        assert!(result.replies.is_empty());
+        assert_eq!(result.broadcasts, vec![b"legacy".to_vec()]);
+    }
+
+    #[test]
+    fn non_ascii_refusal_close_reason_is_byte_bounded() {
+        let reason = ws_refusal_close_reason(&format!(
+            "extension doc: samepage.refused: {}",
+            "é".repeat(100)
+        ));
+        assert!(reason.starts_with("samepage.refused:"));
+        assert!(reason.len() <= 123);
+        assert!(std::str::from_utf8(reason.as_bytes()).is_ok());
+    }
+
+    #[tokio::test]
+    async fn websocket_frame_receives_host_bound_person_not_payload_author() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        type CapturedFrame = (Actor, Vec<u8>);
+        struct CaptureState(Arc<Mutex<Vec<CapturedFrame>>>);
+        impl SurfaceState for CaptureState {
+            fn backing(&self) -> StateBacking {
+                StateBacking::Crdt
+            }
+            fn describe(&self) -> Result<String, String> {
+                Ok(String::new())
+            }
+            fn snapshot(&self) -> Result<StateSnapshot, String> {
+                Ok(StateSnapshot {
+                    backing: StateBacking::Crdt,
+                    body: json!({}),
+                    chrome: None,
+                })
+            }
+            fn ws_hello(&self) -> Result<Vec<Vec<u8>>, String> {
+                Ok(Vec::new())
+            }
+            fn ws_receive_as_split(&self, actor: &Actor, data: &[u8]) -> Result<WsInbound, String> {
+                self.0.lock().push((actor.clone(), data.to_vec()));
+                Ok(WsInbound {
+                    replies: Vec::new(),
+                    broadcasts: Vec::new(),
+                })
+            }
+        }
+        struct CaptureSurface {
+            state: CaptureState,
+            tools: Vec<ToolDef>,
+        }
+        impl Surface for CaptureSurface {
+            fn state(&self) -> &dyn SurfaceState {
+                &self.state
+            }
+            fn tools(&self) -> &[ToolDef] {
+                &self.tools
+            }
+            fn client_modules(&self) -> Vec<ClientModule> {
+                vec![ClientModule::host("capture", "1", "capture")]
+            }
+        }
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let human = ToolDef::new("write", "write", json!({"type":"object"}), |_| {
+            Effect::Reject("unused".into())
+        })
+        .human_only();
+        let state = test_router_state(Arc::new(CaptureSurface {
+            state: CaptureState(seen.clone()),
+            tools: vec![human],
+        }));
+        let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let cookie = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_string();
+        let expected = person_from(&state, &{
+            let mut headers = HeaderMap::new();
+            headers.insert(header::COOKIE, cookie.parse().unwrap());
+            headers
+        })
+        .unwrap();
+        let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+            .await
+            .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let app = Router::new()
+            .route("/ws", get(ws_handler))
+            .with_state(state);
+        let server = tokio::spawn(async move { axum::serve(listener, app).await });
+        let mut stream = tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
+            .await
+            .unwrap();
+        let request = format!("GET /ws HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nOrigin: http://127.0.0.1:{port}\r\nCookie: {cookie}\r\n\r\n");
+        stream.write_all(request.as_bytes()).await.unwrap();
+        let mut response = [0_u8; 512];
+        let len = stream.read(&mut response).await.unwrap();
+        assert!(std::str::from_utf8(&response[..len])
+            .unwrap()
+            .starts_with("HTTP/1.1 101"));
+        let payload = br#"{"author":"forged"}"#;
+        let mask = [1_u8, 2, 3, 4];
+        let mut frame = vec![0x82, 0x80 | u8::try_from(payload.len()).unwrap()];
+        frame.extend(mask);
+        frame.extend(
+            payload
+                .iter()
+                .enumerate()
+                .map(|(i, byte)| byte ^ mask[i % 4]),
+        );
+        stream.write_all(&frame).await.unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            loop {
+                if !seen.lock().is_empty() {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        let recorded = seen.lock();
+        assert_eq!(
+            recorded[0].0.participant_id.as_deref(),
+            Some(expected.participant_id.as_str())
+        );
+        assert_eq!(recorded[0].0.label.as_deref(), Some(expected.name.as_str()));
+        assert_eq!(recorded[0].1, payload);
+        server.abort();
     }
 
     #[tokio::test]
@@ -7439,7 +7865,9 @@ mod tests {
         let mut fake_cookie = HeaderMap::new();
         fake_cookie.insert(
             header::COOKIE,
-            format!("{}=forged", human_route_cookie(state.rt.port)).parse().unwrap(),
+            format!("{}=forged", human_route_cookie(state.rt.port))
+                .parse()
+                .unwrap(),
         );
         let response = action_route_request(
             state.clone(),
@@ -7460,8 +7888,8 @@ mod tests {
                 human_route_cookie(state.rt.port),
                 state.human_route_token.as_ref()
             )
-                .parse()
-                .unwrap(),
+            .parse()
+            .unwrap(),
         );
         human_headers.insert(
             header::CONTENT_TYPE,
@@ -7673,7 +8101,10 @@ mod tests {
     fn an_unavailable_protocol_client_falls_back_to_a_directory_that_will_404_not_a_server_refusal()
     {
         let explicit = Path::new("/deploy/protocol");
-        assert_eq!(protocol_pkg_fallback(Some(explicit)), explicit.to_path_buf());
+        assert_eq!(
+            protocol_pkg_fallback(Some(explicit)),
+            explicit.to_path_buf()
+        );
 
         let (_crate_dir, default_dir) = protocol_pkg::default_layout();
         assert_eq!(protocol_pkg_fallback(None), default_dir);
@@ -8355,8 +8786,8 @@ mod tests {
                 human_route_cookie(state.rt.port),
                 state.human_route_token.as_ref()
             )
-                .parse()
-                .unwrap(),
+            .parse()
+            .unwrap(),
         );
 
         let invalid = tool_handler(
@@ -8823,6 +9254,8 @@ mod tests {
         let manifest = ExtensionManifest {
             schema_version: 1,
             protocol: "ag-ui".to_string(),
+            capability_schema_version: None,
+            document: None,
             extensions: vec![ExtensionDescriptor {
                 id: "board".to_string(),
                 version: "1.0.0".to_string(),
@@ -8838,6 +9271,8 @@ mod tests {
                     js: "/pkg/board.js".to_string(),
                     wasm: "/pkg/board.wasm".to_string(),
                 }),
+                artifact: None,
+                native_only: None,
             }],
         };
         assert_eq!(

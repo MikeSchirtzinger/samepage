@@ -361,6 +361,12 @@ pub async fn dispatch_tool(
     name: &str,
     args: &JsonValue,
 ) -> (String, bool, bool) {
+    let preferred = surface
+        .tools()
+        .iter()
+        .find(|tool| tool.name == name || tool.aliases.iter().any(|alias| alias == name))
+        .map(|tool| tool.name.as_str())
+        .unwrap_or(name);
     let run_id = rt.current_activity_run.lock().clone();
     let before = match surface.state().activity_state_revision() {
         Ok(revision) => revision,
@@ -394,7 +400,7 @@ pub async fn dispatch_tool(
     };
     rt.activity.record_action(
         caller,
-        name,
+        preferred,
         outcome,
         run_id.as_deref(),
         before,
@@ -406,7 +412,7 @@ pub async fn dispatch_tool(
             "action.failed",
             Some(caller),
             run_id.as_deref(),
-            &format!("{name}: {}", result.0),
+            &format!("{preferred}: {}", result.0),
         );
     }
     result
@@ -419,7 +425,11 @@ async fn dispatch_tool_inner(
     name: &str,
     args: &JsonValue,
 ) -> (String, bool, bool) {
-    let Some(tool) = surface.tools().iter().find(|t| t.name == name) else {
+    let Some(tool) = surface
+        .tools()
+        .iter()
+        .find(|t| t.name == name || t.aliases.iter().any(|alias| alias == name))
+    else {
         return (format!("unknown action '{name}'"), false, false);
     };
     // Before argument validation: an action this caller may not run should not
@@ -427,12 +437,16 @@ async fn dispatch_tool_inner(
     // whether the payload happened to be well formed.
     if !caller.may_call(tool.audience) {
         return (
-            format!("action '{name}' is not available to {}", caller.label()),
+            format!(
+                "action '{}' is not available to {}",
+                tool.name,
+                caller.label()
+            ),
             false,
             false,
         );
     }
-    if let Err(error) = rt.validate_action_arguments(name, args) {
+    if let Err(error) = rt.validate_action_arguments(&tool.name, args) {
         return (error, false, false);
     }
     match (tool.apply)(args) {

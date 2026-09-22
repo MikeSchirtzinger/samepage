@@ -86,12 +86,14 @@ pub(crate) struct ToolSchema {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Catalog {
     tools: Vec<ToolSchema>,
+    aliases: std::collections::HashMap<String, String>,
 }
 
 impl Catalog {
     pub(crate) fn from_actions(actions: &[ActionDef]) -> Result<Self, String> {
         let mut names = HashSet::new();
         let mut tools = Vec::new();
+        let mut aliases = std::collections::HashMap::new();
         for action in actions {
             let Some(mcp_apps_visibility) = mcp_apps_visibility(action.audience) else {
                 // Human-only actions stay absent rather than being disclosed
@@ -122,12 +124,16 @@ impl Catalog {
                 mcp_apps_visibility,
                 include_state_snapshot: action.include_state_snapshot,
             });
+            for alias in &action.aliases {
+                aliases.insert(alias.clone(), action.name.clone());
+            }
         }
-        Ok(Self { tools })
+        Ok(Self { tools, aliases })
     }
 
     fn get(&self, name: &str) -> Option<&ToolSchema> {
-        self.tools.iter().find(|tool| tool.name == name)
+        let preferred = self.aliases.get(name).map(String::as_str).unwrap_or(name);
+        self.tools.iter().find(|tool| tool.name == preferred)
     }
 
     pub(crate) fn wire_tools(&self) -> Vec<Value> {
@@ -263,11 +269,10 @@ async fn call_tool(
 
     // Re-check the executable definition, not just the serialized catalog.
     // This fails closed if a future refactor ever lets those two drift.
-    if !surface
-        .tools()
-        .iter()
-        .any(|action| action.name == name && action.audience.agent())
-    {
+    if !surface.tools().iter().any(|action| {
+        (action.name == name || action.aliases.iter().any(|alias| alias == name))
+            && action.audience.agent()
+    }) {
         return tool_error(format!("action {name:?} is not enabled"));
     }
 
@@ -692,6 +697,62 @@ mod tests {
         assert_eq!(tools[0]["description"], "Add one value.");
         assert_eq!(tools[0]["inputSchema"], surface.tools()[0].parameters);
         assert!(tools.iter().all(|tool| tool["name"] != "human_reset"));
+    }
+
+    #[tokio::test]
+    async fn alias_is_unlisted_but_uses_preferred_schema_authority_and_journal_name() {
+        let mut surface = surface();
+        surface.actions[0] = surface.actions[0].clone().alias("atlas_add");
+        surface.actions[1] = surface.actions[1].clone().alias("atlas_human_reset");
+        let catalog = Catalog::from_actions(surface.tools()).unwrap();
+        let rt = runtime(surface.tools());
+        assert!(catalog
+            .wire_tools()
+            .iter()
+            .all(|tool| tool["name"] != "atlas_add"));
+        let bad = call_tool(
+            &catalog,
+            &rt,
+            &surface,
+            Some(&json!({
+                "name": "atlas_add", "arguments": {"value": 42}
+            })),
+        )
+        .await;
+        assert_eq!(
+            bad["isError"], true,
+            "alias must use the preferred input schema"
+        );
+        let accepted = call_tool(
+            &catalog,
+            &rt,
+            &surface,
+            Some(&json!({
+                "name": "atlas_add", "arguments": {"value": "one"}
+            })),
+        )
+        .await;
+        assert_eq!(accepted["isError"], false);
+        assert_eq!(*surface.state.values.lock(), vec!["one"]);
+        let forbidden = call_tool(
+            &catalog,
+            &rt,
+            &surface,
+            Some(&json!({
+                "name": "atlas_human_reset", "arguments": {}
+            })),
+        )
+        .await;
+        assert_eq!(forbidden["isError"], true);
+        let journal = rt.activity.snapshot();
+        assert!(journal
+            .events
+            .iter()
+            .any(|event| event.kind == "action.add"));
+        assert!(!journal
+            .events
+            .iter()
+            .any(|event| event.kind == "action.atlas_add"));
     }
 
     async fn tools_list_response(surface: &TestSurface) -> Value {
