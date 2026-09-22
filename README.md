@@ -83,12 +83,20 @@ protocol client builds itself on first run if `wasm-pack` is on `PATH`
 starts and the page reports the protocol as unavailable instead of guessing
 at it in JavaScript.
 
-The room starts without an in-page model by default. Set `AGUI_MCP_TOKEN`
-before launch when an outside MCP client will attach. The value is any string
-you choose, not a credential issued by anyone. `local-room-token` above is
-only a placeholder. The client sends the same value as
-`Authorization: Bearer <your value>` to `POST /mcp`. Without the variable the
-room mints a random token per process that only its own subprocess can see.
+The room starts without an in-page model by default. Your own coding agent
+joins from outside over MCP, and it needs the room's token to do that.
+
+**The token is a password you make up for this room.** It is not an API key,
+you do not sign up for it, and no service issues it. Pick any string, start the
+room with it in `AGUI_MCP_TOKEN`, and give the same string to the agent you
+want to let in. `local-room-token` above is only a placeholder; any value
+works, as long as the room and the agent use the same one.
+
+The agent sends that value as `Authorization: Bearer <your value>` to
+`POST /mcp`. If you start the room without `AGUI_MCP_TOKEN`, it makes up a
+random one per process that only its own subprocess can see, so no outside
+agent can attach. The atlas uses `AGUI_MCP_TOKEN` the same way and prints the
+exact attach command, token included, when it starts.
 
 Initialization returns an `Mcp-Session-Id`. Every later MCP request must send
 that header and `MCP-Protocol-Version: 2025-06-18`. Omitting the session header
