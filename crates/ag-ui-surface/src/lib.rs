@@ -2463,7 +2463,16 @@ fn loopback_socket_addr(addr: &str) -> Result<SocketAddr, AppError> {
     Ok(socket_addr)
 }
 
-const HUMAN_ROUTE_COOKIE: &str = "agui_human_route_session";
+/// The navigation credential's cookie name, one per listening port.
+///
+/// Browsers scope cookies by host and ignore the port, so every app on
+/// 127.0.0.1 shares one cookie jar. With one fixed name, opening the room on
+/// 8100 overwrote the atlas's credential from 8098, and the atlas's next
+/// WebSocket reconnect was refused as a stranger. The port in the name keeps
+/// each app's credential its own.
+fn human_route_cookie(port: u16) -> String {
+    format!("agui_human_route_session_{port}")
+}
 
 #[derive(Clone)]
 struct LoopbackRequestGuard {
@@ -2515,7 +2524,8 @@ async fn loopback_request_guard(
         && response.status().is_success()
     {
         let value = format!(
-            "{HUMAN_ROUTE_COOKIE}={}; Path=/; HttpOnly; SameSite=Strict",
+            "{}={}; Path=/; HttpOnly; SameSite=Strict",
+            human_route_cookie(guard.port),
             guard.human_route_token
         );
         match HeaderValue::from_str(&value) {
@@ -2905,7 +2915,11 @@ fn mount_action_routes(
 fn action_route_caller(headers: &HeaderMap, st: &RouterState) -> Caller {
     let authorization_present = headers.contains_key(header::AUTHORIZATION);
     let agent = mcp::authorized(headers, &st.rt.mcp_token);
-    let human = cookie_matches(headers, HUMAN_ROUTE_COOKIE, st.human_route_token.as_ref());
+    let human = cookie_matches(
+        headers,
+        &human_route_cookie(st.rt.port),
+        st.human_route_token.as_ref(),
+    );
 
     match (authorization_present, agent, human) {
         (true, true, false) => Caller::Agent,
@@ -3554,7 +3568,13 @@ fn unique_participant_label(
 /// The resume token a person's browser holds. `HttpOnly`: nothing in the page
 /// needs to read it, and a token JavaScript can read is a token an injected
 /// script can steal and then write under someone else's name.
-const PERSON_COOKIE: &str = "agui_person";
+///
+/// Named per port for the same reason as [`human_route_cookie`]: two apps on
+/// one host would otherwise overwrite each other's person, and the same
+/// browser would be admitted twice as `someone` and `someone-2`.
+fn person_cookie(port: u16) -> String {
+    format!("agui_person_{port}")
+}
 
 /// Every display name currently spoken for, by a person or by an agent.
 ///
@@ -3586,7 +3606,7 @@ fn names_in_use(st: &RouterState) -> Vec<String> {
 /// on the spot. Admission happens at exactly one endpoint, so an action can
 /// never quietly create an identity as a side effect of writing something.
 fn person_from(st: &RouterState, headers: &HeaderMap) -> Option<identity::Person> {
-    let token = cookie_value(headers, PERSON_COOKIE)?;
+    let token = cookie_value(headers, &person_cookie(st.rt.port))?;
     st.rt.people.resolve(&token)
 }
 
@@ -3594,7 +3614,11 @@ fn person_from(st: &RouterState, headers: &HeaderMap) -> Option<identity::Person
 /// credential proves entry through the local page, while the person token
 /// preserves access for any participant the host has already admitted.
 fn human_replica_credential_is_valid(st: &RouterState, headers: &HeaderMap) -> bool {
-    cookie_matches(headers, HUMAN_ROUTE_COOKIE, st.human_route_token.as_ref())
+    cookie_matches(
+        headers,
+        &human_route_cookie(st.rt.port),
+        st.human_route_token.as_ref(),
+    )
         || person_from(st, headers).is_some()
 }
 
@@ -3662,7 +3686,7 @@ async fn join_handler(
         // them, so asking for a name someone already has takes a suffix rather
         // than their identity.
         let taken = names_in_use(&st);
-        let token = cookie_value(&headers, PERSON_COOKIE).unwrap_or_default();
+        let token = cookie_value(&headers, &person_cookie(st.rt.port)).unwrap_or_default();
         let person = match st.rt.people.rename(&token, &proposed, &taken) {
             Some(_) => st.rt.people.resolve(&token).unwrap_or(person),
             None => person,
@@ -3691,7 +3715,8 @@ async fn join_handler(
     );
     let mut response = Json(person_json(&person)).into_response();
     if let Ok(value) = HeaderValue::from_str(&format!(
-        "{PERSON_COOKIE}={token}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly"
+        "{}={token}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly",
+        person_cookie(st.rt.port)
     )) {
         response
             .headers_mut()
@@ -6898,9 +6923,17 @@ mod tests {
         let status_line = websocket_upgrade_status_line(state.clone(), None).await;
         assert_eq!(status_line, "HTTP/1.1 403 Forbidden");
 
-        let forged = format!("{PERSON_COOKIE}=not-host-minted");
+        let forged = format!("{}=not-host-minted", person_cookie(state.rt.port));
         let status_line = websocket_upgrade_status_line(state, Some(forged)).await;
         assert_eq!(status_line, "HTTP/1.1 403 Forbidden");
+    }
+
+    #[test]
+    fn two_apps_on_one_host_do_not_share_a_credential_cookie() {
+        // Browsers ignore the port when scoping cookies. One fixed name meant
+        // the room on 8100 overwrote the atlas's credential from 8098.
+        assert_ne!(human_route_cookie(8098), human_route_cookie(8100));
+        assert_ne!(person_cookie(8098), person_cookie(8100));
     }
 
     #[tokio::test]
@@ -6908,7 +6941,11 @@ mod tests {
         let state = test_router_state(websocket_surface_with_human_route());
 
         let navigation_cookie =
-            format!("{HUMAN_ROUTE_COOKIE}={}", state.human_route_token.as_ref());
+            format!(
+                "{}={}",
+                human_route_cookie(state.rt.port),
+                state.human_route_token.as_ref()
+            );
         assert_eq!(
             websocket_upgrade_status_line(state.clone(), Some(navigation_cookie)).await,
             "HTTP/1.1 101 Switching Protocols"
@@ -7028,7 +7065,8 @@ mod tests {
                 .and_then(|value| value.to_str().ok()),
             Some(
                 format!(
-                    "{HUMAN_ROUTE_COOKIE}={human_route_token}; Path=/; HttpOnly; SameSite=Strict"
+                    "{}={human_route_token}; Path=/; HttpOnly; SameSite=Strict",
+                    human_route_cookie(port)
                 )
                 .as_str()
             )
@@ -7401,7 +7439,7 @@ mod tests {
         let mut fake_cookie = HeaderMap::new();
         fake_cookie.insert(
             header::COOKIE,
-            format!("{HUMAN_ROUTE_COOKIE}=forged").parse().unwrap(),
+            format!("{}=forged", human_route_cookie(state.rt.port)).parse().unwrap(),
         );
         let response = action_route_request(
             state.clone(),
@@ -7417,7 +7455,11 @@ mod tests {
         let mut human_headers = HeaderMap::new();
         human_headers.insert(
             header::COOKIE,
-            format!("{HUMAN_ROUTE_COOKIE}={}", state.human_route_token.as_ref())
+            format!(
+                "{}={}",
+                human_route_cookie(state.rt.port),
+                state.human_route_token.as_ref()
+            )
                 .parse()
                 .unwrap(),
         );
@@ -8308,7 +8350,11 @@ mod tests {
         let mut human_headers = axum::http::HeaderMap::new();
         human_headers.insert(
             header::COOKIE,
-            format!("{HUMAN_ROUTE_COOKIE}={}", state.human_route_token.as_ref())
+            format!(
+                "{}={}",
+                human_route_cookie(state.rt.port),
+                state.human_route_token.as_ref()
+            )
                 .parse()
                 .unwrap(),
         );
@@ -8414,6 +8460,7 @@ mod tests {
             .action("human_write")],
         });
         let state = test_router_state(surface);
+        let route_cookie = human_route_cookie(state.rt.port);
         let mcp_token = state.rt.mcp_token.clone();
         let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
             .await
@@ -8450,7 +8497,7 @@ mod tests {
         assert_eq!(response.status(), reqwest::StatusCode::FORBIDDEN);
         assert_eq!(human_apply_count.load(Ordering::SeqCst), 0);
 
-        let cookie = format!("{HUMAN_ROUTE_COOKIE}=test-human-route-token");
+        let cookie = format!("{route_cookie}=test-human-route-token");
         let response = reqwest::Client::new()
             .post(format!("http://127.0.0.1:{port}/surface/action"))
             .header(header::COOKIE, &cookie)

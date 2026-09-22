@@ -606,9 +606,25 @@ function renderEmbed(node, ctx) {
   const height = Math.min(2000, Math.max(120, node.height || 420));
   const frame = () => {
     const iframe = el("iframe", "embed-frame");
-    // No allow-same-origin: the framed site cannot reach this page's origin,
-    // its storage, or the runtime's control plane.
-    iframe.setAttribute("sandbox", "allow-scripts allow-forms allow-popups");
+    // allow-same-origin only for a site on another origin. It then keeps its
+    // own real origin, which is still not this page's, so it cannot reach this
+    // page's storage or the runtime's control plane. Without it the site runs
+    // as an opaque origin: its module scripts fail CORS and any origin-checked
+    // route answers 403, so a sibling app like the atlas renders white. A URL on
+    // this page's own origin never gets the flag, because allow-scripts plus
+    // allow-same-origin there would let the frame remove its own sandbox.
+    let foreign = false;
+    try {
+      foreign = new URL(node.url, location.href).origin !== location.origin;
+    } catch {
+      foreign = false;
+    }
+    iframe.setAttribute(
+      "sandbox",
+      foreign
+        ? "allow-scripts allow-forms allow-popups allow-same-origin"
+        : "allow-scripts allow-forms allow-popups",
+    );
     iframe.setAttribute("referrerpolicy", "no-referrer");
     iframe.loading = "lazy";
     iframe.style.setProperty("height", `${height}px`);
