@@ -113,6 +113,30 @@ export function validateCapabilityManifest(manifest) {
   return manifest;
 }
 
+// Return the full, ordered WASM closure. NativeOnly nodes have no browser
+// artifact, but their declared dependencies still need activation.
+export function wasmDependencyClosure(id, byId) {
+  const root = byId.get(id);
+  if (!root?.artifact && !root?.nativeOnly) throw new Error(`capability ${id} is missing`);
+  const ordered = [];
+  const visited = new Set();
+  const visit = (dep) => {
+    if (visited.has(dep.id)) return;
+    const extension = byId.get(dep.id);
+    if (!extension || extension.version !== dep.version ||
+        (!extension.artifact && !extension.nativeOnly)) {
+      throw new Error(`${id}: dependency ${dep.id}@${dep.version} is unavailable`);
+    }
+    visited.add(dep.id);
+    const descriptor = extension.artifact?.descriptor || extension.nativeOnly;
+    for (const child of descriptor.depends_on) visit(child);
+    if (extension.artifact) ordered.push(dep.id);
+  };
+  const descriptor = root.artifact?.descriptor || root.nativeOnly;
+  for (const dep of descriptor.depends_on) visit(dep);
+  return ordered;
+}
+
 function canonical(value) {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object") {
@@ -182,12 +206,15 @@ export class CapabilityLoader {
     if (this.failures.has(id)) throw this.failures.get(id);
     if (this.pending.has(id)) return this.pending.get(id);
     const extension = this.byId.get(id);
-    if (!extension?.artifact) throw new Error(`capability ${id} is missing`);
+    if (!extension?.artifact && !extension?.nativeOnly) throw new Error(`capability ${id} is missing`);
     const task = (async () => {
-      if (!this.document) await this.loadDocument();
-      for (const dep of extension.artifact.descriptor.depends_on) {
-        if (this.byId.get(dep.id)?.nativeOnly) continue;
-        await this.activate(dep.id, activateEntry);
+      if (extension.artifact && !this.document) await this.loadDocument();
+      for (const dependencyId of wasmDependencyClosure(id, this.byId)) {
+        await this.activate(dependencyId, activateEntry);
+      }
+      if (extension.nativeOnly) {
+        this.instances.set(id, null);
+        return null;
       }
       const { entry, glue, wasm, descriptor, abi } = extension.artifact;
       // All three byte checks complete before import or instantiation.

@@ -452,4 +452,42 @@ mod tests {
         )
         .is_err());
     }
+
+    #[test]
+    fn native_adapter_may_depend_on_an_earlier_verified_wasm_package() {
+        let tags = artifact("tags");
+        let native = json!({
+            "abi":"samepage.capability.v1", "id":"adapter", "version":"1", "schema":1,
+            "artifact":{"type":"native_only", "reason":"host adapter"},
+            "kinds":[], "props":[], "reads":[],
+            "depends_on":[{"id":"tags", "version":"1", "reason":"tag index"}],
+            "actions":[], "visual_actions":[], "triggers":[]
+        });
+        let mut spare = artifact("spare");
+        spare.descriptor["depends_on"] = json!([{
+            "id":"adapter", "version":"1", "reason":"host adapter"
+        }]);
+        assert_eq!(
+            validate_artifact_set(
+                [
+                    ("tags", "1", Some(&tags), None),
+                    ("adapter", "1", None, Some(&native)),
+                    ("spare", "1", Some(&spare), None),
+                ],
+                &[]
+            ),
+            Ok(())
+        );
+        let mut wrong = native.clone();
+        wrong["depends_on"][0]["version"] = json!("2");
+        assert!(validate_artifact_set(
+            [
+                ("tags", "1", Some(&tags), None),
+                ("adapter", "1", None, Some(&wrong)),
+                ("spare", "1", Some(&spare), None),
+            ],
+            &[]
+        )
+        .is_err());
+    }
 }
