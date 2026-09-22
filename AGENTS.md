@@ -69,16 +69,40 @@ receipt are separate claims. Report only the layers actually proven.
 `examples/same-page-atlas` is the second surface: agent and person edit one
 CRDT map of a project rather than a pane layout.
 
+Prerequisites, once per machine. Check with
+`wasm-pack --version && wasm-opt --version` before starting, and install what
+is missing:
+
 ```bash
-cargo run -p same-page-atlas
+rustup target add wasm32-unknown-unknown
+cargo install wasm-pack
+cargo install wasm-opt --locked
+```
+
+```bash
+AGUI_MCP_TOKEN=local-map-token cargo run -p same-page-atlas
 ```
 
 Open <http://127.0.0.1:8098>. The atlas needs a real browser replica, not an
 optional one: it builds `web/pkg` itself with `build-web.sh` the first time
-that directory is missing, provided `wasm-pack` and `wasm-opt` are on `PATH`,
-and refuses to start rather than serve a collaborative-looking page with no
-CRDT peer. Point it at a different project with `AGUI_PROJECT_ROOT`, the same
-as the room.
+that directory is missing, and refuses to start without `wasm-pack` and
+`wasm-opt` rather than serve a collaborative-looking page with no CRDT peer.
+Point it at a different project with `AGUI_PROJECT_ROOT`, the same as the room.
+
+**The first-run map is empty, and drawing it is your job.** The host does not
+generate a picture of the project. After attaching (see below):
+
+1. Call `atlas_read`.
+2. Call `atlas_diagram` with `kind: "hierarchy"`: one container per major part
+   of the project, cards bound to real source with `path` and `lines` (the host
+   verifies every range before anything lands), and directed links for
+   dependencies.
+3. Call `atlas_read` again. The browser measures card heights after the first
+   layout, so fresh cards can overlap. Fix every entry under `PROBLEMS` with
+   `atlas_place` (`x`, `y`, `w`) until `PAGE VALIDATION` reports
+   `"status":"passed"`.
+4. Tell the person what your colours and emphasis mean. The atlas stores them
+   and never assigns meaning.
 
 The header names three modes and a page-check status:
 
