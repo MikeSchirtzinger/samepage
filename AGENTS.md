@@ -90,7 +90,10 @@ that directory is missing, and refuses to start without `wasm-pack` and
 Point it at a different project with `AGUI_PROJECT_ROOT`, the same as the room.
 
 **The first-run map is empty, and drawing it is your job.** The host does not
-generate a picture of the project. After attaching (see below):
+generate a picture of the project. Prefer a project the person knows well,
+set with `AGUI_PROJECT_ROOT`, so they can judge the picture; use this
+repository only when they want to recreate the demo. After attaching (see
+below):
 
 1. Call `atlas_read`.
 2. Call `atlas_diagram` with `kind: "hierarchy"`: one container per major part

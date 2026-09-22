@@ -134,19 +134,21 @@ AGUI_MCP_TOKEN=local-map-token cargo run -p same-page-atlas
 
 Open <http://127.0.0.1:8098>. The first run builds the browser replica with
 `build-web.sh`, which needs `wasm-pack` and `wasm-opt` from
-[Before you start](#before-you-start). Point it at your own project the same
-way as the room:
+[Before you start](#before-you-start).
+
+### Start with a project you know
+
+The map is most useful on code you can judge. Point it at a project you
+already know well, so you can tell at a glance whether the picture is right:
 
 ```bash
 AGUI_PROJECT_ROOT=/path/to/your/project \
 AGUI_MCP_TOKEN=local-map-token cargo run -p same-page-atlas
 ```
 
-### The map starts empty
-
-On first run the canvas is blank: "0 components · 0 relationships". The map
-does not draw your project for you yet. The picture comes from your own coding
-agent, attached over MCP with the token you picked, the same way as the room
+The canvas starts blank: "0 components · 0 relationships". The map does not
+draw your project for you yet. The picture comes from your own coding agent,
+attached over MCP with the token you picked, the same way as the room
 ([AGENTS.md](AGENTS.md) has the attach steps). Once it is attached, ask it:
 
 > Read the map with `atlas_read`. Then draw this project's architecture with
@@ -156,12 +158,27 @@ agent, attached over MCP with the token you picked, the same way as the room
 > until PAGE VALIDATION says passed.
 
 The header reads "Page checks passed" when the layout has no overlaps or
-unroutable links.
+unroutable links. The extractor behind the map reads Rust and
+JavaScript/TypeScript projects today; `crates/samepage-extract` documents what
+it can and cannot see.
 
-In **Map** and **Cement** mode a strip along the bottom lists "Found in the
-code, not in the agreement": every binary, listener, and spawned process the
-extractor found that no card claims yet. Its length depends on the project. It
-shrinks as cards claim lanes, and **Explain** mode hides it.
+### Or recreate the demo
+
+To see the same picture shown in the demo, run the map on this repository
+(leave out `AGUI_PROJECT_ROOT`) and ask your agent to draw how the room and
+the map relate: a container for the shared runtime (`crates/ag-ui-surface`),
+one each for `examples/same-page-room` and `examples/same-page-atlas`, and one
+for the project both read, with cards bound to the files that implement each
+part. The same request above works; name those four parts in it.
+
+### The found-in-the-code strip
+
+In **Map** and **Cement** mode a strip along the bottom reads "Found in the
+code, not in the agreement" with a count: every binary, listener, and spawned
+process the extractor found that no card claims yet. It starts collapsed to
+that one line; **Show** opens the cards, each with Claim and Remove buttons.
+The count depends on the project and drops as cards claim lanes. **Explain**
+mode hides the strip.
 
 The map has three modes, always visible in the header alongside a page-check
 status such as "Page checks passed":
@@ -206,6 +223,41 @@ blocks on it. The recipe for an agent is:
 
 The person looks at the browser. The agent looks at `read_room`. That is the
 whole point: two seats, one artifact.
+
+## Roadmap
+
+This section is informational. It describes planned work, not shipped
+behavior.
+
+The map above is an example application exported from the lab where it was
+designed. It carries everything built there, including parts that will not
+ship by default, such as image segmentation and agent ink. Its browser
+replica is one WebAssembly binary with all of it inside: 1,501,801 bytes
+(`stat -f %z examples/same-page-atlas/web/pkg/same_page_atlas_web_bg.wasm`
+after a first run on macOS).
+
+The plan is to break it apart:
+
+1. **Composable primitives.** The pieces every capability relies on stay in
+   the host and load for every page: identity and authority, actions and MCP
+   attach, the shared CRDT document, and the record of who did what.
+2. **Capabilities with plain names.** Each capability becomes its own module
+   that registers against those primitives and does not depend on the others:
+   `map` (cards, links, containers, layout, page checks), `sources` (binding a
+   card to file lines, drift, trust tiers, the legend), `lanes` (the
+   found-in-the-code strip), `cement` (Explain, Map, Cement and the handoff to
+   G8), `sketch` (shapes, arrows, text, `.excalidraw` in and out), and `panes`
+   (the room's view vocabulary).
+3. **Lazy loading.** Each capability ships as a separate WebAssembly module
+   that loads only when a page uses it, so a user downloads the capabilities
+   their task needs instead of one binary with everything.
+4. **One default.** A single SamePage app, not a set of examples, whose first
+   run looks like the demo: `map`, `sources`, `lanes`, `cement`, and `sketch`
+   on the user's own project. Image segmentation stays out of SamePage as a
+   separate crate. Agent ink is out of the default until it earns a place.
+
+When that lands, the two examples here are replaced by the one app, and this
+README changes to match.
 
 ## Proof commands
 

@@ -4204,9 +4204,30 @@ export async function activate(ctx) {
 
   const undeclaredFrame = element("section", "atlas-undeclared-frame");
   undeclaredFrame.setAttribute("aria-label", "Found in the code, not in the agreement");
-  const undeclaredHeading = element("h3", null, "Found in the code, not in the agreement");
+  // Collapsed by default to its heading and count: a large project can have a
+  // hundred unclaimed lanes, and a hundred cards would push the canvas off the
+  // screen. The count stays visible in every state, so collapsing hides the
+  // detail, never the fact that lanes are unaccounted for.
+  const undeclaredToggle = element("button", "undeclared-toggle");
+  undeclaredToggle.type = "button";
+  const undeclaredHeading = element("span", null, "Found in the code, not in the agreement");
+  const undeclaredHint = element("span", "undeclared-toggle-hint");
+  undeclaredToggle.append(undeclaredHeading, undeclaredHint);
+  const undeclaredTitle = element("h3");
+  undeclaredTitle.append(undeclaredToggle);
   const undeclaredList = element("div", "undeclared-list");
-  undeclaredFrame.append(undeclaredHeading, undeclaredList);
+  undeclaredFrame.append(undeclaredTitle, undeclaredList);
+  let undeclaredExpanded = false;
+  try { undeclaredExpanded = localStorage.getItem("atlas.undeclared-expanded.v1") === "true"; } catch { /* Local preference only. */ }
+  function setUndeclaredExpanded(expanded) {
+    undeclaredExpanded = expanded;
+    undeclaredFrame.classList.toggle("collapsed", !expanded);
+    undeclaredToggle.setAttribute("aria-expanded", String(expanded));
+    undeclaredHint.textContent = expanded ? "Hide" : "Show";
+    try { localStorage.setItem("atlas.undeclared-expanded.v1", String(expanded)); } catch { /* Local preference only. */ }
+  }
+  undeclaredToggle.addEventListener("click", () => setUndeclaredExpanded(!undeclaredExpanded));
+  setUndeclaredExpanded(undeclaredExpanded);
   // A sibling of the canvas in normal flow, not a child positioned inside
   // it: a floating overlay would cover whatever canvas content happens to
   // sit underneath at any given camera position, at any viewport. Docked
