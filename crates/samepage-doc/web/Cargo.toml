@@ -1,0 +1,27 @@
+[package]
+name = "samepage-doc-web"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The browser document artifact (doc.wasm): the page's one SamePage replica, ABI samepage.document.v1."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# wasm-pack's bundled wasm-opt predates the bulk-memory ops rustc emits; the
+# build script runs a current wasm-opt instead.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[dependencies]
+samepage-doc = { path = "..", default-features = false }
+samepage-capability = { path = "../../samepage-capability" }
+serde_json = { workspace = true }
+wasm-bindgen = { workspace = true }
+js-sys = { workspace = true }
+
+[lints]
+workspace = true

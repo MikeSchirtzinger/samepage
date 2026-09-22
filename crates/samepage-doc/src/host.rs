@@ -1,0 +1,1348 @@
+//! The host's authority over the shared document.
+//!
+//! The host holds the authoritative [`Document`]. Every change reaches it one
+//! of two ways, and both end in the same place:
+//!
+//! - an action (`invoke`) or an untrusted [`Batch`] (`commit_batch`): the
+//!   capability's plan is resolved here, against the live view, never
+//!   accepted pre-resolved;
+//! - a replica frame (`receive_frame`): a Yrs update from a browser, admitted
+//!   only after the checks below.
+//!
+//! Either way the change and its authorship stamp are written in **one** Yrs
+//! transaction on the live document, under one lock held from the baseline
+//! read to publication, so no observer, broadcast or read-back ever sees the
+//! change without its stamp. A refused change produces no transaction, no
+//! journal entry, no callback and no broadcast.
+//!
+//! # What a replica frame must satisfy
+//!
+//! The frame is applied to a disposable candidate built from the live state.
+//! It is admitted only if, in the candidate's **settled** state:
+//!
+//! 1. nothing is pending: an update whose dependencies are missing is held in a
+//!    bounded per-actor quarantine outside the live document, and retried
+//!    after every later commit and every later frame from that actor;
+//! 2. every new insertion range belongs to a Yrs client id the sending
+//!    participant registered (or may register now); host ids and ids present
+//!    when the document was opened are reserved;
+//! 3. state outside the layout (other roots, nested types, non-scalar values)
+//!    is identical to the live document's, and every existing record keeps its
+//!    branch identity (a map replaced under the same id is refused);
+//! 4. no effective write reported by the candidate's deep observer touches a
+//!    reserved key (authorship, `kind` of an existing record), a key no enabled
+//!    capability claims, or a record of a kind nobody owns, even when the value
+//!    written equals the old one;
+//! 5. the visible change passes the C1 audit, every record it creates is named
+//!    in the sender's own client namespace, and each involved capability's
+//!    `validate` accepts it.
+//!
+//! What this does not claim: the deep observer summarizes a transaction, so a
+//! write that lost a concurrent conflict, or one made inside a parent the same
+//! update created and deleted, may not be reported. Such writes are settled
+//! as deleted and have no effect; they are not "authorized", they are inert.
+//! Yrs also trims ranges it already knows, so contradictory bytes for an
+//! already-known client and clock are dropped unexamined; public Yrs APIs
+//! cannot certify them, and that trimming is not authentication.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, MutexGuard};
+
+use base64::Engine as _;
+use samepage_capability::{
+    audit, is_reserved_key, Audience, AuditError, Batch, BatchBuilder, BatchEntry, Call, CapError,
+    Capability, Composition, Delta, Effect, PlanError, View, AUTHORSHIP_KEYS, KIND_KEY,
+};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use yrs::types::{EntryChange, Event, PathSegment};
+use yrs::updates::encoder::Encode;
+use yrs::{Any, BranchID, DeepObservable, Map, Out, Transact, Update};
+
+use crate::document::{self, decode, id_client, DocError, Document};
+use crate::journal::{Entry, Journal};
+use crate::layout;
+use crate::sync::{self, Incoming, SyncError};
+use crate::{Actor, LAYOUT_VERSION};
+
+/// Per-actor quarantine bounds.
+pub const MAX_HELD_UPDATES: usize = 32;
+pub const MAX_HELD_BYTES: usize = 1 << 20;
+/// How many actors may hold unresolved updates at once.
+pub const MAX_HELD_ACTORS: usize = 64;
+/// Cascade rounds before a delete chain is refused as runaway.
+const MAX_CASCADE_ROUNDS: usize = 8;
+
+/// One accepted change, as every observer sees it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Commit {
+    pub seq: u64,
+    pub actor: Actor,
+    pub action: Option<String>,
+    pub revision: String,
+    pub created: Vec<String>,
+    pub modified: Vec<String>,
+    pub deleted: Vec<String>,
+    /// False for an accepted frame that changed no record (for example a write
+    /// that lost a concurrent conflict). Still journaled and broadcast: later
+    /// updates from that client depend on it.
+    pub visible_change: bool,
+    /// A y-sync Update frame carrying the change and its stamps. Broadcast it
+    /// to every peer exactly once.
+    #[serde(skip)]
+    pub update: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FrameReply {
+    /// Sync answers only (a SyncStep2 for each SyncStep1 in the frame). Never
+    /// a commit: commits are announced through [`Host::on_commit`].
+    pub replies: Vec<Vec<u8>>,
+    pub outcome: FrameOutcome,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FrameOutcome {
+    /// Only sync messages, or content the document already had.
+    SyncOnly,
+    Committed {
+        seq: u64,
+    },
+    /// Unresolved: held for this actor, nothing applied.
+    Held {
+        pending_updates: usize,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Error)]
+pub enum FrameRefusal {
+    #[error("sync: {0}")]
+    Sync(#[from] SyncError),
+    #[error("document: {0}")]
+    Doc(#[from] DocError),
+    #[error("client {client} is reserved or registered to another participant")]
+    Identity { client: u64 },
+    #[error("record {id:?} is created outside the sender's client namespace")]
+    ForeignId { id: String },
+    #[error("state outside the document layout changed at {0:?}")]
+    HiddenStructure(Vec<String>),
+    #[error("record {0:?} was replaced by a different map under the same id")]
+    Replaced(String),
+    #[error("write to {key:?} on {id:?} is not allowed: {reason}")]
+    Write {
+        id: String,
+        key: String,
+        reason: &'static str,
+    },
+    #[error("{0}")]
+    Audit(AuditError),
+    #[error("capability {capability:?} refused the change: {error}")]
+    Validate { capability: String, error: CapError },
+    #[error("the quarantine for this actor is full ({updates} updates, {bytes} bytes)")]
+    QuarantineFull { updates: usize, bytes: usize },
+    #[error("too many actors hold unresolved updates")]
+    TooManyHeld,
+    #[error("participant {participant:?} has held updates recorded under a different caller or label; the held updates keep their original actor")]
+    ActorChanged { participant: String },
+    #[error("the live document has pending content after a commit; this is a kernel bug")]
+    Internal,
+}
+
+#[derive(Debug, Clone, PartialEq, Error)]
+pub enum CommitError {
+    #[error("plan: {0}")]
+    Plan(#[from] PlanError),
+    #[error("capability {capability:?} failed: {error}")]
+    Capability { capability: String, error: CapError },
+    #[error("capability {capability:?} refused the change: {error}")]
+    Validate { capability: String, error: CapError },
+    #[error("deletes kept cascading after {MAX_CASCADE_ROUNDS} rounds")]
+    RunawayCascade,
+    #[error("the batch changes nothing; no commit was made")]
+    Empty,
+    #[error("document: {0}")]
+    Doc(#[from] DocError),
+}
+
+#[derive(Debug, Clone, PartialEq, Error)]
+pub enum InvokeError {
+    #[error("no action named {0:?}")]
+    UnknownAction(String),
+    #[error("{caller} callers may not use {action:?}")]
+    Audience {
+        action: String,
+        caller: &'static str,
+    },
+    #[error("capability {capability:?} failed: {error}")]
+    Capability { capability: String, error: CapError },
+    #[error("{action:?} is declared as a query but planned {ops} write(s)")]
+    QueryMutates { action: String, ops: usize },
+    #[error("{0}")]
+    Commit(#[from] CommitError),
+}
+
+#[derive(Debug, Error)]
+pub enum OpenError {
+    #[error("could not read {path}: {source}")]
+    Read {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error("{path} is not a saved document: {reason}")]
+    Format { path: PathBuf, reason: String },
+    #[error("{path} holds content that cannot be integrated (missing dependencies); refusing to open it as authoritative")]
+    Unresolved { path: PathBuf },
+    #[error("document: {0}")]
+    Doc(#[from] DocError),
+    #[error("capability set: {0}")]
+    Capabilities(String),
+}
+
+#[derive(Debug, Error)]
+pub enum SaveError {
+    #[error("this host has no file")]
+    InMemory,
+    #[error("could not write {path}: {source}")]
+    Write {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+}
+
+/// The result of an action.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Invoked {
+    pub action: String,
+    pub readback: Vec<String>,
+    pub ids: BTreeMap<String, String>,
+    pub commit: Option<Commit>,
+}
+
+type Observer = Arc<dyn Fn(&Commit) + Send + Sync>;
+type RefusalObserver = Arc<dyn Fn(&Actor, &FrameRefusal) + Send + Sync>;
+
+#[derive(Debug, Clone)]
+struct Held {
+    actor: Actor,
+    updates: Vec<Vec<u8>>,
+}
+
+struct Inner {
+    live: Document,
+    journal: Journal,
+    /// Participant -> unresolved updates, in arrival order of first hold.
+    held: Vec<(String, Held)>,
+    /// Saves so far, stored in the envelope.
+    generation: u64,
+}
+
+pub struct Host {
+    inner: Mutex<Inner>,
+    /// Serializes saves, so envelopes reach the disk in generation order.
+    save_lock: Mutex<()>,
+    composition: Composition,
+    capabilities: BTreeMap<String, Arc<dyn Capability>>,
+    path: Option<PathBuf>,
+    observers: Mutex<Vec<Observer>>,
+    refusal_observers: Mutex<Vec<RefusalObserver>>,
+    /// Anomalies found when the document was opened, preserved untouched.
+    opened_anomalies: Vec<String>,
+}
+
+impl Host {
+    pub fn in_memory(
+        composition: Composition,
+        capabilities: Vec<Arc<dyn Capability>>,
+    ) -> Result<Self, OpenError> {
+        Self::build(None, None, Journal::default(), 0, composition, capabilities)
+    }
+
+    /// Open (or start) the document saved at `path`.
+    ///
+    /// The file is one JSON envelope (`format: "samepage.document.v1"`) holding
+    /// the Yrs state and the journal together, so the attribution record can
+    /// never be paired with a different state. A missing file starts an empty
+    /// document. A file in any other format, including the Atlas host's bare
+    /// base64 state, is refused: use [`Host::import_legacy`], which reads it
+    /// without ever writing to it.
+    pub fn open(
+        path: impl AsRef<Path>,
+        composition: Composition,
+        capabilities: Vec<Arc<dyn Capability>>,
+    ) -> Result<Self, OpenError> {
+        let path = path.as_ref().to_path_buf();
+        let (state, journal, generation) = match std::fs::read(&path) {
+            Ok(bytes) => {
+                let envelope: Envelope =
+                    serde_json::from_slice(&bytes).map_err(|error| OpenError::Format {
+                        path: path.clone(),
+                        reason: format!(
+                            "not a {ENVELOPE_FORMAT} envelope ({error}); a legacy state file must be imported with Host::import_legacy"
+                        ),
+                    })?;
+                if envelope.format != ENVELOPE_FORMAT {
+                    return Err(OpenError::Format {
+                        path,
+                        reason: format!("format {:?}, expected {ENVELOPE_FORMAT}", envelope.format),
+                    });
+                }
+                let state = base64::engine::general_purpose::STANDARD
+                    .decode(envelope.state.as_bytes())
+                    .map_err(|error| OpenError::Format {
+                        path: path.clone(),
+                        reason: error.to_string(),
+                    })?;
+                (Some(state), envelope.journal, envelope.generation)
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                (None, Journal::default(), 0)
+            }
+            Err(source) => return Err(OpenError::Read { path, source }),
+        };
+        Self::build(
+            Some(path),
+            state,
+            journal,
+            generation,
+            composition,
+            capabilities,
+        )
+    }
+
+    /// Import a legacy state file (base64 of a full Yrs v1 update, as the
+    /// Atlas host writes it) into a new envelope at `path`. The legacy file is
+    /// only read. `path` must not exist yet. The import has no attribution
+    /// record, so every client id already in the state is reserved.
+    pub fn import_legacy(
+        legacy: impl AsRef<Path>,
+        path: impl AsRef<Path>,
+        composition: Composition,
+        capabilities: Vec<Arc<dyn Capability>>,
+    ) -> Result<Self, OpenError> {
+        let legacy = legacy.as_ref().to_path_buf();
+        let path = path.as_ref().to_path_buf();
+        if path.exists() || path == legacy {
+            return Err(OpenError::Format {
+                path,
+                reason: "the import target already exists; importing never overwrites".to_string(),
+            });
+        }
+        let encoded = std::fs::read(&legacy).map_err(|source| OpenError::Read {
+            path: legacy.clone(),
+            source,
+        })?;
+        let text = String::from_utf8_lossy(&encoded);
+        let state = base64::engine::general_purpose::STANDARD
+            .decode(text.trim())
+            .map_err(|error| OpenError::Format {
+                path: legacy.clone(),
+                reason: format!("not a base64 legacy state: {error}"),
+            })?;
+        Self::build(
+            Some(path),
+            Some(state),
+            Journal::default(),
+            0,
+            composition,
+            capabilities,
+        )
+    }
+
+    fn build(
+        path: Option<PathBuf>,
+        state: Option<Vec<u8>>,
+        mut journal: Journal,
+        generation: u64,
+        composition: Composition,
+        capabilities: Vec<Arc<dyn Capability>>,
+    ) -> Result<Self, OpenError> {
+        let capabilities: BTreeMap<String, Arc<dyn Capability>> = capabilities
+            .into_iter()
+            .map(|capability| (capability.descriptor().id, capability))
+            .collect();
+        for descriptor in composition.descriptors() {
+            let Some(capability) = capabilities.get(&descriptor.id) else {
+                return Err(OpenError::Capabilities(format!(
+                    "no implementation for composed capability {:?}",
+                    descriptor.id
+                )));
+            };
+            if &capability.descriptor() != descriptor {
+                return Err(OpenError::Capabilities(format!(
+                    "implementation of {:?} declares a different descriptor than the composition",
+                    descriptor.id
+                )));
+            }
+        }
+
+        // Load into a scratch document first to learn which client ids exist.
+        let loaded = match &state {
+            Some(bytes) => Document::from_state(bytes)?,
+            None => Document::new(),
+        };
+        if loaded.has_missing_updates() {
+            return Err(OpenError::Unresolved {
+                path: path.clone().unwrap_or_default(),
+            });
+        }
+        let existing: BTreeSet<u64> = loaded
+            .state_vector()
+            .iter()
+            .map(|(client, _)| client.get())
+            .collect();
+        for client in &existing {
+            if !journal.bindings.contains_key(client) {
+                journal.reserved.insert(*client);
+            }
+        }
+        // A fresh host client id nobody has used.
+        let host_client = loop {
+            let candidate = yrs::Doc::new().client_id().get();
+            if !existing.contains(&candidate)
+                && !journal.reserved.contains(&candidate)
+                && !journal.bindings.contains_key(&candidate)
+            {
+                break candidate;
+            }
+        };
+        journal.reserved.insert(host_client);
+        journal.layout_version = LAYOUT_VERSION;
+        let live = Document::with_client(host_client);
+        if let Some(bytes) = &state {
+            live.apply_remote(decode(bytes)?)?;
+        }
+        let opened_anomalies = live.inspect().anomalies.into_keys().collect();
+        Ok(Self {
+            inner: Mutex::new(Inner {
+                live,
+                journal,
+                held: Vec::new(),
+                generation,
+            }),
+            save_lock: Mutex::new(()),
+            composition,
+            capabilities,
+            path,
+            observers: Mutex::new(Vec::new()),
+            refusal_observers: Mutex::new(Vec::new()),
+            opened_anomalies,
+        })
+    }
+
+    fn lock(&self) -> MutexGuard<'_, Inner> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+    }
+
+    pub fn composition(&self) -> &Composition {
+        &self.composition
+    }
+
+    pub fn view(&self) -> View {
+        self.lock().live.view()
+    }
+
+    pub fn revision(&self) -> String {
+        self.lock().live.revision()
+    }
+
+    /// Full v1 state of the live document (never contains pending content).
+    pub fn encode_full(&self) -> Vec<u8> {
+        self.lock().live.encode_full()
+    }
+
+    /// The host's own Yrs client id for this process (reserved).
+    pub fn client_id(&self) -> u64 {
+        self.lock().live.client_id()
+    }
+
+    pub fn journal(&self) -> Journal {
+        self.lock().journal.clone()
+    }
+
+    /// Locations outside the layout found when the document was opened. They
+    /// are preserved exactly and never shown to a capability.
+    pub fn opened_anomalies(&self) -> &[String] {
+        &self.opened_anomalies
+    }
+
+    /// Unresolved updates currently held, per participant.
+    pub fn held(&self) -> BTreeMap<String, usize> {
+        self.lock()
+            .held
+            .iter()
+            .map(|(participant, held)| (participant.clone(), held.updates.len()))
+            .collect()
+    }
+
+    pub fn on_commit(&self, observer: impl Fn(&Commit) + Send + Sync + 'static) {
+        self.observers
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .push(Arc::new(observer));
+    }
+
+    /// Called when a held payload turns out to be invalid once it resolves,
+    /// so the transport can reset that actor's replica.
+    pub fn on_refusal(&self, observer: impl Fn(&Actor, &FrameRefusal) + Send + Sync + 'static) {
+        self.refusal_observers
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .push(Arc::new(observer));
+    }
+
+    /// Frames for a new connection: our state vector (so the peer sends what
+    /// we lack) and our full state.
+    pub fn hello(&self) -> Vec<Vec<u8>> {
+        let inner = self.lock();
+        vec![
+            sync::step1(&inner.live.state_vector()),
+            sync::step2(inner.live.encode_full()),
+        ]
+    }
+
+    /// Save state and journal as one envelope: written to a unique temporary
+    /// file in the same directory, flushed, then renamed over the old one.
+    /// Saves are serialized; each carries the next generation number. A crash
+    /// leaves either the previous envelope or the new one, never a mix.
+    pub fn save(&self) -> Result<u64, SaveError> {
+        let path = self.path.as_ref().ok_or(SaveError::InMemory)?;
+        let _serial = self
+            .save_lock
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        let envelope = {
+            let mut inner = self.lock();
+            inner.generation += 1;
+            Envelope {
+                format: ENVELOPE_FORMAT.to_string(),
+                layout_version: LAYOUT_VERSION,
+                generation: inner.generation,
+                state: base64::engine::general_purpose::STANDARD.encode(inner.live.encode_full()),
+                journal: inner.journal.clone(),
+            }
+        };
+        let bytes = serde_json::to_vec(&envelope).map_err(|error| SaveError::Write {
+            path: path.clone(),
+            source: std::io::Error::other(error),
+        })?;
+        write_atomically(path, &bytes)?;
+        Ok(envelope.generation)
+    }
+
+    /// The generation of the last save (or of the envelope opened).
+    pub fn generation(&self) -> u64 {
+        self.lock().generation
+    }
+
+    // ── replica frames ───────────────────────────────────────────────────
+
+    pub fn receive_frame(&self, actor: &Actor, frame: &[u8]) -> Result<FrameReply, FrameRefusal> {
+        let messages = sync::parse(frame)?;
+        let mut commits = Vec::new();
+        let mut late_refusals = Vec::new();
+        let result = {
+            let mut inner = self.lock();
+            let mut replies = Vec::new();
+            let mut updates = Vec::new();
+            for message in messages {
+                match message {
+                    Incoming::Step1(sv) => replies.push(sync::step2(inner.live.encode_state(&sv))),
+                    Incoming::Update(update) => updates.push(update),
+                }
+            }
+            if updates.is_empty() {
+                Ok(FrameReply {
+                    replies,
+                    outcome: FrameOutcome::SyncOnly,
+                })
+            } else {
+                match self.admit(&mut inner, actor, updates) {
+                    Ok(outcome) => {
+                        if let Admitted::Committed(commit) = &outcome {
+                            commits.push((**commit).clone());
+                        }
+                        if matches!(outcome, Admitted::Committed(_)) {
+                            self.drain(&mut inner, &mut commits, &mut late_refusals);
+                        }
+                        Ok(FrameReply {
+                            replies,
+                            outcome: match outcome {
+                                Admitted::Committed(commit) => {
+                                    FrameOutcome::Committed { seq: commit.seq }
+                                }
+                                Admitted::Held(pending_updates) => {
+                                    FrameOutcome::Held { pending_updates }
+                                }
+                                Admitted::Replay => FrameOutcome::SyncOnly,
+                            },
+                        })
+                    }
+                    Err(refusal) => Err(refusal),
+                }
+            }
+        };
+        self.announce(&commits, &late_refusals);
+        result
+    }
+
+    /// Admit one actor's new updates, combined with anything it has held.
+    fn admit(
+        &self,
+        inner: &mut Inner,
+        actor: &Actor,
+        new: Vec<Vec<u8>>,
+    ) -> Result<Admitted, FrameRefusal> {
+        for update in &new {
+            decode(update)?;
+        }
+        // Held updates keep the actor they arrived with. A later frame from
+        // the same participant under a different caller or label is refused
+        // while they are held, rather than relabelling history.
+        if let Some((_, held)) = inner
+            .held
+            .iter()
+            .find(|(participant, _)| participant == &actor.participant)
+        {
+            if &held.actor != actor {
+                return Err(FrameRefusal::ActorChanged {
+                    participant: actor.participant.clone(),
+                });
+            }
+        }
+        let held = inner
+            .held
+            .iter()
+            .find(|(participant, _)| participant == &actor.participant)
+            .map(|(_, held)| held.updates.clone())
+            .unwrap_or_default();
+
+        let mut combined = held.clone();
+        combined.extend(new.iter().cloned());
+        match self.validate_and_commit(inner, actor, &combined)? {
+            Settled::Committed(commit) => {
+                remove_held(inner, &actor.participant);
+                return Ok(Admitted::Committed(commit));
+            }
+            Settled::Replay => {
+                remove_held(inner, &actor.participant);
+                return Ok(Admitted::Replay);
+            }
+            Settled::Unresolved => {}
+        }
+        // The new updates may be independent of what is held (another tab of
+        // the same participant). Try them alone before holding them.
+        if !held.is_empty() {
+            match self.validate_and_commit(inner, actor, &new)? {
+                Settled::Committed(commit) => return Ok(Admitted::Committed(commit)),
+                Settled::Replay => return Ok(Admitted::Replay),
+                Settled::Unresolved => {}
+            }
+        }
+        // Over the bound: this frame is refused and what was already held
+        // stays exactly as it was (it may still resolve after a later commit).
+        let bytes: usize = combined.iter().map(Vec::len).sum();
+        if combined.len() > MAX_HELD_UPDATES || bytes > MAX_HELD_BYTES {
+            return Err(FrameRefusal::QuarantineFull {
+                updates: combined.len(),
+                bytes,
+            });
+        }
+        let pending_updates = combined.len();
+        match inner
+            .held
+            .iter_mut()
+            .find(|(participant, _)| participant == &actor.participant)
+        {
+            Some((_, slot)) => slot.updates = combined,
+            None => {
+                if inner.held.len() >= MAX_HELD_ACTORS {
+                    return Err(FrameRefusal::TooManyHeld);
+                }
+                inner.held.push((
+                    actor.participant.clone(),
+                    Held {
+                        actor: actor.clone(),
+                        updates: combined,
+                    },
+                ))
+            }
+        }
+        Ok(Admitted::Held(pending_updates))
+    }
+
+    /// Retry every held payload after a commit, as its original actor, until
+    /// nothing more resolves.
+    fn drain(
+        &self,
+        inner: &mut Inner,
+        commits: &mut Vec<Commit>,
+        refusals: &mut Vec<(Actor, FrameRefusal)>,
+    ) {
+        loop {
+            let mut progressed = false;
+            let pending: Vec<(String, Held)> = inner.held.clone();
+            for (participant, held) in pending {
+                match self.validate_and_commit(inner, &held.actor, &held.updates) {
+                    Ok(Settled::Committed(commit)) => {
+                        remove_held(inner, &participant);
+                        commits.push(*commit);
+                        progressed = true;
+                    }
+                    Ok(Settled::Replay) => {
+                        remove_held(inner, &participant);
+                        progressed = true;
+                    }
+                    Ok(Settled::Unresolved) => {}
+                    Err(refusal) => {
+                        remove_held(inner, &participant);
+                        refusals.push((held.actor.clone(), refusal));
+                        progressed = true;
+                    }
+                }
+            }
+            if !progressed {
+                break;
+            }
+        }
+    }
+
+    /// The whole admission check on a candidate, and the commit if it passes.
+    /// Nothing about `inner` changes unless this returns `Committed`.
+    fn validate_and_commit(
+        &self,
+        inner: &mut Inner,
+        actor: &Actor,
+        updates: &[Vec<u8>],
+    ) -> Result<Settled, FrameRefusal> {
+        let decoded: Vec<Update> = updates
+            .iter()
+            .map(|bytes| decode(bytes))
+            .collect::<Result<_, _>>()?;
+        let merged = Update::merge_updates(decoded).encode_v1();
+        let update = decode(&merged)?;
+
+        // (2) New insertion ranges must belong to this participant.
+        let live_sv = inner.live.state_vector();
+        let mut new_clients = BTreeSet::new();
+        for (client, ranges) in update.insertions(true).iter() {
+            let known = live_sv.get(client);
+            if ranges.iter().any(|range| range.end > known) {
+                let client = client.get();
+                if !inner.journal.may_use(client, &actor.participant) {
+                    return Err(FrameRefusal::Identity { client });
+                }
+                new_clients.insert(client);
+            }
+        }
+
+        // Candidate from the live state, observed before the update applies.
+        let candidate = Document::from_state(&inner.live.encode_full())?;
+        let branches_before = branch_ids(&candidate);
+        let touched = Arc::new(Mutex::new(Touched::default()));
+        let subscription = {
+            let sink = touched.clone();
+            let objects = candidate.objects_ref();
+            objects.observe_deep(move |txn, events| {
+                let mut sink = sink.lock().unwrap_or_else(|poison| poison.into_inner());
+                for event in events.iter() {
+                    sink.collect(txn, event);
+                }
+            })
+        };
+        candidate.apply_remote(update)?;
+        drop(subscription);
+
+        // (1) Settled only: pending content never reaches the live document.
+        if candidate.has_missing_updates() {
+            return Ok(Settled::Unresolved);
+        }
+        // Exact replay: nothing new, nothing to attribute.
+        let live_revision = inner.live.revision();
+        if candidate.revision() == live_revision {
+            return Ok(Settled::Replay);
+        }
+
+        // (3) State outside the layout, and record identity.
+        let live_inspection = inner.live.inspect();
+        let candidate_inspection = candidate.inspect();
+        if live_inspection.anomalies != candidate_inspection.anomalies {
+            let mut changed: Vec<String> = live_inspection
+                .anomalies
+                .iter()
+                .filter(|(key, value)| candidate_inspection.anomalies.get(*key) != Some(*value))
+                .map(|(key, _)| key.clone())
+                .collect();
+            changed.extend(
+                candidate_inspection
+                    .anomalies
+                    .keys()
+                    .filter(|key| !live_inspection.anomalies.contains_key(*key))
+                    .cloned(),
+            );
+            return Err(FrameRefusal::HiddenStructure(changed));
+        }
+        let branches_after = branch_ids(&candidate);
+        for (id, before) in &branches_before {
+            if let Some(after) = branches_after.get(id) {
+                if after != before {
+                    return Err(FrameRefusal::Replaced(id.clone()));
+                }
+            }
+        }
+
+        let before = layout::view(&live_inspection, &live_revision);
+        let after = layout::view(&candidate_inspection, &candidate.revision());
+
+        // (4) Effective writes, including same-value ones the projection hides.
+        let touched = touched
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .clone();
+        if let Some(path) = touched.nested {
+            return Err(FrameRefusal::HiddenStructure(vec![path]));
+        }
+        for (id, key) in &touched.keys {
+            let existed = before.get(id).is_some();
+            let kind = after
+                .get(id)
+                .or_else(|| before.get(id))
+                .map(|record| record.kind.clone());
+            if key == KIND_KEY {
+                if existed {
+                    return Err(FrameRefusal::Write {
+                        id: id.clone(),
+                        key: key.clone(),
+                        reason: "the kind of an existing record never changes",
+                    });
+                }
+                continue;
+            }
+            if AUTHORSHIP_KEYS.contains(&key.as_str()) || is_reserved_key(key) {
+                return Err(FrameRefusal::Write {
+                    id: id.clone(),
+                    key: key.clone(),
+                    reason: "written only by the host",
+                });
+            }
+            let Some(kind) = kind else {
+                // Created and deleted within the update: inert.
+                continue;
+            };
+            if self.composition.writer_of(&kind, key).is_none() {
+                return Err(FrameRefusal::Write {
+                    id: id.clone(),
+                    key: key.clone(),
+                    reason: "no enabled capability owns this key",
+                });
+            }
+        }
+
+        // (5) The visible change.
+        let delta = audit(&self.composition, &before, &after).map_err(FrameRefusal::Audit)?;
+        for id in &delta.created {
+            match id_client(id) {
+                Some(client) if new_clients.contains(&client) => {}
+                _ => return Err(FrameRefusal::ForeignId { id: id.clone() }),
+            }
+        }
+        self.validate_capabilities(&delta, &after)
+            .map_err(|(capability, error)| FrameRefusal::Validate { capability, error })?;
+
+        // Commit: the update and its stamps, one transaction.
+        let stamp_update = decode(&merged)?;
+        let ((), raw) = inner.live.write(|txn, objects| {
+            txn.apply_update(stamp_update)
+                .map_err(|error| DocError::Apply(error.to_string()))?;
+            stamp(txn, objects, &delta, actor)
+        })?;
+        if inner.live.has_missing_updates() {
+            return Err(FrameRefusal::Internal);
+        }
+        for client in new_clients {
+            inner
+                .journal
+                .bindings
+                .insert(client, actor.participant.clone());
+        }
+        let commit = record(inner, actor, None, &delta, raw);
+        Ok(Settled::Committed(Box::new(commit)))
+    }
+
+    fn validate_capabilities(&self, delta: &Delta, after: &View) -> Result<(), (String, CapError)> {
+        if delta.is_empty() {
+            return Ok(());
+        }
+        let mut involved = BTreeSet::new();
+        let kinds: BTreeMap<&str, &str> = after
+            .records()
+            .map(|record| (record.id.as_str(), record.kind.as_str()))
+            .collect();
+        for id in delta.created.iter().chain(delta.modified.keys()) {
+            if let Some(kind) = kinds.get(id.as_str()) {
+                if let Some(owner) = self.composition.owner_of_kind(kind) {
+                    involved.insert(owner.to_string());
+                }
+                // A modified record: the writers of the keys that changed. A
+                // created record: the writers of every key it carries, so an
+                // extension key set in the same batch or frame as the create
+                // is validated by the capability that owns it.
+                let keys: Vec<&String> = match delta.modified.get(id) {
+                    Some(keys) => keys.iter().collect(),
+                    None => after
+                        .get(id)
+                        .map(|record| record.props.keys().collect())
+                        .unwrap_or_default(),
+                };
+                for key in keys {
+                    if let Some(writer) = self.composition.writer_of(kind, key) {
+                        involved.insert(writer.to_string());
+                    }
+                }
+            }
+        }
+        // Deleted records: every capability is told, since the kind is gone
+        // from `after`; owners check their own references.
+        if !delta.deleted.is_empty() {
+            involved.extend(self.capabilities.keys().cloned());
+        }
+        for id in involved {
+            if let Some(capability) = self.capabilities.get(&id) {
+                capability
+                    .validate(delta, after)
+                    .map_err(|error| (id.clone(), error))?;
+            }
+        }
+        Ok(())
+    }
+
+    // ── actions and batches ──────────────────────────────────────────────
+
+    pub fn invoke(
+        &self,
+        actor: &Actor,
+        action: &str,
+        args: serde_json::Value,
+    ) -> Result<Invoked, InvokeError> {
+        let resolved = self
+            .composition
+            .resolve_action(action)
+            .ok_or_else(|| InvokeError::UnknownAction(action.to_string()))?;
+        let capability_id = resolved.capability.to_string();
+        let preferred = resolved.preferred.to_string();
+        let declaration = self
+            .composition
+            .descriptor(&capability_id)
+            .and_then(|descriptor| descriptor.actions.iter().find(|a| a.name == preferred))
+            .ok_or_else(|| InvokeError::UnknownAction(action.to_string()))?
+            .clone();
+        let allowed = matches!(
+            (actor.caller, declaration.audience),
+            (_, Audience::Both)
+                | (crate::Caller::Human, Audience::Human)
+                | (crate::Caller::Agent, Audience::Agent)
+        );
+        if !allowed {
+            return Err(InvokeError::Audience {
+                action: preferred,
+                caller: actor.caller.as_str(),
+            });
+        }
+        let capability = self
+            .capabilities
+            .get(&capability_id)
+            .ok_or_else(|| InvokeError::UnknownAction(action.to_string()))?
+            .clone();
+
+        let mut commits = Vec::new();
+        let mut refusals = Vec::new();
+        let result = {
+            let mut inner = self.lock();
+            let view = scoped_view(&self.composition, &capability_id, &inner.live.view());
+            let call = Call {
+                action: preferred.clone(),
+                args,
+            };
+            let plan = capability
+                .plan(&call, &view)
+                .map_err(|error| InvokeError::Capability {
+                    capability: capability_id.clone(),
+                    error,
+                })?;
+            if declaration.effect == Effect::Query {
+                if !plan.ops.is_empty() {
+                    return Err(InvokeError::QueryMutates {
+                        action: preferred,
+                        ops: plan.ops.len(),
+                    });
+                }
+                Ok(Invoked {
+                    action: preferred,
+                    readback: vec![plan.readback]
+                        .into_iter()
+                        .filter(|r| !r.is_empty())
+                        .collect(),
+                    ids: BTreeMap::new(),
+                    commit: None,
+                })
+            } else {
+                let batch = Batch {
+                    base_revision: view.revision().to_string(),
+                    entries: vec![BatchEntry {
+                        capability: capability_id,
+                        plan,
+                    }],
+                };
+                match self.commit_locked(&mut inner, actor, &batch, Some(preferred.clone())) {
+                    Ok((commit, ids, readback)) => {
+                        commits.push(commit.clone());
+                        self.drain(&mut inner, &mut commits, &mut refusals);
+                        Ok(Invoked {
+                            action: preferred,
+                            readback,
+                            ids,
+                            commit: Some(commit),
+                        })
+                    }
+                    // A mutating action whose plan changes nothing is an
+                    // explicit no-op: no journal entry, no announcement.
+                    Err(CommitError::Empty) => Ok(Invoked {
+                        action: preferred,
+                        readback: batch
+                            .entries
+                            .iter()
+                            .map(|entry| entry.plan.readback.clone())
+                            .filter(|readback| !readback.is_empty())
+                            .collect(),
+                        ids: BTreeMap::new(),
+                        commit: None,
+                    }),
+                    Err(error) => Err(error.into()),
+                }
+            }
+        };
+        self.announce(&commits, &refusals);
+        result
+    }
+
+    /// Commit an untrusted batch (for example one a browser planned). It is
+    /// resolved here against the live document; a batch that resolved
+    /// elsewhere is never accepted as such.
+    pub fn commit_batch(&self, actor: &Actor, batch: &Batch) -> Result<Commit, CommitError> {
+        let mut commits = Vec::new();
+        let mut refusals = Vec::new();
+        let result = {
+            let mut inner = self.lock();
+            let result = self.commit_locked(&mut inner, actor, batch, None);
+            if let Ok((commit, _, _)) = &result {
+                commits.push(commit.clone());
+                self.drain(&mut inner, &mut commits, &mut refusals);
+            }
+            result.map(|(commit, _, _)| commit)
+        };
+        self.announce(&commits, &refusals);
+        result
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn commit_locked(
+        &self,
+        inner: &mut Inner,
+        actor: &Actor,
+        batch: &Batch,
+        action: Option<String>,
+    ) -> Result<(Commit, BTreeMap<String, String>, Vec<String>), CommitError> {
+        let before = inner.live.view();
+        if batch.base_revision != before.revision() {
+            return Err(PlanError::Stale {
+                expected: batch.base_revision.clone(),
+                found: before.revision().to_string(),
+            }
+            .into());
+        }
+        let mut minter = inner.live.minter();
+        let mut builder = BatchBuilder::new(&self.composition, &before);
+        for entry in &batch.entries {
+            builder.push(&entry.capability, &entry.plan, &mut minter)?;
+        }
+        // Deletes cascade to capabilities that hold references.
+        let mut announced: BTreeSet<String> = BTreeSet::new();
+        for round in 0.. {
+            let deleted: Vec<String> = before
+                .records()
+                .map(|record| record.id.clone())
+                .filter(|id| !builder.working_view().contains(id) && !announced.contains(id))
+                .collect();
+            if deleted.is_empty() {
+                break;
+            }
+            if round >= MAX_CASCADE_ROUNDS {
+                return Err(CommitError::RunawayCascade);
+            }
+            announced.extend(deleted.iter().cloned());
+            for descriptor in self.composition.descriptors() {
+                let Some(capability) = self.capabilities.get(&descriptor.id) else {
+                    continue;
+                };
+                let working =
+                    scoped_view(&self.composition, &descriptor.id, builder.working_view());
+                let plan = capability.cascade(&deleted, &working).map_err(|error| {
+                    CommitError::Capability {
+                        capability: descriptor.id.clone(),
+                        error,
+                    }
+                })?;
+                if !plan.ops.is_empty() {
+                    builder.push(&descriptor.id, &plan, &mut minter)?;
+                }
+            }
+        }
+        let resolved = builder.finish()?;
+        resolved.ensure_current(&inner.live.revision())?;
+        let delta = Delta::between(&before, resolved.projected());
+        self.validate_capabilities(&delta, resolved.projected())
+            .map_err(|(capability, error)| CommitError::Validate { capability, error })?;
+
+        let ops = resolved.ops().to_vec();
+        if ops.is_empty() {
+            return Err(CommitError::Empty);
+        }
+        let ((), raw) = inner.live.write(|txn, objects| {
+            document::write_ops(txn, objects, &ops)?;
+            stamp(txn, objects, &delta, actor)
+        })?;
+        inner.live.advance(&minter);
+        if raw.is_empty() {
+            // Nothing reached the document; there is nothing to announce.
+            return Err(CommitError::Empty);
+        }
+        let commit = record(inner, actor, action, &delta, raw);
+        Ok((commit, resolved.ids().clone(), resolved.readback().to_vec()))
+    }
+
+    fn announce(&self, commits: &[Commit], refusals: &[(Actor, FrameRefusal)]) {
+        if !commits.is_empty() {
+            let observers = self
+                .observers
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner())
+                .clone();
+            for commit in commits {
+                for observer in &observers {
+                    observer(commit);
+                }
+            }
+        }
+        if !refusals.is_empty() {
+            let observers = self
+                .refusal_observers
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner())
+                .clone();
+            for (actor, refusal) in refusals {
+                for observer in &observers {
+                    observer(actor, refusal);
+                }
+            }
+        }
+    }
+}
+
+enum Admitted {
+    Committed(Box<Commit>),
+    Held(usize),
+    Replay,
+}
+
+enum Settled {
+    Committed(Box<Commit>),
+    Unresolved,
+    Replay,
+}
+
+fn remove_held(inner: &mut Inner, participant: &str) {
+    inner.held.retain(|(held, _)| held != participant);
+}
+
+/// Stamp authorship on every record the delta created or modified, inside the
+/// transaction that makes the change.
+fn stamp(
+    txn: &mut yrs::TransactionMut,
+    objects: &yrs::MapRef,
+    delta: &Delta,
+    actor: &Actor,
+) -> Result<(), DocError> {
+    let byline = Any::from(actor.byline());
+    let participant = Any::from(actor.participant.as_str());
+    for id in &delta.created {
+        let record = document::record(txn, objects, id)?;
+        record.insert(txn, "created_by", byline.clone());
+        record.insert(txn, "created_by_participant", participant.clone());
+    }
+    for id in delta.created.iter().chain(delta.modified.keys()) {
+        let record = document::record(txn, objects, id)?;
+        record.insert(txn, "touched_by", byline.clone());
+        record.insert(txn, "touched_by_participant", participant.clone());
+    }
+    Ok(())
+}
+
+fn record(
+    inner: &mut Inner,
+    actor: &Actor,
+    action: Option<String>,
+    delta: &Delta,
+    raw: Vec<u8>,
+) -> Commit {
+    let revision = inner.live.revision();
+    let mut commit = Commit {
+        seq: 0,
+        actor: actor.clone(),
+        action: action.clone(),
+        revision: revision.clone(),
+        created: delta.created.iter().cloned().collect(),
+        modified: delta.modified.keys().cloned().collect(),
+        deleted: delta.deleted.iter().cloned().collect(),
+        visible_change: !delta.is_empty(),
+        update: sync::update(raw),
+    };
+    commit.seq = inner.journal.record(Entry {
+        seq: 0,
+        actor: actor.clone(),
+        action,
+        revision,
+        created: commit.created.clone(),
+        modified: commit.modified.clone(),
+        deleted: commit.deleted.clone(),
+        visible_change: commit.visible_change,
+    });
+    commit
+}
+
+/// What a capability sees: the kinds it owns, extends or reads.
+fn scoped_view(composition: &Composition, capability: &str, view: &View) -> View {
+    let Some(descriptor) = composition.descriptor(capability) else {
+        return View::new(view.revision(), Vec::new()).expect("empty view");
+    };
+    let kinds: Vec<&str> = descriptor
+        .kinds
+        .iter()
+        .map(|claim| claim.kind.as_str())
+        .chain(descriptor.props.iter().map(|claim| claim.kind.as_str()))
+        .chain(descriptor.reads.iter().map(String::as_str))
+        .collect();
+    view.of_kinds(&kinds)
+}
+
+/// Branch identity of every record map, so a replaced map is caught even when
+/// its content is identical.
+fn branch_ids(document: &Document) -> BTreeMap<String, BranchID> {
+    let objects = document.objects_ref();
+    let txn = document.doc().transact();
+    objects
+        .iter(&txn)
+        .filter_map(|(id, value)| match value {
+            Out::YMap(map) => Some((id.to_string(), map.as_ref().id())),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Effective writes the candidate's deep observer reported.
+#[derive(Debug, Clone, Default)]
+struct Touched {
+    keys: BTreeSet<(String, String)>,
+    nested: Option<String>,
+}
+
+impl Touched {
+    fn collect(&mut self, txn: &yrs::TransactionMut, event: &Event) {
+        let Event::Map(map_event) = event else {
+            self.nested
+                .get_or_insert_with(|| "a non-map event".to_string());
+            return;
+        };
+        let path = map_event.path();
+        match path.len() {
+            // The objects root: a record inserted, replaced or removed.
+            0 => {
+                for (id, change) in map_event.keys(txn) {
+                    if let EntryChange::Updated(..) = change {
+                        // A map replaced under an existing id; also caught by
+                        // branch identity, reported here for the reason.
+                        self.keys.insert((id.to_string(), "<record>".to_string()));
+                    }
+                }
+            }
+            // A record map: which keys were written, whatever the value.
+            1 => {
+                let Some(PathSegment::Key(id)) = path.front() else {
+                    self.nested
+                        .get_or_insert_with(|| "an index path".to_string());
+                    return;
+                };
+                for key in map_event.keys(txn).keys() {
+                    self.keys.insert((id.to_string(), key.to_string()));
+                }
+            }
+            _ => {
+                self.nested
+                    .get_or_insert_with(|| format!("nested content under {path:?}"));
+            }
+        }
+    }
+}
+
+/// Format tag of the saved envelope.
+pub const ENVELOPE_FORMAT: &str = "samepage.document.v1";
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Envelope {
+    format: String,
+    layout_version: u32,
+    generation: u64,
+    /// Base64 of the full Yrs v1 state.
+    state: String,
+    journal: Journal,
+}
+
+static TEMPORARY: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), SaveError> {
+    use std::io::Write as _;
+    let failed = |path: &Path, source| SaveError::Write {
+        path: path.to_path_buf(),
+        source,
+    };
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    std::fs::create_dir_all(parent).map_err(|e| failed(parent, e))?;
+    let name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| "document".to_string());
+    let temporary = parent.join(format!(
+        ".{name}.{}.{}.tmp",
+        std::process::id(),
+        TEMPORARY.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+    ));
+    let result = (|| {
+        let mut file = std::fs::File::create(&temporary)?;
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        std::fs::rename(&temporary, path)?;
+        if let Ok(directory) = std::fs::File::open(parent) {
+            let _ = directory.sync_all();
+        }
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temporary);
+    }
+    result.map_err(|e| failed(path, e))
+}

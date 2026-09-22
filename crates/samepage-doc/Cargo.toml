@@ -1,0 +1,27 @@
+[package]
+name = "samepage-doc"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The SamePage shared document: one Yrs replica per peer, the host authority that audits replica frames and stamps authorship atomically, the commit journal, and persistence."
+publish = false
+
+[features]
+default = ["host"]
+# The authority half: persistence, the commit journal, replica-frame audit and
+# action dispatch. The browser artifact builds without it.
+host = ["dep:base64"]
+
+[dependencies]
+samepage-capability = { path = "../samepage-capability" }
+yrs = { workspace = true, features = ["sync"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = "0.10"
+base64 = { version = "0.22", optional = true }
+
+[lints]
+workspace = true

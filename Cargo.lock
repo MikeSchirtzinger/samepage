@@ -2875,6 +2875,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "samepage-doc"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "samepage-capability",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "yrs",
+]
+
+[[package]]
+name = "samepage-doc-web"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "samepage-capability",
+ "samepage-doc",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "samepage-extract"
 version = "0.1.0"
 dependencies = [
