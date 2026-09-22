@@ -133,16 +133,17 @@ fn the_envelope_carries_results_and_errors_without_panicking() {
     assert_eq!(projected, json!({ "cards": 2 }));
 
     let call = json!({ "action": "card_place", "args": { "label": "Queue" } }).to_string();
-    let plan: Plan = envelope::decode(&envelope::plan(&Notes, &call, &view_json())).unwrap();
-    assert_eq!(plan.readback, "Placed Queue.");
+    // Under ABI v2 the planning export answers with a Batch.
+    let batch: samepage_capability::Batch =
+        envelope::decode(&envelope::plan(&Notes, &call, &view_json())).unwrap();
+    assert_eq!(batch.entries.len(), 1);
+    assert_eq!(batch.entries[0].capability, "map");
+    assert_eq!(batch.entries[0].plan.readback, "Placed Queue.");
 
-    // A plan from the envelope resolves against the composition like any other.
+    // A batch from the envelope resolves against the composition like any other.
     let resolved = samepage_capability::Batch {
         base_revision: "rev-1".into(),
-        entries: vec![samepage_capability::BatchEntry {
-            capability: "map".into(),
-            plan,
-        }],
+        entries: batch.entries,
     }
     .resolve(
         &common::composition(),
@@ -153,12 +154,16 @@ fn the_envelope_carries_results_and_errors_without_panicking() {
     assert_eq!(resolved.ids()["card"], "id-0");
 
     let refused = json!({ "action": "card_place", "args": {} }).to_string();
-    let error =
-        envelope::decode::<Plan>(&envelope::plan(&Notes, &refused, &view_json())).unwrap_err();
+    let error = envelope::decode::<samepage_capability::Batch>(&envelope::plan(
+        &Notes,
+        &refused,
+        &view_json(),
+    ))
+    .unwrap_err();
     assert_eq!(error.code, "invalid_args");
 
     let garbage = envelope::plan(&Notes, "{not json", &view_json());
-    let error = envelope::decode::<Plan>(&garbage).unwrap_err();
+    let error = envelope::decode::<samepage_capability::Batch>(&garbage).unwrap_err();
     assert_eq!(error.code, "bad_input");
     assert!(error.message.starts_with("call:"), "{}", error.message);
 
@@ -270,8 +275,11 @@ fn a_non_finite_number_in_a_plan_is_an_error_envelope_never_ok() {
     // A finite computed value still goes through.
     let call =
         json!({ "action": "card_place", "args": { "x": 9.0, "divide_by": 3.0 } }).to_string();
-    let plan: Plan = envelope::decode(&envelope::plan(&Ratio, &call, &view_json())).unwrap();
-    assert!(matches!(&plan.ops[0], Op::Set { props, .. } if props["x"] == Value::from(3.0)));
+    let batch: samepage_capability::Batch =
+        envelope::decode(&envelope::plan(&Ratio, &call, &view_json())).unwrap();
+    assert!(
+        matches!(&batch.entries[0].plan.ops[0], Op::Set { props, .. } if props["x"] == Value::from(3.0))
+    );
 }
 
 #[test]

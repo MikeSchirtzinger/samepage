@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 
 use crate::descriptor::Descriptor;
-use crate::plan::Plan;
+use crate::plan::{Batch, BatchEntry, Plan};
 use crate::record::{Delta, View};
 
 /// One action invocation. There is no author here: who called is established
@@ -125,6 +125,29 @@ pub trait Capability: Send + Sync + 'static {
     /// Accept or refuse a replica's change to this capability's records. Called
     /// only with records the delta touched.
     fn validate(&self, delta: &Delta, view: &View) -> Result<(), CapError>;
+
+    /// One action, one atomic batch.
+    ///
+    /// The default wraps [`Self::plan`] in a single entry owned by this
+    /// capability, so a capability that writes only its own kinds needs
+    /// nothing else. A capability that composes another's records (a typed
+    /// diagram creates cards and links before it can type them) overrides
+    /// this and returns ordered entries, using batch references to point at
+    /// the records earlier entries create.
+    ///
+    /// It is pure, like `plan`: no side effects, no host resources. The host
+    /// checks the batch before anything is written, and an entry naming
+    /// another capability is routing only: that owner's ownership rules and
+    /// its own `validate_change` still decide.
+    fn plan_batch(&self, call: &Call, view: &View) -> Result<Batch, CapError> {
+        Ok(Batch {
+            base_revision: view.revision().to_string(),
+            entries: vec![BatchEntry {
+                capability: self.descriptor().id,
+                plan: self.plan(call, view)?,
+            }],
+        })
+    }
 
     /// **Host authority hook.** Called only by the native host, for every
     /// change that writes (or attempts to write, even with an unchanged value)

@@ -1,8 +1,8 @@
 //! The JSON calling convention of a capability's WebAssembly exports.
 //!
 //! Every export takes JSON strings and returns one JSON string:
-//! `{"abi": "samepage.capability.v1", "ok": <result>}` or
-//! `{"abi": "samepage.capability.v1", "error": {"code": ..., "message": ...}}`.
+//! `{"abi": "samepage.capability.v2", "ok": <result>}` or
+//! `{"abi": "samepage.capability.v2", "error": {"code": ..., "message": ...}}`.
 //! Input that does not parse is an error with code `bad_input`, never a panic
 //! across the boundary. A result holding a NaN or infinite [`Scalar`](crate::Scalar)
 //! is an error with code `non_finite_output`, never an `ok` with the number
@@ -53,11 +53,15 @@ pub fn project(capability: &dyn Capability, view: &str) -> String {
     finish(input::<View>("view", view).and_then(|view| capability.project(&view)))
 }
 
+/// Under ABI v2 `plan` answers with a [`Batch`](crate::Batch), never a bare
+/// [`Plan`](crate::Plan): it calls [`Capability::plan_batch`], whose default
+/// wraps the capability's own `plan` in one self-owned entry. There is one
+/// planning export and one planning schema.
 pub fn plan(capability: &dyn Capability, call: &str, view: &str) -> String {
     finish((|| {
         let call: Call = input("call", call)?;
         let view: View = input("view", view)?;
-        capability.plan(&call, &view)
+        capability.plan_batch(&call, &view)
     })())
 }
 

@@ -21,7 +21,7 @@ pub struct Cards;
 impl Cards {
     pub fn descriptor() -> Descriptor {
         Descriptor::new("cards", "0.1.0", Artifact::Wasm)
-            .owns("card", &["label", "x", "y", "note"], "cards")
+            .owns("card", &["label", "x", "y", "note", "parent"], "cards")
             .owns("link", &["from", "to"], "links between cards")
             .action(
                 ActionDecl::new(

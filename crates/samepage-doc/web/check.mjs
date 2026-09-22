@@ -14,7 +14,7 @@ assert.equal(doc.abi(), "samepage.document.v1");
 assert.equal(doc.layout_version(), 1);
 
 const descriptors = JSON.stringify([{
-  abi: "samepage.capability.v1", id: "cards", version: "0.1.0",
+  abi: "samepage.capability.v2", id: "cards", version: "0.1.0",
   kinds: [{ kind: "card", keys: ["label", "x", "y", "note"], reason: "cards" }],
   props: [], reads: [], depends_on: [], actions: [], visual_actions: [], triggers: [],
   artifact: { type: "wasm" }, schema: 1,

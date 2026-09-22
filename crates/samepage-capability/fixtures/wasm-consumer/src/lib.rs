@@ -1,8 +1,8 @@
 //! Fixture capability: one kind, one action, exported to WebAssembly.
 
 use samepage_capability::{
-    ActionDecl, Artifact, Audience, Call, CapError, Capability, Delta, Descriptor, Effect,
-    LegendEntry, Op, Plan, Target, Value, View,
+    ActionDecl, Artifact, Audience, Batch, BatchEntry, Call, CapError, Capability, Delta,
+    Descriptor, Effect, LegendEntry, Op, Plan, Target, Value, View,
 };
 use serde_json::json;
 
@@ -11,7 +11,8 @@ pub struct Pins;
 impl Capability for Pins {
     fn descriptor(&self) -> Descriptor {
         Descriptor::new("pins", "0.0.0", Artifact::Wasm)
-            .owns("pin", &["label", "x", "y"], "fixture records")
+            .depends_on("notes", "0.0.0", "composes a note beside each scaffolded pin")
+            .owns("pin", &["label", "x", "y", "note"], "fixture records")
             .action(
                 ActionDecl::new("pin_add", Audience::Both, Effect::Mutate, "Add a pin.")
                     .alias("fixture_pin"),
@@ -22,6 +23,60 @@ impl Capability for Pins {
                 Effect::Mutate,
                 "Move a pin.",
             ))
+            .action(ActionDecl::new(
+                "pin_scaffold",
+                Audience::Both,
+                Effect::Mutate,
+                "Compose a note and a pin that points at it, in one batch.",
+            ))
+    }
+
+    /// Overrides the default so the export carries more than one entry, in
+    /// order, with a reference resolved across them.
+    fn plan_batch(&self, call: &Call, view: &View) -> Result<Batch, CapError> {
+        if call.action != "pin_scaffold" {
+            return Ok(Batch {
+                base_revision: view.revision().to_string(),
+                entries: vec![BatchEntry {
+                    capability: self.descriptor().id,
+                    plan: self.plan(call, view)?,
+                }],
+            });
+        }
+        let label = call.args["label"]
+            .as_str()
+            .ok_or_else(|| CapError::new("invalid_args", "label is required"))?;
+        Ok(Batch {
+            base_revision: view.revision().to_string(),
+            entries: vec![
+                BatchEntry {
+                    capability: "notes".into(),
+                    plan: Plan {
+                        ops: vec![Op::Create {
+                            reference: "note".into(),
+                            kind: "note".into(),
+                            props: [("text".to_string(), Value::from(label))].into(),
+                        }],
+                        readback: format!("Wrote a note about {label}."),
+                    },
+                },
+                BatchEntry {
+                    capability: "pins".into(),
+                    plan: Plan {
+                        ops: vec![Op::Create {
+                            reference: "pin".into(),
+                            kind: "pin".into(),
+                            props: [
+                                ("label".to_string(), Value::from(label)),
+                                ("note".to_string(), Value::reference("note")),
+                            ]
+                            .into(),
+                        }],
+                        readback: format!("Pinned {label} to it."),
+                    },
+                },
+            ],
+        })
     }
 
     fn project(&self, view: &View) -> Result<serde_json::Value, CapError> {

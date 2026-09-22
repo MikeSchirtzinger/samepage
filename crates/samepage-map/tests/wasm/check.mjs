@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 const map = createRequire(import.meta.url)(resolve(process.argv[2], "samepage_map.js"));
 const { view, calls } = JSON.parse(readFileSync(process.argv[3], "utf8"));
 const viewJson = JSON.stringify(view);
-assert.equal(map.abi(), "samepage.capability.v1");
+assert.equal(map.abi(), "samepage.capability.v2");
 
 const results = calls.map((c) => {
   switch (c.export) {

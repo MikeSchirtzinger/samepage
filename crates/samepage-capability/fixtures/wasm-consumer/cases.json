@@ -1,0 +1,31 @@
+{
+  "view": {
+    "revision": "r1",
+    "records": [
+      { "id": "p1", "kind": "pin", "props": { "label": "Start", "x": 1 } },
+      { "id": "u1", "kind": "unknown-kind", "props": { "anything": true } }
+    ]
+  },
+  "calls": [
+    { "export": "descriptor" },
+    { "export": "project" },
+    { "export": "digest" },
+    { "export": "legend" },
+    { "export": "plan", "call": { "action": "pin_add", "args": { "label": "Queue" } } },
+    { "export": "plan", "call": { "action": "pin_move", "args": { "id": "p1", "x": 42 } } },
+    { "export": "plan", "call": { "action": "pin_scaffold", "args": { "label": "Queue" } } },
+    { "export": "plan", "call": { "action": "pin_scaffold", "args": {} } },
+    { "export": "plan", "call": { "action": "pin_move", "args": { "id": "nope", "x": 1 } } },
+    { "export": "plan", "call": { "action": "pin_add", "args": {} } },
+    { "export": "plan", "call": { "action": "pin_move", "args": { "id": "p1", "x": 9, "divide_by": 3 } } },
+    { "export": "plan", "call": { "action": "pin_move", "args": { "id": "p1", "x": 0, "divide_by": 0 } } },
+    { "export": "plan", "call": { "action": "pin_move", "args": { "id": "p1", "x": 1, "divide_by": 0 } } },
+    { "export": "plan", "call": { "action": "pin_move", "args": { "id": "p1", "x": -1, "divide_by": 0 } } },
+    { "export": "plan", "raw": "{broken" },
+    { "export": "validate", "delta": { "created": ["p9"], "modified": {}, "deleted": [], "rekinded": [] } },
+    { "export": "cascade", "deleted": ["p1"] },
+    { "export": "cascade", "deleted": ["ratio:8:2"] },
+    { "export": "cascade", "deleted": ["ratio:1:0"] },
+    { "export": "changes" }
+  ]
+}

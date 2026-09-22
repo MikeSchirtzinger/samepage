@@ -51,8 +51,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
 use samepage_capability::{
-    audit, is_reserved_key, Audience, AuditError, Batch, BatchBuilder, BatchEntry, Call, CapError,
-    Capability, Change, Composition, Delta, Effect, Origin, PlanError, Principal, ResolvedOp, View,
+    audit, is_reserved_key, Audience, AuditError, Batch, BatchBuilder, Call, CapError, Capability,
+    Change, Composition, Delta, Effect, Origin, PlanError, Principal, ResolvedOp, View,
     AUTHORSHIP_KEYS, KIND_KEY,
 };
 use serde::{Deserialize, Serialize};
@@ -183,6 +183,12 @@ pub enum InvokeError {
     Capability { capability: String, error: CapError },
     #[error("{action:?} is declared as a query but planned {ops} write(s)")]
     QueryMutates { action: String, ops: usize },
+    #[error("capability {capability:?} planned an invalid batch for {action:?}: {reason}")]
+    PlannerBatch {
+        capability: String,
+        action: String,
+        reason: String,
+    },
     #[error("{0}")]
     Commit(#[from] CommitError),
 }
@@ -989,9 +995,14 @@ impl Host {
                 .or_else(|| before.get(id))
                 .map(|record| record.kind.clone());
             if let Some(kind) = kind {
-                if let Some(owner) = self.composition.owner_of_kind(&kind) {
-                    involved.insert(owner.to_string());
-                }
+                // The owner, whoever extends the kind, and whoever declared it
+                // in `reads`. A reader may refuse a change to a record it can
+                // see; it still cannot write a key it does not own.
+                involved.extend(
+                    self.composition
+                        .interested_in_kind(&kind)
+                        .map(str::to_string),
+                );
                 for key in keys {
                     if let Some(writer) = self.composition.writer_of(&kind, key) {
                         involved.insert(writer.to_string());
@@ -1096,38 +1107,76 @@ impl Host {
                 action: preferred.clone(),
                 args,
             };
-            let plan = capability
-                .plan(&call, &view)
-                .map_err(|error| InvokeError::Capability {
-                    capability: capability_id.clone(),
-                    error,
-                })?;
+            let batch =
+                capability
+                    .plan_batch(&call, &view)
+                    .map_err(|error| InvokeError::Capability {
+                        capability: capability_id.clone(),
+                        error,
+                    })?;
+            let refuse = |reason: String| InvokeError::PlannerBatch {
+                capability: capability_id.clone(),
+                action: preferred.clone(),
+                reason,
+            };
+            // A planned batch is checked before anything is written: it must
+            // be planned at the revision the planner was shown, and it may
+            // only target the planner itself or a declared dependency. An
+            // entry naming another capability is routing, not authority: that
+            // owner's rules and its own validate_change still decide.
+            if batch.base_revision != view.revision() {
+                return Err(refuse(format!(
+                    "base revision {:?} is not the revision it planned against ({:?})",
+                    batch.base_revision,
+                    view.revision()
+                )));
+            }
+            for entry in &batch.entries {
+                if self.composition.descriptor(&entry.capability).is_none() {
+                    return Err(refuse(format!(
+                        "entry names {:?}, which is not in this composition",
+                        entry.capability
+                    )));
+                }
+                if !self
+                    .composition
+                    .may_target(&capability_id, &entry.capability)
+                {
+                    return Err(refuse(format!(
+                        "entry names {:?}, which {capability_id:?} does not declare as a dependency",
+                        entry.capability
+                    )));
+                }
+            }
             if declaration.effect == Effect::Query {
-                if !plan.ops.is_empty() {
+                let ops: usize = batch.entries.iter().map(|entry| entry.plan.ops.len()).sum();
+                if ops > 0 {
                     return Err(InvokeError::QueryMutates {
                         action: preferred,
-                        ops: plan.ops.len(),
+                        ops,
                     });
                 }
                 Ok(Invoked {
                     action: preferred,
-                    readback: vec![plan.readback]
-                        .into_iter()
-                        .filter(|r| !r.is_empty())
+                    // A query still speaks: readback comes back from the
+                    // entries in order.
+                    readback: batch
+                        .entries
+                        .iter()
+                        .map(|entry| entry.plan.readback.clone())
+                        .filter(|readback| !readback.is_empty())
                         .collect(),
                     ids: BTreeMap::new(),
                     commit: None,
                 })
             } else {
-                let batch = Batch {
-                    base_revision: view.revision().to_string(),
-                    entries: vec![BatchEntry {
-                        capability: capability_id,
-                        plan,
-                    }],
-                };
+                // The origin is the capability whose action was invoked and
+                // the preferred name of that action. An entry naming another
+                // owner is routing; it never becomes the author of the
+                // change, and a batch with no entries at all is a no-op
+                // rather than something to index into.
                 let origin = Origin::HostAction {
-                    capability: batch.entries[0].capability.clone(),
+                    capability: capability_id.clone(),
                     action: preferred.clone(),
                 };
                 match self.commit_locked(

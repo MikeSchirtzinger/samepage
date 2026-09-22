@@ -23,4 +23,8 @@ target="${CARGO_TARGET_DIR:-$here/target}"
 artifact="$target/wasm32-unknown-unknown/release/samepage_capability_fixture.wasm"
 shasum -a 256 "$artifact"
 "$bindgen" --target nodejs --out-dir "$out" "$artifact"
-node "$here/check.mjs" "$out"
+node "$here/check.mjs" "$out" "$out/results.json"
+
+# The same calls, answered natively, must be byte-identical.
+SAMEPAGE_FIXTURE_WASM_RESULTS="$out/results.json" \
+  cargo test --locked --test equivalence -- --ignored --nocapture

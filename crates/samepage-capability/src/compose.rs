@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use thiserror::Error;
 
-use crate::descriptor::{Artifact, Descriptor};
+use crate::descriptor::{Artifact, Descriptor, Trigger};
 use crate::{is_reserved_key, ABI};
 
 /// Preferred action names may not carry these product prefixes. They survive
@@ -105,6 +105,16 @@ pub enum ComposeError {
     NativeOnlyClaimsDocument(String),
     #[error("capability {0:?} declares a native-only artifact without a reason")]
     NativeOnlyWithoutReason(String),
+    #[error("capability {capability:?} triggers on kind {kind:?}, which it neither owns, extends nor reads")]
+    TriggerKindNotVisible { capability: String, kind: String },
+    #[error(
+        "capability {capability:?} triggers on {kind:?}.{key}, a key it neither owns nor extends"
+    )]
+    TriggerKeyNotOwned {
+        capability: String,
+        kind: String,
+        key: String,
+    },
 }
 
 /// How an action name resolved.
@@ -124,6 +134,14 @@ pub struct Composition {
     key_writer: BTreeMap<(String, String), String>,
     /// name (preferred or alias) -> (capability, preferred, is_alias)
     action_names: BTreeMap<String, (String, String, bool)>,
+    /// capability -> the capabilities it names in `depends_on`. Directly
+    /// declared only: a planner's reach is what its descriptor says out loud,
+    /// not what its dependencies happen to depend on.
+    direct: BTreeMap<String, BTreeSet<String>>,
+    /// kind -> every capability that owns it, extends it, or declared it in
+    /// `reads`. These are the capabilities with something to say about a
+    /// record of that kind.
+    kind_interest: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl Composition {
@@ -136,6 +154,8 @@ impl Composition {
             kind_owner: BTreeMap::new(),
             key_writer: BTreeMap::new(),
             action_names: BTreeMap::new(),
+            direct: BTreeMap::new(),
+            kind_interest: BTreeMap::new(),
         };
         let all_ids: BTreeSet<String> = descriptors.iter().map(|d| d.id.clone()).collect();
         // Transitive dependencies of each capability already accepted.
@@ -282,7 +302,83 @@ impl Composition {
                 }
             }
 
-            closure.insert(id, reach);
+            // A data trigger names data this capability can actually see, and
+            // a property trigger names a key it owns or extends.
+            for trigger in &descriptor.triggers {
+                let visible = |kind: &str| {
+                    descriptor.kinds.iter().any(|claim| claim.kind == kind)
+                        || descriptor.props.iter().any(|claim| claim.kind == kind)
+                        || descriptor.reads.iter().any(|read| read == kind)
+                };
+                match trigger {
+                    Trigger::Always => {}
+                    Trigger::Kind { name } => {
+                        if !visible(name) {
+                            return Err(ComposeError::TriggerKindNotVisible {
+                                capability: id,
+                                kind: name.clone(),
+                            });
+                        }
+                    }
+                    // Tool and route triggers keep the semantics they have
+                    // always had. A tool name is the host's tool selection,
+                    // which need not be one of this capability's actions, and
+                    // a route is whatever the host routes. This amendment adds
+                    // the property trigger; it does not introduce tool or
+                    // route policy.
+                    Trigger::Tool { .. } | Trigger::Route { .. } => {}
+                    Trigger::Property { kind, key } => {
+                        if !visible(kind) {
+                            return Err(ComposeError::TriggerKindNotVisible {
+                                capability: id,
+                                kind: kind.clone(),
+                            });
+                        }
+                        let owns_key = descriptor
+                            .kinds
+                            .iter()
+                            .map(|claim| (&claim.kind, &claim.keys))
+                            .chain(
+                                descriptor
+                                    .props
+                                    .iter()
+                                    .map(|claim| (&claim.kind, &claim.keys)),
+                            )
+                            .any(|(claimed, keys)| claimed == kind && keys.contains(key));
+                        if !owns_key {
+                            return Err(ComposeError::TriggerKeyNotOwned {
+                                capability: id,
+                                kind: kind.clone(),
+                                key: key.clone(),
+                            });
+                        }
+                    }
+                }
+            }
+
+            for kind in descriptor
+                .kinds
+                .iter()
+                .map(|claim| &claim.kind)
+                .chain(descriptor.props.iter().map(|claim| &claim.kind))
+                .chain(descriptor.reads.iter())
+            {
+                composition
+                    .kind_interest
+                    .entry(kind.clone())
+                    .or_default()
+                    .insert(id.clone());
+            }
+
+            closure.insert(id.clone(), reach);
+            composition.direct.insert(
+                id.clone(),
+                descriptor
+                    .depends_on
+                    .iter()
+                    .map(|dep| dep.id.clone())
+                    .collect(),
+            );
             composition.descriptors.push(descriptor.clone());
         }
         Ok(composition)
@@ -342,6 +438,30 @@ impl Composition {
             (capability.to_string(), preferred.to_string(), alias),
         );
         Ok(())
+    }
+
+    /// Every capability that owns, extends or reads `kind`.
+    ///
+    /// Reading is not writing: a reader is consulted about a change to that
+    /// kind and may refuse it, but it can never write a key it does not own.
+    pub fn interested_in_kind(&self, kind: &str) -> impl Iterator<Item = &str> {
+        self.kind_interest
+            .get(kind)
+            .into_iter()
+            .flatten()
+            .map(String::as_str)
+    }
+
+    /// Whether `planner` may put an entry for `target` in a planned batch:
+    /// itself, or a capability it names in `depends_on` directly. A dependency
+    /// of a dependency does not count, so the descriptor of a capability that
+    /// writes another's records always says whose records they are.
+    pub fn may_target(&self, planner: &str, target: &str) -> bool {
+        planner == target
+            || self
+                .direct
+                .get(planner)
+                .is_some_and(|direct| direct.contains(target))
     }
 
     pub fn descriptors(&self) -> &[Descriptor] {

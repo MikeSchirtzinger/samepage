@@ -53,7 +53,12 @@ pub use plan::{
 pub use record::{Delta, Props, Record, RecordError, Scalar, View};
 
 /// The contract version a descriptor, envelope and artifact manifest carry.
-pub const ABI: &str = "samepage.capability.v1";
+///
+/// v2 adds [`Capability::plan_batch`] (and its export), the
+/// [`Trigger::Property`] data trigger, and authority involvement by declared
+/// reads. Every consumer, build step and verification recipe moves with it;
+/// there is no dual-schema fallback.
+pub const ABI: &str = "samepage.capability.v2";
 
 /// The structural key. The kernel writes it from a `Create` op's `kind`; it is
 /// never a property a capability declares or sets.

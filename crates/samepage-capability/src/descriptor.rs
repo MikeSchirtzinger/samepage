@@ -221,17 +221,57 @@ impl ActionDecl {
     }
 }
 
+/// When the browser loads this capability's artifact.
+///
+/// Internally tagged, so the shapes that existed before this ABI are
+/// unchanged on the wire (`{"on":"always"}`, `{"on":"kind","name":"claim"}`,
+/// and the same for tool and route).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "on", content = "name", rename_all = "snake_case")]
+#[serde(tag = "on", rename_all = "snake_case")]
 pub enum Trigger {
     /// Loaded with the page.
     Always,
     /// Loaded when the document holds a record of this kind.
-    Kind(String),
+    Kind { name: String },
     /// Loaded when this tool is picked.
-    Tool(String),
+    Tool { name: String },
     /// Loaded when this route is opened.
-    Route(String),
+    Route { name: String },
+    /// Loaded when any record of `kind` carries `key`, whatever its value.
+    ///
+    /// This is how a document that already holds a capability's data renders
+    /// it on load and on restore, without the shell knowing anything about
+    /// that capability: typed diagram edges carry `event`, a source-bound card
+    /// carries `path`. A kind-only trigger would load the capability for every
+    /// ordinary record of that kind instead.
+    Property { kind: String, key: String },
+}
+
+impl Trigger {
+    pub fn kind(name: &str) -> Self {
+        Trigger::Kind {
+            name: name.to_string(),
+        }
+    }
+
+    pub fn tool(name: &str) -> Self {
+        Trigger::Tool {
+            name: name.to_string(),
+        }
+    }
+
+    pub fn route(name: &str) -> Self {
+        Trigger::Route {
+            name: name.to_string(),
+        }
+    }
+
+    pub fn property(kind: &str, key: &str) -> Self {
+        Trigger::Property {
+            kind: kind.to_string(),
+            key: key.to_string(),
+        }
+    }
 }
 
 /// How the capability runs in the browser.

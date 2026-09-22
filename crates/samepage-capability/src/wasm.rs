@@ -1,9 +1,10 @@
 //! `export_capability!`: the WebAssembly exports of one capability.
 
 /// Export one [`Capability`](crate::Capability) as the JSON functions a
-/// capability artifact provides: `abi`, `descriptor`, `project`, `plan`,
-/// `validate`, `cascade`, `digest`, `changes`, `legend`. Use it once, at the
-/// root of the capability's `cdylib` crate:
+/// capability artifact provides, nine of them: `abi`, `descriptor`, `project`,
+/// `plan`, `validate`, `cascade`, `digest`, `changes`, `legend`. Under ABI v2
+/// `plan` answers with a `Batch`. Use it once, at the root of the
+/// capability's `cdylib` crate:
 ///
 /// ```ignore
 /// samepage_capability::export_capability!(MyCapability, MyCapability::new());
