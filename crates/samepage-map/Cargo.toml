@@ -1,0 +1,35 @@
+[package]
+name = "samepage-map"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The SamePage map capability: cards and the links between them, with validated geometry, containment and read-back. Portable logic shared by the native host and its WebAssembly artifact."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# wasm-pack's bundled wasm-opt predates the bulk-memory ops rustc emits.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[dependencies]
+samepage-capability = { path = "../samepage-capability" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# The WebAssembly artifact exports the capability ABI; native builds do not
+# carry wasm-bindgen.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+samepage-capability = { path = "../samepage-capability", features = ["wasm-export"] }
+wasm-bindgen = { workspace = true }
+
+[dev-dependencies]
+samepage-doc = { path = "../samepage-doc" }
+yrs = { workspace = true }
+base64 = "0.22"
+
+[lints]
+workspace = true
