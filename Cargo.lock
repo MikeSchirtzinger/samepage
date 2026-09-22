@@ -2865,6 +2865,16 @@ name = "samepage"
 version = "0.0.0"
 
 [[package]]
+name = "samepage-capability"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "samepage-extract"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,23 @@
+# A minimal capability built only to prove the export mechanics: that
+# `export_capability!` compiles in a real `cdylib` for wasm32, and that the
+# resulting module answers the calling convention when loaded. It proves the
+# ABI plumbing, not any product capability. Standalone on purpose (its own
+# `[workspace]`), so it never joins the product build.
+[package]
+name = "samepage-capability-fixture"
+version = "0.0.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+samepage-capability = { path = "../..", features = ["wasm-export"] }
+serde_json = "1"
+# Pinned to the wasm-bindgen CLI used to generate the JS glue in the check.
+wasm-bindgen = "=0.2.126"
+
+[workspace]

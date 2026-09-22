@@ -15,6 +15,7 @@ members = [
   "crates/ag-ui-surface",
   "crates/ag-ui-record",
   "crates/samepage-extract",
+  "crates/samepage-capability",
   "examples/same-page-room",
   "examples/same-page-atlas",
   "examples/same-page-atlas/core",

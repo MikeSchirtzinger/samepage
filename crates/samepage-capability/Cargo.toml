@@ -1,0 +1,25 @@
+[package]
+name = "samepage-capability"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The SamePage capability contract: descriptors, per-kind and per-key document ownership, plans with batch references, and replica-frame audits, shared by the native host and browser WebAssembly."
+publish = false
+
+[features]
+default = []
+# Adds `export_capability!`, which turns one `Capability` into the JSON
+# exports a capability's WebAssembly artifact provides. Off by default so the
+# host and plain library users carry no wasm-bindgen.
+wasm-export = ["dep:wasm-bindgen"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+wasm-bindgen = { workspace = true, optional = true }
+
+[lints]
+workspace = true
