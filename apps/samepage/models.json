@@ -1,0 +1,9 @@
+{
+  "providers": [
+    {
+      "id": "none",
+      "label": "No in-page agent; attach through MCP",
+      "api": "none"
+    }
+  ]
+}

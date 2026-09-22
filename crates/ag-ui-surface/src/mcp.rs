@@ -5,6 +5,7 @@
 //! recipe-selected extension set, while direct Surfaces use the same path.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use axum::http::{header, HeaderMap};
 use base64::Engine as _;
@@ -176,10 +177,31 @@ pub(crate) enum Reply {
 /// Handle one MCP JSON-RPC request or notification. HTTP concurrency is the
 /// concurrency model: a long `EmitAndAwait` call suspends only its own request,
 /// so another named decision can remain in flight independently.
+#[cfg(test)]
 pub(crate) async fn handle(
     catalog: &Catalog,
     rt: &RuntimeState,
     surface: &dyn Surface,
+    message: Value,
+) -> Reply {
+    handle_with_surface(catalog, rt, surface, None, message).await
+}
+
+pub(crate) async fn handle_shared(
+    catalog: &Catalog,
+    rt: &RuntimeState,
+    surface: Arc<dyn Surface>,
+    message: Value,
+) -> Reply {
+    let shared = surface.clone();
+    handle_with_surface(catalog, rt, shared.as_ref(), Some(surface), message).await
+}
+
+async fn handle_with_surface(
+    catalog: &Catalog,
+    rt: &RuntimeState,
+    surface: &dyn Surface,
+    blocking_surface: Option<Arc<dyn Surface>>,
     message: Value,
 ) -> Reply {
     let Some(object) = message.as_object() else {
@@ -238,7 +260,9 @@ pub(crate) async fn handle(
         }
         "ping" => Ok(json!({})),
         "tools/list" => Ok(json!({ "tools": catalog.wire_tools() })),
-        "tools/call" => Ok(call_tool(catalog, rt, surface, object.get("params")).await),
+        "tools/call" => {
+            Ok(call_tool(catalog, rt, surface, blocking_surface, object.get("params")).await)
+        }
         _ => Err((-32601, format!("method not found: {method}"))),
     };
 
@@ -252,6 +276,7 @@ async fn call_tool(
     catalog: &Catalog,
     rt: &RuntimeState,
     surface: &dyn Surface,
+    blocking_surface: Option<Arc<dyn Surface>>,
     params: Option<&Value>,
 ) -> Value {
     let name = params
@@ -281,8 +306,12 @@ async fn call_tool(
     // schema before apply, exactly as it does for OpenAI and human calls — and
     // re-checks the audience against `Caller::Agent`, which is now the
     // authoritative gate rather than the two checks above.
-    let (text, _was_query, ok) =
-        turn_loop::dispatch_tool(rt, surface, Caller::Agent, name, &args).await;
+    let (text, _was_query, ok) = match blocking_surface {
+        Some(surface) => {
+            turn_loop::dispatch_tool_shared(rt, surface, Caller::Agent, name, &args).await
+        }
+        None => turn_loop::dispatch_tool(rt, surface, Caller::Agent, name, &args).await,
+    };
     let mut content = vec![json!({ "type": "text", "text": text })];
     if ok && schema.include_state_snapshot {
         match surface.state().snapshot_png().await {
@@ -714,6 +743,7 @@ mod tests {
             &catalog,
             &rt,
             &surface,
+            None,
             Some(&json!({
                 "name": "atlas_add", "arguments": {"value": 42}
             })),
@@ -727,6 +757,7 @@ mod tests {
             &catalog,
             &rt,
             &surface,
+            None,
             Some(&json!({
                 "name": "atlas_add", "arguments": {"value": "one"}
             })),
@@ -738,6 +769,7 @@ mod tests {
             &catalog,
             &rt,
             &surface,
+            None,
             Some(&json!({
                 "name": "atlas_human_reset", "arguments": {}
             })),

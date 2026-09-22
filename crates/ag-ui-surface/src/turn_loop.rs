@@ -347,6 +347,27 @@ pub fn build_context(prompts: &Prompts, surface: &dyn Surface) -> String {
 /// and the generic `POST /surface/action` route (legacy alias:
 /// `/canvas-tool`). Every actor therefore executes the same closure.
 ///
+pub(crate) async fn run_blocking_surface<T, F>(
+    surface: Arc<dyn Surface>,
+    operation: F,
+) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce(&dyn Surface) -> T + Send + 'static,
+{
+    let actor = crate::current_actor();
+    let runtime = tokio::runtime::Handle::current();
+    tokio::task::spawn_blocking(move || {
+        let operation = async move { operation(surface.as_ref()) };
+        match actor {
+            Some(actor) => runtime.block_on(crate::with_actor(actor, operation)),
+            None => runtime.block_on(operation),
+        }
+    })
+    .await
+    .map_err(|error| format!("blocking surface operation failed: {error}"))
+}
+
 /// **`caller` is enforced here, not at the transport.** Each transport used to
 /// decide for itself, and the three that reach an agent all checked
 /// `audience.agent()` while `POST /surface/action` checked nothing — so an
@@ -361,6 +382,80 @@ pub async fn dispatch_tool(
     name: &str,
     args: &JsonValue,
 ) -> (String, bool, bool) {
+    let (content, was_query, ok, _) =
+        dispatch_tool_with_runtime(rt, surface, None, caller, name, args, None).await;
+    (content, was_query, ok)
+}
+
+/// Dispatch a tool whose synchronous effect may wait on application state.
+///
+/// HTTP, MCP, and provider routes own an `Arc` and use this form so a durable
+/// state wait cannot occupy a Tokio worker. The request actor is re-scoped on
+/// the blocking task before the effect runs.
+pub async fn dispatch_tool_shared(
+    rt: &RuntimeState,
+    surface: Arc<dyn Surface>,
+    caller: Caller,
+    name: &str,
+    args: &JsonValue,
+) -> (String, bool, bool) {
+    let shared = surface.clone();
+    let (content, was_query, ok, _) =
+        dispatch_tool_with_runtime(rt, shared.as_ref(), Some(surface), caller, name, args, None)
+            .await;
+    (content, was_query, ok)
+}
+
+/// Provider dispatch with the accepted turn's pre-existing interrupt receiver.
+///
+/// The receiver predates the effect factory. An interrupt while that factory
+/// is running therefore prevents a newly returned effect from starting. Once
+/// a synchronous state operation has started it is allowed to finish, and its
+/// real result is returned with `interrupted = true`. Asynchronous effects are
+/// dropped promptly when interrupted.
+pub(crate) async fn dispatch_tool_shared_cancellable(
+    rt: &RuntimeState,
+    surface: Arc<dyn Surface>,
+    caller: Caller,
+    name: &str,
+    args: &JsonValue,
+    interrupt: &mut tokio::sync::broadcast::Receiver<()>,
+) -> (String, bool, bool, bool) {
+    let shared = surface.clone();
+    dispatch_tool_with_runtime(
+        rt,
+        shared.as_ref(),
+        Some(surface),
+        caller,
+        name,
+        args,
+        Some(interrupt),
+    )
+    .await
+}
+
+async fn dispatch_tool_with_runtime(
+    rt: &RuntimeState,
+    surface: &dyn Surface,
+    blocking_surface: Option<Arc<dyn Surface>>,
+    caller: Caller,
+    name: &str,
+    args: &JsonValue,
+    provider_interrupt: Option<&mut tokio::sync::broadcast::Receiver<()>>,
+) -> (String, bool, bool, bool) {
+    // Even ordinary dispatch subscribes before the factory so a decision
+    // returned by a slow offloaded factory cannot miss an interrupt. Provider
+    // dispatch supplies the receiver created when the turn was accepted and
+    // also uses it to cancel asynchronous effects.
+    let provider_cancellable = provider_interrupt.is_some();
+    let mut decision_interrupt;
+    let interrupt = match provider_interrupt {
+        Some(interrupt) => interrupt,
+        None => {
+            decision_interrupt = rt.interrupt_tx.subscribe();
+            &mut decision_interrupt
+        }
+    };
     let preferred = surface
         .tools()
         .iter()
@@ -368,7 +463,15 @@ pub async fn dispatch_tool(
         .map(|tool| tool.name.as_str())
         .unwrap_or(name);
     let run_id = rt.current_activity_run.lock().clone();
-    let before = match surface.state().activity_state_revision() {
+    let before_result = match &blocking_surface {
+        Some(surface) => run_blocking_surface(surface.clone(), |surface| {
+            surface.state().activity_state_revision()
+        })
+        .await
+        .and_then(|result| result),
+        None => surface.state().activity_state_revision(),
+    };
+    let before = match before_result {
         Ok(revision) => revision,
         Err(error) => {
             rt.activity.record_failure(
@@ -380,8 +483,28 @@ pub async fn dispatch_tool(
             Vec::new()
         }
     };
-    let result = dispatch_tool_inner(rt, surface, caller, name, args).await;
-    let after = match surface.state().activity_state_revision() {
+    let mut result = dispatch_tool_inner(
+        rt,
+        surface,
+        blocking_surface.clone(),
+        caller,
+        name,
+        args,
+        DispatchInterrupt {
+            provider_cancellable,
+            receiver: interrupt,
+        },
+    )
+    .await;
+    let after_result = match &blocking_surface {
+        Some(surface) => run_blocking_surface(surface.clone(), |surface| {
+            surface.state().activity_state_revision()
+        })
+        .await
+        .and_then(|result| result),
+        None => surface.state().activity_state_revision(),
+    };
+    let after = match after_result {
         Ok(revision) => revision,
         Err(error) => {
             rt.activity.record_failure(
@@ -393,7 +516,12 @@ pub async fn dispatch_tool(
             Vec::new()
         }
     };
-    let outcome = if result.2 {
+    if provider_cancellable && take_interrupt(interrupt) {
+        result.3 = true;
+    }
+    let outcome = if result.3 {
+        crate::ActivityOutcome::Cancelled
+    } else if result.2 {
         crate::ActivityOutcome::Succeeded
     } else {
         crate::ActivityOutcome::Failed
@@ -405,9 +533,9 @@ pub async fn dispatch_tool(
         run_id.as_deref(),
         before,
         after,
-        (!result.2).then_some(result.0.as_str()),
+        (!result.2 || result.3).then_some(result.0.as_str()),
     );
-    if !result.2 {
+    if !result.2 && !result.3 {
         rt.activity.record_failure(
             "action.failed",
             Some(caller),
@@ -418,19 +546,30 @@ pub async fn dispatch_tool(
     result
 }
 
+struct DispatchInterrupt<'a> {
+    provider_cancellable: bool,
+    receiver: &'a mut tokio::sync::broadcast::Receiver<()>,
+}
+
 async fn dispatch_tool_inner(
     rt: &RuntimeState,
     surface: &dyn Surface,
+    blocking_surface: Option<Arc<dyn Surface>>,
     caller: Caller,
     name: &str,
     args: &JsonValue,
-) -> (String, bool, bool) {
+    cancellation: DispatchInterrupt<'_>,
+) -> (String, bool, bool, bool) {
+    let DispatchInterrupt {
+        provider_cancellable,
+        receiver: interrupt,
+    } = cancellation;
     let Some(tool) = surface
         .tools()
         .iter()
         .find(|t| t.name == name || t.aliases.iter().any(|alias| alias == name))
     else {
-        return (format!("unknown action '{name}'"), false, false);
+        return (format!("unknown action '{name}'"), false, false, false);
     };
     // Before argument validation: an action this caller may not run should not
     // have its arguments inspected, and the refusal should not depend on
@@ -444,52 +583,148 @@ async fn dispatch_tool_inner(
             ),
             false,
             false,
+            false,
         );
     }
     if let Err(error) = rt.validate_action_arguments(&tool.name, args) {
-        return (error, false, false);
+        return (error, false, false, false);
     }
-    match (tool.apply)(args) {
-        Effect::Query(f) => match f(surface.state()) {
-            Ok(text) => (text, true, true),
-            Err(error) => (error, true, false),
+    if provider_cancellable && take_interrupt(interrupt) {
+        return interrupted_before_effect();
+    }
+    let effect = match &blocking_surface {
+        Some(surface) => {
+            let apply = tool.apply.clone();
+            let args = args.clone();
+            match run_blocking_surface(surface.clone(), move |_| apply(&args)).await {
+                Ok(effect) => effect,
+                Err(error) => return (error, false, false, false),
+            }
+        }
+        None => (tool.apply)(args),
+    };
+    // A blocking factory cannot be cancelled safely, but it is only allowed
+    // to construct an effect. If the turn was interrupted while it ran, do not
+    // start the returned query, mutation, commit, or decision.
+    if provider_cancellable && take_interrupt(interrupt) {
+        return interrupted_before_effect();
+    }
+    match effect {
+        Effect::Query(f) => match match blocking_surface {
+            Some(surface) => run_blocking_surface(surface, move |surface| f(surface.state()))
+                .await
+                .and_then(|result| result),
+            None => f(surface.state()),
+        } {
+            Ok(text) => (
+                text,
+                true,
+                true,
+                provider_cancellable && take_interrupt(interrupt),
+            ),
+            Err(error) => (
+                error,
+                true,
+                false,
+                provider_cancellable && take_interrupt(interrupt),
+            ),
         },
-        Effect::AsyncQuery(future) => match future.await {
-            Ok(text) => (text, true, true),
-            Err(error) => (error, true, false),
-        },
-        Effect::Mutate(f) => match f(surface.state()) {
+        Effect::AsyncQuery(future) => {
+            let result = if provider_cancellable {
+                tokio::select! {
+                    biased;
+                    _ = interrupt.recv() => return ("interrupted by learner".to_string(), true, false, true),
+                    result = future => result,
+                }
+            } else {
+                future.await
+            };
+            match result {
+                Ok(text) => (text, true, true, false),
+                Err(error) => (error, true, false, false),
+            }
+        }
+        Effect::Mutate(f) => match match blocking_surface {
+            Some(surface) => run_blocking_surface(surface, move |surface| f(surface.state()))
+                .await
+                .and_then(|result| result),
+            None => f(surface.state()),
+        } {
             Ok(text) => (
                 text.unwrap_or_else(|| format!("applied {name}")),
                 false,
                 true,
+                provider_cancellable && take_interrupt(interrupt),
             ),
-            Err(error) => (error, false, false),
-        },
-        Effect::AsyncMutate(future) => match future.await {
-            Ok(text) => (
-                text.unwrap_or_else(|| format!("applied {name}")),
+            Err(error) => (
+                error,
                 false,
-                true,
+                false,
+                provider_cancellable && take_interrupt(interrupt),
             ),
-            Err(error) => (error, false, false),
         },
-        Effect::Commit { apply, .. } => match surface.store() {
-            Some(store) => match apply(store) {
+        Effect::AsyncMutate(future) => {
+            let result = if provider_cancellable {
+                tokio::select! {
+                    biased;
+                    _ = interrupt.recv() => return ("interrupted by learner".to_string(), false, false, true),
+                    result = future => result,
+                }
+            } else {
+                future.await
+            };
+            match result {
                 Ok(text) => (
                     text.unwrap_or_else(|| format!("applied {name}")),
                     false,
                     true,
+                    false,
                 ),
-                Err(error) => (error, false, false),
+                Err(error) => (error, false, false, false),
+            }
+        }
+        Effect::Commit { apply, .. } => match blocking_surface {
+            Some(surface) => match run_blocking_surface(surface, move |surface| {
+                surface
+                    .store()
+                    .ok_or_else(|| "surface has no durable store".to_string())
+                    .and_then(apply)
+            })
+            .await
+            .and_then(|result| result)
+            {
+                Ok(text) => (
+                    text.unwrap_or_else(|| format!("applied {name}")),
+                    false,
+                    true,
+                    provider_cancellable && take_interrupt(interrupt),
+                ),
+                Err(error) => (
+                    error,
+                    false,
+                    false,
+                    provider_cancellable && take_interrupt(interrupt),
+                ),
             },
-            None => (
-                format!("action '{name}' requires a durable store, but none is configured"),
-                false,
-                false,
-            ),
+            None => match surface.store() {
+                Some(store) => match apply(store) {
+                    Ok(text) => (
+                        text.unwrap_or_else(|| format!("applied {name}")),
+                        false,
+                        true,
+                        false,
+                    ),
+                    Err(error) => (error, false, false, false),
+                },
+                None => (
+                    format!("action '{name}' requires a durable store, but none is configured"),
+                    false,
+                    false,
+                    false,
+                ),
+            },
         },
-        Effect::Reject(msg) => (msg, false, false),
+        Effect::Reject(msg) => (msg, false, false, false),
         Effect::EmitAndAwait {
             id,
             event,
@@ -503,14 +738,20 @@ async fn dispatch_tool_inner(
                         format!("failed to serialize decision {id:?}: {error}"),
                         false,
                         false,
+                        false,
                     );
                 }
             };
-            // Subscribe before exposing the decision or emitting its event so
-            // an interrupt racing either step is still observed by this
-            // waiter. A subscription created after the emit can miss a
-            // barge-in that lands in that narrow window.
-            let mut interrupt = rt.interrupt_tx.subscribe();
+            if take_interrupt(interrupt) {
+                return (
+                    format!(
+                        "decision '{id}' interrupted (barge-in): the human moved on without answering"
+                    ),
+                    false,
+                    true,
+                    provider_cancellable,
+                );
+            }
 
             // Stash + emit under the SSE replay boundary. A reconnect sees the
             // decision exactly once, either in its pending snapshot or in its
@@ -530,7 +771,12 @@ async fn dispatch_tool_inner(
                 )
                 .is_err()
             {
-                return (format!("decision '{id}' is already pending"), false, false);
+                return (
+                    format!("decision '{id}' is already pending"),
+                    false,
+                    false,
+                    false,
+                );
             }
             let _pending_guard = PendingDecisionGuard {
                 rt,
@@ -566,6 +812,7 @@ async fn dispatch_tool_inner(
                 }
                 reply = &mut reply_rx => DecisionOutcome::Reply(reply),
             };
+            let decision_interrupted = matches!(&outcome, DecisionOutcome::Interrupted);
             let result = match outcome {
                 DecisionOutcome::Interrupted => Ok(format!(
                     "decision '{id}' interrupted (barge-in): the human moved on without answering"
@@ -581,10 +828,382 @@ async fn dispatch_tool_inner(
                 },
             };
             match result {
-                Ok(text) => (text, false, true),
-                Err(error) => (error, false, false),
+                Ok(text) => (
+                    text,
+                    false,
+                    true,
+                    decision_interrupted && provider_cancellable,
+                ),
+                Err(error) => (error, false, false, false),
             }
         }
+    }
+}
+
+fn take_interrupt(interrupt: &mut tokio::sync::broadcast::Receiver<()>) -> bool {
+    match interrupt.try_recv() {
+        Ok(()) | Err(tokio::sync::broadcast::error::TryRecvError::Lagged(_)) => true,
+        Err(tokio::sync::broadcast::error::TryRecvError::Empty)
+        | Err(tokio::sync::broadcast::error::TryRecvError::Closed) => false,
+    }
+}
+
+fn interrupted_before_effect() -> (String, bool, bool, bool) {
+    ("interrupted by learner".to_string(), false, false, true)
+}
+
+#[cfg(test)]
+mod cancellation_tests {
+    use std::collections::VecDeque;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{mpsc as std_mpsc, Arc};
+    use std::time::Duration;
+
+    use ag_ui_core::event::BaseEvent;
+    use parking_lot::Mutex;
+    use serde_json::json;
+
+    use super::*;
+    use crate::auth::AuthStore;
+    use crate::turn_loop::openai::ByokConfig;
+    use crate::{
+        ClientModule, CustomEvent, ReplyKind, StateBacking, StateSnapshot, SurfaceState, ToolDef,
+    };
+
+    struct TestState;
+
+    impl SurfaceState for TestState {
+        fn backing(&self) -> StateBacking {
+            StateBacking::Ephemeral
+        }
+
+        fn describe(&self) -> Result<String, String> {
+            Ok("test".to_string())
+        }
+
+        fn snapshot(&self) -> Result<StateSnapshot, String> {
+            Ok(StateSnapshot {
+                backing: StateBacking::Ephemeral,
+                body: json!({}),
+                chrome: None,
+            })
+        }
+    }
+
+    struct TestSurface {
+        state: TestState,
+        actions: Vec<ToolDef>,
+    }
+
+    impl Surface for TestSurface {
+        fn state(&self) -> &dyn SurfaceState {
+            &self.state
+        }
+
+        fn tools(&self) -> &[ToolDef] {
+            &self.actions
+        }
+
+        fn client_modules(&self) -> Vec<ClientModule> {
+            Vec::new()
+        }
+    }
+
+    fn runtime(actions: &[ToolDef]) -> Arc<RuntimeState> {
+        let auth_path = std::env::temp_dir().join(format!(
+            "ag-ui-cancellable-dispatch-{}-{}.json",
+            std::process::id(),
+            MessageId::random()
+        ));
+        let (ws_tx, _) = tokio::sync::broadcast::channel(8);
+        let (sse_tx, _) = tokio::sync::broadcast::channel(8);
+        let (rt, _) = RuntimeState::new(
+            ws_tx,
+            sse_tx,
+            Arc::new(Mutex::new(VecDeque::new())),
+            Vec::new(),
+            Arc::new(AuthStore::open(auth_path).expect("open temporary auth store")),
+            "test".to_string(),
+            ByokConfig::default(),
+            false,
+            0,
+        );
+        rt.install_action_schemas(actions)
+            .expect("install test action schemas");
+        rt
+    }
+
+    #[tokio::test]
+    async fn provider_interrupt_cancels_pending_async_query() {
+        let (started_tx, started_rx) = oneshot::channel();
+        let started_tx = Arc::new(Mutex::new(Some(started_tx)));
+        let action = ToolDef::new(
+            "wait",
+            "Wait forever unless the turn is interrupted.",
+            json!({ "type": "object", "properties": {} }),
+            {
+                let started_tx = started_tx.clone();
+                move |_| {
+                    let started_tx = started_tx.clone();
+                    Effect::AsyncQuery(Box::pin(async move {
+                        if let Some(started_tx) = started_tx.lock().take() {
+                            let _ = started_tx.send(());
+                        }
+                        std::future::pending().await
+                    }))
+                }
+            },
+        )
+        .agent_only();
+        let surface: Arc<dyn Surface> = Arc::new(TestSurface {
+            state: TestState,
+            actions: vec![action],
+        });
+        let rt = runtime(surface.tools());
+        let mut interrupt = rt.interrupt_tx.subscribe();
+        let task_rt = rt.clone();
+        let task_surface = surface.clone();
+        let dispatch = tokio::spawn(async move {
+            dispatch_tool_shared_cancellable(
+                &task_rt,
+                task_surface,
+                Caller::Agent,
+                "wait",
+                &json!({}),
+                &mut interrupt,
+            )
+            .await
+        });
+
+        tokio::time::timeout(Duration::from_millis(500), started_rx)
+            .await
+            .expect("async query should start")
+            .expect("async query start signal should arrive");
+        let _ = rt.interrupt_tx.send(());
+        let result = tokio::time::timeout(Duration::from_millis(500), dispatch)
+            .await
+            .expect("pending async query must cancel promptly")
+            .expect("dispatch task should join");
+        assert_eq!(
+            result,
+            ("interrupted by learner".to_string(), true, false, true)
+        );
+        assert!(rt.decision.lock().is_empty());
+    }
+
+    #[tokio::test]
+    async fn interrupt_while_factory_is_paused_never_registers_returned_decision() {
+        let (started_tx, started_rx) = std_mpsc::channel();
+        let (release_tx, release_rx) = std_mpsc::channel();
+        let release_rx = Arc::new(Mutex::new(Some(release_rx)));
+        let reply_calls = Arc::new(AtomicUsize::new(0));
+        let action = ToolDef::new(
+            "decide",
+            "Pause before returning a decision.",
+            json!({ "type": "object", "properties": {} }),
+            {
+                let release_rx = release_rx.clone();
+                let reply_calls = reply_calls.clone();
+                move |_| {
+                    started_tx.send(()).expect("announce paused factory");
+                    release_rx
+                        .lock()
+                        .take()
+                        .expect("factory called once")
+                        .recv()
+                        .expect("release paused factory");
+                    let reply_calls = reply_calls.clone();
+                    Effect::EmitAndAwait {
+                        id: "late-decision".to_string(),
+                        event: CustomEvent {
+                            base: BaseEvent::default(),
+                            name: "test.decision".to_string(),
+                            value: json!({ "id": "late-decision" }),
+                        },
+                        reply_kind: ReplyKind::Any,
+                        on_reply: Box::new(move |_| {
+                            reply_calls.fetch_add(1, Ordering::SeqCst);
+                            Ok("answered".to_string())
+                        }),
+                    }
+                }
+            },
+        )
+        .agent_only();
+        let surface: Arc<dyn Surface> = Arc::new(TestSurface {
+            state: TestState,
+            actions: vec![action],
+        });
+        let rt = runtime(surface.tools());
+        let mut interrupt = rt.interrupt_tx.subscribe();
+        let task_rt = rt.clone();
+        let dispatch = tokio::spawn(async move {
+            dispatch_tool_shared_cancellable(
+                &task_rt,
+                surface,
+                Caller::Agent,
+                "decide",
+                &json!({}),
+                &mut interrupt,
+            )
+            .await
+        });
+        tokio::task::spawn_blocking(move || {
+            started_rx
+                .recv_timeout(Duration::from_secs(1))
+                .expect("factory should start")
+        })
+        .await
+        .expect("factory start waiter should join");
+
+        let _ = rt.interrupt_tx.send(());
+        release_tx.send(()).expect("release factory");
+        let result = tokio::time::timeout(Duration::from_millis(500), dispatch)
+            .await
+            .expect("paused factory dispatch must settle after release")
+            .expect("dispatch task should join");
+        assert_eq!(result, interrupted_before_effect());
+        assert!(rt.decision.lock().is_empty());
+        assert_eq!(reply_calls.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn interrupt_while_factory_is_paused_does_not_start_returned_mutation() {
+        let (started_tx, started_rx) = std_mpsc::channel();
+        let (release_tx, release_rx) = std_mpsc::channel();
+        let release_rx = Arc::new(Mutex::new(Some(release_rx)));
+        let mutations = Arc::new(AtomicUsize::new(0));
+        let action = ToolDef::new(
+            "mutate",
+            "Pause before returning a mutation.",
+            json!({ "type": "object", "properties": {} }),
+            {
+                let release_rx = release_rx.clone();
+                let mutations = mutations.clone();
+                move |_| {
+                    started_tx.send(()).expect("announce paused factory");
+                    release_rx
+                        .lock()
+                        .take()
+                        .expect("factory called once")
+                        .recv()
+                        .expect("release paused factory");
+                    let mutations = mutations.clone();
+                    Effect::Mutate(Box::new(move |_| {
+                        mutations.fetch_add(1, Ordering::SeqCst);
+                        Ok(None)
+                    }))
+                }
+            },
+        )
+        .agent_only();
+        let surface: Arc<dyn Surface> = Arc::new(TestSurface {
+            state: TestState,
+            actions: vec![action],
+        });
+        let rt = runtime(surface.tools());
+        let mut interrupt = rt.interrupt_tx.subscribe();
+        let task_rt = rt.clone();
+        let dispatch = tokio::spawn(async move {
+            dispatch_tool_shared_cancellable(
+                &task_rt,
+                surface,
+                Caller::Agent,
+                "mutate",
+                &json!({}),
+                &mut interrupt,
+            )
+            .await
+        });
+        tokio::task::spawn_blocking(move || {
+            started_rx
+                .recv_timeout(Duration::from_secs(1))
+                .expect("factory should start")
+        })
+        .await
+        .expect("factory start waiter should join");
+
+        let _ = rt.interrupt_tx.send(());
+        release_tx.send(()).expect("release factory");
+        let result = tokio::time::timeout(Duration::from_millis(500), dispatch)
+            .await
+            .expect("paused factory dispatch must settle after release")
+            .expect("dispatch task should join");
+        assert_eq!(result, interrupted_before_effect());
+        assert_eq!(mutations.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn interrupt_waits_for_started_sync_mutation_and_reports_real_result() {
+        let (started_tx, started_rx) = std_mpsc::channel();
+        let (release_tx, release_rx) = std_mpsc::channel();
+        let release_rx = Arc::new(Mutex::new(Some(release_rx)));
+        let mutations = Arc::new(AtomicUsize::new(0));
+        let action = ToolDef::new(
+            "mutate",
+            "Block inside an already-started mutation.",
+            json!({ "type": "object", "properties": {} }),
+            {
+                let release_rx = release_rx.clone();
+                let mutations = mutations.clone();
+                move |_| {
+                    let release_rx = release_rx.clone();
+                    let mutations = mutations.clone();
+                    let started_tx = started_tx.clone();
+                    Effect::Mutate(Box::new(move |_| {
+                        started_tx.send(()).expect("announce started mutation");
+                        release_rx
+                            .lock()
+                            .take()
+                            .expect("mutation called once")
+                            .recv()
+                            .expect("release started mutation");
+                        mutations.fetch_add(1, Ordering::SeqCst);
+                        Ok(Some("mutation committed".to_string()))
+                    }))
+                }
+            },
+        )
+        .agent_only();
+        let surface: Arc<dyn Surface> = Arc::new(TestSurface {
+            state: TestState,
+            actions: vec![action],
+        });
+        let rt = runtime(surface.tools());
+        let mut interrupt = rt.interrupt_tx.subscribe();
+        let task_rt = rt.clone();
+        let dispatch = tokio::spawn(async move {
+            dispatch_tool_shared_cancellable(
+                &task_rt,
+                surface,
+                Caller::Agent,
+                "mutate",
+                &json!({}),
+                &mut interrupt,
+            )
+            .await
+        });
+        tokio::task::spawn_blocking(move || {
+            started_rx
+                .recv_timeout(Duration::from_secs(1))
+                .expect("mutation should start")
+        })
+        .await
+        .expect("mutation start waiter should join");
+
+        let _ = rt.interrupt_tx.send(());
+        tokio::time::sleep(Duration::from_millis(25)).await;
+        assert!(!dispatch.is_finished());
+        release_tx.send(()).expect("release mutation");
+        let result = tokio::time::timeout(Duration::from_millis(500), dispatch)
+            .await
+            .expect("started mutation should settle after release")
+            .expect("dispatch task should join");
+        assert_eq!(
+            result,
+            ("mutation committed".to_string(), false, true, true)
+        );
+        assert_eq!(mutations.load(Ordering::SeqCst), 1);
     }
 }
 

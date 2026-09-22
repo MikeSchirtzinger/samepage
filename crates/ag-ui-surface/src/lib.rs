@@ -400,6 +400,12 @@ pub trait SurfaceState: Send + Sync + 'static {
         })
     }
 
+    /// Optional host-driven refusal of a previously held frame. The runtime
+    /// closes only the authenticated participant's affected socket with 4409.
+    fn ws_refusals(&self) -> Option<broadcast::Receiver<WsRefusal>> {
+        None
+    }
+
     /// Named SSE custom-event replay entries for a freshly-connected/
     /// reloading client, derived from this state's own UI *chrome* — "chrome"
     /// in the interface-design sense (the panels/toolbars/widgets that frame
@@ -724,6 +730,12 @@ pub struct StateSnapshot {
 pub struct WsInbound {
     pub replies: Vec<Vec<u8>>,
     pub broadcasts: Vec<Vec<u8>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct WsRefusal {
+    pub participant_id: String,
+    pub reason: String,
 }
 
 /// The browser-side half of one enabled extension.
@@ -3211,7 +3223,7 @@ async fn action_route_request(
     st.surface.note_caller(&actor);
     let (result, _, ok) = with_actor(
         actor,
-        turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, route.action, &body),
+        turn_loop::dispatch_tool_shared(&st.rt, st.surface.clone(), caller, route.action, &body),
     )
     .await;
     if !ok {
@@ -3626,10 +3638,10 @@ async fn mcp_post_handler(
     let call = acting.as_ref().map(|agent| agent.liveness.call());
     let handled = with_actor(
         actor,
-        mcp::handle(
+        mcp::handle_shared(
             st.mcp_catalog.as_ref(),
             st.rt.as_ref(),
-            st.surface.as_ref(),
+            st.surface.clone(),
             message,
         ),
     )
@@ -4362,7 +4374,7 @@ async fn tool_handler(
     st.surface.note_caller(&actor);
     let (result, _was_query, ok) = with_actor(
         actor,
-        turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, name, &args),
+        turn_loop::dispatch_tool_shared(&st.rt, st.surface.clone(), caller, name, &args),
     )
     .await;
     // A tool that rejected its own call (`Effect::Reject` — e.g. Vellum's
@@ -4829,7 +4841,11 @@ async fn semantic_handler(State(st): State<RouterState>, Json(body): Json<JsonVa
 
 /// Read-back of the live state as plain text — `SurfaceState::describe()`.
 async fn state_describe_handler(State(st): State<RouterState>) -> Response {
-    match st.surface.state().describe() {
+    let described =
+        turn_loop::run_blocking_surface(st.surface, |surface| surface.state().describe())
+            .await
+            .and_then(|result| result);
+    match described {
         Ok(description) => description.into_response(),
         Err(error) => (StatusCode::SERVICE_UNAVAILABLE, error).into_response(),
     }
@@ -5430,7 +5446,7 @@ async fn auth_post(State(st): State<RouterState>, Json(body): Json<JsonValue>) -
             byok_candidate.model.clone(),
         );
     } else if matches!(provider.backend, providers::Backend::OpenAi) {
-            // A `models.json` preset (OpenRouter, Groq, …): let the settings form swap its
+        // A `models.json` preset (OpenRouter, Groq, …): let the settings form swap its
         // model without editing the file. Empty string clears the override
         // (reverts to the preset's shipped model). Persist it with the provider
         // credential so the selected model also survives a restart.
@@ -5634,13 +5650,20 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
     // queue, or both—never lost. Reconnect projections are full idempotent
     // state views, so duplicate delivery at this boundary is intentional and
     // clients replace state rather than append it.
-    let (rx, surface_snapshot) = match subscribe_surface_replay(&rt, surface.as_ref()) {
-        Ok(capture) => capture,
-        Err(error) => {
-            tracing::warn!(%error, "failed to build authoritative SSE state snapshot");
-            return (StatusCode::SERVICE_UNAVAILABLE, error).into_response();
-        }
-    };
+    let replay_rt = rt.clone();
+    let (rx, surface_snapshot) =
+        match turn_loop::run_blocking_surface(surface.clone(), move |surface| {
+            subscribe_surface_replay(replay_rt.as_ref(), surface)
+        })
+        .await
+        .and_then(|result| result)
+        {
+            Ok(capture) => capture,
+            Err(error) => {
+                tracing::warn!(%error, "failed to build authoritative SSE state snapshot");
+                return (StatusCode::SERVICE_UNAVAILABLE, error).into_response();
+            }
+        };
     rt.activity.record_connection(
         "connection.sse",
         ActivityOutcome::Connected,
@@ -5680,6 +5703,18 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
         }
     }
 
+    let reconnect_events = match turn_loop::run_blocking_surface(surface.clone(), |surface| {
+        surface.state().reconnect_events()
+    })
+    .await
+    {
+        Ok(events) => events,
+        Err(error) => {
+            tracing::warn!(%error, "failed to build surface reconnect events");
+            return (StatusCode::SERVICE_UNAVAILABLE, error).into_response();
+        }
+    };
+
     // UI-chrome replay: the runtime doesn't know any Surface's chrome shape or
     // event names — it iterates `SurfaceState::reconnect_events()`, which each
     // Surface reprojects from its own state under its own event names
@@ -5687,7 +5722,7 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
     // to replay (Vellum, Colab) returns an empty vec — harmless no-op. Leak 3
     // (round-3 trait review) closed here in the M5 follow-up (2026-07-10):
     // no `canvas.*` literal survives in generic runtime code.
-    for (name, value) in surface.state().reconnect_events() {
+    for (name, value) in reconnect_events {
         if let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
             base: BaseEvent::default(),
             name,
@@ -5807,7 +5842,14 @@ async fn ws_handler(
     // before returning HTTP 101: the default is an explicit error, never an
     // accepted connection whose input is discarded.
     let frames = st.rt.ws_tx.subscribe();
-    let hello = match websocket_replay_or_status(st.surface.state()) {
+    let refusals = st.surface.state().ws_refusals();
+    let hello = match turn_loop::run_blocking_surface(st.surface.clone(), |surface| {
+        websocket_replay_or_status(surface.state())
+    })
+    .await
+    .map_err(|error| (StatusCode::SERVICE_UNAVAILABLE, error))
+    .and_then(|result| result)
+    {
         Ok(hello) => hello,
         Err((status, error)) => {
             tracing::warn!(%error, "refusing websocket upgrade");
@@ -5815,7 +5857,9 @@ async fn ws_handler(
         }
     };
     upgrade
-        .on_upgrade(move |socket| ws_connection(st.rt, st.surface, socket, frames, hello, actor))
+        .on_upgrade(move |socket| {
+            ws_connection(st.rt, st.surface, socket, frames, refusals, hello, actor)
+        })
         .into_response()
 }
 
@@ -5848,6 +5892,7 @@ async fn ws_connection(
     surface: Arc<dyn Surface>,
     socket: WebSocket,
     mut frames: broadcast::Receiver<Vec<u8>>,
+    mut refusals: Option<broadcast::Receiver<WsRefusal>>,
     hello: Vec<Vec<u8>>,
     actor: Actor,
 ) {
@@ -5875,6 +5920,27 @@ async fn ws_connection(
             // Prefer the state stream when both branches are ready so a busy
             // inbound peer cannot postpone a detected lag indefinitely.
             biased;
+            refusal = async {
+                match &mut refusals {
+                    Some(receiver) => Some(receiver.recv().await),
+                    None => std::future::pending().await,
+                }
+            } => {
+                match refusal {
+                    Some(Ok(notice)) if actor.participant_id.as_deref() == Some(&notice.participant_id) => {
+                        let _ = sink.send(WsMessage::Close(Some(CloseFrame {
+                            code: 4409,
+                            reason: ws_refusal_close_reason(&notice.reason).into(),
+                        }))).await;
+                        return;
+                    }
+                    Some(Err(broadcast::error::RecvError::Lagged(_))) | Some(Err(broadcast::error::RecvError::Closed)) => {
+                        let _ = sink.send(WsMessage::Close(None)).await;
+                        return;
+                    }
+                    _ => {}
+                }
+            },
             outbound = frames.recv() => match outbound {
                 Ok(frame) => {
                     if sink.send(WsMessage::Binary(frame.into())).await.is_err() {
@@ -5893,7 +5959,16 @@ async fn ws_connection(
             },
             inbound = stream.next() => match inbound {
                 Some(Ok(WsMessage::Binary(data))) => {
-                    let inbound = match surface.state().ws_receive_as_split(&actor, &data) {
+                    let inbound_surface = surface.clone();
+                    let inbound_actor = actor.clone();
+                    let operation_actor = actor.clone();
+                    let inbound = match with_actor(operation_actor, async move {
+                        turn_loop::run_blocking_surface(inbound_surface, move |surface| {
+                            surface.state().ws_receive_as_split(&inbound_actor, &data)
+                        })
+                        .await
+                        .and_then(|result| result)
+                    }).await {
                         Ok(inbound) => inbound,
                         Err(error) => {
                             tracing::warn!(%error, "rejecting invalid websocket state frame");
@@ -5929,6 +6004,7 @@ mod tests {
     use super::*;
     use parking_lot::Mutex;
     use std::sync::Arc;
+    use std::time::Duration;
 
     #[test]
     fn a_labeled_actors_byline_is_its_room_label() {
@@ -8829,6 +8905,100 @@ mod tests {
         .into_response();
         assert_eq!(valid.status(), StatusCode::OK);
         assert_eq!(apply_count.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn blocked_sync_action_keeps_runtime_routes_live_and_actor_scoped() {
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release_rx = Arc::new(Mutex::new(release_rx));
+        let actors = Arc::new(Mutex::new(Vec::new()));
+        let action = ToolDef::new(
+            "blocked_write",
+            "Wait for a durable write.",
+            json!({"type":"object","additionalProperties":false,"properties":{}}),
+            {
+                let release_rx = release_rx.clone();
+                let actors = actors.clone();
+                move |_| {
+                    actors
+                        .lock()
+                        .push(current_actor().expect("factory keeps request actor"));
+                    let release_rx = release_rx.clone();
+                    let actors = actors.clone();
+                    let entered_tx = entered_tx.clone();
+                    Effect::Mutate(Box::new(move |_| {
+                        actors
+                            .lock()
+                            .push(current_actor().expect("effect keeps request actor"));
+                        entered_tx.send(()).unwrap();
+                        release_rx.lock().recv().unwrap();
+                        Ok(Some("durable write finished".to_string()))
+                    }))
+                }
+            },
+        )
+        .human_only();
+        let surface: Arc<dyn Surface> = Arc::new(MultiModuleSurface {
+            state: FocusState,
+            tools: vec![action],
+            modules: vec![ClientModule::lazy(
+                "blocking",
+                "1.0.0",
+                "/extensions/blocking.js",
+                "blocking",
+            )
+            .action("blocked_write")],
+        });
+        let state = test_router_state(surface);
+        let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+            .await
+            .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let app = Router::new()
+            .route("/surface/action", post(tool_handler))
+            .route("/debug/stats", get(stats_handler))
+            .with_state(state);
+        let server = tokio::spawn(async move { axum::serve(listener, app).await });
+        let client = reqwest::Client::new();
+        let action_client = client.clone();
+        let action_request = tokio::spawn(async move {
+            action_client
+                .post(format!("http://127.0.0.1:{port}/surface/action"))
+                .header(
+                    header::COOKIE,
+                    format!("{}=test-human-route-token", human_route_cookie(0)),
+                )
+                .json(&json!({"name":"blocked_write","args":{}}))
+                .send()
+                .await
+        });
+        tokio::task::spawn_blocking(move || entered_rx.recv_timeout(Duration::from_secs(2)))
+            .await
+            .unwrap()
+            .unwrap();
+
+        let stats = tokio::time::timeout(
+            Duration::from_millis(500),
+            client
+                .get(format!("http://127.0.0.1:{port}/debug/stats"))
+                .send(),
+        )
+        .await
+        .expect("runtime route remains scheduled while the state write waits")
+        .unwrap();
+        assert_eq!(stats.status(), reqwest::StatusCode::OK);
+        release_tx.send(()).unwrap();
+        let action_response = tokio::time::timeout(Duration::from_secs(2), action_request)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert_eq!(action_response.status(), reqwest::StatusCode::OK);
+        let actors = actors.lock();
+        assert_eq!(actors.len(), 2);
+        assert!(actors.iter().all(|actor| actor.caller == Caller::Human));
+        server.abort();
     }
 
     #[tokio::test]

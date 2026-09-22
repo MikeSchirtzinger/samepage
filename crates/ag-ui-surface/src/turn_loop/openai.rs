@@ -31,7 +31,7 @@ use crate::narration::{
     tutor_event,
 };
 use crate::runtime_state::{RuntimeState, TurnRequest};
-use crate::turn_loop::{build_context, dispatch_tool, Outcome, Prompts};
+use crate::turn_loop::{build_context, Outcome, Prompts};
 use crate::{Caller, Surface, ToolDef};
 
 /// How the active OpenAI-compatible endpoint authenticates.
@@ -563,45 +563,41 @@ async fn run_turn(
                         .tools()
                         .iter()
                         .find(|action| action.name == tc.name && action.audience.agent());
-                    let dispatch = async {
-                        match action {
-                            Some(_) => match parse_tool_arguments(&tc.name, &tc.arguments) {
-                                Ok(args) => {
-                                    dispatch_tool(
-                                        rt,
-                                        surface.as_ref(),
-                                        Caller::Agent,
-                                        &tc.name,
-                                        &args,
-                                    )
-                                    .await
-                                }
-                                Err(error) => (error, false, false),
-                            },
-                            None => (
-                                format!("action {:?} is not visible to this agent", tc.name),
-                                false,
-                                false,
-                            ),
-                        }
+                    let (content, _was_query, ok, dispatch_interrupted) = match action {
+                        Some(_) => match parse_tool_arguments(&tc.name, &tc.arguments) {
+                            Ok(args) => {
+                                super::dispatch_tool_shared_cancellable(
+                                    rt,
+                                    surface.clone(),
+                                    Caller::Agent,
+                                    &tc.name,
+                                    &args,
+                                    cancel,
+                                )
+                                .await
+                            }
+                            Err(error) => (error, false, false, false),
+                        },
+                        None => (
+                            format!("action {:?} is not visible to this agent", tc.name),
+                            false,
+                            false,
+                            false,
+                        ),
                     };
-                    tokio::pin!(dispatch);
-                    let dispatched = tokio::select! {
-                        biased;
-                        _ = cancel.recv() => {
-                            interrupted = true;
-                            None
-                        }
-                        result = &mut dispatch => Some(result),
-                    };
-                    let Some((content, _was_query, ok)) = dispatched else {
-                        // The assistant message already declared every tool
-                        // call. Keep the conversation valid by supplying one
-                        // terminal tool result for this and every undispatched
-                        // call before recording the interruption — and tell
-                        // the browser the same thing, so an interrupted turn
-                        // does not leave calls pending on the surface forever.
-                        for remaining in tool_calls.iter().skip(index) {
+                    interrupted |= dispatch_interrupted;
+                    if ok && action.is_some_and(|action| action.include_state_snapshot) {
+                        wants_state_snapshot = true;
+                    }
+                    // The human reads exactly the text the model reads.
+                    super::emit_tool_call_result(rt, &tc.id, &content);
+                    messages.push(json!({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": content,
+                    }));
+                    if interrupted {
+                        for remaining in tool_calls.iter().skip(index + 1) {
                             messages.push(json!({
                                 "role": "tool",
                                 "tool_call_id": remaining.id,
@@ -614,17 +610,7 @@ async fn run_turn(
                             );
                         }
                         break 'turn Ok(());
-                    };
-                    if ok && action.is_some_and(|action| action.include_state_snapshot) {
-                        wants_state_snapshot = true;
                     }
-                    // The human reads exactly the text the model reads.
-                    super::emit_tool_call_result(rt, &tc.id, &content);
-                    messages.push(json!({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": content,
-                    }));
                 }
                 // Visual feedback loop: after an explicitly opted-in action
                 // on a vision model, append a render of the state as a user turn

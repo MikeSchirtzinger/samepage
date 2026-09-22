@@ -1,0 +1,26 @@
+:root { color-scheme: dark; font: 15px/1.4 system-ui, sans-serif; background: #101820; color: #eaf0f5; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.topbar { display: flex; justify-content: space-between; align-items: center; min-height: 62px; padding: 0 22px; border-bottom: 1px solid #345066; background: #152433; }
+.topbar strong { font-size: 1.1rem; letter-spacing: .02em; }
+.subhead { color: #9bb2c3; margin-left: 12px; }
+#connection-status { color: #a9d3c4; font-size: .9rem; }
+.error-banner { padding: 13px 20px; background: #621f26; border-bottom: 1px solid #e87d85; color: #fff0f0; }
+.error-banner[hidden] { display: none; }
+.toolbar { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; padding: 13px 20px; background: #172633; border-bottom: 1px solid #345066; }
+.toolbar form { display: flex; gap: 8px; align-items: center; }
+.toolbar input { background: #0f1a24; color: #fff; border: 1px solid #53718a; border-radius: 5px; padding: 7px 9px; min-width: 240px; }
+.toolbar button { background: #3c88a1; color: #fff; border: 0; border-radius: 5px; padding: 8px 13px; cursor: pointer; }
+#map-count { color: #a9bcca; }
+#map { min-height: calc(100vh - 120px); overflow: auto; background: radial-gradient(circle, #263845 1px, transparent 1px) 0 0 / 24px 24px, #101b24; }
+.map-stage { position: relative; min-width: 100%; min-height: calc(100vh - 120px); }
+.map-links { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.map-link { stroke: #81a9b9; stroke-width: 2; fill: none; }
+.map-link-label { fill: #d9e7ed; font: 12px system-ui, sans-serif; }
+.map-card { position: absolute; width: var(--card-width); min-height: var(--card-height); padding: 13px 14px; background: #203b4b; border: 1px solid #6ea8b0; border-radius: 10px; box-shadow: 0 6px 17px #0005; cursor: grab; touch-action: none; overflow-wrap: anywhere; }
+.map-card:active { cursor: grabbing; }
+.map-card h2 { font-size: 15px; margin: 0 0 7px; }
+.map-card p { margin: 0 0 9px; color: #c2d4dd; white-space: pre-wrap; }
+.map-card .byline { font-size: 12px; color: #a5c6cc; border-top: 1px solid #4f7180; padding-top: 7px; }
+.map-card[data-status="done"] { border-color: #8bcfa8; }
+.map-card[data-status="blocked"] { border-color: #e5a784; }

@@ -897,6 +897,18 @@ impl SurfaceState for HostedState {
         self.inner.state().ws_receive(data)
     }
 
+    fn ws_receive_as_split(
+        &self,
+        actor: &crate::Actor,
+        data: &[u8],
+    ) -> Result<crate::WsInbound, String> {
+        self.inner.state().ws_receive_as_split(actor, data)
+    }
+
+    fn ws_refusals(&self) -> Option<broadcast::Receiver<crate::WsRefusal>> {
+        self.inner.state().ws_refusals()
+    }
+
     fn reconnect_events(&self) -> Vec<(String, JsonValue)> {
         self.inner.state().reconnect_events()
     }
@@ -918,6 +930,10 @@ impl Surface for HostedSurface {
 
     fn client_modules(&self) -> Vec<ClientModule> {
         self.inner.client_modules()
+    }
+
+    fn document_mount(&self) -> Option<crate::DocumentMount> {
+        self.inner.document_mount()
     }
 
     fn store(&self) -> Option<&dyn SurfaceStore> {

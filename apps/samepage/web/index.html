@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SamePage</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><strong>SamePage</strong><span class="subhead">Shared map</span></div>
+    <div id="connection-status" role="status">Loading document…</div>
+  </header>
+  <div id="error-banner" class="error-banner" role="alert" hidden></div>
+  <main>
+    <section class="toolbar" aria-label="Map controls">
+      <form id="add-card"><label for="new-card-label">New card</label><input id="new-card-label" name="label" maxlength="140" required><button type="submit">Add card</button></form>
+      <span id="map-count" aria-live="polite">Loading map…</span>
+    </section>
+    <div id="map" aria-label="Shared cards and links"></div>
+  </main>
+  <script type="module" src="/shell.js"></script>
+</body>
+</html>

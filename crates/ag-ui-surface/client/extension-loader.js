@@ -2,7 +2,7 @@
 import { AgUiClient, whoAmI } from "/_agui/client.js";
 import { CapabilityLoader, validateCapabilityManifest } from "/_agui/capability-loader.js";
 
-export async function loadExtensions(client, { manifestUrl = "/extensions" } = {}) {
+export async function loadExtensions(client, { manifestUrl = "/extensions", createApplicationContext } = {}) {
   if (!(client instanceof AgUiClient)) {
     throw new TypeError("loadExtensions requires an AgUiClient");
   }
@@ -22,6 +22,9 @@ export async function loadExtensions(client, { manifestUrl = "/extensions" } = {
       throw error;
     }
   }
+  const application = createApplicationContext
+    ? await createApplicationContext({ documentModule, manifest })
+    : null;
   const loaded = [];
   const seen = new Set();
   const failEntry = (entry, error) => {
@@ -48,6 +51,7 @@ export async function loadExtensions(client, { manifestUrl = "/extensions" } = {
       mount,
       whoAmI,
       documentModule,
+      application,
       wasm: verifiedWasm,
       action: (name, args) => {
         if (!extension.actions.includes(name)) {
@@ -155,6 +159,7 @@ export async function loadExtensions(client, { manifestUrl = "/extensions" } = {
     loaded,
     byId,
     documentModule,
+    application,
     capabilityLoader,
     activate,
     activateForKind: (kind) => activateFor("kind", kind),
