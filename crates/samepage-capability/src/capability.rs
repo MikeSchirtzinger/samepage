@@ -5,6 +5,8 @@
 //! from the capability's WebAssembly artifact, where the page calls it for
 //! human gestures, so both sides of the page run one piece of logic.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use serde::{Deserialize, Serialize};
 
 use crate::descriptor::Descriptor;
@@ -56,6 +58,60 @@ pub struct LegendEntry {
     pub symbol: Option<String>,
 }
 
+/// The kind of caller the host authenticated.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CallerKind {
+    Human,
+    Agent,
+}
+
+/// Who made a change, as the host authenticated it. Built only by the host
+/// from the authenticated connection or dispatcher caller; never read from a
+/// frame, plan, batch or action argument. Decide on `participant`, not on
+/// `label`: two participants may share a display name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Principal {
+    pub participant: String,
+    pub caller: CallerKind,
+    #[serde(default)]
+    pub label: Option<String>,
+}
+
+/// The route a change took into the document.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "route", rename_all = "snake_case")]
+pub enum Origin {
+    /// An action the host dispatched: the capability that planned it and the
+    /// action's preferred name (also when it was called by an alias).
+    HostAction { capability: String, action: String },
+    /// A batch handed to the host from outside and resolved there. Its plans
+    /// were not made by the host, so nothing about it is host-verified.
+    UntrustedBatch,
+    /// A browser replica's CRDT frame, including held frames released later.
+    ReplicaFrame,
+}
+
+/// Everything the host knows about one change, for [`Capability::validate_change`].
+#[derive(Debug, Clone, Copy)]
+pub struct Change<'a> {
+    pub principal: &'a Principal,
+    pub origin: &'a Origin,
+    /// The document before the change.
+    pub before: &'a View,
+    /// The document after the change (not yet committed).
+    pub after: &'a View,
+    /// What changed in value.
+    pub delta: &'a Delta,
+    /// Record id -> keys the change wrote, including writes whose value equals
+    /// the old one, which the delta does not show.
+    pub attempted: &'a BTreeMap<String, BTreeSet<String>>,
+    /// Facts this capability's registered native verifier computed for this
+    /// change, or `None` when no verifier is registered. A capability that
+    /// needs facts must refuse when they are missing.
+    pub facts: Option<&'a serde_json::Value>,
+}
+
 pub trait Capability: Send + Sync + 'static {
     fn descriptor(&self) -> Descriptor;
 
@@ -69,6 +125,19 @@ pub trait Capability: Send + Sync + 'static {
     /// Accept or refuse a replica's change to this capability's records. Called
     /// only with records the delta touched.
     fn validate(&self, delta: &Delta, view: &View) -> Result<(), CapError>;
+
+    /// **Host authority hook.** Called only by the native host, for every
+    /// change that writes (or attempts to write, even with an unchanged value)
+    /// this capability's kinds or keys, whatever the route: host action,
+    /// untrusted batch or replica frame. This is where policy that depends on
+    /// who is writing, on the route, or on the state before the change
+    /// belongs. The browser never calls it and makes no authority decision;
+    /// the wasm `validate` export is a structural pre-check only.
+    ///
+    /// The default applies the structural `validate`.
+    fn validate_change(&self, change: &Change<'_>) -> Result<(), CapError> {
+        self.validate(change.delta, change.after)
+    }
 
     /// Ops this capability needs when records are deleted elsewhere, for
     /// example links to a removed card.

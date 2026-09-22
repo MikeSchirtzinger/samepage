@@ -52,7 +52,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use base64::Engine as _;
 use samepage_capability::{
     audit, is_reserved_key, Audience, AuditError, Batch, BatchBuilder, BatchEntry, Call, CapError,
-    Capability, Composition, Delta, Effect, PlanError, View, AUTHORSHIP_KEYS, KIND_KEY,
+    Capability, Change, Composition, Delta, Effect, Origin, PlanError, Principal, ResolvedOp, View,
+    AUTHORSHIP_KEYS, KIND_KEY,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -139,6 +140,8 @@ pub enum FrameRefusal {
     Audit(AuditError),
     #[error("capability {capability:?} refused the change: {error}")]
     Validate { capability: String, error: CapError },
+    #[error("the verifier for {capability:?} refused the change: {error}")]
+    Verify { capability: String, error: CapError },
     #[error("the quarantine for this actor is full ({updates} updates, {bytes} bytes)")]
     QuarantineFull { updates: usize, bytes: usize },
     #[error("too many actors hold unresolved updates")]
@@ -157,6 +160,8 @@ pub enum CommitError {
     Capability { capability: String, error: CapError },
     #[error("capability {capability:?} refused the change: {error}")]
     Validate { capability: String, error: CapError },
+    #[error("the verifier for {capability:?} refused the change: {error}")]
+    Verify { capability: String, error: CapError },
     #[error("deletes kept cascading after {MAX_CASCADE_ROUNDS} rounds")]
     RunawayCascade,
     #[error("the batch changes nothing; no commit was made")]
@@ -219,6 +224,45 @@ pub struct Invoked {
     pub commit: Option<Commit>,
 }
 
+/// Native facts for one capability's authority checks.
+///
+/// Registered with [`Host::with_verifier`]. The host calls it, under its lock,
+/// for every change that involves the capability, and hands the result to that
+/// capability only, as [`Change::facts`]. Facts come from what the verifier
+/// computes from the change and host resources, never from action names or
+/// arguments alone.
+///
+/// Contract: bounded and quick (no network, no G8, no long-running process),
+/// read-only (no side effects: the change may still be refused), and never
+/// calls back into the [`Host`] (it runs under the host lock).
+pub trait Verifier: Send + Sync {
+    fn verify(&self, change: &Change<'_>) -> Result<serde_json::Value, CapError>;
+}
+
+/// Why an authority check refused a change.
+enum Refused {
+    Validate(String, CapError),
+    Verify(String, CapError),
+}
+
+impl From<Refused> for FrameRefusal {
+    fn from(refused: Refused) -> Self {
+        match refused {
+            Refused::Validate(capability, error) => FrameRefusal::Validate { capability, error },
+            Refused::Verify(capability, error) => FrameRefusal::Verify { capability, error },
+        }
+    }
+}
+
+impl From<Refused> for CommitError {
+    fn from(refused: Refused) -> Self {
+        match refused {
+            Refused::Validate(capability, error) => CommitError::Validate { capability, error },
+            Refused::Verify(capability, error) => CommitError::Verify { capability, error },
+        }
+    }
+}
+
 type Observer = Arc<dyn Fn(&Commit) + Send + Sync>;
 type RefusalObserver = Arc<dyn Fn(&Actor, &FrameRefusal) + Send + Sync>;
 
@@ -243,6 +287,7 @@ pub struct Host {
     save_lock: Mutex<()>,
     composition: Composition,
     capabilities: BTreeMap<String, Arc<dyn Capability>>,
+    verifiers: BTreeMap<String, Arc<dyn Verifier>>,
     path: Option<PathBuf>,
     observers: Mutex<Vec<Observer>>,
     refusal_observers: Mutex<Vec<RefusalObserver>>,
@@ -423,11 +468,35 @@ impl Host {
             save_lock: Mutex::new(()),
             composition,
             capabilities,
+            verifiers: BTreeMap::new(),
             path,
             observers: Mutex::new(Vec::new()),
             refusal_observers: Mutex::new(Vec::new()),
             opened_anomalies,
         })
+    }
+
+    /// Register the native verifier for `capability` (see [`Verifier`]).
+    pub fn with_verifier(
+        mut self,
+        capability: &str,
+        verifier: Arc<dyn Verifier>,
+    ) -> Result<Self, OpenError> {
+        if self.composition.descriptor(capability).is_none() {
+            return Err(OpenError::Capabilities(format!(
+                "no composed capability {capability:?} to verify"
+            )));
+        }
+        if self
+            .verifiers
+            .insert(capability.to_string(), verifier)
+            .is_some()
+        {
+            return Err(OpenError::Capabilities(format!(
+                "capability {capability:?} already has a verifier"
+            )));
+        }
+        Ok(self)
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {
@@ -848,8 +917,33 @@ impl Host {
                 _ => return Err(FrameRefusal::ForeignId { id: id.clone() }),
             }
         }
-        self.validate_capabilities(&delta, &after)
-            .map_err(|(capability, error)| FrameRefusal::Validate { capability, error })?;
+        // Every write the frame made, including same-value writes the delta
+        // cannot show: the effective writes the deep observer reported, plus
+        // every key of each record the frame created (keys written inside a
+        // map created in the same update are not reported separately).
+        let mut attempted: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        for (id, key) in &touched.keys {
+            if key != KIND_KEY && !key.starts_with('<') {
+                attempted.entry(id.clone()).or_default().insert(key.clone());
+            }
+        }
+        for id in &delta.created {
+            if let Some(record) = after.get(id) {
+                attempted
+                    .entry(id.clone())
+                    .or_default()
+                    .extend(record.props.keys().cloned());
+            }
+        }
+        let principal = Principal::from(actor);
+        self.authorize(
+            &principal,
+            &Origin::ReplicaFrame,
+            &before,
+            &after,
+            &delta,
+            &attempted,
+        )?;
 
         // Commit: the update and its stamps, one transaction.
         let stamp_update = decode(&merged)?;
@@ -871,49 +965,86 @@ impl Host {
         Ok(Settled::Committed(Box::new(commit)))
     }
 
-    fn validate_capabilities(&self, delta: &Delta, after: &View) -> Result<(), (String, CapError)> {
-        if delta.is_empty() {
+    /// The authority check for one change, whatever its route. Every
+    /// capability involved (owner of a touched kind, writer of a touched or
+    /// attempted key, everyone on a deletion) gets its verifier's facts, if it
+    /// has a verifier, and then its `validate_change`. Runs whenever anything
+    /// was written or attempted, even when no value changed.
+    fn authorize(
+        &self,
+        principal: &Principal,
+        origin: &Origin,
+        before: &View,
+        after: &View,
+        delta: &Delta,
+        attempted: &BTreeMap<String, BTreeSet<String>>,
+    ) -> Result<(), Refused> {
+        if delta.is_empty() && attempted.values().all(BTreeSet::is_empty) {
             return Ok(());
         }
         let mut involved = BTreeSet::new();
-        let kinds: BTreeMap<&str, &str> = after
-            .records()
-            .map(|record| (record.id.as_str(), record.kind.as_str()))
-            .collect();
-        for id in delta.created.iter().chain(delta.modified.keys()) {
-            if let Some(kind) = kinds.get(id.as_str()) {
-                if let Some(owner) = self.composition.owner_of_kind(kind) {
+        let mut touch = |id: &str, keys: &mut dyn Iterator<Item = &String>| {
+            let kind = after
+                .get(id)
+                .or_else(|| before.get(id))
+                .map(|record| record.kind.clone());
+            if let Some(kind) = kind {
+                if let Some(owner) = self.composition.owner_of_kind(&kind) {
                     involved.insert(owner.to_string());
                 }
-                // A modified record: the writers of the keys that changed. A
-                // created record: the writers of every key it carries, so an
-                // extension key set in the same batch or frame as the create
-                // is validated by the capability that owns it.
-                let keys: Vec<&String> = match delta.modified.get(id) {
-                    Some(keys) => keys.iter().collect(),
-                    None => after
-                        .get(id)
-                        .map(|record| record.props.keys().collect())
-                        .unwrap_or_default(),
-                };
                 for key in keys {
-                    if let Some(writer) = self.composition.writer_of(kind, key) {
+                    if let Some(writer) = self.composition.writer_of(&kind, key) {
                         involved.insert(writer.to_string());
                     }
                 }
             }
+        };
+        for (id, keys) in attempted {
+            touch(id, &mut keys.iter());
         }
-        // Deleted records: every capability is told, since the kind is gone
-        // from `after`; owners check their own references.
+        for (id, keys) in &delta.modified {
+            touch(id, &mut keys.iter());
+        }
+        for id in &delta.created {
+            let keys: Vec<String> = after
+                .get(id)
+                .map(|record| record.props.keys().cloned().collect())
+                .unwrap_or_default();
+            touch(id, &mut keys.iter());
+        }
+        // Deleted records: every capability is told; owners check their own
+        // references and may refuse by who is deleting (`before` holds them).
         if !delta.deleted.is_empty() {
             involved.extend(self.capabilities.keys().cloned());
         }
         for id in involved {
-            if let Some(capability) = self.capabilities.get(&id) {
-                capability
-                    .validate(delta, after)
-                    .map_err(|error| (id.clone(), error))?;
-            }
+            let Some(capability) = self.capabilities.get(&id) else {
+                continue;
+            };
+            let bare = Change {
+                principal,
+                origin,
+                before,
+                after,
+                delta,
+                attempted,
+                facts: None,
+            };
+            let facts = match self.verifiers.get(&id) {
+                Some(verifier) => Some(
+                    verifier
+                        .verify(&bare)
+                        .map_err(|error| Refused::Verify(id.clone(), error))?,
+                ),
+                None => None,
+            };
+            let change = Change {
+                facts: facts.as_ref(),
+                ..bare
+            };
+            capability
+                .validate_change(&change)
+                .map_err(|error| Refused::Validate(id.clone(), error))?;
         }
         Ok(())
     }
@@ -995,7 +1126,17 @@ impl Host {
                         plan,
                     }],
                 };
-                match self.commit_locked(&mut inner, actor, &batch, Some(preferred.clone())) {
+                let origin = Origin::HostAction {
+                    capability: batch.entries[0].capability.clone(),
+                    action: preferred.clone(),
+                };
+                match self.commit_locked(
+                    &mut inner,
+                    actor,
+                    &batch,
+                    Some(preferred.clone()),
+                    &origin,
+                ) {
                     Ok((commit, ids, readback)) => {
                         commits.push(commit.clone());
                         self.drain(&mut inner, &mut commits, &mut refusals);
@@ -1035,7 +1176,8 @@ impl Host {
         let mut refusals = Vec::new();
         let result = {
             let mut inner = self.lock();
-            let result = self.commit_locked(&mut inner, actor, batch, None);
+            let result =
+                self.commit_locked(&mut inner, actor, batch, None, &Origin::UntrustedBatch);
             if let Ok((commit, _, _)) = &result {
                 commits.push(commit.clone());
                 self.drain(&mut inner, &mut commits, &mut refusals);
@@ -1053,6 +1195,7 @@ impl Host {
         actor: &Actor,
         batch: &Batch,
         action: Option<String>,
+        origin: &Origin,
     ) -> Result<(Commit, BTreeMap<String, String>, Vec<String>), CommitError> {
         let before = inner.live.view();
         if batch.base_revision != before.revision() {
@@ -1102,8 +1245,28 @@ impl Host {
         let resolved = builder.finish()?;
         resolved.ensure_current(&inner.live.revision())?;
         let delta = Delta::between(&before, resolved.projected());
-        self.validate_capabilities(&delta, resolved.projected())
-            .map_err(|(capability, error)| CommitError::Validate { capability, error })?;
+        // Every key each op wrote, including values equal to the old ones.
+        let mut attempted: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        for op in resolved.ops() {
+            match op {
+                ResolvedOp::Create { id, props, .. } | ResolvedOp::Set { id, props, .. } => {
+                    attempted
+                        .entry(id.clone())
+                        .or_default()
+                        .extend(props.keys().cloned());
+                }
+                ResolvedOp::Delete { .. } => {}
+            }
+        }
+        let principal = Principal::from(actor);
+        self.authorize(
+            &principal,
+            origin,
+            &before,
+            resolved.projected(),
+            &delta,
+            &attempted,
+        )?;
 
         let ops = resolved.ops().to_vec();
         if ops.is_empty() {

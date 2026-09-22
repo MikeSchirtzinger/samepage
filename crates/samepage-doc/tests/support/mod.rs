@@ -234,6 +234,19 @@ impl Capability for Sources {
     fn validate(&self, _delta: &Delta, _view: &View) -> Result<(), CapError> {
         Ok(())
     }
+    /// Fixture policy: a source binding is written only by an agent, on any
+    /// route. `source_bind` being Agent-only does not imply this; the policy
+    /// is stated here.
+    fn validate_change(&self, change: &samepage_capability::Change<'_>) -> Result<(), CapError> {
+        let writes_path = change.attempted.values().any(|keys| keys.contains("path"));
+        if writes_path && change.principal.caller != samepage_capability::CallerKind::Agent {
+            return Err(CapError::new(
+                "agent_only",
+                "a source binding is written by an agent",
+            ));
+        }
+        Ok(())
+    }
     fn digest(&self, _view: &View) -> Result<serde_json::Value, CapError> {
         Ok(json!({}))
     }

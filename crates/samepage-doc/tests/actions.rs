@@ -87,10 +87,8 @@ fn audience_is_enforced_at_invocation() {
     ));
 }
 
-#[test]
-fn a_mixed_capability_batch_is_one_atomic_attributed_commit() {
-    let host = host();
-    let batch = Batch {
+fn bound_card_batch(host: &samepage_doc::host::Host) -> Batch {
+    Batch {
         base_revision: host.revision(),
         entries: vec![
             BatchEntry {
@@ -115,15 +113,36 @@ fn a_mixed_capability_batch_is_one_atomic_attributed_commit() {
                 },
             },
         ],
-    };
-    let commit = host.commit_batch(&alice(), &batch).unwrap();
+    }
+}
+
+#[test]
+fn a_mixed_capability_batch_is_one_atomic_attributed_commit() {
+    let host = host();
+    let commit = host
+        .commit_batch(&agent(), &bound_card_batch(&host))
+        .unwrap();
     assert_eq!(commit.created.len(), 1);
     let record = host.view().get(&commit.created[0]).unwrap().clone();
     assert_eq!(record.props["path"], Scalar::from("src/lib.rs"));
     assert_eq!(
         record.props["created_by_participant"],
-        Scalar::from("p-alice")
+        Scalar::from("p-agent")
     );
+}
+
+#[test]
+fn a_human_batch_writing_an_agent_only_binding_is_refused_by_the_capability_policy() {
+    // Before the authority hook, this exact batch from a human committed.
+    let host = Arc::new(host());
+    let seen = record_commits(&host);
+    let before = fingerprint(&host);
+    assert!(matches!(
+        host.commit_batch(&alice(), &bound_card_batch(&host)),
+        Err(CommitError::Validate { ref capability, ref error }) if capability == "sources" && error.code == "agent_only"
+    ));
+    assert_eq!(fingerprint(&host), before);
+    assert!(seen.lock().unwrap().is_empty());
 }
 
 #[test]

@@ -83,3 +83,16 @@ impl Actor {
             .unwrap_or_else(|| self.caller.as_str().to_string())
     }
 }
+
+impl From<&Actor> for samepage_capability::Principal {
+    fn from(actor: &Actor) -> Self {
+        samepage_capability::Principal {
+            participant: actor.participant.clone(),
+            caller: match actor.caller {
+                Caller::Human => samepage_capability::CallerKind::Human,
+                Caller::Agent => samepage_capability::CallerKind::Agent,
+            },
+            label: actor.label.clone(),
+        }
+    }
+}

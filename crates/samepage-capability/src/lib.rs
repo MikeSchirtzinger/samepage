@@ -39,7 +39,9 @@ pub mod record;
 mod wasm;
 
 pub use audit::{audit, AuditError, Violation};
-pub use capability::{Call, CapError, Capability, LegendEntry};
+pub use capability::{
+    Call, CallerKind, CapError, Capability, Change, LegendEntry, Origin, Principal,
+};
 pub use compose::{ActionRef, ComposeError, Composition};
 pub use descriptor::{
     ActionDecl, Artifact, Audience, Dep, Descriptor, Effect, KindClaim, PropClaim, Trigger,
