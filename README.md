@@ -69,6 +69,21 @@ docs/
 
 The root `Cargo.toml` is the source of truth for workspace members.
 
+## Before you start
+
+Both apps compile part of themselves to WebAssembly on first run. Install the
+three pieces once:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install wasm-pack
+cargo install wasm-opt --locked
+```
+
+Check they are on your `PATH` with `wasm-pack --version && wasm-opt --version`.
+The room starts without them but reports its protocol client as unavailable.
+The map refuses to start without both.
+
 ## Run the room
 
 From the repository root:
@@ -114,18 +129,39 @@ draws a map of a project, agent and person editing the same CRDT document.
 From the repository root:
 
 ```bash
-cargo run -p same-page-atlas
+AGUI_MCP_TOKEN=local-map-token cargo run -p same-page-atlas
 ```
 
-Open <http://127.0.0.1:8098>. Like the room, there is no separate frontend
-build step: the app builds its own browser replica with `build-web.sh` the
-first time `web/pkg` is missing, as long as `wasm-pack` and `wasm-opt` are on
-`PATH`. Without them it refuses to start rather than serve a page with no
-CRDT peer. Point it at your own project the same way as the room:
+Open <http://127.0.0.1:8098>. The first run builds the browser replica with
+`build-web.sh`, which needs `wasm-pack` and `wasm-opt` from
+[Before you start](#before-you-start). Point it at your own project the same
+way as the room:
 
 ```bash
-AGUI_PROJECT_ROOT=/path/to/your/project cargo run -p same-page-atlas
+AGUI_PROJECT_ROOT=/path/to/your/project \
+AGUI_MCP_TOKEN=local-map-token cargo run -p same-page-atlas
 ```
+
+### The map starts empty
+
+On first run the canvas is blank: "0 components · 0 relationships". The map
+does not draw your project for you yet. The picture comes from your own coding
+agent, attached over MCP with the token you picked, the same way as the room
+([AGENTS.md](AGENTS.md) has the attach steps). Once it is attached, ask it:
+
+> Read the map with `atlas_read`. Then draw this project's architecture with
+> `atlas_diagram`: one container per major part, cards bound to real files
+> with `path` and `lines`, and links for how the parts depend on each other.
+> Read the map again and fix every item under PROBLEMS with `atlas_place`
+> until PAGE VALIDATION says passed.
+
+The header reads "Page checks passed" when the layout has no overlaps or
+unroutable links.
+
+In **Map** and **Cement** mode a strip along the bottom lists "Found in the
+code, not in the agreement": every binary, listener, and spawned process the
+extractor found that no card claims yet. Its length depends on the project. It
+shrinks as cards claim lanes, and **Explain** mode hides it.
 
 The map has three modes, always visible in the header alongside a page-check
 status such as "Page checks passed":
