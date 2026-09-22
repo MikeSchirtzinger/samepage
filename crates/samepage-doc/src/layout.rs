@@ -19,9 +19,9 @@ use std::fmt::Write as _;
 
 use samepage_capability::{Record, Scalar, View};
 use sha2::{Digest, Sha256};
-use yrs::branch::Branch;
+use yrs::branch::{Branch, BranchPtr};
 use yrs::types::ToJson;
-use yrs::{Any, Map, MapRef, Out, ReadTxn};
+use yrs::{Any, ArrayRef, Map, MapRef, Out, ReadTxn};
 
 /// The one root the layout allows.
 pub const OBJECTS: &str = "objects";
@@ -43,13 +43,13 @@ pub fn inspect<T: ReadTxn>(txn: &T) -> Inspection {
                 anomalies.insert(format!("root:{name}"), fingerprint(txn, &root));
                 continue;
             };
-            sequence_component(&objects, "objects", &mut anomalies);
+            sequence_component(txn, &objects, "objects", &mut anomalies);
             for (id, entry) in objects.iter(txn) {
                 let Out::YMap(map) = &entry else {
                     anomalies.insert(format!("object:{id}"), fingerprint(txn, &entry));
                     continue;
                 };
-                sequence_component(map, &format!("record:{id}"), &mut anomalies);
+                sequence_component(txn, map, &format!("record:{id}"), &mut anomalies);
                 let mut kind = None;
                 let mut props = BTreeMap::new();
                 for (key, value) in map.iter(txn) {
@@ -92,17 +92,29 @@ pub fn inspect<T: ReadTxn>(txn: &T) -> Inspection {
 
 /// A map branch can also hold an indexed sequence (a peer that declared the
 /// same root, or wrote to the same branch, as an array or text). Map reads and
-/// map events never show it, so its length is recorded as an anomaly: new or
-/// changed sequence content is refused, and existing content is preserved.
-/// The content itself is not reachable through public Yrs APIs, so a change
-/// that keeps both lengths equal is not distinguishable here; such content is
-/// never read by any capability.
-fn sequence_component(map: &MapRef, location: &str, anomalies: &mut BTreeMap<String, String>) {
+/// map events never show it. The branch is read as an array through the
+/// public Yrs cast (`BranchPtr` to `ArrayRef`) and its content fingerprinted
+/// together with both lengths, so new sequence content, and any change to
+/// existing content (including a same-length replacement), is refused while
+/// existing content is preserved. No capability ever reads it.
+fn sequence_component<T: ReadTxn>(
+    txn: &T,
+    map: &MapRef,
+    location: &str,
+    anomalies: &mut BTreeMap<String, String>,
+) {
     let branch: &Branch = map.as_ref();
     if branch.len() > 0 || branch.content_len() > 0 {
+        let sequence = ArrayRef::from(BranchPtr::from(branch));
+        let mut text = format!(
+            "len={} content_len={} content=",
+            branch.len(),
+            branch.content_len()
+        );
+        canonical(&sequence.to_json(txn), &mut text);
         anomalies.insert(
             format!("sequence:{location}"),
-            format!("len={} content_len={}", branch.len(), branch.content_len()),
+            hex(&Sha256::digest(text.as_bytes())),
         );
     }
 }

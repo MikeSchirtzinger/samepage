@@ -354,3 +354,69 @@ fn a_failed_save_or_a_crashed_temporary_never_changes_what_opens() {
     // State and journal always come from the same envelope.
     assert_eq!(reopened.journal().seq as usize, saved_view.len());
 }
+
+/// Sequence content hidden in the objects branch by an old writer that
+/// declared the root as an array. It is preserved, and any change to it,
+/// including a replacement that keeps its length, is refused.
+#[test]
+fn preexisting_hidden_sequence_content_is_preserved_and_cannot_be_replaced_at_equal_length() {
+    let legacy_doc = Doc::new();
+    let alias = legacy_doc.get_or_insert_array("objects");
+    alias.push_back(&mut legacy_doc.transact_mut(), "hidden-a");
+    let legacy_bytes = legacy_doc
+        .transact()
+        .encode_state_as_update_v1(&yrs::StateVector::default());
+    let dir = temp_dir("hidden-sequence");
+    let legacy = dir.join("legacy.state");
+    write_state(&legacy, &legacy_bytes);
+    let host = Host::import_legacy(
+        &legacy,
+        dir.join("page.samepage"),
+        composition(),
+        capabilities(),
+    )
+    .unwrap();
+    assert!(
+        host.opened_anomalies()
+            .iter()
+            .any(|a| a == "sequence:objects"),
+        "{:?}",
+        host.opened_anomalies()
+    );
+
+    // A peer replaces the hidden element with a different one of equal length.
+    let peer = Doc::new();
+    let peer_alias = peer.get_or_insert_array("objects");
+    peer.transact_mut()
+        .apply_update(yrs::Update::decode_v1(&host.encode_full()).unwrap())
+        .unwrap();
+    let mark = peer.transact().state_vector();
+    {
+        let mut txn = peer.transact_mut();
+        peer_alias.remove(&mut txn, 0);
+        peer_alias.insert(&mut txn, 0, "hidden-b");
+    }
+    let replaced = yrs::ReadTxn::state_vector(&peer.transact());
+    let _ = replaced;
+    let frame = samepage_doc::sync::update(peer.transact().encode_state_as_update_v1(&mark));
+    let before = fingerprint(&host);
+    let refusal = host
+        .receive_frame(&alice(), &frame)
+        .expect_err("same-length replacement refused");
+    assert!(
+        matches!(refusal, samepage_doc::host::FrameRefusal::HiddenStructure(ref at) if at.iter().any(|a| a == "sequence:objects")),
+        "{refusal}"
+    );
+    assert_eq!(fingerprint(&host), before);
+
+    // Ordinary edits still work beside the preserved content, which is kept.
+    place(&host, "beside");
+    let reopened = {
+        host.save().unwrap();
+        Host::open(dir.join("page.samepage"), composition(), capabilities()).unwrap()
+    };
+    assert!(reopened
+        .opened_anomalies()
+        .iter()
+        .any(|a| a == "sequence:objects"));
+}

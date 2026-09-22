@@ -18,7 +18,7 @@ if [[ "$version" != "wasm-bindgen 0.2.126" ]]; then
 fi
 
 cd "$here"
-cargo build --release --target wasm32-unknown-unknown
+cargo build --locked --release --target wasm32-unknown-unknown
 target="${CARGO_TARGET_DIR:-$here/target}"
 artifact="$target/wasm32-unknown-unknown/release/samepage_capability_fixture.wasm"
 shasum -a 256 "$artifact"
