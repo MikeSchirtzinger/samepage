@@ -1427,6 +1427,15 @@ body[data-map-mode="cement"] .atlas-undeclared-frame {
   margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
   color: var(--human);
 }
+.atlas-undeclared-frame.collapsed { padding-block: 6px; }
+.atlas-undeclared-frame.collapsed h3 { margin: 0; }
+.atlas-undeclared-frame.collapsed .undeclared-list { display: none; }
+.undeclared-toggle {
+  all: unset; cursor: pointer; display: inline-flex; gap: 10px; align-items: baseline;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+}
+.undeclared-toggle:focus-visible { outline: 2px solid var(--human); outline-offset: 3px; border-radius: 4px; }
+.undeclared-toggle-hint { font-weight: 500; opacity: .75; text-decoration: underline; text-underline-offset: 3px; }
 /* A row of cards, not a tall stack: this panel is now a short docked strip
    (see .atlas-undeclared-frame), and a horizontally scrolling row of fixed-
    width cards suits that shape better than a vertical list would. */
