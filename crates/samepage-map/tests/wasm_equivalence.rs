@@ -59,6 +59,7 @@ fn every_export_matches_the_native_capability() {
     for code in [
         "needs_capability",
         "invalid",
+        "invalid_args",
         "not_map_object",
         "dangling",
         "bad_input",

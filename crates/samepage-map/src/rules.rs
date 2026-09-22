@@ -28,8 +28,16 @@ pub const K_SIZE: &str = "size";
 pub const K_SHAPE: &str = "node_kind";
 pub const K_FROM: &str = "from";
 pub const K_TO: &str = "to";
-/// A link carrying this key is a state-machine transition (diagrams' key).
-pub const K_EVENT: &str = "event";
+/// Keys the diagrams capability owns on a link. A link carrying any of them,
+/// with any value (even empty or not a string), is a state-machine transition
+/// and is never rewritten by the map.
+pub const TRANSITION_KEYS: &[&str] = &["event", "guard", "transition_order"];
+
+pub fn is_transition(record: &Record) -> bool {
+    TRANSITION_KEYS
+        .iter()
+        .any(|key| record.props.contains_key(*key))
+}
 
 pub const NODE_KEYS: &[&str] = &[
     K_LABEL, K_NOTE, K_TONE, K_STATUS, K_X, K_Y, K_W, K_H, K_H_PREF, K_W_MIN, K_H_MIN, K_PARENT,
@@ -58,7 +66,53 @@ pub const MAX_NOTE: usize = 4_000;
 pub const MAX_DEPTH: usize = 6;
 /// Cards plus links this capability will hold. Above the Atlas's shared 300
 /// objects on purpose: the integration gate observes cost at 500 cards.
+///
+/// Growth policy: a change that creates a card or link is refused when the
+/// map would then hold more than this many. Edits and deletions are always
+/// allowed, so a document imported above the limit stays usable and can be
+/// brought back under it. Enforced in plans and in `validate`, so browser
+/// frames are held to it too.
 pub const MAX_MAP_OBJECTS: usize = 2_000;
+
+/// Automatic placement: bands of `GRID_COLUMNS` columns, each band as tall as
+/// the world allows, side by side. The first band is the Atlas's original
+/// four-column layout, so existing pages place new cards where they always
+/// did; later bands keep every slot up to [`MAX_MAP_OBJECTS`] inside the world
+/// limit.
+pub const GRID_ORIGIN: (f64, f64) = (48.0, 64.0);
+pub const GRID_STEP: (f64, f64) = (300.0, 168.0);
+pub const GRID_COLUMNS: usize = 4;
+
+pub fn grid_rows() -> usize {
+    ((WORLD_LIMIT - GRID_ORIGIN.1) / GRID_STEP.1).floor() as usize + 1
+}
+
+/// Position of automatic slot `index`.
+pub fn grid_slot(index: usize) -> (f64, f64) {
+    let rows = grid_rows();
+    let per_band = GRID_COLUMNS * rows;
+    let band = index / per_band;
+    let within = index % per_band;
+    let column = band * GRID_COLUMNS + within % GRID_COLUMNS;
+    let row = within / GRID_COLUMNS;
+    (
+        GRID_ORIGIN.0 + column as f64 * GRID_STEP.0,
+        GRID_ORIGIN.1 + row as f64 * GRID_STEP.1,
+    )
+}
+
+/// Refuse growth past [`MAX_MAP_OBJECTS`].
+pub fn check_growth(count_after: usize, created: usize) -> Result<(), CapError> {
+    if created > 0 && count_after > MAX_MAP_OBJECTS {
+        return Err(err(
+            "full",
+            format!(
+                "the map would hold {count_after} cards and links; the limit is {MAX_MAP_OBJECTS}"
+            ),
+        ));
+    }
+    Ok(())
+}
 
 pub fn err(code: &str, message: impl Into<String>) -> CapError {
     CapError::new(code, message)

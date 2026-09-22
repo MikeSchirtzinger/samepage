@@ -27,11 +27,6 @@ use rules::*;
 pub const ID: &str = "map";
 pub const VERSION: &str = "0.1.0";
 
-/// Grid used to place a card that arrives without coordinates.
-const GRID_ORIGIN: (f64, f64) = (48.0, 64.0);
-const GRID_STEP: (f64, f64) = (300.0, 168.0);
-const GRID_COLUMNS: usize = 4;
-
 pub fn descriptor() -> Descriptor {
     let place_schema = json!({
         "type": "object",
@@ -157,7 +152,10 @@ impl Capability for Map {
             }
             "card_link" => link(&args, view),
             "object_remove" => remove(&args, view),
-            "map_read" => Ok(plan(Vec::new(), describe(view))),
+            "map_read" => {
+                allow_only(&args, &[])?;
+                Ok(plan(Vec::new(), describe(view)))
+            }
             other => Err(err(
                 "unknown_action",
                 format!("map has no action {other:?}"),
@@ -167,6 +165,15 @@ impl Capability for Map {
 
     fn validate(&self, delta: &Delta, view: &View) -> Result<(), CapError> {
         let all: BTreeSet<String> = BTreeSet::new();
+        let created = delta
+            .created
+            .iter()
+            .filter(|id| {
+                view.get(id)
+                    .is_some_and(|r| r.kind == NODE || r.kind == EDGE)
+            })
+            .count();
+        check_growth(map_count(view), created)?;
         for id in &delta.created {
             if let Some(record) = view.get(id) {
                 check(record, &all, true, view)?;
@@ -392,16 +399,7 @@ fn place(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapErro
             if !props.iter().any(|(k, _)| *k == K_LABEL) {
                 return Err(err("invalid_args", "a new card needs a label"));
             }
-            let count = view
-                .records()
-                .filter(|r| r.kind == NODE || r.kind == EDGE)
-                .count();
-            if count >= MAX_MAP_OBJECTS {
-                return Err(err(
-                    "full",
-                    format!("the map holds {MAX_MAP_OBJECTS} cards and links"),
-                ));
-            }
+            check_growth(map_count(view) + 1, 1)?;
             if !props.iter().any(|(k, _)| *k == K_X) || !props.iter().any(|(k, _)| *k == K_Y) {
                 let (x, y) = free_slot(view);
                 if !props.iter().any(|(k, _)| *k == K_X) {
@@ -466,8 +464,11 @@ fn link(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapError
         record.kind == EDGE
             && prop_str(record, K_FROM) == Some(from.as_str())
             && prop_str(record, K_TO) == Some(to.as_str())
-            && prop_str(record, K_EVENT).unwrap_or_default().is_empty()
+            && !is_transition(record)
     });
+    if existing.is_none() {
+        check_growth(map_count(view) + 1, 1)?;
+    }
     Ok(match existing {
         Some(edge) => plan(vec![set(&edge.id, vec![(K_LABEL, label.into())])], readback),
         None => plan(
@@ -532,6 +533,12 @@ fn cascade_ops(deleted: &[String], view: &View) -> Vec<Op> {
     ops
 }
 
+fn map_count(view: &View) -> usize {
+    view.records()
+        .filter(|r| r.kind == NODE || r.kind == EDGE)
+        .count()
+}
+
 fn free_slot(view: &View) -> (f64, f64) {
     let cards: Vec<(f64, f64)> = view
         .records()
@@ -544,8 +551,7 @@ fn free_slot(view: &View) -> (f64, f64) {
         })
         .collect();
     for index in 0..MAX_MAP_OBJECTS {
-        let x = GRID_ORIGIN.0 + (index % GRID_COLUMNS) as f64 * GRID_STEP.0;
-        let y = GRID_ORIGIN.1 + (index / GRID_COLUMNS) as f64 * GRID_STEP.1;
+        let (x, y) = grid_slot(index);
         if !cards
             .iter()
             .any(|(cx, cy)| (cx - x).abs() < 40.0 && (cy - y).abs() < 40.0)
@@ -681,7 +687,7 @@ fn projection(view: &View) -> JsonValue {
                 "from": from,
                 "to": to,
                 "label": prop_str(record, K_LABEL).unwrap_or_default(),
-                "transition": !prop_str(record, K_EVENT).unwrap_or_default().is_empty(),
+                "transition": is_transition(record),
             })
         })
         .collect();

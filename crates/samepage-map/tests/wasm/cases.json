@@ -1,32 +1,235 @@
 {
-  "view": {
-    "revision": "r1",
-    "records": [
-      { "id": "a", "kind": "node", "props": { "label": "A", "x": 0, "y": 0, "w": 232, "tone": "crate", "status": "open", "created_by": "Model", "touched_by": "Model" } },
-      { "id": "b", "kind": "node", "props": { "label": "B", "x": 400, "y": 0, "h": 90, "parent": "a", "path": "src/b.rs" } },
-      { "id": "e1", "kind": "edge", "props": { "from": "a", "to": "b", "label": "calls" } },
-      { "id": "legacy", "kind": "agent-ink-variable", "props": { "value": 3 } }
-    ]
-  },
-  "calls": [
-    { "export": "descriptor" },
-    { "export": "project" },
-    { "export": "digest" },
-    { "export": "legend" },
-    { "export": "plan", "call": { "action": "card_place", "args": { "label": "New card", "tone": "doc" } } },
-    { "export": "plan", "call": { "action": "card_place", "args": { "id": "a", "w": 300, "h_pref": 120 } } },
-    { "export": "plan", "call": { "action": "card_move", "args": { "id": "a", "x": 12.5, "y": -4 } } },
-    { "export": "plan", "call": { "action": "card_measure", "args": { "id": "b", "h": 140 } } },
-    { "export": "plan", "call": { "action": "card_link", "args": { "from": "b", "to": "a", "label": "reports" } } },
-    { "export": "plan", "call": { "action": "object_remove", "args": { "id": "a" } } },
-    { "export": "plan", "call": { "action": "map_read", "args": {} } },
-    { "export": "plan", "call": { "action": "card_place", "args": { "label": "T", "path": "x.rs" } } },
-    { "export": "plan", "call": { "action": "card_move", "args": { "id": "a", "x": 1e9, "y": 0 } } },
-    { "export": "plan", "call": { "action": "object_remove", "args": { "id": "legacy" } } },
-    { "export": "validate", "delta": { "created": [], "modified": { "a": ["x"] }, "deleted": [], "rekinded": [] } },
-    { "export": "validate", "delta": { "created": [], "modified": {}, "deleted": ["a"], "rekinded": [] } },
-    { "export": "cascade", "deleted": ["a"] },
-    { "export": "changes", "before": { "cards": [], "links": [] }, "after": "project" },
-    { "export": "plan", "call": "{not json" }
+ "view": {
+  "revision": "r1",
+  "records": [
+   {
+    "id": "a",
+    "kind": "node",
+    "props": {
+     "label": "A",
+     "x": 0,
+     "y": 0,
+     "w": 232,
+     "tone": "crate",
+     "status": "open",
+     "created_by": "Model",
+     "touched_by": "Model"
+    }
+   },
+   {
+    "id": "b",
+    "kind": "node",
+    "props": {
+     "label": "B",
+     "x": 400,
+     "y": 0,
+     "h": 90,
+     "parent": "a",
+     "path": "src/b.rs"
+    }
+   },
+   {
+    "id": "e1",
+    "kind": "edge",
+    "props": {
+     "from": "a",
+     "to": "b",
+     "label": "calls"
+    }
+   },
+   {
+    "id": "legacy",
+    "kind": "agent-ink-variable",
+    "props": {
+     "value": 3
+    }
+   },
+   {
+    "id": "t1",
+    "kind": "edge",
+    "props": {
+     "from": "a",
+     "to": "b",
+     "label": "transition",
+     "event": "",
+     "guard": "ready"
+    }
+   }
   ]
+ },
+ "calls": [
+  {
+   "export": "descriptor"
+  },
+  {
+   "export": "project"
+  },
+  {
+   "export": "digest"
+  },
+  {
+   "export": "legend"
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_place",
+    "args": {
+     "label": "New card",
+     "tone": "doc"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_place",
+    "args": {
+     "id": "a",
+     "w": 300,
+     "h_pref": 120
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_move",
+    "args": {
+     "id": "a",
+     "x": 12.5,
+     "y": -4
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_measure",
+    "args": {
+     "id": "b",
+     "h": 140
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_link",
+    "args": {
+     "from": "b",
+     "to": "a",
+     "label": "reports"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "object_remove",
+    "args": {
+     "id": "a"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "map_read",
+    "args": {}
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_place",
+    "args": {
+     "label": "T",
+     "path": "x.rs"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_move",
+    "args": {
+     "id": "a",
+     "x": 1000000000.0,
+     "y": 0
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "object_remove",
+    "args": {
+     "id": "legacy"
+    }
+   }
+  },
+  {
+   "export": "validate",
+   "delta": {
+    "created": [],
+    "modified": {
+     "a": [
+      "x"
+     ]
+    },
+    "deleted": [],
+    "rekinded": []
+   }
+  },
+  {
+   "export": "validate",
+   "delta": {
+    "created": [],
+    "modified": {},
+    "deleted": [
+     "a"
+    ],
+    "rekinded": []
+   }
+  },
+  {
+   "export": "cascade",
+   "deleted": [
+    "a"
+   ]
+  },
+  {
+   "export": "changes",
+   "before": {
+    "cards": [],
+    "links": []
+   },
+   "after": "project"
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_link",
+    "args": {
+     "from": "a",
+     "to": "b",
+     "label": "plain"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "map_read",
+    "args": {
+     "verbose": true
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": "{not json"
+  }
+ ]
 }
