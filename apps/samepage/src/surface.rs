@@ -9,6 +9,7 @@ use ag_ui_surface::{
     StateSnapshot, Surface, SurfaceState, Transport, WsInbound, WsRefusal,
 };
 use samepage_capability::{Capability, Composition, Effect as CapabilityEffect};
+use samepage_diagrams::Diagrams;
 use samepage_doc::host::{Commit, Host};
 use samepage_doc::{Actor, Caller};
 use samepage_map::Map;
@@ -75,6 +76,7 @@ impl FileIdentity {
 pub struct SelectedArtifacts {
     document: DocumentMount,
     map: CapabilityArtifact,
+    diagrams: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -87,12 +89,17 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if manifest.artifacts.len() != 2 {
-            return Err("C4 requires exactly doc and map artifacts".to_string());
+        if !(2..=3).contains(&manifest.artifacts.len()) {
+            return Err("requires doc, map and optional diagrams artifacts".to_string());
         }
         let mut document = None;
         let mut map = None;
+        let mut diagrams = None;
+        let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
+            if !seen.insert(artifact.id.clone()) {
+                return Err(format!("duplicate artifact {}", artifact.id));
+            }
             match artifact.id.as_str() {
                 "doc"
                     if artifact.kind == "document"
@@ -113,26 +120,36 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map"
+                "map" | "diagrams"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
-                    let compiled = serde_json::to_value(samepage_map::descriptor())
-                        .map_err(|error| error.to_string())?;
+                    let is_map = artifact.id == "map";
+                    let compiled = serde_json::to_value(if is_map {
+                        samepage_map::descriptor()
+                    } else {
+                        samepage_diagrams::descriptor()
+                    })
+                    .map_err(|error| error.to_string())?;
                     if artifact.descriptor.as_ref() != Some(&compiled) {
                         return Err(
                             "emitted Map descriptor differs from compiled native Map".into()
                         );
                     }
                     let entry = artifact.entry.ok_or("map entry is missing")?.verify(root)?;
-                    map = Some(CapabilityArtifact {
+                    let capability = CapabilityArtifact {
                         kind: artifact.kind,
                         abi: artifact.abi,
                         entry,
                         glue: artifact.glue.verify(root)?,
                         wasm: artifact.wasm.verify(root)?,
                         descriptor: compiled,
-                    });
+                    };
+                    if is_map {
+                        map = Some(capability);
+                    } else {
+                        diagrams = Some(capability);
+                    }
                 }
                 _ => return Err(format!("unsupported C4 artifact {}", artifact.id)),
             }
@@ -140,6 +157,7 @@ impl SelectedArtifacts {
         Ok(Self {
             document: document.ok_or("document artifact is missing")?,
             map: map.ok_or("map artifact is missing")?,
+            diagrams,
         })
     }
 }
@@ -186,12 +204,34 @@ impl SamePageState {
         emit_event: EventEmitter,
         save_wait: Duration,
     ) -> Result<Arc<Self>, String> {
-        let composition = Composition::new(vec![samepage_map::descriptor()])
-            .map_err(|error| error.to_string())?;
-        let host = Arc::new(
-            Host::open(path, composition, vec![Arc::new(Map)])
-                .map_err(|error| error.to_string())?,
-        );
+        Self::open_selected(path, ws_tx, saver, emit_event, save_wait, None)
+    }
+
+    fn open_selected(
+        path: PathBuf,
+        ws_tx: broadcast::Sender<Vec<u8>>,
+        saver: HostSaver,
+        emit_event: EventEmitter,
+        save_wait: Duration,
+        project: Option<&Path>,
+    ) -> Result<Arc<Self>, String> {
+        let mut descriptors = vec![samepage_map::descriptor()];
+        let mut capabilities: Vec<Arc<dyn Capability>> = vec![Arc::new(Map)];
+        if project.is_some() {
+            descriptors.push(samepage_diagrams::descriptor());
+            capabilities.push(Arc::new(Diagrams));
+        }
+        let composition = Composition::new(descriptors).map_err(|error| error.to_string())?;
+        let mut host = Host::open(path, composition, capabilities).map_err(|e| e.to_string())?;
+        if let Some(project) = project {
+            host = host
+                .with_verifier(
+                    "diagrams",
+                    Arc::new(crate::diagram_sources::DiagramSources::open(project)?),
+                )
+                .map_err(|e| e.to_string())?;
+        }
+        let host = Arc::new(host);
         let (commit_tx, commit_rx) = mpsc::channel::<Commit>();
         let (refusal_tx, _) = broadcast::channel(128);
         let save_progress = Arc::new((
@@ -502,10 +542,27 @@ impl SamePageSurface {
         path: PathBuf,
         artifacts: SelectedArtifacts,
         transport: Transport,
+        project: &Path,
     ) -> Result<Self, String> {
-        let state = SamePageState::open(path, transport)?;
-        let tools = samepage_map::descriptor()
-            .actions
+        let with_diagrams = artifacts.diagrams.is_some();
+        let state = if with_diagrams {
+            let emit = transport.clone();
+            SamePageState::open_selected(
+                path,
+                transport.ws_tx.clone(),
+                Arc::new(|h| h.save().map(|_| ()).map_err(|e| e.to_string())),
+                Arc::new(move |name, value| emit.emit(name, value)),
+                Duration::from_secs(15),
+                Some(project),
+            )?
+        } else {
+            SamePageState::open(path, transport)?
+        };
+        let mut declarations = samepage_map::descriptor().actions;
+        if with_diagrams {
+            declarations.extend(samepage_diagrams::descriptor().actions);
+        }
+        let tools = declarations
             .into_iter()
             .map(|decl| {
                 let name = decl.name.clone();
@@ -572,7 +629,23 @@ impl Surface for SamePageSurface {
                 module = module.action(action.name);
             }
         }
-        vec![module]
+        let mut modules = vec![module];
+        if let Some(artifact) = &self.artifacts.diagrams {
+            let mut module = ClientModule::lazy(
+                "diagrams",
+                samepage_diagrams::VERSION,
+                artifact.entry.url.clone(),
+                "diagrams",
+            )
+            .verified_artifact(artifact.clone())
+            .optional()
+            .capability("samepage.diagrams");
+            for action in samepage_diagrams::descriptor().actions {
+                module = module.action(action.name);
+            }
+            modules.push(module);
+        }
+        modules
     }
 }
 

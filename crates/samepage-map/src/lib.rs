@@ -999,11 +999,11 @@ fn free_slot(view: &View) -> (f64, f64) {
 
 // ── projection and read-back ─────────────────────────────────────────────
 
-fn prop_str<'a>(record: &'a Record, key: &str) -> Option<&'a str> {
+pub fn prop_str<'a>(record: &'a Record, key: &str) -> Option<&'a str> {
     record.props.get(key).and_then(|v| v.as_str())
 }
 
-fn prop_num(record: &Record, key: &str) -> Option<f64> {
+pub fn prop_num(record: &Record, key: &str) -> Option<f64> {
     record.props.get(key).and_then(|v| v.as_f64())
 }
 
@@ -1018,7 +1018,7 @@ fn label_of(view: &View, id: &str) -> String {
 /// A rough height for a card with no authored `h_pref`: title lines plus note
 /// lines at the card's width. Always marked `estimated` in the projection; it
 /// is arithmetic, not a measurement, and never claims to be one.
-fn estimated_height(label: &str, note: &str, width: f64) -> f64 {
+pub fn estimated_height(label: &str, note: &str, width: f64) -> f64 {
     let per_line = ((width - 32.0) / 7.5).max(8.0);
     let lines = |text: &str, chars: f64| -> f64 {
         text.split('\n')
@@ -1367,5 +1367,5 @@ fn legend(view: &View) -> Vec<LegendEntry> {
     entries
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "wasm-export"))]
 samepage_capability::export_capability!(Map, Map);

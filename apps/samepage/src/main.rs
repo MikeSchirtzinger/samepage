@@ -1,3 +1,4 @@
+mod diagram_sources;
 mod surface;
 
 use std::path::PathBuf;
@@ -78,8 +79,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let project_root = std::env::var_os("SAMEPAGE_PROJECT_ROOT")
         .map(PathBuf::from)
         .ok_or("SAMEPAGE_PROJECT_ROOT is required")?;
+    let source_root = project_root.clone();
     App::new()
-        .try_surface(move |transport| surface::SamePageSurface::open(document, manifest, transport))?
+        .try_surface(move |transport| surface::SamePageSurface::open(document, manifest, transport, &source_root))?
         .providers(Providers::from_required_file(models)?)
         .default_provider("none")
         .auth(auth)

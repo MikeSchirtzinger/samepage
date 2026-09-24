@@ -66,7 +66,7 @@ function createKernel({ documentModule, manifest }) {
   };
   const activateForCurrentView = async () => {
     try { await runtime?.activateForView(view()); }
-    catch (error) { console.error("[samepage] capability activation failed:", error); }
+    catch (error) { showError(`Capability unavailable: ${error.message}`); console.error("[samepage] capability activation failed:", error); }
   };
   const sendFrames = (frames) => {
     if (socket?.readyState !== WebSocket.OPEN) return;

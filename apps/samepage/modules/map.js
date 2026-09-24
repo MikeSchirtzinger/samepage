@@ -84,6 +84,8 @@ export function activate({ mount, wasm, application }) {
     const height = Math.max(mount.clientHeight, ...cards.map((card) => originY + Number(card.y || 0) + heightOf(card) + 42));
     const stage = document.createElement("div");
     stage.className = "map-stage";
+    stage.dataset.originX = String(originX);
+    stage.dataset.originY = String(originY);
     stage.style.width = `${width}px`;
     stage.style.height = `${height}px`;
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -92,6 +94,7 @@ export function activate({ mount, wasm, application }) {
     svg.setAttribute("height", String(height));
     svg.setAttribute("aria-hidden", "true");
     for (const link of links) {
+      if (link.transition) continue;
       const from = byId.get(link.from);
       const to = byId.get(link.to);
       if (!from || !to) continue;
@@ -197,6 +200,15 @@ export function activate({ mount, wasm, application }) {
     }
     const panel = renderConstraints(constraints, byId);
     mount.replaceChildren(stage, ...(panel ? [panel] : []));
+    const hasDiagram = links.some(link => link.transition) || cards.some(card => (card.other_keys || []).some(key => ['diagram_kind','state_initial','state_terminal'].includes(key)));
+    const diagramState = application.status?.().capabilities?.find(capability => capability.id === 'diagrams');
+    if (hasDiagram && diagramState?.status !== 'ready') {
+      const notice = document.createElement('p');
+      notice.className = 'diagram-unavailable';
+      notice.textContent = `Diagrams unavailable${diagramState ? ` (${diagramState.status})` : ': capability not selected'}. Stored diagram cards remain here; state roles and transitions cannot be rendered.`;
+      notice.style.cssText = 'position:sticky;top:0;margin:0;padding:12px;background:#621f26;color:#fff;z-index:5';
+      mount.prepend(notice);
+    }
     count.textContent = `${cards.length} cards · ${links.length} links`;
     previousRevision = revision;
     globalThis.samepageMapMetrics = {

@@ -1,6 +1,6 @@
-# SamePage: minimal shared Map host
+# SamePage: shared Map and optional diagrams
 
-This application composes one native `samepage-doc` Host with the pure Map capability. The browser loads the unchanged `samepage.document.v1` facade and a strict `samepage.capability.v2` Map artifact, opens an authenticated document socket, and uses Map WASM to project cards and plan atomic batches for pointer moves. The shell does not provide an Atlas fallback. Other retained SamePage interactions are added as separate capabilities after this Map slice.
+This application composes one native `samepage-doc` Host with the pure Map capability and an optional Diagrams capability. The browser loads the unchanged `samepage.document.v1` facade and a strict `samepage.capability.v2` Map artifact, opens an authenticated document socket, and uses Map WASM to project cards and plan atomic batches for pointer moves. The shell does not provide an Atlas fallback. Diagrams adds typed hierarchies, state roles and routed transitions through its own artifact. See [the diagram contract](../../crates/samepage-diagrams/README.md).
 
 ## Build
 
@@ -11,9 +11,12 @@ export CARGO_TARGET_DIR=/path/to/private-cargo-target
 export CARGO_BUILD_JOBS=2
 apps/samepage/build-capabilities.sh /path/to/private-artifacts \
   doc=crates/samepage-doc/web \
-  map=crates/samepage-map=apps/samepage/modules/map.js
+  map=crates/samepage-map=apps/samepage/modules/map.js \
+  diagrams=crates/samepage-diagrams=apps/samepage/modules/diagrams.js
 cargo build --locked -j 2 -p samepage-app
 ```
+
+Omit the diagrams selection for a Map-only composition. For a worktree-contained build, artifact output may also live under the ignored `.local/` directory.
 
 The build script inspects the selected Cargo dependency closure, builds real WASM packages, optimizes them, verifies their exported ABIs and descriptors, and publishes a manifest with file sizes and SHA-256 hashes. The native host checks the selected files and compiled Map descriptor before serving. Keep the artifact directory intact while the host runs.
 

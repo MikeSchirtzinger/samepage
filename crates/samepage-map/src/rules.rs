@@ -445,7 +445,7 @@ pub fn check_edge(record: &Record, view: &View) -> Result<(), CapError> {
             ));
         }
     }
-    if from == to {
+    if from == to && !is_transition(record) {
         return Err(err("invalid", "a link needs two different cards"));
     }
     if let Some(label) = string(record, K_LABEL)? {

@@ -15,13 +15,13 @@ shift
 case "$out" in /*) ;; *) echo 'OUT_DIR must be absolute' >&2; exit 2;; esac
 mkdir -p "$out"
 out="$(cd "$out" && pwd -P)"
-if [[ "$out" == "$root" || "$out" == "$root/"* ]]; then
-  echo 'OUT_DIR must be outside the source checkout' >&2; exit 2
+if [[ "$out" == "$root" || ( "$out" == "$root/"* && "$out" != "$root/.local/"* ) ]]; then
+  echo 'OUT_DIR must be outside the source checkout or inside its ignored .local directory' >&2; exit 2
 fi
-if [[ "${CARGO_BUILD_JOBS:-2}" -gt 2 ]]; then
-  echo 'CARGO_BUILD_JOBS must be at most 2 for this lane' >&2; exit 2
+if [[ "${CARGO_BUILD_JOBS:-4}" -gt 4 ]]; then
+  echo 'CARGO_BUILD_JOBS must be at most 4 for this lane' >&2; exit 2
 fi
-export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-4}"
 if [[ -z "${CARGO_TARGET_DIR:-}" ]]; then
   echo 'set a private CARGO_TARGET_DIR before building' >&2; exit 2
 fi

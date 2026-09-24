@@ -2870,6 +2870,7 @@ version = "0.1.0"
 dependencies = [
  "ag-ui-surface",
  "samepage-capability",
+ "samepage-diagrams",
  "samepage-doc",
  "samepage-map",
  "serde",
@@ -2886,6 +2887,20 @@ dependencies = [
  "serde_json",
  "thiserror",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "samepage-diagrams"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "samepage-capability",
+ "samepage-doc",
+ "samepage-map",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "yrs",
 ]
 
 [[package]]
