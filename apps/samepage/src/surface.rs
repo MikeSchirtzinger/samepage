@@ -115,7 +115,7 @@ impl SelectedArtifacts {
                 }
                 "map"
                     if artifact.kind == "capability"
-                        && artifact.abi == "samepage.capability.v1" =>
+                        && artifact.abi == "samepage.capability.v2" =>
                 {
                     let compiled = serde_json::to_value(samepage_map::descriptor())
                         .map_err(|error| error.to_string())?;
@@ -579,6 +579,71 @@ impl Surface for SamePageSurface {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn artifact_identity(root: &Path, relative: &str, contents: &[u8]) -> Value {
+        let path = root.join(relative);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, contents).unwrap();
+        json!({
+            "url": format!("/capabilities/{relative}"),
+            "sha256": format!("{:x}", Sha256::digest(contents)),
+            "bytes": contents.len()
+        })
+    }
+
+    #[test]
+    fn selected_artifacts_require_v2_capability_and_document_v1() {
+        let unique = format!(
+            "samepage-v2-artifacts-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let root = std::env::temp_dir().join(unique);
+        std::fs::create_dir_all(&root).unwrap();
+        let doc_js = artifact_identity(&root, "doc/doc.js", b"doc-js");
+        let doc_wasm = artifact_identity(&root, "doc/doc_bg.wasm", b"doc-wasm");
+        let map_entry = artifact_identity(&root, "map/index.js", b"map-entry");
+        let map_glue = artifact_identity(&root, "map/map.js", b"map-js");
+        let map_wasm = artifact_identity(&root, "map/map_bg.wasm", b"map-wasm");
+        let mut manifest = json!({
+            "schemaVersion": 1,
+            "buildOwner": "samepage-capabilities.v1",
+            "artifacts": [
+                {
+                    "id":"doc", "kind":"document", "abi":"samepage.document.v1",
+                    "glue":doc_js, "wasm":doc_wasm, "layoutVersion":1
+                },
+                {
+                    "id":"map", "kind":"capability", "abi":"samepage.capability.v2",
+                    "glue":map_glue, "wasm":map_wasm, "entry":map_entry,
+                    "descriptor":samepage_map::descriptor()
+                }
+            ]
+        });
+        std::fs::write(
+            root.join("capabilities.json"),
+            serde_json::to_vec(&manifest).unwrap(),
+        )
+        .unwrap();
+        assert!(SelectedArtifacts::open(&root).is_ok());
+
+        manifest["artifacts"][1]["abi"] = json!("samepage.capability.v1");
+        manifest["artifacts"][1]["descriptor"]["abi"] = json!("samepage.capability.v1");
+        std::fs::write(
+            root.join("capabilities.json"),
+            serde_json::to_vec(&manifest).unwrap(),
+        )
+        .unwrap();
+        let error = match SelectedArtifacts::open(&root) {
+            Ok(_) => panic!("v1 capability artifact was accepted"),
+            Err(error) => error,
+        };
+        assert!(error.contains("unsupported C4 artifact map"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     fn test_progress(completed: u64) -> Arc<(Mutex<SaveProgress>, Condvar)> {
         Arc::new((

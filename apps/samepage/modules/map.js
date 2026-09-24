@@ -92,7 +92,7 @@ export function activate({ mount, wasm, application }) {
             const planned = await application.plan("map", "card_move", {
               id: card.id, x: Number(card.x || 0) + dx, y: Number(card.y || 0) + dy,
             });
-            application.apply("map", planned);
+            await application.applyBatch(planned);
           } catch (error) {
             const alert = document.getElementById("error-banner");
             alert.textContent = `Card move refused: ${error.message}`;

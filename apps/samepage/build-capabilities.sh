@@ -98,7 +98,7 @@ import { pathToFileURL } from 'node:url';
 const [id, glue, wasm, receipt] = process.argv.slice(2);
 const module = await import(pathToFileURL(glue).href);
 await module.default({ module_or_path: new Uint8Array(fs.readFileSync(wasm)) });
-const expected = id === 'doc' ? 'samepage.document.v1' : 'samepage.capability.v1';
+const expected = id === 'doc' ? 'samepage.document.v1' : 'samepage.capability.v2';
 if (module.abi?.() !== expected) throw Error(`${id}: built WASM exported ABI mismatch`);
 const identity = { abi: expected };
 if (id === 'doc') {
@@ -133,7 +133,7 @@ for directory in sorted(p for p in stage.iterdir() if p.is_dir()):
         return {'url': '/capabilities/' + directory.name + '/' + path.name,
                 'sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data)}
     item = {'id': directory.name, 'kind': 'document' if directory.name == 'doc' else 'capability',
-            'abi': 'samepage.document.v1' if directory.name == 'doc' else 'samepage.capability.v1',
+            'abi': 'samepage.document.v1' if directory.name == 'doc' else 'samepage.capability.v2',
             'glue': identity(glue[0]), 'wasm': identity(wasm[0])}
     observed = json.loads((directory / 'identity.json').read_text())
     if directory.name == 'doc': item['layoutVersion'] = observed['layoutVersion']

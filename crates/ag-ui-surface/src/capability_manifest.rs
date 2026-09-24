@@ -7,6 +7,7 @@ use serde_json::Value;
 use crate::{ActionAudience, ActionDef};
 
 pub const CAPABILITY_SCHEMA_VERSION: u32 = 1;
+const CAPABILITY_ABI: &str = "samepage.capability.v2";
 
 /// The one browser document, independent of the C1 capability ABI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -81,7 +82,7 @@ impl ArtifactFile {
     }
 }
 
-/// A pure C1 capability package. The document has its own top-level mount.
+/// A pure capability package. The document has its own top-level mount.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CapabilityArtifact {
@@ -99,7 +100,7 @@ impl CapabilityArtifact {
         if self.kind != "capability" {
             return Err(format!("{id}: unsupported artifact kind {:?}", self.kind));
         }
-        if self.abi != "samepage.capability.v1" {
+        if self.abi != CAPABILITY_ABI {
             return Err(format!("{id}: unsupported artifact ABI {:?}", self.abi));
         }
         for file in [&self.entry, &self.glue, &self.wasm] {
@@ -151,6 +152,36 @@ fn validate_capability_descriptor(descriptor: &Value, id: &str) -> Result<(), St
             return Err(format!("{id}: descriptor missing {field} array"));
         }
     }
+    for field in ["kinds", "props"] {
+        let Some(claims) = descriptor[field].as_array() else {
+            return Err(format!("{id}: descriptor missing {field} array"));
+        };
+        for claim in claims {
+            if claim
+                .get("kind")
+                .and_then(Value::as_str)
+                .is_none_or(|kind| kind.trim().is_empty())
+                || claim
+                    .get("keys")
+                    .and_then(Value::as_array)
+                    .is_none_or(|keys| {
+                        keys.iter()
+                            .any(|key| key.as_str().is_none_or(|key| key.trim().is_empty()))
+                    })
+            {
+                return Err(format!(
+                    "{id}: descriptor has invalid {field} claim {claim}"
+                ));
+            }
+        }
+    }
+    if descriptor["reads"].as_array().is_none_or(|reads| {
+        reads
+            .iter()
+            .any(|kind| kind.as_str().is_none_or(|kind| kind.trim().is_empty()))
+    }) {
+        return Err(format!("{id}: descriptor has invalid reads declaration"));
+    }
     let Some(triggers) = descriptor["triggers"].as_array() else {
         return Err(format!("{id}: triggers missing"));
     };
@@ -158,15 +189,68 @@ fn validate_capability_descriptor(descriptor: &Value, id: &str) -> Result<(), St
         return Err(format!("{id}: descriptor has no activation trigger"));
     }
     for trigger in triggers {
+        let Some(fields) = trigger.as_object() else {
+            return Err(format!("{id}: invalid activation trigger {trigger}"));
+        };
         let on = trigger.get("on").and_then(Value::as_str);
-        let name = trigger.get("name").and_then(Value::as_str);
         let valid = match on {
-            Some("always") => name.is_none(),
-            Some("kind" | "tool" | "route") => name.is_some_and(|s| !s.trim().is_empty()),
+            Some("always") => fields.len() == 1,
+            Some("kind" | "tool" | "route") => {
+                fields.len() == 2
+                    && trigger
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .is_some_and(|name| !name.trim().is_empty())
+            }
+            Some("property") => {
+                fields.len() == 3
+                    && trigger
+                        .get("kind")
+                        .and_then(Value::as_str)
+                        .is_some_and(|kind| !kind.trim().is_empty())
+                    && trigger
+                        .get("key")
+                        .and_then(Value::as_str)
+                        .is_some_and(|key| !key.trim().is_empty())
+            }
             _ => false,
         };
         if !valid {
             return Err(format!("{id}: invalid activation trigger {trigger}"));
+        }
+        if on == Some("kind") {
+            let kind = trigger["name"].as_str().unwrap_or_default();
+            let involved = ["kinds", "props"].iter().any(|field| {
+                descriptor[*field]
+                    .as_array()
+                    .is_some_and(|claims| claims.iter().any(|claim| claim["kind"] == kind))
+            }) || descriptor["reads"]
+                .as_array()
+                .is_some_and(|reads| reads.iter().any(|read| read == kind));
+            if !involved {
+                return Err(format!(
+                    "{id}: kind trigger {kind} is neither owned, extended nor read"
+                ));
+            }
+        }
+        if on == Some("property") {
+            let kind = trigger["kind"].as_str().unwrap_or_default();
+            let key = trigger["key"].as_str().unwrap_or_default();
+            let owns = ["kinds", "props"].iter().any(|field| {
+                descriptor[*field].as_array().is_some_and(|claims| {
+                    claims.iter().any(|claim| {
+                        claim["kind"] == kind
+                            && claim["keys"]
+                                .as_array()
+                                .is_some_and(|keys| keys.iter().any(|claimed| claimed == key))
+                    })
+                })
+            });
+            if !owns {
+                return Err(format!(
+                    "{id}: property trigger {kind}.{key} is neither owned nor extended"
+                ));
+            }
         }
     }
     Ok(())
@@ -175,7 +259,7 @@ fn validate_capability_descriptor(descriptor: &Value, id: &str) -> Result<(), St
 fn validate_native_descriptor(descriptor: &Value, id: &str, version: &str) -> Result<(), String> {
     if descriptor.get("id").and_then(Value::as_str) != Some(id)
         || descriptor.get("version").and_then(Value::as_str) != Some(version)
-        || descriptor.get("abi").and_then(Value::as_str) != Some("samepage.capability.v1")
+        || descriptor.get("abi").and_then(Value::as_str) != Some(CAPABILITY_ABI)
         || descriptor
             .get("artifact")
             .and_then(|v| v.get("type"))
@@ -306,19 +390,6 @@ pub(crate) fn validate_artifact_set<'a>(
                 return Err(format!("{id}: action {name} aliases differ from host"));
             }
         }
-        let Some(triggers) = descriptor["triggers"].as_array() else {
-            return Err(format!("{id}: triggers missing"));
-        };
-        for trigger in triggers {
-            if trigger["on"] == "tool" {
-                let Some(tool) = trigger["name"].as_str() else {
-                    return Err(format!("{id}: invalid tool trigger"));
-                };
-                if !declarations.iter().any(|action| action["name"] == tool) {
-                    return Err(format!("{id}: tool trigger {tool} is not owned"));
-                }
-            }
-        }
     }
     Ok(())
 }
@@ -339,12 +410,12 @@ mod tests {
     fn artifact(id: &str) -> CapabilityArtifact {
         CapabilityArtifact {
             kind: "capability".into(),
-            abi: "samepage.capability.v1".into(),
+            abi: CAPABILITY_ABI.into(),
             entry: file(&format!("/capabilities/{id}/index.js")),
             glue: file(&format!("/capabilities/{id}/{id}.js")),
             wasm: file(&format!("/capabilities/{id}/{id}_bg.wasm")),
             descriptor: json!({
-                "abi":"samepage.capability.v1", "id":id, "version":"1", "schema":1,
+                "abi":CAPABILITY_ABI, "id":id, "version":"1", "schema":1,
                 "artifact":{"type":"wasm"}, "kinds":[], "props":[], "reads":[],
                 "depends_on":[], "actions":[], "visual_actions":[],
                 "triggers":[{"on":"always"}]
@@ -363,7 +434,7 @@ mod tests {
         wrong.descriptor["id"] = json!("another");
         assert!(validate_artifact_set([("map", "1", Some(&wrong), None)], &[]).is_err());
         wrong = valid.clone();
-        wrong.descriptor["triggers"] = json!([{"on":"tool", "name":"unknown"}]);
+        wrong.descriptor["triggers"] = json!([{"on":"kind", "name":"unknown"}]);
         assert!(validate_artifact_set([("map", "1", Some(&wrong), None)], &[]).is_err());
         wrong = valid.clone();
         wrong.descriptor["depends_on"] = json!([{"id":"doc", "version":"1", "reason":"x"}]);
@@ -371,6 +442,58 @@ mod tests {
         wrong = valid.clone();
         wrong.wasm.sha256 = "flipped".into();
         assert!(validate_artifact_set([("map", "1", Some(&wrong), None)], &[]).is_err());
+    }
+
+    #[test]
+    fn property_tool_and_root_route_triggers_follow_v2_contract() {
+        let mut item = artifact("diagram");
+        item.descriptor["kinds"] = json!([{
+            "kind":"edge", "keys":["event"], "reason":"typed transitions"
+        }]);
+        item.descriptor["actions"] = json!([{
+            "name":"diagram_draw", "aliases":[], "audience":"both",
+            "effect":"mutate", "description":"draw",
+            "input_schema":{"type":"object"}
+        }]);
+        item.descriptor["triggers"] = json!([
+            {"on":"tool", "name":"diagram"},
+            {"on":"route", "name":"/"},
+            {"on":"property", "kind":"edge", "key":"event"}
+        ]);
+        let host = ActionDef::new("diagram_draw", "draw", json!({"type":"object"}), |_| {
+            crate::Effect::Reject("unused".into())
+        });
+        assert_eq!(
+            validate_artifact_set(
+                [("diagram", "1", Some(&item), None)],
+                std::slice::from_ref(&host)
+            ),
+            Ok(())
+        );
+
+        let mut wrong = item.clone();
+        wrong.descriptor["triggers"][2]["key"] = json!("guard");
+        assert!(validate_artifact_set(
+            [("diagram", "1", Some(&wrong), None)],
+            std::slice::from_ref(&host)
+        )
+        .is_err());
+
+        wrong = item.clone();
+        wrong.descriptor["triggers"][2]["name"] = json!("event");
+        assert!(validate_artifact_set(
+            [("diagram", "1", Some(&wrong), None)],
+            std::slice::from_ref(&host)
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn v1_capability_artifact_is_refused() {
+        let mut item = artifact("map");
+        item.abi = "samepage.capability.v1".into();
+        item.descriptor["abi"] = json!("samepage.capability.v1");
+        assert!(validate_artifact_set([("map", "1", Some(&item), None)], &[]).is_err());
     }
 
     #[test]
@@ -409,7 +532,7 @@ mod tests {
     #[test]
     fn explicit_native_only_dependency_resolves_without_a_wasm_package() {
         let native = json!({
-            "abi":"samepage.capability.v1", "id":"adapter", "version":"1", "schema":1,
+            "abi":CAPABILITY_ABI, "id":"adapter", "version":"1", "schema":1,
             "artifact":{"type":"native_only", "reason":"host provides the adapter"},
             "kinds":[], "props":[], "reads":[], "depends_on":[], "actions":[],
             "visual_actions":[], "triggers":[]
@@ -457,7 +580,7 @@ mod tests {
     fn native_adapter_may_depend_on_an_earlier_verified_wasm_package() {
         let tags = artifact("tags");
         let native = json!({
-            "abi":"samepage.capability.v1", "id":"adapter", "version":"1", "schema":1,
+            "abi":CAPABILITY_ABI, "id":"adapter", "version":"1", "schema":1,
             "artifact":{"type":"native_only", "reason":"host adapter"},
             "kinds":[], "props":[], "reads":[],
             "depends_on":[{"id":"tags", "version":"1", "reason":"tag index"}],

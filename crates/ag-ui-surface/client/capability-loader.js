@@ -1,5 +1,7 @@
 // Integrity-checked capability packages. No aggregate WASM or unverified retry.
 
+const CAPABILITY_ABI = "samepage.capability.v2";
+
 function localUrl(path) {
   if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//") ||
       path.includes("..") || path.includes("%") || path.includes("\\")) {
@@ -19,6 +21,85 @@ function validateFile(file) {
     throw new Error(`invalid artifact identity: ${JSON.stringify(file)}`);
   }
   localUrl(file.url);
+}
+
+function hasExactFields(value, names) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...names].sort();
+  return actual.length === expected.length && actual.every((field, index) => field === expected[index]);
+}
+
+function nonEmptyString(value) { return typeof value === "string" && value.trim().length > 0; }
+
+function validateClaims(extensionId, descriptor) {
+  for (const field of ["kinds", "props"]) {
+    for (const claim of descriptor[field]) {
+      if (!nonEmptyString(claim?.kind) || !Array.isArray(claim.keys) ||
+          claim.keys.some((key) => !nonEmptyString(key))) {
+        throw new Error(`${extensionId}: invalid ${field} claim`);
+      }
+    }
+  }
+  if (descriptor.reads.some((kind) => !nonEmptyString(kind))) {
+    throw new Error(`${extensionId}: invalid reads declaration`);
+  }
+}
+
+function declaresKind(descriptor, kind) {
+  return descriptor.kinds.some((claim) => claim.kind === kind) ||
+    descriptor.props.some((claim) => claim.kind === kind) || descriptor.reads.includes(kind);
+}
+
+function declaresProperty(descriptor, kind, key) {
+  return [...descriptor.kinds, ...descriptor.props]
+    .some((claim) => claim.kind === kind && claim.keys.includes(key));
+}
+
+function validateTrigger(extensionId, descriptor, trigger) {
+  switch (trigger?.on) {
+    case "always":
+      if (!hasExactFields(trigger, ["on"])) throw new Error(`${extensionId}: invalid always trigger`);
+      return;
+    case "kind":
+      if (!hasExactFields(trigger, ["on", "name"]) || !nonEmptyString(trigger.name)) {
+        throw new Error(`${extensionId}: invalid kind trigger`);
+      }
+      if (!declaresKind(descriptor, trigger.name)) {
+        throw new Error(`${extensionId}: kind trigger ${trigger.name} is neither owned, extended nor read`);
+      }
+      return;
+    case "tool":
+    case "route":
+      if (!hasExactFields(trigger, ["on", "name"]) || !nonEmptyString(trigger.name)) {
+        throw new Error(`${extensionId}: invalid ${String(trigger.on)} trigger`);
+      }
+      return;
+    case "property":
+      if (!hasExactFields(trigger, ["on", "kind", "key"]) ||
+          !nonEmptyString(trigger.kind) || !nonEmptyString(trigger.key)) {
+        throw new Error(`${extensionId}: invalid property trigger`);
+      }
+      if (!declaresProperty(descriptor, trigger.kind, trigger.key)) {
+        throw new Error(`${extensionId}: property trigger ${trigger.kind}.${trigger.key} is neither owned nor extended`);
+      }
+      return;
+    default:
+      throw new Error(`${extensionId}: invalid trigger`);
+  }
+}
+
+export function triggeredCapabilityIdsForView(extensions, view) {
+  const records = Array.isArray(view?.records) ? view.records : [];
+  return extensions.filter((extension) => extension.artifact?.descriptor.triggers.some((trigger) => {
+    if (trigger.on === "kind") return records.some((record) => record?.kind === trigger.name);
+    if (trigger.on === "property") {
+      return records.some((record) => record?.kind === trigger.kind && record.props &&
+        typeof record.props === "object" && !Array.isArray(record.props) &&
+        Object.prototype.hasOwnProperty.call(record.props, trigger.key));
+    }
+    return false;
+  })).map((extension) => extension.id);
 }
 
 export function validateCapabilityManifest(manifest) {
@@ -42,7 +123,7 @@ export function validateCapabilityManifest(manifest) {
       const native = extension.nativeOnly;
       if (artifact || extension.loading !== "host" || extension.module ||
           native.id !== extension.id || native.version !== extension.version ||
-          native.abi !== "samepage.capability.v1" || native.artifact?.type !== "native_only" ||
+          native.abi !== CAPABILITY_ABI || native.artifact?.type !== "native_only" ||
           typeof native.artifact.reason !== "string" || !native.artifact.reason.trim() ||
           !Array.isArray(native.kinds) || native.kinds.length ||
           !Array.isArray(native.props) || native.props.length ||
@@ -54,7 +135,7 @@ export function validateCapabilityManifest(manifest) {
       }
     }
     if (artifact) {
-      if (artifact.kind !== "capability" || artifact.abi !== "samepage.capability.v1" ||
+      if (artifact.kind !== "capability" || artifact.abi !== CAPABILITY_ABI ||
           extension.loading !== "on-demand" || extension.module !== artifact.entry?.url) {
         throw new Error(`${extension.id}: invalid capability artifact`);
       }
@@ -78,6 +159,7 @@ export function validateCapabilityManifest(manifest) {
           throw new Error(`${extension.id}: invalid action declaration`);
         }
       }
+      validateClaims(extension.id, descriptor);
       if (!Array.isArray(extension.actions)) throw new Error(`${extension.id}: missing browser action inventory`);
       const declared = descriptor.actions.filter((action) => action.audience !== "agent")
         .map((action) => action.name).sort();
@@ -85,17 +167,7 @@ export function validateCapabilityManifest(manifest) {
       if (JSON.stringify(declared) !== JSON.stringify(exposed)) {
         throw new Error(`${extension.id}: browser action inventory differs from descriptor`);
       }
-      for (const trigger of descriptor.triggers) {
-        if (trigger.on === "always") {
-          if (trigger.name !== undefined) throw new Error(`${extension.id}: invalid always trigger`);
-        } else if (!["kind", "tool", "route"].includes(trigger.on) ||
-                   typeof trigger.name !== "string" || !trigger.name) {
-          throw new Error(`${extension.id}: invalid trigger`);
-        }
-        if (trigger.on === "tool" && !descriptor.actions.some((action) => action.name === trigger.name)) {
-          throw new Error(`${extension.id}: tool trigger ${trigger.name} is not owned`);
-        }
-      }
+      for (const trigger of descriptor.triggers) validateTrigger(extension.id, descriptor, trigger);
     } else if (extension.loading === "on-demand") {
       throw new Error(`${extension.id}: on-demand extension has no verified artifact`);
     }
@@ -245,5 +317,10 @@ export class CapabilityLoader {
       extension.artifact?.descriptor.triggers.some((trigger) => trigger.on === on &&
         (on === "always" || trigger.name === name)));
     return Promise.all(matches.map((extension) => this.activate(extension.id, activateEntry)));
+  }
+
+  async activateForView(view, activateEntry) {
+    return Promise.all(triggeredCapabilityIdsForView(this.manifest.extensions, view)
+      .map((id) => this.activate(id, activateEntry)));
   }
 }

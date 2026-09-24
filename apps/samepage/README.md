@@ -1,6 +1,6 @@
 # SamePage: minimal shared Map host
 
-This application composes one native `samepage-doc` Host with the pure Map capability. The browser loads separate document and Map WASM artifacts, opens an authenticated document socket, and uses the Map WASM to project cards and plan pointer moves. The shell does not provide an Atlas fallback. Other retained SamePage interactions are added as separate capabilities after this Map slice.
+This application composes one native `samepage-doc` Host with the pure Map capability. The browser loads the unchanged `samepage.document.v1` facade and a strict `samepage.capability.v2` Map artifact, opens an authenticated document socket, and uses Map WASM to project cards and plan atomic batches for pointer moves. The shell does not provide an Atlas fallback. Other retained SamePage interactions are added as separate capabilities after this Map slice.
 
 ## Build
 

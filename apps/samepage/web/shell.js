@@ -22,7 +22,7 @@ function setStatus(message) { statusNode.textContent = message; }
 
 function envelope(raw, operation) {
   const value = JSON.parse(raw);
-  if (value?.abi !== "samepage.capability.v1") throw new Error(`${operation}: capability ABI mismatch`);
+  if (value?.abi !== "samepage.capability.v2") throw new Error(`${operation}: capability ABI mismatch`);
   if (value.error) throw new Error(`${operation}: ${value.error.code}: ${value.error.message}`);
   if (!("ok" in value)) throw new Error(`${operation}: no result`);
   return value.ok;
@@ -64,6 +64,10 @@ function createKernel({ documentModule, manifest }) {
   const scheduleRender = () => {
     if (!renderQueued) { renderQueued = true; requestAnimationFrame(() => void render()); }
   };
+  const activateForCurrentView = async () => {
+    try { await runtime?.activateForView(view()); }
+    catch (error) { console.error("[samepage] capability activation failed:", error); }
+  };
   const sendFrames = (frames) => {
     if (socket?.readyState !== WebSocket.OPEN) return;
     for (const frame of frames) socket.send(frame);
@@ -84,7 +88,7 @@ function createKernel({ documentModule, manifest }) {
       try {
         sendFrames(replica.receive(new Uint8Array(event.data)));
         flush();
-        if (replica.take_dirty()) { scheduleRender(); notify(); }
+        if (replica.take_dirty()) { await activateForCurrentView(); scheduleRender(); notify(); }
         if (++seenHello >= 2 && sync !== "ready") {
           sync = "ready";
           // Clear only a fault carried into this reconnect. An SSE fault that
@@ -98,7 +102,7 @@ function createKernel({ documentModule, manifest }) {
             errorNode.hidden = true;
           }
           notify();
-          for (const kind of JSON.parse(replica.kinds())) await runtime?.activateForKind(kind);
+          await activateForCurrentView();
           scheduleRender();
         }
       } catch (error) {
@@ -176,17 +180,18 @@ function createKernel({ documentModule, manifest }) {
     apply(id, plan) {
       requireReady();
       const result = JSON.parse(replica.apply(id, JSON.stringify(plan)));
-      flush(); scheduleRender(); notify();
+      flush(); void activateForCurrentView(); scheduleRender(); notify();
       return result;
     },
     applyBatch(batch) {
       requireReady();
       const result = JSON.parse(replica.apply_batch(JSON.stringify(batch)));
-      flush(); scheduleRender(); notify();
+      flush(); void activateForCurrentView(); scheduleRender(); notify();
       return result;
     },
     activate: (id) => runtime?.activate(id),
     activateForKind: (kind) => runtime?.activateForKind(kind),
+    activateForView: (selectedView = view()) => runtime?.activateForView(selectedView),
     activateForTool: (tool) => runtime?.activateForTool(tool),
     activateForRoute: (route) => runtime?.activateForRoute(route),
     dispatch: (name, args) => client.action(name, args),

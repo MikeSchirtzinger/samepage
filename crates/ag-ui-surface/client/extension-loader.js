@@ -1,6 +1,10 @@
 // Extension discovery and activation, separate from the transport core.
 import { AgUiClient, whoAmI } from "/_agui/client.js";
-import { CapabilityLoader, validateCapabilityManifest } from "/_agui/capability-loader.js";
+import {
+  CapabilityLoader,
+  triggeredCapabilityIdsForView,
+  validateCapabilityManifest,
+} from "/_agui/capability-loader.js";
 
 export async function loadExtensions(client, { manifestUrl = "/extensions", createApplicationContext } = {}) {
   if (!(client instanceof AgUiClient)) {
@@ -148,6 +152,9 @@ export async function loadExtensions(client, { manifestUrl = "/extensions", crea
           trigger.on === on && (on === "always" || trigger.name === name)))
         .map((extension) => activate(extension.id)))
     : Promise.resolve([]);
+  const activateForView = (view) => capabilityLoader
+    ? Promise.all(triggeredCapabilityIdsForView(manifest.extensions, view).map(activate))
+    : Promise.resolve([]);
   if (capabilityLoader) {
     // Dependencies and Always artifacts are verified and ready before /events.
     await activateFor("always", null);
@@ -163,6 +170,7 @@ export async function loadExtensions(client, { manifestUrl = "/extensions", crea
     capabilityLoader,
     activate,
     activateForKind: (kind) => activateFor("kind", kind),
+    activateForView,
     activateForTool: (tool) => activateFor("tool", tool),
     activateForRoute: (route) => activateFor("route", route),
     get errors() { return loaded.filter((entry) => entry.status === "error" || entry.status === "failed"); },
