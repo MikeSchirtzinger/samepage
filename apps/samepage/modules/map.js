@@ -7,17 +7,81 @@ export function activate({ mount, wasm, application }) {
   let disposed = false;
   let previousRevision = "";
 
+  // Interface §7: height = max(h_pref, h_min, measurement or estimate). The
+  // projection already supplies the server's own max(h_pref, h_min, estimate)
+  // as `card.height`. A browser may know better than that text-based
+  // estimate, because it can render the card and read its own layout back.
+  // This substitutes the real local measurement for the estimate, in the
+  // same maximum, in this browser only: nothing measured here is ever written
+  // to the shared document, and native `measured_known` stays false.
+  function measureLocalHeights(cards) {
+    const local = new Map();
+    // Falls back to the server's own estimate (via `heightOf`'s `??`) when
+    // this context cannot lay out real DOM nodes, e.g. a non-browser harness.
+    if (typeof document === "undefined" || !document.body || typeof document.createElement !== "function") {
+      return local;
+    }
+    const probe = document.createElement("div");
+    probe.className = "map-measure-probe";
+    const nodes = new Map();
+    for (const card of cards) {
+      const node = document.createElement("article");
+      node.className = "map-card";
+      node.style.setProperty("--card-width", `${Number(card.width) || 232}px`);
+      node.style.minHeight = "0"; // unconstrained: measure content, not a floor
+      const title = document.createElement("h2");
+      title.textContent = card.label || "Untitled card";
+      node.appendChild(title);
+      if (card.note) {
+        const note = document.createElement("p");
+        note.textContent = card.note;
+        node.appendChild(note);
+      }
+      const byline = document.createElement("div");
+      byline.className = "byline";
+      byline.textContent = `Created by ${card.created_by || "unknown"} · touched by ${card.touched_by || "unknown"}`;
+      node.appendChild(byline);
+      probe.appendChild(node);
+      nodes.set(card.id, node);
+    }
+    try {
+      document.body.appendChild(probe);
+      for (const card of cards) {
+        const node = nodes.get(card.id);
+        if (typeof node.getBoundingClientRect !== "function") continue;
+        const measured = node.getBoundingClientRect().height;
+        if (!Number.isFinite(measured) || measured <= 0) continue;
+        const hPref = Number(card.h_pref) || 0;
+        const hMin = Number(card.h_min) || 0;
+        const authored = Math.max(hPref, hMin);
+        const height = Math.max(authored, measured);
+        // Same rule the native projection uses to choose `preferred` over
+        // `estimated`, with this browser's real measurement standing in for
+        // the estimate: the authored number only governs when it already
+        // covers what the content needs.
+        const source = authored > 0 && authored >= measured ? "preferred" : "local_measured";
+        local.set(card.id, { height, source, measured });
+      }
+    } finally {
+      probe.remove();
+    }
+    return local;
+  }
+
   async function render({view, revision}) {
     if (disposed) return;
     const began = performance.now();
     const projection = await application.project("map", view);
     const cards = projection.cards || [];
     const links = projection.links || [];
+    const constraints = projection.constraints || [];
     const byId = new Map(cards.map((card) => [card.id, card]));
+    const local = measureLocalHeights(cards);
+    const heightOf = (card) => local.get(card.id)?.height ?? Number(card.height || 100);
     const originX = 42 - Math.min(0, ...cards.map((card) => Number(card.x) || 0));
     const originY = 42 - Math.min(0, ...cards.map((card) => Number(card.y) || 0));
     const width = Math.max(mount.clientWidth, ...cards.map((card) => originX + Number(card.x || 0) + Number(card.width || 232) + 42));
-    const height = Math.max(mount.clientHeight, ...cards.map((card) => originY + Number(card.y || 0) + Number(card.height || 100) + 42));
+    const height = Math.max(mount.clientHeight, ...cards.map((card) => originY + Number(card.y || 0) + heightOf(card) + 42));
     const stage = document.createElement("div");
     stage.className = "map-stage";
     stage.style.width = `${width}px`;
@@ -32,9 +96,9 @@ export function activate({ mount, wasm, application }) {
       const to = byId.get(link.to);
       if (!from || !to) continue;
       const x1 = originX + Number(from.x || 0) + Number(from.width || 232) / 2;
-      const y1 = originY + Number(from.y || 0) + Number(from.height || 100) / 2;
+      const y1 = originY + Number(from.y || 0) + heightOf(from) / 2;
       const x2 = originX + Number(to.x || 0) + Number(to.width || 232) / 2;
-      const y2 = originY + Number(to.y || 0) + Number(to.height || 100) / 2;
+      const y2 = originY + Number(to.y || 0) + heightOf(to) / 2;
       const line = document.createElementNS(svg.namespaceURI, "line");
       line.classList.add("map-link");
       for (const [key, value] of Object.entries({x1,y1,x2,y2})) line.setAttribute(key, String(value));
@@ -55,10 +119,12 @@ export function activate({ mount, wasm, application }) {
       node.className = "map-card";
       node.dataset.id = card.id;
       node.dataset.status = card.status || "open";
+      const geometry = local.get(card.id);
+      node.dataset.heightSource = geometry?.source || card.height_source || "estimated";
       node.style.left = `${originX + Number(card.x || 0)}px`;
       node.style.top = `${originY + Number(card.y || 0)}px`;
       node.style.setProperty("--card-width", `${Number(card.width || 232)}px`);
-      node.style.setProperty("--card-height", `${Number(card.height || 100)}px`);
+      node.style.setProperty("--card-height", `${heightOf(card)}px`);
       const title = document.createElement("h2");
       title.textContent = card.label || "Untitled card";
       node.appendChild(title);
@@ -71,6 +137,17 @@ export function activate({ mount, wasm, application }) {
       byline.className = "byline";
       byline.textContent = `Created by ${card.created_by || "unknown"} · touched by ${card.touched_by || "unknown"}`;
       node.appendChild(byline);
+      // Local-only geometry readout. Never written back to the document:
+      // native `measured_known` stays false, and only this browser's own
+      // render informs `height_source` here.
+      const meta = document.createElement("div");
+      meta.className = "map-card-meta";
+      const sourceLabel = geometry?.source || card.height_source || "estimated";
+      meta.textContent = `height ${Math.round(heightOf(card))}px · ${sourceLabel}`;
+      if (card.legacy_h !== null && card.legacy_h !== undefined) {
+        meta.textContent += ` · legacy h ${card.legacy_h}`;
+      }
+      node.appendChild(meta);
       node.addEventListener("pointerdown", (event) => {
         if (event.button !== 0 || !application.ready()) return;
         event.preventDefault();
@@ -118,7 +195,8 @@ export function activate({ mount, wasm, application }) {
       empty.style.padding = "52px";
       stage.appendChild(empty);
     }
-    mount.replaceChildren(stage);
+    const panel = renderConstraints(constraints, byId);
+    mount.replaceChildren(stage, ...(panel ? [panel] : []));
     count.textContent = `${cards.length} cards · ${links.length} links`;
     previousRevision = revision;
     globalThis.samepageMapMetrics = {
@@ -126,6 +204,43 @@ export function activate({ mount, wasm, application }) {
       renderMs: performance.now() - began,
       projectionBytes: new TextEncoder().encode(JSON.stringify(projection)).byteLength,
     };
+  }
+
+  // Every field here (members, per-member resolved/unresolved, constraint
+  // status) comes straight from the Map projection's own `constraints` array.
+  // No arity, resolution or status rule is recomputed here.
+  function renderConstraints(constraints, byId) {
+    if (!constraints.length) return null;
+    const panel = document.createElement("aside");
+    panel.className = "map-constraints";
+    const heading = document.createElement("h3");
+    heading.textContent = `Constraints · ${constraints.length}`;
+    panel.appendChild(heading);
+    const list = document.createElement("ul");
+    for (const constraint of constraints) {
+      const item = document.createElement("li");
+      item.className = "map-constraint";
+      item.dataset.status = constraint.status;
+      const head = document.createElement("div");
+      head.className = "map-constraint-head";
+      const legacyTag = constraint.membership === "legacy" ? " · legacy scalar" : "";
+      const textTag = constraint.text ? ` "${constraint.text}"` : "";
+      head.textContent = `${constraint.op}${textTag} · ${constraint.status}${legacyTag}`;
+      item.appendChild(head);
+      const members = document.createElement("ul");
+      members.className = "map-constraint-members";
+      for (const member of constraint.members) {
+        const li = document.createElement("li");
+        li.dataset.state = member.state;
+        const target = byId.get(member.target);
+        li.textContent = target ? (target.label || target.id) : member.target;
+        members.appendChild(li);
+      }
+      item.appendChild(members);
+      list.appendChild(item);
+    }
+    panel.appendChild(list);
+    return panel;
   }
 
   const unregister = application.registerRenderer("map", { render });

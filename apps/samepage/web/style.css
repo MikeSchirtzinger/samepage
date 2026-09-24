@@ -24,3 +24,19 @@ body { margin: 0; }
 .map-card .byline { font-size: 12px; color: #a5c6cc; border-top: 1px solid #4f7180; padding-top: 7px; }
 .map-card[data-status="done"] { border-color: #8bcfa8; }
 .map-card[data-status="blocked"] { border-color: #e5a784; }
+.map-card-meta { font-size: 11px; color: #7fa0af; margin-top: 6px; }
+.map-card[data-height-source="local_measured"] .map-card-meta { color: #9dd0b8; }
+.map-measure-probe { position: absolute; visibility: hidden; pointer-events: none; left: -99999px; top: 0; }
+
+.map-constraints { position: fixed; top: 132px; right: 18px; width: 264px; max-height: calc(100vh - 160px); overflow: auto; padding: 12px; background: #16232c; border: 1px solid #345066; border-radius: 8px; font-size: 13px; z-index: 5; }
+.map-constraints h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #9bb2c3; }
+.map-constraints ul { list-style: none; margin: 0; padding: 0; }
+.map-constraint { margin: 0 0 10px; padding: 8px 9px; border-radius: 6px; background: #1c2e3a; border-left: 3px solid #6ea8b0; }
+.map-constraint:last-child { margin-bottom: 0; }
+.map-constraint[data-status="sat"] { border-left-color: #8bcfa8; }
+.map-constraint[data-status="unresolved"] { border-left-color: #e5c07b; }
+.map-constraint[data-status="arity"] { border-left-color: #e5a784; }
+.map-constraint-head { color: #dbe8ee; }
+.map-constraint-members { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.map-constraint-members li { padding: 2px 6px; border-radius: 4px; background: #26404f; font-size: 12px; color: #cfe3ea; }
+.map-constraint-members li[data-state="unresolved"] { background: #4a2630; color: #f3b0b8; text-decoration: line-through; }

@@ -54,6 +54,43 @@
      "event": "",
      "guard": "ready"
     }
+   },
+   {
+    "id": "c1",
+    "kind": "constraint",
+    "props": {
+     "op": "group",
+     "members": "a,b,gone",
+     "salience": "back"
+    }
+   },
+   {
+    "id": "c2",
+    "kind": "constraint",
+    "props": {
+     "op": "sequence",
+     "axis": "x",
+     "member_schema": "records",
+     "members": "a,b"
+    }
+   },
+   {
+    "id": "cm1",
+    "kind": "constraint-member",
+    "props": {
+     "constraint": "c2",
+     "target": "a",
+     "order": 0
+    }
+   },
+   {
+    "id": "cm2",
+    "kind": "constraint-member",
+    "props": {
+     "constraint": "c2",
+     "target": "gone",
+     "order": 1
+    }
    }
   ]
  },
@@ -99,6 +136,48 @@
      "id": "a",
      "x": 12.5,
      "y": -4
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_resize",
+    "args": {
+     "id": "b",
+     "w": 360,
+     "w_min": 300,
+     "h_pref": 180,
+     "h_min": 120
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_resize",
+    "args": {
+     "id": "b",
+     "h_min": 900
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_resize",
+    "args": {
+     "id": "b"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "card_resize",
+    "args": {
+     "id": "b",
+     "h": 140
     }
    }
   },
@@ -230,6 +309,175 @@
   {
    "export": "plan",
    "call": "{not json"
+  },
+  {
+   "export": "validate",
+   "delta": {
+    "created": [],
+    "modified": {
+     "b": [
+      "h"
+     ]
+    },
+    "deleted": [],
+    "rekinded": []
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_add",
+    "args": {
+     "op": "group",
+     "members": [
+      "a",
+      "b"
+     ]
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_add",
+    "args": {
+     "op": "sequence",
+     "members": [
+      "a",
+      "b"
+     ],
+     "axis": "y"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_add",
+    "args": {
+     "op": "attaches",
+     "members": [
+      "a"
+     ]
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_add",
+    "args": {
+     "op": "group",
+     "members": [
+      "a",
+      "a"
+     ]
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_add",
+    "args": {
+     "op": "group",
+     "members": [
+      "a",
+      "nope"
+     ]
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_add",
+    "args": {
+     "op": "voids",
+     "members": [
+      "c1"
+     ]
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_add",
+    "args": {
+     "op": "labels",
+     "members": [
+      "a"
+     ]
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_remove",
+    "args": {
+     "id": "c2"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_remove",
+    "args": {
+     "id": "nope"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_member_retarget",
+    "args": {
+     "id": "cm2",
+     "target": "b"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_member_retarget",
+    "args": {
+     "id": "cm2",
+     "target": "nope"
+    }
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "constraint_member_retarget",
+    "args": {
+     "id": "cm2",
+     "target": "c1"
+    }
+   }
+  },
+  {
+   "export": "cascade",
+   "deleted": [
+    "c2"
+   ]
+  },
+  {
+   "export": "validate",
+   "delta": {
+    "created": [],
+    "modified": {
+     "c2": [
+      "members"
+     ]
+    },
+    "deleted": [],
+    "rekinded": []
+   }
   }
  ]
 }

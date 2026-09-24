@@ -62,6 +62,7 @@ fn every_export_matches_the_native_capability() {
         "invalid_args",
         "not_map_object",
         "dangling",
+        "read_only",
         "bad_input",
     ] {
         assert!(

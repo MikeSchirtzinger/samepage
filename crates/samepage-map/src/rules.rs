@@ -8,6 +8,11 @@ use samepage_capability::{CapError, Record, Scalar, View};
 
 pub const NODE: &str = "node";
 pub const EDGE: &str = "edge";
+pub const CONSTRAINT: &str = "constraint";
+/// One membership of one constraint. Normalized so each `target` is a whole
+/// property: a comma-joined scalar cannot carry a minted id, and the kernel
+/// resolves a reference into a whole property only.
+pub const CONSTRAINT_MEMBER: &str = "constraint-member";
 
 pub const K_LABEL: &str = "label";
 pub const K_NOTE: &str = "note";
@@ -16,7 +21,10 @@ pub const K_STATUS: &str = "status";
 pub const K_X: &str = "x";
 pub const K_Y: &str = "y";
 pub const K_W: &str = "w";
-/// Measured content height at width `w`, written by the renderer.
+/// Legacy measured height. **Read-only history.** No route writes it: a
+/// browser's measurement is that browser's, and two peers with different
+/// metrics would otherwise fight over one shared number. Existing values are
+/// projected as `legacy_h` and never presented as this render's height.
 pub const K_H: &str = "h";
 pub const K_H_PREF: &str = "h_pref";
 pub const K_W_MIN: &str = "w_min";
@@ -28,6 +36,25 @@ pub const K_SIZE: &str = "size";
 pub const K_SHAPE: &str = "node_kind";
 pub const K_FROM: &str = "from";
 pub const K_TO: &str = "to";
+
+pub const K_OP: &str = "op";
+/// The Atlas's comma-joined membership. **Frozen history.** It is decoded once
+/// for a constraint that has not been converted, and after conversion it is
+/// never read and never written, by any route.
+pub const K_MEMBERS: &str = "members";
+/// Set to [`SCHEMA_RECORDS`] when a constraint's membership moved into
+/// `constraint-member` records. The marker, not the record count, decides
+/// where membership is read from, so emptying a constraint cannot resurrect
+/// the frozen scalar. One way: nothing may clear or rewrite it while the
+/// constraint lives.
+pub const K_MEMBER_SCHEMA: &str = "member_schema";
+pub const SCHEMA_RECORDS: &str = "records";
+pub const K_AXIS: &str = "axis";
+pub const K_TEXT: &str = "text";
+pub const K_SALIENCE: &str = "salience";
+pub const K_CONSTRAINT: &str = "constraint";
+pub const K_TARGET: &str = "target";
+pub const K_ORDER: &str = "order";
 /// Keys the diagrams capability owns on a link. A link carrying any of them,
 /// with any value (even empty or not a string), is a state-machine transition
 /// and is never rewritten by the map.
@@ -44,6 +71,42 @@ pub const NODE_KEYS: &[&str] = &[
     K_COLOR, K_EMPHASIS, K_SIZE, K_SHAPE,
 ];
 pub const EDGE_KEYS: &[&str] = &[K_FROM, K_TO, K_LABEL];
+pub const CONSTRAINT_KEYS: &[&str] =
+    &[K_OP, K_MEMBERS, K_MEMBER_SCHEMA, K_AXIS, K_TEXT, K_SALIENCE];
+pub const CONSTRAINT_MEMBER_KEYS: &[&str] = &[K_CONSTRAINT, K_TARGET, K_ORDER];
+
+pub const CONSTRAINT_OPS: &[&str] = &["group", "sequence", "attaches", "voids", "labels"];
+pub const CONSTRAINT_AXES: &[&str] = &["x", "y"];
+pub const CONSTRAINT_SALIENCES: &[&str] = &["fore", "back"];
+
+/// How many members an op takes: `(least, most)`, where `None` is unbounded.
+/// `group` and `sequence` have no upper bound, which is why membership is
+/// records and not numbered keys: a `KindClaim` lists its keys explicitly and
+/// there is no wildcard.
+pub fn arity(op: &str) -> (usize, Option<usize>) {
+    match op {
+        "group" | "sequence" => (2, None),
+        "attaches" => (2, Some(2)),
+        _ => (1, Some(1)),
+    }
+}
+
+pub fn arity_words(op: &str) -> &'static str {
+    match op {
+        "group" | "sequence" => "at least two members",
+        "attaches" => "exactly two members",
+        _ => "exactly one member",
+    }
+}
+
+/// Decode the frozen scalar. Empty segments are dropped, as the Atlas does.
+pub fn decode_members(joined: &str) -> Vec<String> {
+    joined
+        .split(',')
+        .filter(|member| !member.is_empty())
+        .map(str::to_string)
+        .collect()
+}
 
 pub const TONES: &[&str] = &[
     "crate", "example", "doc", "spec", "concept", "question", "risk",
@@ -167,6 +230,17 @@ pub fn within(value: f64, low: f64, high: f64, field: &str) -> Result<f64, CapEr
     Ok(value)
 }
 
+/// A write of the legacy `h` key, from any route.
+pub fn refuse_h_write(id: &str) -> CapError {
+    err(
+        "read_only",
+        format!(
+            "{id}.{K_H} is legacy measured height and is read-only; \
+             author {K_H_PREF} or {K_H_MIN} instead"
+        ),
+    )
+}
+
 /// `h_pref` is 0 (fit content) or a real preferred height.
 pub fn preferred_height(value: f64) -> Result<f64, CapError> {
     if value == 0.0 {
@@ -265,10 +339,12 @@ pub fn check_node(
             }
         }
     }
-    if has(K_H) {
-        if let Some(h) = number(record, K_H)? {
-            within(h, 0.0, WORLD_LIMIT, K_H)?;
-        }
+    // Legacy `h` survives untouched, but no change may write it. `has` is
+    // true for every key of a created record and for each modified key, so
+    // this catches a new card carrying `h` and an update that sets it, on
+    // every route.
+    if has(K_H) && record.props.contains_key(K_H) {
+        return Err(refuse_h_write(&record.id));
     }
     if has(K_H_PREF) || has(K_H_MIN) {
         let h_pref = number(record, K_H_PREF)?.unwrap_or(0.0);
@@ -374,6 +450,272 @@ pub fn check_edge(record: &Record, view: &View) -> Result<(), CapError> {
     }
     if let Some(label) = string(record, K_LABEL)? {
         text(label, MAX_LABEL, "label")?;
+    }
+    Ok(())
+}
+
+// ── constraints ──────────────────────────────────────────────────────────
+
+/// The membership of one constraint, in order, however it is stored.
+///
+/// The marker decides: a converted constraint reads from its member records
+/// even when it has none, so deleting the last one leaves it empty rather than
+/// reinstating the frozen scalar.
+pub fn membership(view: &View, constraint: &str) -> Vec<String> {
+    let Some(record) = view.get(constraint) else {
+        return Vec::new();
+    };
+    if converted(record) {
+        let mut rows: Vec<(f64, &str, &str)> = view
+            .records()
+            .filter(|member| member.kind == CONSTRAINT_MEMBER)
+            .filter(|member| {
+                member.props.get(K_CONSTRAINT).and_then(Scalar::as_str) == Some(constraint)
+            })
+            .map(|member| {
+                let order = match member.props.get(K_ORDER) {
+                    Some(Scalar::Num(value)) => *value,
+                    _ => f64::MAX,
+                };
+                let target = member
+                    .props
+                    .get(K_TARGET)
+                    .and_then(Scalar::as_str)
+                    .unwrap_or_default();
+                (order, member.id.as_str(), target)
+            })
+            .collect();
+        // Order first, then the record id: a total order both peers compute
+        // the same way, with no dependence on iteration.
+        rows.sort_by(|a, b| a.0.total_cmp(&b.0).then_with(|| a.1.cmp(b.1)));
+        return rows
+            .into_iter()
+            .map(|(_, _, target)| target.to_string())
+            .collect();
+    }
+    decode_members(
+        record
+            .props
+            .get(K_MEMBERS)
+            .and_then(Scalar::as_str)
+            .unwrap_or_default(),
+    )
+}
+
+pub fn converted(record: &Record) -> bool {
+    record.props.get(K_MEMBER_SCHEMA).and_then(Scalar::as_str) == Some(SCHEMA_RECORDS)
+}
+
+/// The member records of one constraint, ordered the same way.
+pub fn member_records<'a>(view: &'a View, constraint: &str) -> Vec<&'a Record> {
+    let mut rows: Vec<&Record> = view
+        .records()
+        .filter(|member| member.kind == CONSTRAINT_MEMBER)
+        .filter(|member| {
+            member.props.get(K_CONSTRAINT).and_then(Scalar::as_str) == Some(constraint)
+        })
+        .collect();
+    rows.sort_by(|a, b| {
+        let order = |record: &Record| match record.props.get(K_ORDER) {
+            Some(Scalar::Num(value)) => *value,
+            _ => f64::MAX,
+        };
+        order(a).total_cmp(&order(b)).then_with(|| a.id.cmp(&b.id))
+    });
+    rows
+}
+
+/// Whether the map can see a member's target at all. A target it cannot see is
+/// **unresolved**, never "missing": an id absent from a scoped view does not
+/// reveal its kind, so this capability cannot tell a deleted card from a shape
+/// owned by a capability it does not read.
+pub fn resolves(view: &View, target: &str) -> bool {
+    view.get(target).is_some()
+}
+
+/// Check one constraint record's own keys.
+pub fn check_constraint(
+    record: &Record,
+    keys: &BTreeSet<String>,
+    created: bool,
+) -> Result<String, CapError> {
+    let has = |key: &str| created || keys.contains(key);
+    let op = record
+        .props
+        .get(K_OP)
+        .and_then(Scalar::as_str)
+        .unwrap_or_default()
+        .to_string();
+    if created || has(K_OP) {
+        one_of(&op, CONSTRAINT_OPS, "constraint op")?;
+    }
+    if has(K_AXIS) {
+        if let Some(axis) = record.props.get(K_AXIS).and_then(Scalar::as_str) {
+            if op == "sequence" {
+                one_of(axis, CONSTRAINT_AXES, "constraint axis")?;
+            } else if !axis.is_empty() {
+                return Err(err(
+                    "invalid",
+                    format!("only a sequence has an axis, not {op:?}"),
+                ));
+            }
+        }
+    }
+    if has(K_TEXT) {
+        if let Some(body) = record.props.get(K_TEXT).and_then(Scalar::as_str) {
+            text(body, MAX_TEXT, "constraint text")?;
+            if op != "labels" && !body.is_empty() {
+                return Err(err(
+                    "invalid",
+                    format!("only a labels constraint carries text, not {op:?}"),
+                ));
+            }
+        }
+    }
+    if has(K_SALIENCE) {
+        if let Some(salience) = record.props.get(K_SALIENCE).and_then(Scalar::as_str) {
+            one_of(salience, CONSTRAINT_SALIENCES, "constraint salience")?;
+        }
+    }
+    Ok(op)
+}
+
+pub const MAX_TEXT: usize = 1_200;
+
+/// What a change did to one constraint's membership, in the terms the
+/// differential rules need. Everything here is derived from `before`, `after`
+/// and the ops; nothing consults an action name or an entry label, because a
+/// replica frame carries neither and a rule that trusted one would be
+/// bypassable by writing the same bytes as a raw frame.
+pub struct MembershipChange {
+    /// Whether the constraint existed before this change.
+    pub existed: bool,
+    pub before: Vec<String>,
+    pub after: Vec<String>,
+    /// Targets this change added to the membership.
+    pub added: Vec<String>,
+    /// True when the change removed a member record of this constraint, or
+    /// deleted a target it held. A shortfall that follows a removal is
+    /// inherited from it, not introduced.
+    pub removed: bool,
+    /// True when the change carried this constraint's legacy membership into
+    /// records for the first time.
+    pub converting: bool,
+}
+
+pub fn membership_change(
+    id: &str,
+    before: &View,
+    after: &View,
+    deleted: &BTreeSet<String>,
+) -> MembershipChange {
+    let was = membership(before, id);
+    let now = membership(after, id);
+    let converting = before
+        .get(id)
+        .map(|record| !converted(record))
+        .unwrap_or(true)
+        && after.get(id).is_some_and(converted);
+    let added: Vec<String> = now
+        .iter()
+        .filter(|target| !was.contains(target))
+        .cloned()
+        .collect();
+    let removed = was.iter().any(|target| !now.contains(target))
+        || was.iter().any(|target| deleted.contains(target))
+        || member_records(before, id).len() > member_records(after, id).len();
+    MembershipChange {
+        existed: before.get(id).is_some(),
+        before: was,
+        after: now,
+        added,
+        removed,
+        converting,
+    }
+}
+
+/// The differential rules for one constraint. Strict about what this change
+/// introduces, silent about what it inherits.
+pub fn check_membership(
+    id: &str,
+    op: &str,
+    change: &MembershipChange,
+    after: &View,
+) -> Result<(), CapError> {
+    // Authored here means the constraint did not exist before this change.
+    let authored = !change.existed;
+    // A conversion carries the legacy membership over, broken members and all.
+    // Anything it adds beyond that is a genuine new assignment and is checked
+    // like one.
+    let strict_targets: Vec<&String> = if change.converting {
+        change
+            .added
+            .iter()
+            .filter(|target| !change.before.contains(target))
+            .collect()
+    } else {
+        change.added.iter().collect()
+    };
+    for target in strict_targets {
+        if !resolves(after, target) {
+            return Err(err(
+                "not_found",
+                format!("constraint {id} member {target:?} does not resolve to an object"),
+            ));
+        }
+        if after
+            .get(target)
+            .is_some_and(|record| record.kind == CONSTRAINT || record.kind == CONSTRAINT_MEMBER)
+        {
+            return Err(err(
+                "invalid",
+                format!("constraint {id} member {target:?} names another constraint"),
+            ));
+        }
+        if target == id {
+            return Err(err(
+                "invalid",
+                format!("constraint {id} cannot contain itself"),
+            ));
+        }
+    }
+    // Duplicates: refused when this change introduced one.
+    let mut seen = BTreeSet::new();
+    for target in &change.after {
+        if !seen.insert(target.clone()) && change.added.contains(target) {
+            return Err(err(
+                "invalid",
+                format!("constraint {id} holds {target:?} twice"),
+            ));
+        }
+    }
+    // Arity: judged on semantics. A shortfall that follows this change's own
+    // removals is inherited from them and stays a diagnostic; a newly authored
+    // constraint, or one this change grew wrongly, is refused.
+    let (least, most) = arity(op);
+    let count = change.after.len();
+    // A shortfall already present before this change is inherited, and an
+    // unrelated edit to such a constraint must still commit. A shortfall this
+    // change caused by removing members is inherited from the removal. What is
+    // left is a shortfall this change introduced some other way.
+    let short_before = change.existed && change.before.len() < least;
+    if count < least && !short_before && (authored || !change.removed) {
+        return Err(err(
+            "invalid",
+            format!(
+                "constraint op {op:?} needs {}; got {count}",
+                arity_words(op)
+            ),
+        ));
+    }
+    if most.is_some_and(|most| count > most) && !change.added.is_empty() {
+        return Err(err(
+            "invalid",
+            format!(
+                "constraint op {op:?} needs {}; got {count}",
+                arity_words(op)
+            ),
+        ));
     }
     Ok(())
 }

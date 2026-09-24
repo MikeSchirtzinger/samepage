@@ -17,7 +17,7 @@ pub mod rules;
 use std::collections::{BTreeMap, BTreeSet};
 
 use samepage_capability::{
-    ActionDecl, Artifact, Audience, Call, CapError, Capability, Delta, Descriptor, Effect,
+    ActionDecl, Artifact, Audience, Call, CapError, Capability, Change, Delta, Descriptor, Effect,
     LegendEntry, Op, Plan, Record, Scalar, Target, Trigger, Value, View,
 };
 use serde_json::{json, Map as JsonMap, Value as JsonValue};
@@ -25,7 +25,7 @@ use serde_json::{json, Map as JsonMap, Value as JsonValue};
 use rules::*;
 
 pub const ID: &str = "map";
-pub const VERSION: &str = "0.1.0";
+pub const VERSION: &str = "0.2.0";
 
 pub fn descriptor() -> Descriptor {
     let place_schema = json!({
@@ -62,15 +62,19 @@ pub fn descriptor() -> Descriptor {
         "type": "object", "additionalProperties": false, "required": ["id", "x", "y"],
         "properties": { "id": { "type": "string" }, "x": { "type": "number" }, "y": { "type": "number" } }
     });
-    let mut measure = ActionDecl::new(
-        "card_measure",
+    let mut resize = ActionDecl::new(
+        "card_resize",
         Audience::Both,
         Effect::Mutate,
-        "Record a card's measured content height at its width.",
+        "Set a card's authored size: preferred width and height, and minimums.",
     );
-    measure.input_schema = json!({
-        "type": "object", "additionalProperties": false, "required": ["id", "h"],
-        "properties": { "id": { "type": "string" }, "h": { "type": "number" } }
+    resize.input_schema = json!({
+        "type": "object", "additionalProperties": false, "required": ["id"],
+        "properties": {
+            "id": { "type": "string" },
+            "w": { "type": "number" }, "h_pref": { "type": "number" },
+            "w_min": { "type": "number" }, "h_min": { "type": "number" }
+        }
     });
     let mut link = ActionDecl::new(
         "card_link",
@@ -103,6 +107,45 @@ pub fn descriptor() -> Descriptor {
     read.input_schema =
         json!({ "type": "object", "additionalProperties": false, "properties": {} });
 
+    let mut constrain = ActionDecl::new(
+        "constraint_add",
+        Audience::Both,
+        Effect::Mutate,
+        "Constrain cards: group, sequence, attaches, voids or labels.",
+    )
+    .alias("atlas_constrain");
+    constrain.input_schema = json!({
+        "type": "object", "additionalProperties": false, "required": ["op", "members"],
+        "properties": {
+            "op": { "enum": CONSTRAINT_OPS },
+            "members": { "type": "array", "items": { "type": "string" } },
+            "axis": { "enum": CONSTRAINT_AXES },
+            "text": { "type": "string", "maxLength": MAX_TEXT },
+            "salience": { "enum": CONSTRAINT_SALIENCES }
+        }
+    });
+    let mut unconstrain = ActionDecl::new(
+        "constraint_remove",
+        Audience::Both,
+        Effect::Mutate,
+        "Remove a constraint and its memberships.",
+    )
+    .alias("atlas_unconstrain");
+    unconstrain.input_schema = json!({
+        "type": "object", "additionalProperties": false, "required": ["id"],
+        "properties": { "id": { "type": "string" } }
+    });
+    let mut retarget = ActionDecl::new(
+        "constraint_member_retarget",
+        Audience::Both,
+        Effect::Mutate,
+        "Point one membership at a different object.",
+    );
+    retarget.input_schema = json!({
+        "type": "object", "additionalProperties": false, "required": ["id", "target"],
+        "properties": { "id": { "type": "string" }, "target": { "type": "string" } }
+    });
+
     Descriptor::new(ID, VERSION, Artifact::Wasm)
         .owns(
             NODE,
@@ -110,11 +153,24 @@ pub fn descriptor() -> Descriptor {
             "cards: text, style, geometry and containment",
         )
         .owns(EDGE, EDGE_KEYS, "links between two cards")
+        .owns(
+            CONSTRAINT,
+            CONSTRAINT_KEYS,
+            "what must hold between objects: group, sequence, attaches, voids, labels",
+        )
+        .owns(
+            CONSTRAINT_MEMBER,
+            CONSTRAINT_MEMBER_KEYS,
+            "one membership of one constraint, so each target is a whole property",
+        )
         .action(place)
         .action(moving)
-        .action(measure)
+        .action(resize)
         .action(link)
         .action(remove)
+        .action(constrain)
+        .action(unconstrain)
+        .action(retarget)
         .action(read)
         .trigger(Trigger::Always)
 }
@@ -144,13 +200,11 @@ impl Capability for Map {
                     format!("Moved {} to ({x}, {y}).", label_of(view, &id)),
                 ))
             }
-            "card_measure" => {
-                allow_only(&args, &["id", "h"])?;
-                let id = card_id(&args, view)?;
-                let h = within(required_number(&args, "h")?, 0.0, WORLD_LIMIT, "h")?;
-                Ok(plan(vec![set(&id, vec![(K_H, h.into())])], String::new()))
-            }
+            "card_resize" => resize(&args, view),
             "card_link" => link(&args, view),
+            "constraint_add" => constrain(&args, view),
+            "constraint_remove" => unconstrain(&args, view),
+            "constraint_member_retarget" => retarget(&args, view),
             "object_remove" => remove(&args, view),
             "map_read" => {
                 allow_only(&args, &[])?;
@@ -203,6 +257,124 @@ impl Capability for Map {
             }
         }
         Ok(())
+    }
+
+    /// The authority hook. It sees what the change *attempted*, which includes
+    /// writes whose value equals the old one and which therefore leave no
+    /// trace in the delta. A same-value write to the legacy `h` of an imported
+    /// card is still a write: it would carry a fresh byline and would teach a
+    /// peer that the key is writable. Both are refused here, on every route.
+    fn validate_change(&self, change: &Change<'_>) -> Result<(), CapError> {
+        for (id, keys) in change.attempted {
+            if !keys.contains(K_H) {
+                continue;
+            }
+            let kind = change
+                .after
+                .get(id)
+                .or_else(|| change.before.get(id))
+                .map(|record| record.kind.as_str());
+            if kind == Some(NODE) {
+                return Err(refuse_h_write(id));
+            }
+        }
+        // The frozen scalar and the one-way marker. Both are checked against
+        // what the change *attempted*, so an empty or same-value write is
+        // refused too: each is an attempt to own history, and a writer that
+        // believes it owns the key is a writer that will change it.
+        for (id, keys) in change.attempted {
+            let before = change.before.get(id);
+            let after = change.after.get(id);
+            let is_constraint = after
+                .or(before)
+                .is_some_and(|record| record.kind == CONSTRAINT);
+            if !is_constraint {
+                continue;
+            }
+            if keys.contains(K_MEMBERS) && before.is_some_and(converted) {
+                return Err(err(
+                    "read_only",
+                    format!(
+                        "{id}.{K_MEMBERS} is the frozen legacy membership of a converted \
+                         constraint and is read-only; write its memberships instead"
+                    ),
+                ));
+            }
+            if keys.contains(K_MEMBER_SCHEMA) && before.is_some_and(converted) && after.is_some() {
+                let still = after.is_some_and(converted);
+                if !still {
+                    return Err(err(
+                        "read_only",
+                        format!(
+                            "{id}.{K_MEMBER_SCHEMA} cannot be cleared while the constraint \
+                             lives; clearing it would reinstate the frozen membership"
+                        ),
+                    ));
+                }
+            }
+        }
+        // Membership is differential: refuse what this change introduces,
+        // never what it inherits. Derived from before, after and the deleted
+        // set; no action name or entry label is consulted, because a replica
+        // frame carries neither.
+        let deleted: BTreeSet<String> = change.delta.deleted.iter().cloned().collect();
+        let mut touched: BTreeSet<String> = BTreeSet::new();
+        for id in change
+            .delta
+            .created
+            .iter()
+            .chain(change.delta.modified.keys())
+            .chain(change.attempted.keys())
+        {
+            match change.after.get(id).or_else(|| change.before.get(id)) {
+                Some(record) if record.kind == CONSTRAINT => {
+                    touched.insert(id.clone());
+                }
+                Some(record) if record.kind == CONSTRAINT_MEMBER => {
+                    for view in [change.before, change.after] {
+                        if let Some(owner) = view
+                            .get(id)
+                            .and_then(|member| member.props.get(K_CONSTRAINT))
+                            .and_then(Scalar::as_str)
+                        {
+                            touched.insert(owner.to_string());
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        for id in &deleted {
+            if let Some(record) = change.before.get(id) {
+                if record.kind == CONSTRAINT_MEMBER {
+                    if let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str) {
+                        touched.insert(owner.to_string());
+                    }
+                }
+            }
+            // A deleted target may leave a constraint short: that shortfall is
+            // inherited from the deletion and stays a diagnostic.
+            for record in change.before.records() {
+                if record.kind == CONSTRAINT_MEMBER
+                    && record.props.get(K_TARGET).and_then(Scalar::as_str) == Some(id.as_str())
+                {
+                    if let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str) {
+                        touched.insert(owner.to_string());
+                    }
+                }
+            }
+        }
+        for id in touched {
+            let Some(record) = change.after.get(&id) else {
+                continue;
+            };
+            let keys = change.delta.modified.get(&id).cloned().unwrap_or_default();
+            let created = change.delta.created.contains(&id);
+            let op = check_constraint(record, &keys, created)?;
+            let membership = membership_change(&id, change.before, change.after, &deleted);
+            check_membership(&id, &op, &membership, change.after)?;
+        }
+        self.validate(change.delta, change.after)
     }
 
     fn cascade(&self, deleted: &[String], view: &View) -> Result<Plan, CapError> {
@@ -437,6 +609,260 @@ fn place(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapErro
     }
 }
 
+// ── constraints ──────────────────────────────────────────────────────────
+
+fn constrain(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapError> {
+    allow_only(args, &["op", "members", K_AXIS, K_TEXT, K_SALIENCE])?;
+    let op = one_of(
+        &optional_string(args, "op")?.unwrap_or_default(),
+        CONSTRAINT_OPS,
+        "constraint op",
+    )?;
+    let members: Vec<String> = match args.get("members") {
+        Some(JsonValue::Array(items)) => items
+            .iter()
+            .map(|item| {
+                item.as_str()
+                    .map(str::to_string)
+                    .ok_or_else(|| err("invalid_args", "each member must be a string"))
+            })
+            .collect::<Result<_, _>>()?,
+        _ => return Err(err("invalid_args", "members must be an array of ids")),
+    };
+    let (least, most) = arity(&op);
+    if members.len() < least || most.is_some_and(|most| members.len() > most) {
+        return Err(err(
+            "invalid",
+            format!(
+                "constraint op {op:?} needs {}; got {}",
+                arity_words(&op),
+                members.len()
+            ),
+        ));
+    }
+    let unique: BTreeSet<&String> = members.iter().collect();
+    if unique.len() != members.len() {
+        return Err(err("invalid", "a constraint cannot hold a member twice"));
+    }
+    for member in &members {
+        match view.get(member) {
+            None => {
+                return Err(err(
+                    "not_found",
+                    format!("constraint member {member:?} does not resolve to an object"),
+                ))
+            }
+            Some(record) if record.kind == CONSTRAINT || record.kind == CONSTRAINT_MEMBER => {
+                return Err(err(
+                    "invalid",
+                    format!("constraint member {member:?} names another constraint"),
+                ))
+            }
+            Some(_) => {}
+        }
+    }
+    let axis = match optional_string(args, K_AXIS)? {
+        Some(axis) if op == "sequence" => one_of(&axis, CONSTRAINT_AXES, "constraint axis")?,
+        Some(axis) if !axis.is_empty() => {
+            return Err(err(
+                "invalid",
+                format!("only a sequence has an axis, not {op:?}"),
+            ))
+        }
+        _ if op == "sequence" => "x".to_string(),
+        _ => String::new(),
+    };
+    let body = text(
+        &optional_string(args, K_TEXT)?.unwrap_or_default(),
+        MAX_TEXT,
+        "constraint text",
+    )?;
+    if op != "labels" && !body.is_empty() {
+        return Err(err(
+            "invalid",
+            format!("only a labels constraint carries text, not {op:?}"),
+        ));
+    }
+    if op == "labels" && body.is_empty() {
+        return Err(err("invalid_args", "a labels constraint needs text"));
+    }
+    let salience = one_of(
+        &optional_string(args, K_SALIENCE)?.unwrap_or_else(|| "back".to_string()),
+        CONSTRAINT_SALIENCES,
+        "constraint salience",
+    )?;
+    check_growth(map_count(view) + 1 + members.len(), 1)?;
+
+    // The constraint and its memberships are one batch: created together,
+    // marked converted from the start, and the frozen scalar is never written
+    // on a constraint authored here.
+    let mut ops = vec![Op::Create {
+        reference: "constraint".into(),
+        kind: CONSTRAINT.into(),
+        props: [
+            (K_OP.to_string(), Value::from(op.clone())),
+            (K_AXIS.to_string(), Value::from(axis)),
+            (K_TEXT.to_string(), Value::from(body)),
+            (K_SALIENCE.to_string(), Value::from(salience)),
+            (
+                K_MEMBER_SCHEMA.to_string(),
+                Value::from(SCHEMA_RECORDS.to_string()),
+            ),
+        ]
+        .into(),
+    }];
+    for (index, member) in members.iter().enumerate() {
+        ops.push(Op::Create {
+            reference: format!("member-{index}"),
+            kind: CONSTRAINT_MEMBER.into(),
+            props: [
+                (K_CONSTRAINT.to_string(), Value::reference("constraint")),
+                (K_TARGET.to_string(), Value::from(member.clone())),
+                (K_ORDER.to_string(), Value::from(index as f64)),
+            ]
+            .into(),
+        });
+    }
+    let readback = format!(
+        "Constrained {}: {op}.",
+        members
+            .iter()
+            .map(|member| label_of(view, member))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    Ok(plan(ops, readback))
+}
+
+fn unconstrain(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapError> {
+    allow_only(args, &["id"])?;
+    let id = optional_string(args, "id")?.ok_or_else(|| err("invalid_args", "id is required"))?;
+    let record = view
+        .get(&id)
+        .filter(|record| record.kind == CONSTRAINT)
+        .ok_or_else(|| err("not_found", format!("no constraint {id:?}")))?;
+    let op = prop_str(record, K_OP).unwrap_or_default().to_string();
+    let mut ops = vec![Op::Delete {
+        target: Target::Id(id.clone()),
+    }];
+    // The memberships go with it; a membership without its constraint is
+    // unreachable structure, not a diagnostic.
+    ops.extend(
+        member_records(view, &id)
+            .into_iter()
+            .map(|member| Op::Delete {
+                target: Target::Id(member.id.clone()),
+            }),
+    );
+    Ok(plan(ops, format!("Removed the {op} constraint.")))
+}
+
+fn retarget(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapError> {
+    allow_only(args, &["id", K_TARGET])?;
+    let id = optional_string(args, "id")?.ok_or_else(|| err("invalid_args", "id is required"))?;
+    let target = optional_string(args, K_TARGET)?
+        .ok_or_else(|| err("invalid_args", "target is required"))?;
+    let member = view
+        .get(&id)
+        .filter(|record| record.kind == CONSTRAINT_MEMBER)
+        .ok_or_else(|| err("not_found", format!("no membership {id:?}")))?;
+    match view.get(&target) {
+        None => {
+            return Err(err(
+                "not_found",
+                format!("no object {target:?} to point {id} at"),
+            ))
+        }
+        Some(record) if record.kind == CONSTRAINT || record.kind == CONSTRAINT_MEMBER => {
+            return Err(err(
+                "invalid",
+                format!("{target:?} is a constraint, which cannot be a member"),
+            ))
+        }
+        Some(_) => {}
+    }
+    let constraint = prop_str(member, K_CONSTRAINT)
+        .unwrap_or_default()
+        .to_string();
+    Ok(plan(
+        vec![set(&id, vec![(K_TARGET, target.clone().into())])],
+        format!(
+            "Pointed a member of {constraint} at {}.",
+            label_of(view, &target)
+        ),
+    ))
+}
+
+/// Authored size. Shared, attributed and persisted, so every peer draws the
+/// card the same way. Measurement is the browser's own business and never
+/// reaches the document.
+fn resize(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapError> {
+    allow_only(args, &["id", K_W, K_H_PREF, K_W_MIN, K_H_MIN])?;
+    let id = card_id(args, view)?;
+    let record = view
+        .get(&id)
+        .ok_or_else(|| err("not_found", format!("no card {id:?}")))?;
+    let current = |key: &str| prop_num(record, key);
+
+    let w = match optional_number(args, K_W)? {
+        Some(value) => Some(within(value, MIN_W, MAX_W, K_W)?),
+        None => None,
+    };
+    let h_pref = match optional_number(args, K_H_PREF)? {
+        Some(value) => Some(preferred_height(value)?),
+        None => None,
+    };
+    let w_min = match optional_number(args, K_W_MIN)? {
+        Some(value) => Some(within(value, MIN_W, MAX_W, K_W_MIN)?),
+        None => None,
+    };
+    let h_min = match optional_number(args, K_H_MIN)? {
+        Some(value) => Some(within(value, MIN_H, MAX_H, K_H_MIN)?),
+        None => None,
+    };
+    if w.is_none() && h_pref.is_none() && w_min.is_none() && h_min.is_none() {
+        return Err(err(
+            "invalid_args",
+            format!("card_resize needs at least one of {K_W}, {K_H_PREF}, {K_W_MIN}, {K_H_MIN}"),
+        ));
+    }
+    // The pair rules hold against what the card will have, not only against
+    // what this call carries, so one-sided resizes cannot slip past them.
+    let after_w = w.or_else(|| current(K_W)).unwrap_or(DEFAULT_WIDTH);
+    let after_w_min = w_min.or_else(|| current(K_W_MIN)).unwrap_or(0.0);
+    if after_w_min > after_w {
+        return Err(err("invalid", "w_min is above the preferred width w"));
+    }
+    let after_h_pref = h_pref.or_else(|| current(K_H_PREF)).unwrap_or(0.0);
+    let after_h_min = h_min.or_else(|| current(K_H_MIN)).unwrap_or(0.0);
+    if after_h_pref > 0.0 && after_h_min > after_h_pref {
+        return Err(err("invalid", "h_min is above the preferred height h_pref"));
+    }
+
+    let mut props: Vec<(&str, Value)> = Vec::new();
+    for (key, value) in [
+        (K_W, w),
+        (K_H_PREF, h_pref),
+        (K_W_MIN, w_min),
+        (K_H_MIN, h_min),
+    ] {
+        if let Some(value) = value {
+            props.push((key, value.into()));
+        }
+    }
+    let readback = format!(
+        "Resized {} to {} by {}.",
+        label_of(view, &id),
+        after_w,
+        if after_h_pref > 0.0 {
+            format!("{after_h_pref}")
+        } else {
+            "fit".to_string()
+        }
+    );
+    Ok(plan(vec![set(&id, props)], readback))
+}
+
 fn link(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapError> {
     allow_only(args, &["from", "to", "label"])?;
     let from =
@@ -527,6 +953,15 @@ fn cascade_ops(deleted: &[String], view: &View) -> Vec<Op> {
             NODE if gone(prop_str(record, K_PARENT)) => {
                 ops.push(set(&record.id, vec![(K_PARENT, "".into())]));
             }
+            // A membership without its constraint is unreachable structure,
+            // so it goes with it. A membership whose *target* was deleted is
+            // not cascaded: the constraint keeps it and reports the broken
+            // membership, which is the retained diagnostic behaviour.
+            CONSTRAINT_MEMBER if gone(prop_str(record, K_CONSTRAINT)) => {
+                ops.push(Op::Delete {
+                    target: Target::Id(record.id.clone()),
+                });
+            }
             _ => {}
         }
     }
@@ -580,8 +1015,9 @@ fn label_of(view: &View, id: &str) -> String {
         .unwrap_or_else(|| id.to_string())
 }
 
-/// A rough height for a card nobody has measured yet: title lines plus note
-/// lines at the card's width. Marked `estimated` in the projection.
+/// A rough height for a card with no authored `h_pref`: title lines plus note
+/// lines at the card's width. Always marked `estimated` in the projection; it
+/// is arithmetic, not a measurement, and never claims to be one.
 fn estimated_height(label: &str, note: &str, width: f64) -> f64 {
     let per_line = ((width - 32.0) / 7.5).max(8.0);
     let lines = |text: &str, chars: f64| -> f64 {
@@ -618,14 +1054,23 @@ fn projection(view: &View) -> JsonValue {
             let h_pref = prop_num(record, K_H_PREF).unwrap_or(0.0);
             let h_min = prop_num(record, K_H_MIN).unwrap_or(0.0);
             let width = w.max(w_min);
-            let (height, source) = if h_pref > 0.0 && h_pref >= h && h_pref >= h_min {
-                (h_pref, "preferred")
-            } else if h > 0.0 && h >= h_min {
-                (h, "measured")
-            } else if h_min > 0.0 {
-                (h_min.max(h), "preferred")
+            // Three separate things, never merged. A legacy `h` is history and
+            // is not this render's height; nothing native was measured, so the
+            // portable answer is `preferred` or `estimated` and says so. A
+            // browser that measured the card locally overlays its own height
+            // and sets `measured_known` there, in that browser only.
+            // No clipping floor: the height is the greatest of the authored
+            // preference, the authored minimum and what the content needs.
+            // `height_source` says whose number governs. A browser puts its
+            // own local measurement in place of the estimate, in the same
+            // maximum, in that browser only.
+            let estimate = estimated_height(label, note, width);
+            let authored = h_pref.max(h_min);
+            let height = authored.max(estimate);
+            let source = if authored > 0.0 && authored >= estimate {
+                "preferred"
             } else {
-                (estimated_height(label, note, width), "estimated")
+                "estimated"
             };
             let parent = prop_str(record, K_PARENT).unwrap_or_default();
             if !parent.is_empty() && !nodes.contains_key(parent) {
@@ -658,8 +1103,10 @@ fn projection(view: &View) -> JsonValue {
                 "status": prop_str(record, K_STATUS).unwrap_or("open"),
                 "x": prop_num(record, K_X).unwrap_or(0.0),
                 "y": prop_num(record, K_Y).unwrap_or(0.0),
-                "w": w, "h": h, "h_pref": h_pref, "w_min": w_min, "h_min": h_min,
+                "w": w, "h_pref": h_pref, "w_min": w_min, "h_min": h_min,
                 "width": width, "height": height, "height_source": source,
+                "legacy_h": if record.props.contains_key(K_H) { json!(h) } else { JsonValue::Null },
+                "measured_known": false,
                 "parent": parent,
                 "color": prop_str(record, K_COLOR).unwrap_or_default(),
                 "emphasis": prop_str(record, K_EMPHASIS).unwrap_or("normal"),
@@ -691,7 +1138,79 @@ fn projection(view: &View) -> JsonValue {
             })
         })
         .collect();
-    json!({ "cards": cards, "links": links, "problems": problems })
+    let constraints: Vec<JsonValue> = view
+        .records()
+        .filter(|record| record.kind == CONSTRAINT)
+        .map(|record| {
+            let op = prop_str(record, K_OP).unwrap_or_default();
+            let members: Vec<JsonValue> = if converted(record) {
+                member_records(view, &record.id)
+                    .into_iter()
+                    .map(|member| {
+                        let target = prop_str(member, K_TARGET).unwrap_or_default();
+                        json!({
+                            "id": member.id,
+                            "target": target,
+                            "order": prop_num(member, K_ORDER).unwrap_or(0.0),
+                            // `resolved` or `unresolved`, never "missing": an
+                            // id absent from this view does not reveal its
+                            // kind, so the map cannot tell a deleted card from
+                            // an object owned by a capability it does not read.
+                            "state": if resolves(view, target) { "resolved" } else { "unresolved" },
+                        })
+                    })
+                    .collect()
+            } else {
+                membership(view, &record.id)
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, target)| {
+                        json!({
+                            "id": JsonValue::Null,
+                            "target": target,
+                            "order": index as f64,
+                            "state": if resolves(view, &target) { "resolved" } else { "unresolved" },
+                        })
+                    })
+                    .collect()
+            };
+            let (least, most) = arity(op);
+            let count = members.len();
+            let unresolved = members.iter().any(|member| member["state"] == "unresolved");
+            let arity_holds = count >= least && !most.is_some_and(|most| count > most);
+            let status = if !arity_holds {
+                "arity"
+            } else if unresolved {
+                "unresolved"
+            } else {
+                "sat"
+            };
+            if !arity_holds {
+                problems.push(format!(
+                    "constraint {} is a {op} with {count} member(s); it needs {}",
+                    record.id,
+                    arity_words(op)
+                ));
+            }
+            json!({
+                "id": record.id,
+                "op": op,
+                "members": members,
+                "membership": if converted(record) { SCHEMA_RECORDS } else { "legacy" },
+                "legacy_members": prop_str(record, K_MEMBERS).unwrap_or_default(),
+                "axis": prop_str(record, K_AXIS).unwrap_or_default(),
+                "text": prop_str(record, K_TEXT).unwrap_or_default(),
+                "salience": prop_str(record, K_SALIENCE).unwrap_or("back"),
+                "status": status,
+            })
+        })
+        .collect();
+    json!({
+        "cards": cards,
+        "links": links,
+        "constraints": constraints,
+        "problems": problems,
+    })
 }
 
 fn describe(view: &View) -> String {
