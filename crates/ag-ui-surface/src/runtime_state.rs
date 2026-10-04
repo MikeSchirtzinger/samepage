@@ -40,7 +40,9 @@ use crate::{DecisionReply, EffectResult, ReplyKind};
 /// minted here rather than accepted from the client.
 #[derive(Clone, Debug)]
 pub struct AttachedAgent {
+    /// Private MCP credential. Never derive a public identity from this value.
     pub session: String,
+    /// Public roster identity, minted independently of the MCP credential.
     pub participant_id: String,
     pub label: String,
     pub client_name: String,
