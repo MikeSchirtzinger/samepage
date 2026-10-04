@@ -3497,7 +3497,9 @@ async fn mcp_post_handler(
 /// cannot collapse into one byline.
 fn attach_mcp_agent(st: &RouterState, identity: mcp::ClientIdentity) -> AttachedAgent {
     let session = uuid::Uuid::new_v4().simple().to_string();
-    let participant_id = format!("agent-{session}");
+    // Roster and presence ids are public. They must reveal no session
+    // credential, since a session carries this exact agent's authority.
+    let participant_id = format!("agent-{}", uuid::Uuid::new_v4().simple());
     let proposed = identity
         .title
         .clone()
@@ -5744,6 +5746,47 @@ mod tests {
             .lock()
             .insert(agent.session.clone(), agent.clone());
         agent
+    }
+
+    #[tokio::test]
+    async fn public_mcp_participant_ids_cannot_close_private_sessions() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        let mut credentials = Vec::new();
+        for _ in 0..4 {
+            let agent = attach_mcp_agent(
+                &rs,
+                mcp::ClientIdentity {
+                    name: "reviewer".to_string(),
+                    title: None,
+                    version: None,
+                },
+            );
+            credentials.push((agent.participant_id, agent.session));
+        }
+        let public_roster = attached_agents_json(&rs.rt).to_string();
+        for (participant_id, session) in &credentials {
+            assert!(public_roster.contains(participant_id));
+            assert!(!public_roster.contains(session));
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                header::AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {}", rs.rt.mcp_token)).unwrap(),
+            );
+            for guess in [participant_id.as_str(), participant_id.trim_start_matches("agent-")] {
+                headers.insert(mcp::SESSION_ID_HEADER, HeaderValue::from_str(guess).unwrap());
+                let response = mcp_delete_handler(State(rs.clone()), headers.clone()).await;
+                assert_eq!(response.status(), StatusCode::NOT_FOUND);
+            }
+            assert!(rs.rt.mcp_agents.lock().contains_key(session));
+            headers.insert(mcp::SESSION_ID_HEADER, HeaderValue::from_str(session).unwrap());
+            let response = mcp_delete_handler(State(rs.clone()), headers).await;
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        }
+        assert!(rs.rt.mcp_agents.lock().is_empty());
     }
 
     /// An agent whose last call was `ago` in the past and which is not in a
