@@ -66,20 +66,25 @@ pub(crate) enum ClaudeCodeOauthError {
     #[error(
         "Claude subscription unavailable: the USER account name is missing, so macOS Keychain item \"Claude Code-credentials\" cannot be read"
     )]
+    #[cfg(target_os = "macos")]
     MissingAccount,
     #[error("Claude subscription unavailable: failed to start /usr/bin/security: {0}")]
+    #[cfg(target_os = "macos")]
     StartKeychain(#[source] std::io::Error),
     #[error(
         "Claude subscription unavailable: macOS Keychain lookup for \"Claude Code-credentials\" exceeded the 5 second timeout"
     )]
+    #[cfg(target_os = "macos")]
     KeychainTimeout,
     #[error(
         "Claude subscription unavailable: macOS Keychain item \"Claude Code-credentials\" was not found for account {account}; run `claude` to sign in"
     )]
+    #[cfg(target_os = "macos")]
     KeychainItemMissing { account: String },
     #[error(
         "Claude subscription unavailable: macOS Keychain item \"Claude Code-credentials\" could not be read for account {account}: {detail}"
     )]
+    #[cfg(target_os = "macos")]
     KeychainRead { account: String, detail: String },
     #[error(
         "Claude subscription unavailable: macOS Keychain item \"Claude Code-credentials\" contains invalid JSON: {0}"

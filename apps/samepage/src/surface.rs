@@ -80,6 +80,7 @@ pub struct SelectedArtifacts {
     map: CapabilityArtifact,
     diagrams: Option<CapabilityArtifact>,
     review: Option<CapabilityArtifact>,
+    architecture: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -92,13 +93,14 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=4).contains(&manifest.artifacts.len()) {
-            return Err("requires doc, map and optional diagrams/review artifacts".to_string());
+        if !(2..=5).contains(&manifest.artifacts.len()) {
+            return Err("requires doc, map and optional diagrams/review/architecture artifacts".to_string());
         }
         let mut document = None;
         let mut map = None;
         let mut diagrams = None;
         let mut review = None;
+        let mut architecture = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -124,13 +126,14 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review"
+                "map" | "diagrams" | "review" | "architecture"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
                     let compiled = serde_json::to_value(match artifact.id.as_str() {
                         "map" => samepage_map::descriptor(),
                         "review" => samepage_review::descriptor(),
+                        "architecture" => samepage_architecture::descriptor(),
                         _ => samepage_diagrams::descriptor(),
                     })
                     .map_err(|error| error.to_string())?;
@@ -154,6 +157,7 @@ impl SelectedArtifacts {
                     match artifact.id.as_str() {
                         "map" => map = Some(capability),
                         "review" => review = Some(capability),
+                        "architecture" => architecture = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
@@ -165,6 +169,7 @@ impl SelectedArtifacts {
             map: map.ok_or("map artifact is missing")?,
             diagrams,
             review,
+            architecture,
         })
     }
 }
@@ -229,6 +234,23 @@ impl SamePageState {
         with_diagrams: bool,
         with_review: bool,
     ) -> Result<Arc<Self>, String> {
+        Self::open_selected_architecture(
+            path, ws_tx, saver, emit_event, save_wait, project, with_diagrams, with_review, false,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn open_selected_architecture(
+        path: PathBuf,
+        ws_tx: broadcast::Sender<Vec<u8>>,
+        saver: HostSaver,
+        emit_event: EventEmitter,
+        save_wait: Duration,
+        project: Option<&Path>,
+        with_diagrams: bool,
+        with_review: bool,
+        with_architecture: bool,
+    ) -> Result<Arc<Self>, String> {
         let mut descriptors = vec![samepage_map::descriptor()];
         let mut capabilities: Vec<Arc<dyn Capability>> = vec![Arc::new(Map)];
         if with_diagrams {
@@ -243,6 +265,10 @@ impl SamePageState {
         } else {
             None
         };
+        if with_architecture {
+            descriptors.push(samepage_architecture::descriptor());
+            capabilities.push(Arc::new(samepage_architecture::Architecture));
+        }
         let composition = Composition::new(descriptors).map_err(|error| error.to_string())?;
         let mut host = Host::open(path, composition, capabilities).map_err(|e| e.to_string())?;
         if with_diagrams {
@@ -439,7 +465,13 @@ impl SamePageState {
             .and_then(|r| r["readback"].as_str())
             .map(|s| vec![s.to_string()])
             .unwrap_or(invoked.readback);
+        let architecture = if invoked.action == "architecture_read" {
+            Some(samepage_architecture::inspect(&self.host.view()).map_err(|e| e.to_string())?)
+        } else {
+            None
+        };
         serde_json::to_string(&json!({
+            "architecture": architecture,
             "action": invoked.action,
             "readback": readback,
             "review": report,
@@ -608,9 +640,10 @@ impl SamePageSurface {
     ) -> Result<Self, String> {
         let with_diagrams = artifacts.diagrams.is_some();
         let with_review = artifacts.review.is_some();
-        let state = if with_diagrams || with_review {
+        let with_architecture = artifacts.architecture.is_some();
+        let state = if with_diagrams || with_review || with_architecture {
             let emit = transport.clone();
-            SamePageState::open_selected(
+            SamePageState::open_selected_architecture(
                 path,
                 transport.ws_tx.clone(),
                 Arc::new(|h| h.save().map(|_| ()).map_err(|e| e.to_string())),
@@ -619,6 +652,7 @@ impl SamePageSurface {
                 Some(project),
                 with_diagrams,
                 with_review,
+                with_architecture,
             )?
         } else {
             SamePageState::open(path, transport)?
@@ -629,6 +663,9 @@ impl SamePageSurface {
         }
         if with_review {
             declarations.extend(samepage_review::descriptor().actions);
+        }
+        if with_architecture {
+            declarations.extend(samepage_architecture::descriptor().actions);
         }
         let mut tools: Vec<ActionDef> = declarations
             .into_iter()
@@ -775,6 +812,21 @@ impl Surface for SamePageSurface {
             .optional()
             .capability("samepage.review");
             for action in samepage_review::descriptor().actions {
+                if action.audience != samepage_capability::Audience::Agent {
+                    module = module.action(action.name);
+                }
+            }
+            modules.push(module);
+        }
+        if let Some(artifact) = &self.artifacts.architecture {
+            let mut module = ClientModule::lazy(
+                "architecture", samepage_architecture::VERSION,
+                artifact.entry.url.clone(), "architecture",
+            )
+            .verified_artifact(artifact.clone())
+            .optional()
+            .capability("samepage.architecture");
+            for action in samepage_architecture::descriptor().actions {
                 if action.audience != samepage_capability::Audience::Agent {
                     module = module.action(action.name);
                 }

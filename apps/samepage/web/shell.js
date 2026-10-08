@@ -285,6 +285,13 @@ try {
     try { await kernel.dispatch("card_place", {label:input.value.trim()}); input.value = ""; }
     catch (error) { showError(`Card was not added: ${error.message}`); }
   });
+  document.getElementById("architecture-open")?.addEventListener("click", async () => {
+    try {
+      if (!kernel.hasCapability("architecture")) throw new Error("architecture capability is unavailable");
+      await kernel.activateForTool("architecture_read");
+      document.dispatchEvent(new CustomEvent("samepage:architecture-open"));
+    } catch (error) { showError(`Architecture unavailable: ${error.message}`); }
+  });
   // Exposes observations without a second document or mutation channel.
   globalThis.samepageReadback = () => kernel.diagnostics();
 } catch (error) {
