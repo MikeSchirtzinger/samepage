@@ -272,16 +272,42 @@ impl Capability for Diagrams {
     }
     fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
         Ok([
-            ("initial", "Initial state", "●"),
-            ("terminal", "Terminal state", "◎"),
+            (
+                "element",
+                "container",
+                "Diagram container",
+                "map-card diagram-container",
+                "▧",
+            ),
+            (
+                "state_role",
+                "initial",
+                "Initial state",
+                "map-card diagram-initial",
+                "●",
+            ),
+            (
+                "state_role",
+                "terminal",
+                "Terminal state",
+                "map-card diagram-terminal",
+                "◎",
+            ),
+            (
+                "element",
+                "transition",
+                "Transition: event [guard]",
+                "diagram-transition",
+                "→",
+            ),
         ]
         .into_iter()
-        .map(|(value, label, symbol)| LegendEntry {
+        .map(|(attribute, value, label, class, symbol)| LegendEntry {
             capability: ID.into(),
-            attribute: "state_role".into(),
+            attribute: attribute.into(),
             value: value.into(),
             label: label.into(),
-            class: Some(format!("diagram-{value}")),
+            class: Some(class.into()),
             symbol: Some(symbol.into()),
         })
         .collect())

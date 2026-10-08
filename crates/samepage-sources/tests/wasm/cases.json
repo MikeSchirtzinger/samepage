@@ -521,6 +521,30 @@
       "export": "changes",
       "before": {},
       "after": "project"
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "State",
+              "path": "a.rs",
+              "lines": "1"
+            }
+          }
+        ]
+      }
     }
   ]
 }

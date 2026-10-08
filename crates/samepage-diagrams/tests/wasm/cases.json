@@ -507,6 +507,126 @@
     {
       "export": "project_with_bounds",
       "bounds": "malformed"
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "r1",
+        "records": [
+          {
+            "id": "machine",
+            "kind": "node",
+            "props": {
+              "label": "Request",
+              "diagram_kind": "state_machine",
+              "x": 0,
+              "y": 0,
+              "w": 900,
+              "h_pref": 700
+            }
+          },
+          {
+            "id": "idle",
+            "kind": "node",
+            "props": {
+              "label": "Idle",
+              "x": 80,
+              "y": 140,
+              "w": 232,
+              "h_pref": 150,
+              "parent": "machine",
+              "state_initial": true,
+              "state_terminal": false,
+              "state_order": 0
+            }
+          },
+          {
+            "id": "pending",
+            "kind": "node",
+            "props": {
+              "label": "Pending",
+              "x": 480,
+              "y": 140,
+              "w": 232,
+              "h_pref": 150,
+              "parent": "machine",
+              "state_initial": false,
+              "state_terminal": false,
+              "state_order": 1
+            }
+          },
+          {
+            "id": "done",
+            "kind": "node",
+            "props": {
+              "label": "Done",
+              "x": 480,
+              "y": 450,
+              "w": 232,
+              "h_pref": 150,
+              "parent": "machine",
+              "state_initial": false,
+              "state_terminal": true,
+              "state_order": 2
+            }
+          },
+          {
+            "id": "e0",
+            "kind": "edge",
+            "props": {
+              "label": "",
+              "from": "idle",
+              "to": "idle",
+              "event": "Retry",
+              "guard": "",
+              "transition_order": 1
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "label": "",
+              "from": "idle",
+              "to": "pending",
+              "event": "Submit",
+              "guard": "valid",
+              "transition_order": 2
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "label": "",
+              "from": "idle",
+              "to": "pending",
+              "event": "Resume",
+              "guard": "",
+              "transition_order": 3
+            }
+          },
+          {
+            "id": "e3",
+            "kind": "edge",
+            "props": {
+              "label": "",
+              "from": "pending",
+              "to": "done",
+              "event": "Finish",
+              "guard": "",
+              "transition_order": 4
+            }
+          }
+        ]
+      }
     }
   ]
 }

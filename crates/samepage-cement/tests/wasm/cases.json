@@ -515,6 +515,60 @@
           }
         ]
       }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "Engine",
+              "status": "agreed",
+              "path": "src/lib.rs",
+              "lines": "1"
+            }
+          },
+          {
+            "id": "c",
+            "kind": "claim",
+            "props": {
+              "about": "n",
+              "text": "Two variants",
+              "basis": "verified",
+              "path": "src/lib.rs",
+              "lines": "1",
+              "revision": "",
+              "verdict": "accepted",
+              "withdrawn": false
+            }
+          },
+          {
+            "id": "ctx",
+            "kind": "understanding-context",
+            "props": {
+              "definition": "{\"altitude\":\"implementation\",\"assumptions\":\"\",\"question\":\"What must State preserve?\",\"replaces\":[],\"subjects\":[\"n\"]}"
+            }
+          },
+          {
+            "id": "d",
+            "kind": "decision-draft",
+            "props": {
+              "definition": "{\"content\":\"8d74fb7d4660a2a601eef00e41e169695404f38becd3dcd0576f6909ea65d17e\",\"context_ids\":[\"ctx\"],\"created_by\":\"\",\"id\":\"\",\"input\":{\"alternatives\":[{\"option\":\"Strings\",\"reason_not_chosen\":\"No exhaustive matching\"}],\"checks\":[{\"check\":{\"args\":{\"enum_name\":\"State\",\"expected_serde_rename_all\":null,\"expected_variants\":[\"Ready\",\"Done\"],\"file\":\"src/lib.rs\"},\"backend\":\"rust_enum_shape\"},\"evidence_files\":[\"src/lib.rs\"],\"id\":\"CEMENT-DEMO-STATE\",\"requirement\":\"Keep two states\"}],\"consequences\":\"Gate catches drift\",\"decision\":\"Keep State explicit\",\"ids\":[\"n\"],\"not_enforced\":[\"Runtime behavior\"],\"rationale\":\"Reviewable variants\",\"title\":\"State contract\",\"tradeoffs\":\"Review on change\"}}",
+              "created_by": "Agent"
+            }
+          }
+        ]
+      }
     }
   ]
 }

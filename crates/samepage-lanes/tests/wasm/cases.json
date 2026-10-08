@@ -1778,6 +1778,37 @@
           "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         }
       }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "Engine",
+              "path": "a.rs",
+              "lines": "10"
+            }
+          },
+          {
+            "id": "other",
+            "kind": "node",
+            "props": {
+              "label": "CLI"
+            }
+          }
+        ]
+      }
     }
   ]
 }

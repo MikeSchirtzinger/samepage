@@ -1,3 +1,4 @@
+import { createLegend } from "/legend.mjs";
 import { AgUiClient, loadExtensions, rememberMe, whoAmI } from "/_agui/client.js";
 import {
   beginPersistenceHandshake,
@@ -33,6 +34,9 @@ function createKernel({ documentModule, manifest }) {
   const descriptors = manifest.extensions.filter((entry) => entry.artifact || entry.nativeOnly)
     .map((entry) => entry.artifact?.descriptor || entry.nativeOnly);
   const modules = new Map();
+  const legend = createLegend({mount:document.getElementById('legend'), decode:envelope,
+    read:()=>({modules, states:runtime?.loaded || [], view:view(),
+      failed:renderErrors.filter(e=>e.code==='renderer_failure').map(e=>e.message.split(':')[0])})});
   const renderers = new Map();
   const subscribers = new Set();
   let replica = new documentModule.Replica();
@@ -117,6 +121,7 @@ function createKernel({ documentModule, manifest }) {
       if (snapshot.revision === replica.revision()) {
         renderedRevision = snapshot.revision;
         renderErrors = errors;
+        legend.refresh();
         sizeObserver?.disconnect();
         document.querySelectorAll('.map-card').forEach(card => sizeObserver?.observe(card));
       }
@@ -267,7 +272,7 @@ function createKernel({ documentModule, manifest }) {
     activateForTool: (tool) => runtime?.activateForTool(tool),
     activateForRoute: (route) => runtime?.activateForRoute(route),
     dispatch: (name, args) => client.action(name, args),
-    attachRuntime(value) { if (runtime) throw new Error("kernel runtime already attached"); runtime = value; notify(); },
+    attachRuntime(value) { if (runtime) throw new Error("kernel runtime already attached"); runtime = value; notify(); legend.refresh(); },
     connect,
     setPersistenceFailure(message) { persistenceState = persistenceFailed(persistenceState, message); showError(persistencePresentation(persistenceState).banner); notify(); },
     setPersistencePending(message) { persistenceState = persistencePending(persistenceState, message); showError(persistencePresentation(persistenceState).banner); notify(); },

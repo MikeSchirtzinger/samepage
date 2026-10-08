@@ -478,6 +478,111 @@
     "deleted": [],
     "rekinded": []
    }
+  },
+  {
+   "export": "legend",
+   "view": {
+    "revision": "legend-empty",
+    "records": []
+   }
+  },
+  {
+   "export": "legend",
+   "view": {
+    "revision": "r1",
+    "records": [
+     {
+      "id": "a",
+      "kind": "node",
+      "props": {
+       "label": "A",
+       "x": 0,
+       "y": 0,
+       "w": 232,
+       "tone": "crate",
+       "status": "open",
+       "created_by": "Model",
+       "touched_by": "Model"
+      }
+     },
+     {
+      "id": "b",
+      "kind": "node",
+      "props": {
+       "label": "B",
+       "x": 400,
+       "y": 0,
+       "h": 90,
+       "parent": "a",
+       "path": "src/b.rs"
+      }
+     },
+     {
+      "id": "e1",
+      "kind": "edge",
+      "props": {
+       "from": "a",
+       "to": "b",
+       "label": "calls"
+      }
+     },
+     {
+      "id": "legacy",
+      "kind": "agent-ink-variable",
+      "props": {
+       "value": 3
+      }
+     },
+     {
+      "id": "t1",
+      "kind": "edge",
+      "props": {
+       "from": "a",
+       "to": "b",
+       "label": "transition",
+       "event": "",
+       "guard": "ready"
+      }
+     },
+     {
+      "id": "c1",
+      "kind": "constraint",
+      "props": {
+       "op": "group",
+       "members": "a,b,gone",
+       "salience": "back"
+      }
+     },
+     {
+      "id": "c2",
+      "kind": "constraint",
+      "props": {
+       "op": "sequence",
+       "axis": "x",
+       "member_schema": "records",
+       "members": "a,b"
+      }
+     },
+     {
+      "id": "cm1",
+      "kind": "constraint-member",
+      "props": {
+       "constraint": "c2",
+       "target": "a",
+       "order": 0
+      }
+     },
+     {
+      "id": "cm2",
+      "kind": "constraint-member",
+      "props": {
+       "constraint": "c2",
+       "target": "gone",
+       "order": 1
+      }
+     }
+    ]
+   }
   }
  ]
 }

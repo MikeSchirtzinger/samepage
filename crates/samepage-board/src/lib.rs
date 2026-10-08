@@ -9,7 +9,8 @@ pub use assertion::{
     fresh_agreement, Assertion, Author, Board, Delta as BoardDelta, Entry, Mark, Status,
 };
 use samepage_capability::{
-    Artifact, Call, CapError, Capability, Delta, Descriptor, Plan, Record, Trigger, View,
+    Artifact, Call, CapError, Capability, Delta, Descriptor, LegendEntry, Plan, Record, Trigger,
+    View,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -247,6 +248,34 @@ impl Capability for BoardCapability {
     }
     fn project(&self, view: &View) -> Result<Value, CapError> {
         Ok(project_for(&from_view(view)?, 0, reader_from_view(view)))
+    }
+    fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
+        Ok([
+            (
+                "standing",
+                "SETTLED",
+                "Fresh human sign-off",
+                "board-card",
+                "✓ SETTLED",
+            ),
+            (
+                "element",
+                "stale",
+                "Agreement predates these words",
+                "board-stale",
+                "STALE SIGN-OFF",
+            ),
+        ]
+        .into_iter()
+        .map(|(attribute, value, label, class, symbol)| LegendEntry {
+            capability: ID.into(),
+            attribute: attribute.into(),
+            value: value.into(),
+            label: label.into(),
+            class: Some(class.into()),
+            symbol: Some(symbol.into()),
+        })
+        .collect())
     }
     fn digest(&self, view: &View) -> Result<Value, CapError> {
         Ok(json!({"board":from_view(view)?}))

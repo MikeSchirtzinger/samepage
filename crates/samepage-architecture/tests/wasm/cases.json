@@ -1386,6 +1386,60 @@
         "deleted": [],
         "rekinded": []
       }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          }
+        ]
+      }
     }
   ]
 }

@@ -94,8 +94,8 @@ export function activate({wasm, application}) {
     for (const card of map.querySelectorAll('.map-card')) {
       const node=projection.nodes.find(n=>n.id===card.dataset.id);
       const marks=projection.marks.filter(m=>m.target===card.dataset.id);
-      if (node&&node.state!=='NO CLAIMS') {
-        const badge=el('span',node.state==='SETTLED'?'Settled':'Under challenge','review-badge');badge.dataset.state=node.state;card.append(badge);
+      if (node) {
+        const badge=el('span',node.state==='SETTLED'?'Settled':node.state==='NO CLAIMS'?'No claims':'Under challenge','review-badge');badge.dataset.state=node.state;card.append(badge);
       }
       if (marks.length) card.append(el('span',marks.map(m=>m.glyph).join(' '),'review-mark-glyphs'));
     }

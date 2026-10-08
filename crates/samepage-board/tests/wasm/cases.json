@@ -2880,6 +2880,28 @@
       },
       "reader": "human-b",
       "expected_by": null
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "2",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
+            }
+          }
+        ]
+      }
     }
   ]
 }

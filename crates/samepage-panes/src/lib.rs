@@ -8,7 +8,8 @@ pub mod view;
 use layout::{Placement, Sited, Spot};
 use samepage_capability::{
     ActionDecl, Artifact, Audience, Call, CallerKind, CapError, Capability, Change, Delta,
-    Descriptor, Effect, Op, Origin, Plan, Record, Scalar, Target, Trigger, Value, View,
+    Descriptor, Effect, LegendEntry, Op, Origin, Plan, Record, Scalar, Target, Trigger, Value,
+    View,
 };
 use serde_json::{json, Value as Json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -176,6 +177,64 @@ impl Capability for Panes {
     }
     fn project(&self, v: &View) -> Result<Json, CapError> {
         projection(v, &BTreeMap::new())
+    }
+    fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
+        Ok([
+            (
+                "element",
+                "heading",
+                "Heading pane content",
+                "n-heading",
+                "H",
+            ),
+            ("element", "text", "Text pane content", "n-text", "T"),
+            ("element", "code", "Code pane content", "n-code", "{}"),
+            ("element", "list", "List pane content", "n-list", "≡"),
+            ("element", "kv", "Kv pane content", "n-kv", "K:V"),
+            ("element", "table", "Table pane content", "n-table", "▦"),
+            (
+                "element",
+                "diagram",
+                "Diagram pane content",
+                "n-diagram",
+                "→",
+            ),
+            ("element", "badge", "Badge pane content", "n-badge", "●"),
+            (
+                "element",
+                "divider",
+                "Divider pane content",
+                "n-divider",
+                "—",
+            ),
+            ("element", "button", "Button pane content", "n-button", "↵"),
+            ("element", "field", "Field pane content", "n-field", "⌨"),
+            ("element", "link", "Link pane content", "n-link", "↗"),
+            ("element", "image", "Image pane content", "n-image", "▣"),
+            ("element", "source", "Source pane content", "n-source", "{}"),
+            (
+                "element",
+                "options",
+                "Options pane content",
+                "n-options",
+                "⋯",
+            ),
+            ("element", "embed", "Embed pane content", "n-embed", "↗"),
+            ("element", "html", "Html pane content", "n-html", "HTML"),
+            ("element", "stack", "Stack pane content", "n-stack", "≡"),
+            ("element", "row", "Row pane content", "n-row", "⋯"),
+            ("element", "deck", "Deck pane content", "n-deck", "‹ ›"),
+        ]
+        .into_iter()
+        .map(|(attribute, value, label, class, symbol)| LegendEntry {
+            capability: ID.into(),
+            attribute: attribute.into(),
+            value: value.into(),
+            label: label.into(),
+            class: Some(class.into()),
+            symbol: Some(symbol.into()),
+        })
+        .collect())
     }
     fn digest(&self, v: &View) -> Result<Json, CapError> {
         self.project(v)

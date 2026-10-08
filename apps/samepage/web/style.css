@@ -166,3 +166,23 @@ body { margin: 0; }
 .explain-byline { display: block; margin-top: 12px; }
 .explain-target-active { outline: 3px solid #fbbf24; outline-offset: 4px; }
 .explain-path-trace { pointer-events: none; stroke: #fbbf24; stroke-width: 6; fill: none; }
+
+/* The document shell composes capability keys beside the shared surface. */
+main { margin-right: 340px; }
+#legend { position:fixed; right:0; top:62px; bottom:0; width:340px; padding:18px; overflow:auto; background:#15232e; border-left:1px solid #345066; }
+#legend h2 { margin:0 0 6px; font-size:18px; }
+#legend p, #legend label { font-size:12px; color:#adc7d6; }
+#legend label { display:block; margin-bottom:10px; }
+.map-card.map-container { background:#13232e66; border:1px dashed #58788c; box-shadow:none; border-radius:16px; }
+.map-card[data-status="agreed"] { border:3px double #9ae6c1; }
+.map-card[data-status="disputed"] { border-color:#e5a784; }
+.map-constraint-cycle { color:#ffce89; border-left:3px dashed #e5a784; padding-left:8px; }
+.map-constraints { right:358px; }
+@media(max-width:800px) { main {margin-right:0;} #legend {position:relative;top:auto;bottom:auto;width:auto;max-height:50vh;border-top:1px solid #345066;} .map-constraints {right:18px;} }
+.review-badge[data-state="NO CLAIMS"] { border-color:#728ca0; background:#20313c; color:#c2d4dd; }
+/* Comparison keeps the shell legend readable beside its own surface. */
+@media(min-width:801px) {
+  dialog.architecture-compare { width:calc(100vw - 390px); max-width:calc(100vw - 390px); margin-left:24px; margin-right:366px; }
+  dialog.architecture-compare::backdrop { background:linear-gradient(to right,#07121baa calc(100% - 340px),transparent calc(100% - 340px)); }
+}
+@media(min-width:801px) { #activity-drawer {right:358px;} }

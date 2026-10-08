@@ -1347,33 +1347,65 @@ fn changes(before: &JsonValue, after: &JsonValue) -> Vec<String> {
 /// One key per value present in the view, for each visual attribute a card
 /// carries. The renderer's classes are not defined yet (C4b), so `class` is
 /// left empty rather than guessed.
-fn legend(view: &View) -> Vec<LegendEntry> {
-    let mut seen = BTreeSet::new();
-    let mut entries = Vec::new();
-    for record in view.records().filter(|r| r.kind == NODE) {
-        for (attribute, key, default) in [
-            ("tone", K_TONE, "concept"),
-            ("status", K_STATUS, "open"),
-            ("color", K_COLOR, ""),
-            ("emphasis", K_EMPHASIS, "normal"),
-            ("size", K_SIZE, "normal"),
-            ("shape", K_SHAPE, "rect"),
-        ] {
-            let value = prop_str(record, key).unwrap_or(default).to_string();
-            if value.is_empty() || !seen.insert((attribute, value.clone())) {
-                continue;
-            }
-            entries.push(LegendEntry {
-                capability: ID.to_string(),
-                attribute: attribute.to_string(),
-                label: format!("{attribute}: {value}"),
-                value,
-                class: None,
-                symbol: None,
-            });
-        }
-    }
-    entries
+fn legend(_view: &View) -> Vec<LegendEntry> {
+    [
+        ("element", "card", "Card", "map-card", "▣"),
+        (
+            "element",
+            "container",
+            "Container",
+            "map-card map-container",
+            "▧",
+        ),
+        ("element", "link", "Relationship", "map-link", "—"),
+        ("status", "open", "Open card", "map-card", "OPEN"),
+        ("status", "done", "Done card", "map-card", "DONE"),
+        (
+            "status",
+            "disputed",
+            "Disputed card",
+            "map-card",
+            "DISPUTED",
+        ),
+        (
+            "status",
+            "sat",
+            "Satisfied constraint",
+            "map-constraint",
+            "SAT",
+        ),
+        (
+            "status",
+            "unresolved",
+            "Missing constraint member",
+            "map-constraint",
+            "?",
+        ),
+        (
+            "status",
+            "arity",
+            "Too few constraint members",
+            "map-constraint",
+            "!",
+        ),
+        (
+            "status",
+            "unsat",
+            "Sequence cycle",
+            "map-constraint-cycle",
+            "UNSAT",
+        ),
+    ]
+    .into_iter()
+    .map(|(attribute, value, label, class, symbol)| LegendEntry {
+        capability: ID.into(),
+        attribute: attribute.into(),
+        value: value.into(),
+        label: label.into(),
+        class: Some(class.into()),
+        symbol: Some(symbol.into()),
+    })
+    .collect()
 }
 
 #[cfg(all(target_arch = "wasm32", feature = "wasm-export"))]

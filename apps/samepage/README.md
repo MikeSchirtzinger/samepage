@@ -121,3 +121,55 @@ record or walkthrough action. It provides shared steps, revisioned controls,
 point/reveal animations, connector tracing, button and response transitions,
 and scoped drawing. `walkthrough_read` exposes the same cursor to agents;
 `replay-motion` is visibly unsupported. See [the contract](../../crates/samepage-explain/README.md).
+
+## Complete and minimal recipes
+
+From a clean shell with Rust (including `wasm32-unknown-unknown`), wasm-pack,
+wasm-opt, Node, Python 3 and ripgrep installed, run either recipe with a project
+directory. The full recipe also needs real `g8` 0.1.4 on PATH and a Git project.
+Both use the existing capability build script, build the typed protocol client
+and native app, copy this checkout's web assets, and run the one SamePage host:
+
+```sh
+apps/samepage/recipes/full.sh /path/to/git-project
+apps/samepage/recipes/map-only.sh /path/to/project
+```
+
+The full composition selects doc, map, diagrams, review, architecture, board,
+sketch, trace, panes, sources, lanes and cement. Map-only selects doc and map.
+Selection permits use; optional WASM still loads on its first record, action
+or gesture. There is no separate Legend capability or WASM artifact.
+
+Defaults need no environment: address `127.0.0.1:8190`, four build jobs,
+`target/` in this checkout, and artifacts, assets, temporary files and persistent
+state under `.local/recipes/full/` or `.local/recipes/map-only/`. The default
+local MCP bearer is `local-samepage-token`. Override `AGUI_MCP_TOKEN`,
+`SAMEPAGE_ADDR`, `SAMEPAGE_RECIPE_DIR` (absolute output directory),
+`SAMEPAGE_STATE_DIR`, `CARGO_TARGET_DIR` (absolute), `CARGO_BUILD_JOBS` (at most
+four), or `TMPDIR` as needed. The recipes add the usual Cargo and local bin
+directories to PATH. The server runs until interrupted; start it detached with
+captured output for an unattended run and wait for its listening message.
+
+The shell's Legend stays beside the surface and composes each successfully
+loaded capability's ABI `legend(view)`. Its default shows keys currently drawn;
+“Show all” also lists keys of loaded capabilities that are absent from the
+current view. Failed and unselected capabilities contribute no keys. Swatches
+use the real elements' classes, SVG geometry and computed paint, including
+ancestor-scoped CSS. Glyphs and words accompany every key. Colours in authored
+Sketch drawings carry the author's meaning. Trace has no map keys; Activity is
+its own surface.
+
+For a new full-composition project, initialize its G8 space before scanning
+Lanes or publishing decisions: run `g8 init --no-claude-import --no-subagents`
+from the project directory. The recipe does not author project obligations.
+
+With a real Chromium page already exercised over CDP, audit the legend against
+the live elements (including SVG child paint) without changing the surface:
+
+```bash
+node apps/samepage/proofs/legend.mjs http://127.0.0.1:9481 .local/legend/audit.json
+```
+
+The JSON records each key, its page source, paint pairs, loaded sections and
+resource URLs. This check covers the current view; use pointer and keyboard
+input to expose other states and capture side-by-side screenshots separately.

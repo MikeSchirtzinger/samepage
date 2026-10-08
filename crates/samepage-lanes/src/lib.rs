@@ -1,7 +1,7 @@
 //! Portable reconciliation of native extraction evidence with the shared Map.
 use samepage_capability::{
     ActionDecl, Artifact, Audience, Call, CapError, Capability, Change, Delta, Descriptor, Effect,
-    Op, Plan, Record, Target, Trigger, View,
+    LegendEntry, Op, Plan, Record, Target, Trigger, View,
 };
 use samepage_sources::{effective_bindings, string, Binding, Facts as SourceFacts};
 use serde::{Deserialize, Serialize};
@@ -282,6 +282,41 @@ impl Capability for Lanes {
     }
     fn project(&self, view: &View) -> Result<Value, CapError> {
         Ok(reconcile(view, &Facts::default()))
+    }
+    fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
+        Ok([
+            (
+                "state",
+                "unresolved",
+                "Unresolved source finding",
+                "lane-finding",
+                "? Unresolved",
+            ),
+            (
+                "state",
+                "claimed",
+                "Finding claimed by a card",
+                "lane-finding",
+                "✓ Claimed",
+            ),
+            (
+                "state",
+                "removal",
+                "Reviewed removal obligation",
+                "lane-finding",
+                "Removal",
+            ),
+        ]
+        .into_iter()
+        .map(|(attribute, value, label, class, symbol)| LegendEntry {
+            capability: ID.into(),
+            attribute: attribute.into(),
+            value: value.into(),
+            label: label.into(),
+            class: Some(class.into()),
+            symbol: Some(symbol.into()),
+        })
+        .collect())
     }
     fn digest(&self, v: &View) -> Result<Value, CapError> {
         self.project(v)

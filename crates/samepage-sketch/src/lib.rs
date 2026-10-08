@@ -351,19 +351,68 @@ impl Capability for Sketch {
     }
     fn legend(&self, view: &View) -> Result<Vec<LegendEntry>, CapError> {
         let mut seen = BTreeSet::new();
-        Ok(drawing(view)
-            .shapes
-            .iter()
-            .filter(|s| seen.insert(s.ink.clone()))
-            .map(|s| LegendEntry {
-                capability: ID.into(),
-                attribute: "ink".into(),
-                value: s.ink.clone(),
-                label: format!("{} drawing ink; meaning assigned by its author", s.ink),
-                class: None,
-                symbol: Some("stroke".into()),
-            })
-            .collect())
+        let mut entries = Vec::new();
+        for shape in drawing(view).shapes {
+            for (attribute, value, label) in [
+                (
+                    "form",
+                    shape.form.clone(),
+                    format!("{} drawing", shape.form),
+                ),
+                (
+                    "ink",
+                    shape.ink.clone(),
+                    format!("{} ink; meaning assigned by its author", shape.ink),
+                ),
+                ("fill", shape.fill.clone(), format!("{} fill", shape.fill)),
+                (
+                    "stroke_style",
+                    shape.stroke_style.clone(),
+                    format!("{} stroke", shape.stroke_style),
+                ),
+                (
+                    "head",
+                    shape.head.clone(),
+                    format!("{} arrowhead", shape.head),
+                ),
+                (
+                    "bound",
+                    (!shape.from.is_empty() || !shape.to.is_empty()).to_string(),
+                    "Bound arrow follows its target".into(),
+                ),
+            ] {
+                if (attribute == "bound" && value == "false")
+                    || (attribute == "head" && shape.form != "arrow")
+                    || !seen.insert((attribute, value.clone()))
+                {
+                    continue;
+                }
+                entries.push(LegendEntry {
+                    capability: ID.into(),
+                    attribute: attribute.into(),
+                    value,
+                    label,
+                    class: Some(
+                        if ["head", "bound"].contains(&attribute) {
+                            "sketch-shape sketch-arrow"
+                        } else {
+                            "sketch-shape"
+                        }
+                        .into(),
+                    ),
+                    symbol: Some("✎".into()),
+                });
+            }
+        }
+        entries.push(LegendEntry {
+            capability: ID.into(),
+            attribute: "element".into(),
+            value: "byline".into(),
+            label: "Host-stamped drawing byline (selected shape)".into(),
+            class: Some("sketch-byline".into()),
+            symbol: Some("by".into()),
+        });
+        Ok(entries)
     }
 }
 pub fn entry(cap: &str, plan: Plan) -> BatchEntry {
