@@ -315,6 +315,9 @@ pub trait SurfaceState: Send + Sync + 'static {
 
     /// Runtime-installed host activity service. Application state returns
     /// `None`; the wrapper installed by [`App::serve`] supplies the feed.
+    /// Unrecorded diagnostic spans, without retaining any trace state.
+    fn activity_dropped(&self) -> u64 { 0 }
+
     fn activity_feed(&self) -> Option<&ActivityFeed> {
         None
     }
@@ -1955,6 +1958,7 @@ pub struct App {
     default_provider: Option<String>,
     auth: Option<Arc<auth::AuthStore>>,
     activity_path: Option<PathBuf>,
+    activity_enabled: bool,
     prompt: Option<turn_loop::Prompts>,
     final_response_only: bool,
     voice: bool,
@@ -1993,6 +1997,7 @@ impl App {
             default_provider: None,
             auth: None,
             activity_path: None,
+            activity_enabled: true,
             prompt: None,
             final_response_only: false,
             voice: false,
@@ -2029,6 +2034,12 @@ impl App {
     /// application gets restart-safe telemetry rather than process memory.
     pub fn activity_store(mut self, path: impl Into<PathBuf>) -> Self {
         self.activity_path = Some(path.into());
+        self
+    }
+
+    /// Disable operational telemetry without disabling document history or authorship.
+    pub fn activity_enabled(mut self, enabled: bool) -> Self {
+        self.activity_enabled = enabled;
         self
     }
 
@@ -2232,8 +2243,9 @@ impl App {
         let activity_path = self
             .activity_path
             .unwrap_or_else(|| auth.default_activity_path());
-        let activity = ActivityFeed::open(&activity_path)
-            .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?;
+        let activity = if self.activity_enabled {
+            ActivityFeed::open(&activity_path).map_err(|error| AppError::InvalidConfiguration(error.to_string()))?
+        } else { ActivityFeed::disabled() };
         let surface = activity::install(surface, activity.clone());
         let action_schemas = action_schema::ActionSchemas::compile(surface.tools())
             .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?;
@@ -2500,7 +2512,7 @@ impl App {
                 "/_agui/semantic-targets.css",
                 get(semantic_targets_style_handler),
             )
-            .route("/extensions", get(extensions_handler))
+            .route("/extensions", get(extensions_with_activity_handler))
             .route("/activity", get(activity_handler))
             .route("/activity/events", get(activity_events_handler))
             .route(
@@ -3519,6 +3531,13 @@ async fn semantic_targets_style_handler() -> impl IntoResponse {
 /// [`ClientModule`] plus its executable action vocabulary.
 async fn extensions_handler(State(st): State<RouterState>) -> Json<ExtensionManifest> {
     Json(st.extensions.as_ref().clone())
+}
+
+async fn extensions_with_activity_handler(State(st): State<RouterState>) -> Json<JsonValue> {
+    let Json(manifest) = extensions_handler(State(st.clone())).await;
+    let mut manifest = serde_json::to_value(manifest).expect("extension manifest serializes");
+    manifest["activity"] = serde_json::json!({"enabled":st.rt.activity.is_enabled(), "dropped":st.rt.activity.dropped().saturating_add(st.surface.state().activity_dropped())});
+    Json(manifest)
 }
 
 /// This runtime does not initiate server-to-client MCP messages, so it uses
@@ -5581,8 +5600,9 @@ fn pending_decision_events(rt: &runtime_state::RuntimeState) -> Vec<String> {
     events.into_iter().map(|(_, event)| event).collect()
 }
 
-async fn activity_handler(State(st): State<RouterState>) -> Json<ActivitySnapshot> {
-    Json(st.rt.activity.snapshot())
+async fn activity_handler(State(st): State<RouterState>) -> Response {
+    if !st.rt.activity.is_enabled() { return StatusCode::NOT_FOUND.into_response(); }
+    Json(st.rt.activity.snapshot()).into_response()
 }
 
 /// Durable replay followed by live host-stamped activity. The journal is
@@ -5592,6 +5612,7 @@ async fn activity_events_handler(
     State(st): State<RouterState>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Response {
+    if !st.rt.activity.is_enabled() { return StatusCode::NOT_FOUND.into_response(); }
     let after = query
         .get("after")
         .and_then(|value| value.parse::<u64>().ok());
@@ -6935,6 +6956,18 @@ mod tests {
 
     fn test_router_state(surface: Arc<dyn Surface>) -> RouterState {
         test_router_state_with_channels(surface).0
+    }
+
+    #[tokio::test]
+    async fn disabled_activity_routes_return_404_and_health_reports_drops() {
+        let surface: Arc<dyn Surface> = Arc::new(WebsocketSurface { state: WebsocketState, tools: Vec::new() });
+        let mut state = test_router_state(surface);
+        Arc::get_mut(&mut state.rt).unwrap().activity = ActivityFeed::disabled();
+        state.rt.activity.record_lifecycle("disabled.edit", activity::ActivityOutcome::Info, None, None);
+        assert_eq!(activity_handler(State(state.clone())).await.status(), StatusCode::NOT_FOUND);
+        assert_eq!(activity_events_handler(State(state.clone()), Query(HashMap::new())).await.status(), StatusCode::NOT_FOUND);
+        let Json(health) = extensions_with_activity_handler(State(state)).await;
+        assert_eq!(health["activity"], serde_json::json!({"enabled":false,"dropped":1}));
     }
 
     /// A router state with a real, installed semantic-target service, for the

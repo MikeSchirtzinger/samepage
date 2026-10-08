@@ -70,3 +70,16 @@ current assertion revision. Agent rewrites retain the mark and show stale
 sign-off. The native `await_input` combines Board, document, human attention,
 browser validation and chat wakes. Board cement is a human-approved advisory
 export. See [the Board contract](../../crates/samepage-board/README.md).
+
+## Optional trace
+
+Select `trace=crates/samepage-trace=apps/samepage/modules/trace.js` to add
+the Activity drawer. Its separate artifact loads only when Activity opens.
+The drawer combines typed spans from every loaded WASM capability, displays
+timing and parent links, and offers local clear, benchmark and export. The
+host exposes `trace_read`, `trace_clear`, and `trace_benchmark` for native spans.
+Host operational activity persists and replays through `/activity`; span rings
+are process-local and start empty after restart/reload. Without the selection
+there is no ring or activity file, activity routes return 404, and the toolbar
+shows how many events were not recorded. Document history and authorship remain
+active in both compositions.

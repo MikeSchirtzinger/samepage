@@ -340,7 +340,8 @@ enum ActivityStorage {
 
 /// Host-owned persistent journal and live fan-out.
 pub struct ActivityFeed {
-    inner: Mutex<PersistedActivity>,
+    inner: Option<Mutex<PersistedActivity>>,
+    dropped: AtomicU64,
     storage: ActivityStorage,
     observer_id: String,
     publish: broadcast::Sender<ActivityEvent>,
@@ -348,6 +349,14 @@ pub struct ActivityFeed {
 }
 
 impl ActivityFeed {
+    /// A counted no-op: no event collection and no persistent store.
+    pub fn disabled() -> Arc<Self> {
+        let (publish, _) = broadcast::channel(1);
+        Arc::new(Self { inner: None, dropped: AtomicU64::new(0), storage: ActivityStorage::Memory, observer_id: String::new(), publish, persistence_error: Mutex::new(None) })
+    }
+    pub fn is_enabled(&self) -> bool { self.inner.is_some() }
+    pub fn dropped(&self) -> u64 { self.dropped.load(Ordering::Relaxed) }
+
     /// Open a durable journal. Malformed or unwritable state fails startup.
     pub fn open(path: impl Into<PathBuf>) -> Result<Arc<Self>, ActivityError> {
         let path = path.into();
@@ -379,7 +388,8 @@ impl ActivityFeed {
         };
         let (publish, _) = broadcast::channel(512);
         Ok(Arc::new(Self {
-            inner: Mutex::new(persisted),
+            inner: Some(Mutex::new(persisted)),
+            dropped: AtomicU64::new(0),
             storage: ActivityStorage::File(path),
             observer_id: format!("host-{}", uuid::Uuid::new_v4().simple()),
             publish,
@@ -392,7 +402,8 @@ impl ActivityFeed {
     pub(crate) fn memory() -> Arc<Self> {
         let (publish, _) = broadcast::channel(64);
         Arc::new(Self {
-            inner: Mutex::new(PersistedActivity::new()),
+            inner: Some(Mutex::new(PersistedActivity::new())),
+            dropped: AtomicU64::new(0),
             storage: ActivityStorage::Memory,
             observer_id: format!("host-{}", uuid::Uuid::new_v4().simple()),
             publish,
@@ -401,7 +412,7 @@ impl ActivityFeed {
     }
 
     pub fn snapshot(&self) -> ActivitySnapshot {
-        let persisted = self.inner.lock().clone();
+        let persisted = self.inner.as_ref().map(|inner| inner.lock().clone()).unwrap_or_else(PersistedActivity::new);
         let persistence_error = self.persistence_error.lock().clone();
         let status = match (&self.storage, persistence_error.as_ref()) {
             (ActivityStorage::Memory, _) => ActivityDurabilityStatus::ProcessOnly,
@@ -427,6 +438,7 @@ impl ActivityFeed {
         let receiver = self.publish.subscribe();
         let replay = self
             .inner
+            .as_ref().expect("enabled activity feed")
             .lock()
             .events
             .iter()
@@ -607,6 +619,7 @@ impl ActivityFeed {
         after: Vec<ActivityStateRevision>,
         detail: Option<&str>,
     ) {
+        if !self.is_enabled() { self.dropped.fetch_add(1, Ordering::Relaxed); return; }
         let at_ms = match now_ms() {
             Ok(at_ms) => at_ms,
             Err(error) => {
@@ -616,7 +629,7 @@ impl ActivityFeed {
         };
         let detail = detail.map(normalize_detail);
         let (event, persistence) = {
-            let mut persisted = self.inner.lock();
+            let mut persisted = self.inner.as_ref().expect("enabled activity feed").lock();
             let sequence = persisted.next_sequence;
             let Some(next_sequence) = sequence.checked_add(1) else {
                 tracing::error!("activity event sequence exhausted");
@@ -870,6 +883,8 @@ impl SurfaceState for HostedState {
         self.inner.state().activity_state_revision()
     }
 
+    fn activity_dropped(&self) -> u64 { self.inner.state().activity_dropped() }
+
     fn activity_feed(&self) -> Option<&ActivityFeed> {
         Some(self.feed.as_ref())
     }
@@ -992,6 +1007,17 @@ mod tests {
             std::process::id(),
             TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed)
         ))
+    }
+
+    #[test]
+    fn disabled_mode_has_no_ring_no_file_and_counts_unrecorded_activity() {
+        let path = temp_path("disabled");
+        let feed = ActivityFeed::disabled();
+        assert!(feed.inner.is_none());
+        feed.record_lifecycle("disabled.edit", ActivityOutcome::Info, None, None);
+        assert!(!feed.is_enabled());
+        assert_eq!(feed.dropped(), 1);
+        assert!(!path.exists());
     }
 
     #[test]

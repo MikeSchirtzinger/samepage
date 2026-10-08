@@ -74,6 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = std::env::var("SAMEPAGE_ADDR").unwrap_or_else(|_| "127.0.0.1:8190".to_string());
     std::fs::create_dir_all(&state_dir)?;
     let manifest = surface::SelectedArtifacts::open(&artifacts)?;
+    let with_trace = manifest.trace_enabled();
     let document = state_dir.join("document.json");
     let auth = Arc::new(AuthStore::open(state_dir.join("auth.json"))?);
     let activity = state_dir.join("activity.json");
@@ -86,6 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .providers(Providers::from_required_file(models)?)
         .default_provider("none")
         .auth(auth)
+        .activity_enabled(with_trace)
         .activity_store(activity)
         .prompt("Work on the shared SamePage map. Read the live map before acting. Use the declared actions and report refusals clearly.")
         .protocol_pkg_dir(protocol)

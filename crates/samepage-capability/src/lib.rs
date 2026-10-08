@@ -28,6 +28,7 @@
 //! [`AUTHORSHIP_KEYS`] are written by the host from the authenticated caller,
 //! and no descriptor, plan or replica frame may write them.
 
+pub mod activity;
 pub mod audit;
 pub mod capability;
 pub mod compose;

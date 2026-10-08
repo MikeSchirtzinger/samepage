@@ -84,9 +84,11 @@ pub struct SelectedArtifacts {
     architecture: Option<CapabilityArtifact>,
     board: Option<CapabilityArtifact>,
     sketch: Option<CapabilityArtifact>,
+    trace: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
+    pub fn trace_enabled(&self) -> bool { self.trace.is_some() }
     pub fn open(root: &Path) -> Result<Self, String> {
         let path = root.join("capabilities.json");
         let data = std::fs::read(&path)
@@ -96,8 +98,8 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=5).contains(&manifest.artifacts.len()) {
-            return Err("requires doc, map and optional diagrams/review/architecture/board/sketch artifacts".to_string());
+        if !(2..=8).contains(&manifest.artifacts.len()) {
+            return Err("requires doc, map and optional diagrams/review/architecture/board/sketch/trace artifacts".to_string());
         }
         let mut document = None;
         let mut map = None;
@@ -106,6 +108,7 @@ impl SelectedArtifacts {
         let mut architecture = None;
         let mut board = None;
         let mut sketch = None;
+        let mut trace = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -131,7 +134,7 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review" | "architecture" | "board" | "sketch"
+                "map" | "diagrams" | "review" | "architecture" | "board" | "sketch" | "trace"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
@@ -141,6 +144,7 @@ impl SelectedArtifacts {
                         "architecture" => samepage_architecture::descriptor(),
                         "board" => samepage_board::descriptor(),
                         "sketch" => samepage_sketch::descriptor(),
+                        "trace" => samepage_trace::descriptor(),
                         _ => samepage_diagrams::descriptor(),
                     })
                     .map_err(|error| error.to_string())?;
@@ -167,6 +171,7 @@ impl SelectedArtifacts {
                         "architecture" => architecture = Some(capability),
                         "board" => board = Some(capability),
                         "sketch" => sketch = Some(capability),
+                        "trace" => trace = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
@@ -181,6 +186,7 @@ impl SelectedArtifacts {
             architecture,
             board,
             sketch,
+            trace,
         })
     }
 }
@@ -621,6 +627,7 @@ fn map_actor(actor: &SurfaceActor) -> Result<Actor, String> {
 }
 
 impl SurfaceState for SamePageState {
+    fn activity_dropped(&self) -> u64 { samepage_capability::activity::dropped() }
     fn backing(&self) -> StateBacking {
         StateBacking::Crdt
     }
@@ -715,6 +722,8 @@ impl SamePageSurface {
             SamePageState::open(path, transport)?
         };
         *state.board.lock().map_err(|_|"board binding lock poisoned")?=board.clone();
+        let trace_host = artifacts.trace.as_ref().map(|_| crate::host::trace::TraceHost::new());
+        samepage_capability::activity::install_sink(trace_host.clone().map(|h| h as Arc<dyn samepage_capability::activity::ActivitySink>));
         let mut declarations = samepage_map::descriptor().actions;
         if with_diagrams {
             declarations.extend(samepage_diagrams::descriptor().actions);
@@ -762,6 +771,15 @@ impl SamePageSurface {
                 action
             })
             .collect();
+        if let Some(trace_host) = trace_host {
+            for decl in samepage_trace::descriptor().actions {
+                let host = trace_host.clone(); let name = decl.name.clone();
+                tools.push(ActionDef::new(decl.name, decl.description, decl.input_schema, move |args| {
+                    let args = args.clone(); let host = host.clone(); let name = name.clone();
+                    SurfaceEffect::Query(Box::new(move |_| host.invoke(&name, args)))
+                }));
+            }
+        }
         let observe_state = state.clone();
         let mut observe = ActionDef::new(
             "page_observe",
@@ -938,6 +956,12 @@ impl Surface for SamePageSurface {
             let mut module = ClientModule::lazy("sketch", samepage_sketch::VERSION, artifact.entry.url.clone(), "sketch")
                 .verified_artifact(artifact.clone()).optional().capability("samepage.sketch");
             for action in samepage_sketch::descriptor().actions { module = module.action(action.name); }
+            modules.push(module);
+        }
+        if let Some(artifact) = &self.artifacts.trace {
+            let mut module = ClientModule::lazy("trace",samepage_trace::VERSION,artifact.entry.url.clone(),"trace")
+                .verified_artifact(artifact.clone()).optional().capability("samepage.trace");
+            for action in samepage_trace::descriptor().actions { module = module.action(action.name); }
             modules.push(module);
         }
         modules
