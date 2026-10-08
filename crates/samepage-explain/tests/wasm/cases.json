@@ -1,0 +1,3015 @@
+{
+  "view": {
+    "revision": "fixture-r1",
+    "records": [
+      {
+        "id": "card-a",
+        "kind": "node",
+        "props": {
+          "label": "card-a",
+          "x": 30,
+          "y": 40,
+          "w": 232,
+          "tone": "slate",
+          "status": "open"
+        }
+      },
+      {
+        "id": "card-b",
+        "kind": "node",
+        "props": {
+          "label": "card-b",
+          "x": 430,
+          "y": 40,
+          "w": 232,
+          "tone": "slate",
+          "status": "open"
+        }
+      },
+      {
+        "id": "connector",
+        "kind": "shape",
+        "props": {
+          "form": "arrow",
+          "from": "card-a",
+          "to": "card-b",
+          "points": "0,0 100,0",
+          "x": 262,
+          "y": 90,
+          "w": 100,
+          "h": 0
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "export": "descriptor"
+    },
+    {
+      "export": "project"
+    },
+    {
+      "export": "digest"
+    },
+    {
+      "export": "legend"
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "digest",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "card-a",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "reveal",
+                    "target_id": "card-a"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "done",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "card-a",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "reveal",
+                    "target_id": "card-a"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "done",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_advance",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "transition_id": "go",
+          "response": "yes",
+          "selected_target_ids": [
+            "card-a"
+          ]
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_control",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "command": "pause"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_control",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "command": "resume"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_control",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "command": "restart"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_control",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "command": "stop"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_control",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "command": "bad"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_control",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 2,
+          "command": "resume"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"paused\", \"revision\": 2, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_advance",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 9,
+          "transition_id": "go"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_advance",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "transition_id": "bad"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_advance",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "transition_id": "go",
+          "selected_target_ids": [
+            "card-b"
+          ]
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_advance",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "transition_id": "go",
+          "selected_target_ids": [
+            "missing"
+          ]
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_advance",
+        "args": {
+          "flow_id": "tour",
+          "expected_revision": 1,
+          "transition_id": "go",
+          "response": 4
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_read",
+        "args": {}
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_read",
+        "args": {
+          "flow_id": "tour"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_read",
+        "args": {
+          "flow_id": "missing"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_draw",
+        "args": {
+          "flow_id": "tour",
+          "shapes": [
+            {
+              "form": "rect"
+            }
+          ],
+          "nodes": [
+            {
+              "label": "thought"
+            }
+          ]
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [\"card-b\"], \"scene_ids\": [\"card-a\", \"connector\"], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_draw",
+        "args": {
+          "flow_id": "tour",
+          "nodes": [
+            {
+              "id": "card-b",
+              "label": "outside"
+            }
+          ]
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [\"card-b\"], \"scene_ids\": [\"card-a\", \"connector\"], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_draw",
+        "args": {
+          "flow_id": "tour",
+          "shapes": [
+            {
+              "form": "rect"
+            },
+            {
+              "form": "nonsense"
+            }
+          ]
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [\"card-b\"], \"scene_ids\": [\"card-a\", \"connector\"], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_draw",
+        "args": {
+          "flow_id": "tour"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "card-a",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "reveal",
+                    "target_id": "card-a"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "done",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "transitions": [
+                    {
+                      "id": "again",
+                      "label": "Again",
+                      "next": "start"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "missing",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "reveal",
+                    "target_id": "card-a"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "done",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "card-a",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "reveal",
+                    "target_id": "card-a"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "start",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "card-a",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "card-a"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "done",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "card-a",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "replay-motion",
+                    "target_id": "card-a"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "done",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "card-a",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "reveal",
+                    "target_id": "card-a",
+                    "cue_span": [
+                      0,
+                      900
+                    ]
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "done",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_define",
+        "args": {
+          "flow": {
+            "schema": "atlas-explanation-flow-v1",
+            "id": "tour",
+            "title": "Walkthrough",
+            "goal": "Explain the shared page",
+            "start": "start",
+            "about": [],
+            "scene_ids": [],
+            "beats": [
+              {
+                "id": "start",
+                "title": "Start",
+                "intent": "Observe",
+                "cue": "Observe the card",
+                "evidence": [
+                  {
+                    "target_id": "card-a",
+                    "detail": "Visible card"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "reveal",
+                    "target_id": "card-a"
+                  }
+                ],
+                "advance": {
+                  "mode": "continue",
+                  "prompt": "Continue",
+                  "transitions": [
+                    {
+                      "id": "go",
+                      "label": "Continue",
+                      "control": "button",
+                      "next": "done",
+                      "target_ids": [
+                        "card-a"
+                      ],
+                      "phrases": [
+                        "yes"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "done",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              },
+              {
+                "id": "unreachable",
+                "title": "Done",
+                "intent": "Trace",
+                "cue": "Trace the connector",
+                "evidence": [
+                  {
+                    "target_id": "connector",
+                    "detail": "Visible link"
+                  }
+                ],
+                "actions": [
+                  {
+                    "kind": "trace-path",
+                    "target_id": "connector"
+                  }
+                ],
+                "advance": {
+                  "mode": "terminal",
+                  "prompt": "",
+                  "transitions": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "flow-1"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "flow-1"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [\"card-b\"], \"scene_ids\": [\"card-a\", \"connector\"], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "flow-1"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [],
+        "modified": {},
+        "deleted": [
+          "card-a"
+        ],
+        "rekinded": []
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "cascade",
+      "deleted": [
+        "card-a"
+      ]
+    },
+    {
+      "export": "changes",
+      "before": {},
+      "after": {
+        "flows": [
+          {
+            "object_id": "flow-1",
+            "definition": {
+              "schema": "atlas-explanation-flow-v1",
+              "id": "tour",
+              "title": "Walkthrough",
+              "goal": "Explain the shared page",
+              "start": "start",
+              "about": [],
+              "scene_ids": [],
+              "beats": [
+                {
+                  "id": "start",
+                  "title": "Start",
+                  "intent": "Observe",
+                  "cue": "Observe the card",
+                  "evidence": [
+                    {
+                      "target_id": "card-a",
+                      "detail": "Visible card"
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "kind": "reveal",
+                      "target_id": "card-a"
+                    }
+                  ],
+                  "advance": {
+                    "mode": "continue",
+                    "prompt": "Continue",
+                    "transitions": [
+                      {
+                        "id": "go",
+                        "label": "Continue",
+                        "control": "button",
+                        "next": "done",
+                        "target_ids": [
+                          "card-a"
+                        ],
+                        "phrases": [
+                          "yes"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "done",
+                  "title": "Done",
+                  "intent": "Trace",
+                  "cue": "Trace the connector",
+                  "evidence": [
+                    {
+                      "target_id": "connector",
+                      "detail": "Visible link"
+                    }
+                  ],
+                  "actions": [
+                    {
+                      "kind": "trace-path",
+                      "target_id": "connector"
+                    }
+                  ],
+                  "advance": {
+                    "mode": "terminal",
+                    "prompt": "",
+                    "transitions": []
+                  }
+                }
+              ]
+            },
+            "state": {
+              "current_beat": "start",
+              "status": "active",
+              "revision": 1,
+              "entered_revision": 1,
+              "last_transition": "",
+              "last_response": "",
+              "last_selected_target_ids": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "no_such_action",
+        "args": {}
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": "{broken"
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "walkthrough_read",
+        "args": {
+          "extra": true
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "card-a",
+            "kind": "node",
+            "props": {
+              "label": "card-a",
+              "x": 30,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "card-b",
+            "kind": "node",
+            "props": {
+              "label": "card-b",
+              "x": 430,
+              "y": 40,
+              "w": 232,
+              "tone": "slate",
+              "status": "open"
+            }
+          },
+          {
+            "id": "connector",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "card-a",
+              "to": "card-b",
+              "points": "0,0 100,0",
+              "x": 262,
+              "y": 90,
+              "w": 100,
+              "h": 0
+            }
+          },
+          {
+            "id": "flow-1",
+            "kind": "explanation-flow",
+            "props": {
+              "definition": "{\"schema\": \"atlas-explanation-flow-v1\", \"id\": \"tour\", \"title\": \"Walkthrough\", \"goal\": \"Explain the shared page\", \"start\": \"start\", \"about\": [], \"scene_ids\": [], \"beats\": [{\"id\": \"start\", \"title\": \"Start\", \"intent\": \"Observe\", \"cue\": \"Observe the card\", \"evidence\": [{\"target_id\": \"card-a\", \"detail\": \"Visible card\"}], \"actions\": [{\"kind\": \"reveal\", \"target_id\": \"card-a\"}], \"advance\": {\"mode\": \"continue\", \"prompt\": \"Continue\", \"transitions\": [{\"id\": \"go\", \"label\": \"Continue\", \"control\": \"button\", \"next\": \"done\", \"target_ids\": [\"card-a\"], \"phrases\": [\"yes\"]}]}}, {\"id\": \"done\", \"title\": \"Done\", \"intent\": \"Trace\", \"cue\": \"Trace the connector\", \"evidence\": [{\"target_id\": \"connector\", \"detail\": \"Visible link\"}], \"actions\": [{\"kind\": \"trace-path\", \"target_id\": \"connector\"}], \"advance\": {\"mode\": \"terminal\", \"prompt\": \"\", \"transitions\": []}}]}",
+              "state": "{\"current_beat\": \"start\", \"status\": \"active\", \"revision\": 1, \"entered_revision\": 1, \"last_transition\": \"\", \"last_response\": \"\", \"last_selected_target_ids\": []}",
+              "created_by": "Agent",
+              "touched_by": "Agent"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
