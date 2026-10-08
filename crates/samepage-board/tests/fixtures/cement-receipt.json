@@ -1,0 +1,56 @@
+{
+  "assertions": [
+    {
+      "assertion": {
+        "id": "runtime-boundary",
+        "kind": "claim",
+        "status": "settled",
+        "text": "Cementing remains example-local and does not couple the runtime kernel to Govern."
+      },
+      "author": {
+        "at": "2026-07-31T11:00:00Z",
+        "board_revision": 1,
+        "byline": "reviewer"
+      },
+      "id": "runtime-boundary",
+      "kind": "claim",
+      "signed_off": {
+        "at": "2026-07-31T11:05:00Z",
+        "board_revision": 2,
+        "by": "you",
+        "mark": "agree",
+        "note": "keep the boundary"
+      }
+    },
+    {
+      "assertion": {
+        "id": "advisory-draft",
+        "kind": "claim",
+        "status": "settled",
+        "text": "Cemented obligations begin as advisory prose-only drafts."
+      },
+      "author": {
+        "at": "2026-07-31T11:10:00Z",
+        "board_revision": 3,
+        "byline": "you"
+      },
+      "id": "advisory-draft",
+      "kind": "claim",
+      "signed_off": {
+        "at": "2026-07-31T11:11:00Z",
+        "board_revision": 4,
+        "by": "you",
+        "mark": "agree",
+        "note": null
+      }
+    }
+  ],
+  "atlas_document_revision": "AQIDBA",
+  "board": {
+    "revision": 4,
+    "subject": "Atlas cementing"
+  },
+  "cemented_at": "2026-07-31T12:00:00Z",
+  "kind": "same-page-atlas-cement-receipt",
+  "schema_version": 1
+}

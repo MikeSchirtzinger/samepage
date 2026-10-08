@@ -1,0 +1,61 @@
+//! The composed native wait; no wait logic goes into board.wasm.
+use super::board::BoardHost;
+use ag_ui_surface::{ActionDef, Effect};
+use samepage_capability::Call;
+use serde_json::json;
+use std::{sync::Arc, time::Duration};
+pub(crate) fn input_action(
+    state: Arc<crate::surface::SamePageState>,
+    board: Arc<BoardHost>,
+) -> ActionDef {
+    let decl = samepage_board::descriptor()
+        .actions
+        .into_iter()
+        .find(|a| a.name == "await_input")
+        .expect("input declaration");
+    ActionDef::new(decl.name, decl.description, decl.input_schema, move |args|{
+        let actor=match ag_ui_surface::current_actor(){Some(actor)=>actor,None=>return Effect::Reject("authenticated input caller is missing".into())};
+        let participant=actor.participant_id.unwrap_or_else(||"agent".into());
+        let seconds=args["seconds"].as_u64().unwrap_or(60);
+        let board=board.clone();let state=state.clone();
+        let starting_board=board.revision();
+        let attention=state.input.attention();
+        let starting_attention=attention.as_ref().map(|s|s.human_attention_revision()).unwrap_or(0);
+        Effect::AsyncQuery(Box::pin(async move {
+            let deadline=tokio::time::Instant::now()+Duration::from_secs(seconds);
+            loop {
+                let board_woken=board.changed().notified();let doc_woken=state.input.changed.notified();
+                tokio::pin!(board_woken,doc_woken);board_woken.as_mut().enable();doc_woken.as_mut().enable();
+                let attention_woken=async { match &attention {Some(a)=>a.changed().notified().await,None=>std::future::pending::<()>().await} };
+                // Pin/enrol the actual attention Notified before predicates too.
+                let attention_notification=attention.as_ref().map(|a|Box::pin(a.changed().notified()));
+                let mut attention_notification=attention_notification;
+                if let Some(n)=&mut attention_notification { n.as_mut().enable(); }
+                let generation=state.validation.generation();
+                let validation_woken=state.validation.wait_since(generation,seconds);
+                tokio::pin!(validation_woken);
+                let check_state=state.clone();let reader=participant.clone();
+                let read=tokio::task::spawn_blocking(move ||->Result<Option<String>,String>{
+                    let _operation=check_state.durable_operation()?;
+                    let view=check_state.host.view();let validation=check_state.validation.report(&view)?;
+                    if validation["status"]=="failed" { return Err(validation.to_string()); }
+                    let journal=check_state.host.journal();
+                    let since=check_state.input.seen(&reader);
+                    if journal.recent.iter().any(|e|e.seq>since && e.actor.participant!=reader) {
+                        use samepage_capability::Capability;
+                        let readback=samepage_map::Map.plan(&Call{action:"map_read".into(),args:json!({})},&view).map_err(|e|e.to_string())?.readback;
+                        check_state.input.acknowledge(&reader,journal.seq);return Ok(Some(readback));
+                    }
+                    Ok(None)
+                }).await.map_err(|e|format!("input worker failed: {e}"))??;
+                if board.revision()!=starting_board {return board.read(&participant);}
+                if let Some(read)=read {return Ok(read);}
+                if attention.as_ref().is_some_and(|s|s.human_attention_revision()!=starting_attention) {
+                    return Ok(attention.as_ref().unwrap().describe());
+                }
+                let attention_wait=async { match &mut attention_notification {Some(n)=>n.as_mut().await,None=>attention_woken.await} };
+                tokio::select!{_ = board_woken.as_mut()=>{},_ = doc_woken.as_mut()=>{},_ = attention_wait=>{},_ = validation_woken.as_mut()=>{},_ = tokio::time::sleep_until(deadline)=>return Ok(format!("Waited {seconds}s and no board, document, attention or chat input arrived. Call await_input again to keep waiting."))}
+            }
+        }))
+    }).agent_only().wake_on_chat()
+}
