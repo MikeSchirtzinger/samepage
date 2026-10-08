@@ -24,9 +24,11 @@ are potential dependency impact only when arrows mean depends on. Source
 freshness and runtime behavior require separate checks.
 
 The old decision-draft restored-peer ordering test uses schema-only test support;
-Cement owns those records and validation. Review's architecture slot remains
-null pending composition by the integration lane; Review does not depend upward
-on Architecture.
+Cement owns those records and validation. The app supplies the architecture
+comparison to Review's existing report slot when selected, through its declared
+Architecture dependency. Review's WASM does not depend upward on Architecture;
+its portable report continues to consume explicit facts. Omission leaves that
+slot null.
 
 Validate with `cargo test --locked -p samepage-architecture`, then
 `bash crates/samepage-architecture/tests/wasm/run-check.sh` for real export

@@ -41,3 +41,14 @@ To import a legacy Atlas base64 state file, use a **new** target path. The sourc
 ```sh
 "$CARGO_TARGET_DIR/debug/samepage" import-legacy /path/to/atlas.json /path/to/new-document.json
 ```
+
+## Optional architecture comparison
+
+Select `architecture=crates/samepage-architecture=apps/samepage/modules/architecture.js`
+in the build command to add relationship proposals. It depends on Map and loads
+on its first proposal record or Compare action. `architecture_read` reports the
+semantic graph revision, changes and potential upstream paths. Each
+`architecture_propose` retains a separate revision; `architecture_decide` records
+a human accept/reject verdict without applying it to the Map. Omission leaves
+Map, Diagrams and Review usable. When selected, Review includes the portable
+architecture comparison in its report. See [the contract](../../crates/samepage-architecture/README.md).

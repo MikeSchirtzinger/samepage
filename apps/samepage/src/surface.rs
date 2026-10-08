@@ -451,12 +451,13 @@ impl SamePageState {
             return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":invoked.commit.as_ref().map(|c|c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),"revision":self.host.revision(),"validation":validation}).to_string());
         }
         let report = if invoked.action == "review_read" {
-            Some(
-                self.review
-                    .as_ref()
-                    .ok_or("review is unavailable")?
-                    .read(&self.host.view(), &actor.participant)?,
-            )
+            let mut report = self.review.as_ref().ok_or("review is unavailable")?
+                .read(&self.host.view(), &actor.participant)?;
+            if self.host.composition().descriptor("architecture").is_some() {
+                report["architecture"] = samepage_architecture::inspect(&self.host.view())
+                    .map_err(|e| e.to_string())?;
+            }
+            Some(report)
         } else {
             None
         };
@@ -1558,3 +1559,7 @@ mod tests {
 #[cfg(test)]
 #[path = "review_tests.rs"]
 mod review_tests;
+
+#[cfg(test)]
+#[path = "architecture_tests.rs"]
+mod architecture_tests;
