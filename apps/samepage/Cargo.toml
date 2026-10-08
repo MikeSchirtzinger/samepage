@@ -23,6 +23,7 @@ serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sha2 = "0.10"
 samepage-sources = { path = "../../crates/samepage-sources", default-features = false }
+toml = "0.8"
 
 [lints]
 workspace = true

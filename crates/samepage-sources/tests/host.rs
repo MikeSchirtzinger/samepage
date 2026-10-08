@@ -159,6 +159,35 @@ fn viewer_browses_bounded_pages_and_preserves_exact_linked_excerpts() {
         2
     );
     assert!(repo.excerpt("large.rs", "601", "").is_err());
+    let revision = commit(&r);
+    std::fs::remove_file(r.join("large.rs")).unwrap();
+    let archive = repo.excerpt("large.rs", "", &revision).unwrap();
+    assert_eq!(
+        (archive.total_lines, archive.lines.as_str()),
+        (600, "1-400")
+    );
+    assert_eq!(
+        repo.excerpt("large.rs", "401-600", &revision)
+            .unwrap()
+            .text
+            .lines()
+            .count(),
+        200
+    );
+    std::fs::remove_dir_all(r).unwrap();
+}
+#[test]
+fn package_entry_points_are_real_readable_files() {
+    let r = root();
+    std::fs::write(
+        r.join("Cargo.toml"),
+        "[package]\nname = 'example'\nversion = '0.1.0'\n[lib]\npath = 'a.rs'\n",
+    )
+    .unwrap();
+    let repo = native::Repository::open(&r).unwrap();
+    assert_eq!(repo.entry_points("Cargo.toml").unwrap(), vec!["a.rs"]);
+    std::fs::write(r.join("Cargo.toml"), "[lib]\npath = '../escape.rs'\n").unwrap();
+    assert!(repo.entry_points("Cargo.toml").unwrap().is_empty());
     std::fs::remove_dir_all(r).unwrap();
 }
 #[test]
@@ -412,7 +441,7 @@ fn tier_precedence_is_proposed_gate_unreadable_drifted_verified() {
 fn commit(r: &std::path::Path) -> String {
     for args in [
         vec!["init", "--quiet"],
-        vec!["add", "a.rs"],
+        vec!["add", "."],
         vec![
             "-c",
             "user.name=Sources proof",

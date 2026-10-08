@@ -32,6 +32,7 @@ samepage-diagrams = { path = "../samepage-diagrams", default-features = false }
 samepage-doc = { path = "../samepage-doc" }
 samepage-review = { path = "../samepage-review", default-features = false }
 sha2 = "0.10"
+toml = "0.8"
 
 [lints]
 workspace = true

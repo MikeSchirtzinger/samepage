@@ -146,6 +146,37 @@ impl Repository {
             return self.read(path, if lines.is_empty() { "1" } else { lines });
         }
         samepage_sources::range(lines)?;
+        let text = self.archived(path, revision)?;
+        let (start, end) = lines.split_once('-').unwrap_or((lines, lines));
+        let start = start
+            .parse::<usize>()
+            .map_err(|_| CapError::new("source_invalid", "invalid range"))?;
+        let end = end
+            .parse::<usize>()
+            .map_err(|_| CapError::new("source_invalid", "invalid range"))?;
+        let selected: Vec<_> = text
+            .split_inclusive('\n')
+            .skip(start - 1)
+            .take(end - start + 1)
+            .collect();
+        if selected.len() != end - start + 1 {
+            return Err(CapError::new(
+                "source_invalid",
+                format!(
+                    "line range ends past the end at revision {revision}; the reference is stale"
+                ),
+            ));
+        }
+        let excerpt = selected.join("");
+        if excerpt.chars().count() > 24000 {
+            return Err(CapError::new(
+                "source_invalid",
+                "source excerpt exceeds 24000 characters",
+            ));
+        }
+        Ok(excerpt)
+    }
+    fn archived(&self, path: &str, revision: &str) -> Result<String, CapError> {
         if revision.len() != 40
             || !revision.bytes().all(|b| b.is_ascii_hexdigit())
             || path.starts_with('/')
@@ -260,34 +291,59 @@ impl Repository {
         if text.contains('\0') {
             return Err(CapError::new("source_invalid", "binary source"));
         }
-        let (start, end) = lines.split_once('-').unwrap_or((lines, lines));
-        let start = start
-            .parse::<usize>()
-            .map_err(|_| CapError::new("source_invalid", "invalid range"))?;
-        let end = end
-            .parse::<usize>()
-            .map_err(|_| CapError::new("source_invalid", "invalid range"))?;
-        let selected: Vec<_> = text
-            .split_inclusive('\n')
-            .skip(start - 1)
-            .take(end - start + 1)
-            .collect();
-        if selected.len() != end - start + 1 {
-            return Err(CapError::new(
-                "source_invalid",
-                format!(
-                    "line range ends past the end at revision {revision}; the reference is stale"
-                ),
-            ));
+        Ok(text.to_string())
+    }
+    pub fn entry_points(&self, path: &str) -> Result<Vec<String>, CapError> {
+        if Path::new(path).file_name().and_then(|v| v.to_str()) != Some("Cargo.toml") {
+            return Ok(vec![]);
         }
-        let excerpt = selected.join("");
-        if excerpt.chars().count() > 24000 {
-            return Err(CapError::new(
-                "source_invalid",
-                "source excerpt exceeds 24000 characters",
-            ));
+        let manifest: toml::Value =
+            self.excerpt(path, "", "")?.text.parse().map_err(|e| {
+                CapError::new("source_invalid", format!("could not parse {path}: {e}"))
+            })?;
+        let directory = Path::new(path).parent().unwrap_or(Path::new(""));
+        let mut candidates = vec![];
+        if let Some(lib) = manifest.get("lib") {
+            candidates.push(
+                lib.get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("src/lib.rs")
+                    .to_string(),
+            );
+        } else if manifest
+            .get("package")
+            .and_then(|v| v.get("autolib"))
+            .and_then(|v| v.as_bool())
+            != Some(false)
+        {
+            candidates.push("src/lib.rs".into());
         }
-        Ok(excerpt)
+        if manifest
+            .get("package")
+            .and_then(|v| v.get("autobins"))
+            .and_then(|v| v.as_bool())
+            != Some(false)
+        {
+            candidates.push("src/main.rs".into());
+        }
+        for bin in manifest
+            .get("bin")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+        {
+            if let Some(p) = bin.get("path").and_then(|v| v.as_str()) {
+                candidates.push(p.into());
+            }
+        }
+        let mut paths = vec![];
+        for c in candidates {
+            let p = directory.join(c).to_string_lossy().to_string();
+            if !paths.contains(&p) && self.read(&p, "1").is_ok() {
+                paths.push(p);
+            }
+        }
+        Ok(paths)
     }
     pub fn list(&self, relative: &str) -> Result<Value, CapError> {
         if !relative.is_empty()
@@ -367,7 +423,7 @@ impl Repository {
         let mut text = self.source(path, requested, revision)?;
         let (first_line, mut end) = samepage_sources::range(requested)?;
         let mut truncated = false;
-        let total_lines = if revision.is_empty() {
+        let body = if revision.is_empty() {
             let file = fs::File::open(self.root.join(path))
                 .map_err(|e| CapError::new("source_invalid", e.to_string()))?;
             let mut bytes = Vec::new();
@@ -380,32 +436,33 @@ impl Repository {
                     "source exceeds 2 MiB or is binary",
                 ));
             }
-            let body = std::str::from_utf8(&bytes)
-                .map_err(|_| CapError::new("source_invalid", "source is not UTF-8"))?;
-            let total = body.lines().count();
-            if lines.is_empty() {
-                end = total.min(400);
-                text = body.split_inclusive('\n').take(end).collect();
-                if text.chars().count() > 24000 {
-                    text = text.chars().take(24000).collect();
-                    if let Some(newline) = text.rfind('\n') {
-                        text.truncate(newline + 1);
-                    }
-                    end = text.lines().count();
-                    truncated = true;
-                }
-                truncated |= end < total;
-            }
-            total
+            String::from_utf8(bytes)
+                .map_err(|_| CapError::new("source_invalid", "source is not UTF-8"))?
         } else {
-            first_line + text.lines().count() - 1
+            self.archived(path, revision)?
         };
+        let total_lines = body.lines().count();
+        if lines.is_empty() {
+            end = total_lines.min(400);
+            text = body.split_inclusive('\n').take(end).collect();
+            if text.chars().count() > 24000 {
+                text = text.chars().take(24000).collect();
+                if let Some(newline) = text.rfind('\n') {
+                    text.truncate(newline + 1);
+                }
+                end = text.lines().count();
+                truncated = true;
+            }
+            truncated |= end < total_lines;
+        }
         let lines = if first_line == end {
             first_line.to_string()
         } else {
             format!("{first_line}-{end}")
         };
         Ok(Excerpt {
+            entry_points: vec![],
+            entry_points_error: None,
             path: path.into(),
             lines,
             first_line,
@@ -562,7 +619,13 @@ impl SourcesHost {
                     args["lines"].as_str().unwrap_or(""),
                     args["revision"].as_str().unwrap_or(""),
                 )
-                .and_then(|e| {
+                .and_then(|mut e| {
+                    if e.revision.is_empty() {
+                        match self.repo.entry_points(&e.path) {
+                            Ok(paths) => e.entry_points = paths,
+                            Err(error) => e.entry_points_error = Some(error.to_string()),
+                        }
+                    }
                     serde_json::to_value(e)
                         .map_err(|e| CapError::new("source_invalid", e.to_string()))
                 })

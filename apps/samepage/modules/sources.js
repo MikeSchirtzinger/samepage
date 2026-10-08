@@ -55,6 +55,10 @@ export function activate({wasm, application}) {
         const excerpt = await dispatch('source_read', b);
         if (own !== generation || !panel.open) return;
         const projection = envelope(wasm.viewer_readback(JSON.stringify(excerpt)));
+        for (const path of excerpt.entry_points || []) {
+          if ([...select.options].some(o => JSON.parse(o.value).path === path)) continue;
+          const option = el('option', `Entry point: ${path}`); option.value = JSON.stringify({path}); select.append(option); select.hidden = false;
+        }
         current = excerpt;
         location.textContent = `${projection.location} · ${excerpt.total_lines} lines`;
         context.textContent = excerpt.revision ? `Git revision ${excerpt.revision} · read from the host.` : 'Current working tree · read from the host. Viewing never edits the map.';
@@ -65,6 +69,7 @@ export function activate({wasm, application}) {
           row.append(el('span', String(line.number), 'source-line-number'), el('code', line.text)); pre.append(row);
         }
         notice.textContent = `${excerpt.truncated ? 'More lines available. ' : ''}Shown lines highlighted · read from the host just now.`;
+        if (excerpt.entry_points_error) notice.textContent += ` Entry points unavailable: ${excerpt.entry_points_error}`;
         previous.disabled = whole.disabled = excerpt.first_line <= 1;
         next.disabled = excerpt.first_line + projection.lines.length - 1 >= excerpt.total_lines;
       } catch (e) { if (own === generation) { notice.textContent = `Could not read source: ${e.message}`; notice.classList.add('source-error'); } }

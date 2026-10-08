@@ -396,6 +396,10 @@ pub fn project(view: &View, facts: &Facts) -> Result<Value, CapError> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Excerpt {
+    #[serde(default)]
+    pub entry_points: Vec<String>,
+    #[serde(default)]
+    pub entry_points_error: Option<String>,
     pub path: String,
     pub lines: String,
     pub first_line: usize,

@@ -2879,6 +2879,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -2980,6 +2981,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "toml",
  "wasm-bindgen",
 ]
 
