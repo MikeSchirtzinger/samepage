@@ -1,0 +1,44 @@
+[package]
+name = "samepage-explain"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Revisioned walkthroughs and scoped exploration plans for SamePage."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# wasm-pack's bundled wasm-opt predates the bulk-memory ops rustc emits.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[features]
+default = ["wasm-export"]
+wasm-export = []
+
+[dependencies]
+samepage-capability = { path = "../samepage-capability" }
+samepage-map = { path = "../samepage-map", default-features = false }
+samepage-sketch = { path = "../samepage-sketch", default-features = false }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# The WebAssembly artifact exports the capability ABI; native builds do not
+# carry wasm-bindgen.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+samepage-capability = { path = "../samepage-capability", features = ["wasm-export"] }
+wasm-bindgen = { workspace = true }
+
+[dev-dependencies]
+samepage-diagrams = { path = "../samepage-diagrams", default-features = false }
+samepage-review = { path = "../samepage-review", default-features = false }
+sha2 = "0.10"
+samepage-doc = { path = "../samepage-doc" }
+yrs = { workspace = true }
+base64 = "0.22"
+
+[lints]
+workspace = true

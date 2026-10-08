@@ -146,3 +146,23 @@ body { margin: 0; }
 .cement-strip button, .cement-strip select { margin-left: 12px; }
 .cement-review pre, .cement-history pre { max-height: 340px; overflow: auto; white-space: pre-wrap; }
 .source-gate-reason { max-height: 90px; overflow: auto; font-size: 12px; }
+
+/* Explain: the shared cursor is highlighted; animation never writes geometry. */
+#explain { margin: 12px 0; padding: 16px 20px; border: 1px solid #39455b; border-radius: 8px; background: #151d2b; }
+.explain-header, .explain-controls, .explain-transitions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.explain-header h2 { margin: 0; font-size: 18px; }
+.explain-status { color: #b8c9e8; margin-left: auto; }
+.explain-steps { display: flex; gap: 24px; flex-wrap: wrap; padding-left: 24px; }
+.explain-steps li { padding: 6px 10px; border-radius: 4px; color: #9eabc2; }
+.explain-current { background: #28476c; color: #fff !important; font-weight: 650; }
+.explain-cue { max-width: 80ch; line-height: 1.55; }
+.explain-unsupported { border-left: 3px solid #fbbf24; padding: 8px 12px; color: #fbbf24; }
+.explain-evidence { padding-left: 20px; }
+.explain-evidence button { text-align: left; }
+.explain-response-form { display: flex; align-items: end; gap: 10px; margin-top: 12px; }
+.explain-response-form label { display: grid; gap: 6px; flex: 1; }
+.explain-response-form textarea { color: inherit; background: #0f1724; border: 1px solid #61728f; border-radius: 4px; padding: 8px; }
+.explain-selection, .explain-byline { color: #a4b2cb; }
+.explain-byline { display: block; margin-top: 12px; }
+.explain-target-active { outline: 3px solid #fbbf24; outline-offset: 4px; }
+.explain-path-trace { pointer-events: none; stroke: #fbbf24; stroke-width: 6; fill: none; }

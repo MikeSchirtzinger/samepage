@@ -10,3 +10,4 @@ pub mod panes_catalog;
 pub mod panes_html;
 pub mod sources;
 pub mod cement;
+pub mod explain;

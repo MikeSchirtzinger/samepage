@@ -25,6 +25,7 @@ members = [
   "crates/samepage-board",
   "crates/samepage-sketch",
   "crates/samepage-trace",
+  "crates/samepage-explain",
   "apps/samepage",
   "crates/samepage-sources",
   "crates/samepage-lanes",

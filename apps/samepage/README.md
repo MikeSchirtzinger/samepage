@@ -112,3 +112,12 @@ to the selected build, alongside Sources, Lanes and Review. Its native adapter
 requires real `g8` 0.1.4 from PATH and the selected Git project root. Agents draft
 and propose decisions; the person previews and publishes from the Cement strip.
 Current gates and their reasons refresh together on Sources cards without reload.
+
+## Optional walkthroughs
+
+Append `explain=crates/samepage-explain=apps/samepage/modules/explain.js` together
+with Sketch to the build selection. Explain loads on the first explanation
+record or walkthrough action. It provides shared steps, revisioned controls,
+point/reveal animations, connector tracing, button and response transitions,
+and scoped drawing. `walkthrough_read` exposes the same cursor to agents;
+`replay-motion` is visibly unsupported. See [the contract](../../crates/samepage-explain/README.md).

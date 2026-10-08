@@ -104,6 +104,7 @@ export function activate({ mount, wasm, application }) {
       const y2 = originY + Number(to.y || 0) + heightOf(to) / 2;
       const line = document.createElementNS(svg.namespaceURI, "line");
       line.classList.add("map-link");
+      line.dataset.id = link.id;
       for (const [key, value] of Object.entries({x1,y1,x2,y2})) line.setAttribute(key, String(value));
       svg.appendChild(line);
       if (link.label) {
