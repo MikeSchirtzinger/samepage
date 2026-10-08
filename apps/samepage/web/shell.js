@@ -286,6 +286,10 @@ try {
     return kernel;
   } });
   kernel.attachRuntime(runtime);
+  client.on("samepage.capability-used",async ({value})=>{
+    try {await kernel.activateForTool(value?.tool);}
+    catch(error){showError(`${value?.id || 'capability'} is unavailable: ${error.message}`);}
+  });
   client.on("samepage.persistence-error", ({value}) => kernel.setPersistenceFailure(value?.error || "save failed"));
   client.on("samepage.persistence-wait", ({value}) => kernel.setPersistencePending(value?.message || "save is still pending"));
   client.on("samepage.persistence-resolved", () => kernel.setPersistenceResolved());
@@ -360,6 +364,21 @@ try {
       await kernel.activateForRoute("activity");
       if (loaded) document.dispatchEvent(new CustomEvent("samepage:trace-open", {detail:{open}}));
     } catch(error) { traceHealth.textContent=`trace unavailable: ${error.message}`;showError(`trace unavailable: ${error.message}`); }
+  });
+  document.getElementById('open-panes').addEventListener('click',async()=>{
+    const mount=document.getElementById('panes');mount.hidden=false;
+    try {if(!kernel.hasCapability('panes'))throw new Error('panes is unavailable');await kernel.activateForRoute('panes');}
+    catch(error){mount.textContent=error.message.includes('panes')?error.message:`panes is unavailable: ${error.message}`;showError(mount.textContent);}
+  });
+  document.getElementById('person-display-name').value=person.name || '';
+  document.getElementById('person-name').addEventListener('submit',async event=>{
+    event.preventDefault();
+    try {
+      const response=await fetch('/surface/me',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:document.getElementById('person-display-name').value.trim()})});
+      if(!response.ok)throw new Error(`identity update refused (${response.status})`);
+      rememberMe(await response.json());
+      location.reload();
+    }catch(error){showError(error.message);}
   });
   // Exposes observations without a second document or mutation channel.
   globalThis.samepageReadback = () => kernel.diagnostics();

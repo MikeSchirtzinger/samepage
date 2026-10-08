@@ -4,3 +4,6 @@ pub mod board;
 pub mod board_input;
 pub mod sketch;
 pub mod trace;
+pub mod panes;
+pub mod panes_catalog;
+pub mod panes_html;

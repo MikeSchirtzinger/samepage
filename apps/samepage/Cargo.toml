@@ -27,6 +27,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sha2 = "0.10"
 
 samepage-trace = { path = "../../crates/samepage-trace" }
+samepage-panes = { path = "../../crates/samepage-panes", default-features = false }
+parking_lot = { workspace = true }
 
 [lints]
 workspace = true

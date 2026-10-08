@@ -83,3 +83,12 @@ are process-local and start empty after restart/reload. Without the selection
 there is no ring or activity file, activity routes return 404, and the toolbar
 shows how many events were not recorded. Document history and authorship remain
 active in both compositions.
+
+## Optional Panes
+
+Add `panes=crates/samepage-panes=apps/samepage/modules/panes.js` to the selected
+build to load the retained shared pane renderer on first use. Panes uses the
+same document as Map and requires no Map capability dependency. Human drag,
+resize, raise, marks and notes preserve separate host bylines; agents place
+panes by relation and named size. See [the Panes contract](../../crates/samepage-panes/README.md)
+for preferred actions, aliases, source policy, legacy import and verification.
