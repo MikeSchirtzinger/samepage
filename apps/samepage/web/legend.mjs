@@ -13,7 +13,9 @@ export function createLegend({mount, read, decode}) {
   let queued=false;
   const schedule=()=>{if(!queued){queued=true;requestAnimationFrame(()=>{queued=false;render();});}};
   const observer=new MutationObserver(schedule);
-  observer.observe(document.querySelector('main'),{subtree:true,childList:true,attributes:true,characterData:true});
+  // Comparison dialogs and the activity drawer can live outside main. Shadow
+  // DOM keeps our own swatch refreshes outside this observer's subtree.
+  observer.observe(document.body,{subtree:true,childList:true,attributes:true,characterData:true});
   observer.observe(document.head,{subtree:true,childList:true});
   all.addEventListener('change',schedule);
   document.addEventListener('agui:extension-loaded',schedule);

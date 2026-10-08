@@ -153,3 +153,14 @@ its own surface.
 For a new full-composition project, initialize its G8 space before scanning
 Lanes or publishing decisions: run `g8 init --no-claude-import --no-subagents`
 from the project directory. The recipe does not author project obligations.
+
+With a real Chromium page already exercised over CDP, audit the legend against
+the live elements (including SVG child paint) without changing the surface:
+
+```bash
+node apps/samepage/proofs/legend.mjs http://127.0.0.1:9481 .local/legend/audit.json
+```
+
+The JSON records each key, its page source, paint pairs, loaded sections and
+resource URLs. This check covers the current view; use pointer and keyboard
+input to expose other states and capture side-by-side screenshots separately.
