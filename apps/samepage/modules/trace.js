@@ -10,7 +10,7 @@ export function wasmSpans(snapshot) {
     name: r.name, start: origin !== null && Number.isFinite(r.started_monotonic_ms)
       ? origin + r.started_monotonic_ms : opens.get(r.span_id)?.at_ms ?? r.at_ms - r.duration_ms,
     duration: r.duration_ms, fields: r.fields, trace: r.trace_id,
-    partial: !opens.has(r.span_id), source: "Browser WASM",
+    partial: !opens.has(r.span_id), capability:r.capability, source: `Browser WASM · ${r.capability}`,
   }));
 }
 
@@ -77,7 +77,7 @@ function installActivityDrawer(client, wasm) {
   const clear = el("button", null, "Clear spans"); clear.id="trace-clear"; clear.type="button";
   clear.addEventListener("click",()=>{wasm.trace_operation(JSON.stringify({operation:"clear"}));lastSignature="";void refreshData();});
   const benchmark = el("button",null,"Benchmark"); benchmark.id="trace-benchmark"; benchmark.type="button";
-  benchmark.addEventListener("click",()=>{const result=JSON.parse(wasm.trace_operation(JSON.stringify({operation:"benchmark",iterations:100,samples:3})));lastSignature="";void refreshData();status.textContent=result.error?result.error.message:`Benchmark: ${result.ok.overhead_us_per_iteration.toFixed(2)} µs / iteration`;});
+  benchmark.addEventListener("click",()=>{const result=JSON.parse(wasm.trace_operation(JSON.stringify({operation:"benchmark",iterations:100,samples:3})));lastSignature="";void refreshData();benchmarkResult.textContent=result.error?result.error.message:`Benchmark: ${result.ok.overhead_us_per_iteration.toFixed(2)} µs / iteration`;});
   controls.append(clear,benchmark);
   const pause = el("button", null, "Pause view");
   const refresh = el("button", null, "Refresh");
@@ -103,11 +103,12 @@ function installActivityDrawer(client, wasm) {
   const body = el("div", "activity-body");
   body.id = "activity-body";
   body.setAttribute("role", "tabpanel");
-  drawer.append(header, tabs, body);
+  const benchmarkResult=el("p","activity-note");benchmarkResult.id="trace-benchmark-result";
+  drawer.append(header, benchmarkResult, tabs, body);
   document.body.append(drawer);
   let active = "wasm", snapshot = null, browser = null, paused = false, request = null;
   let lastSignature = "", error = null, selectedSpan = null;
-  let selectedTrace = "latest", visibleEventCount = 40;
+  let selectedTrace = "all", visibleEventCount = 40;
   const expandedEvents = new Set();
   const names = { journal: "Timeline", host: "Action flame graph", wasm: "WASM flame graph", coverage: "Coverage" };
   const buttons = Object.entries(names).map(([id, text]) => {
@@ -116,7 +117,7 @@ function installActivityDrawer(client, wasm) {
     button.id = `activity-tab-${id}`;
     button.setAttribute("role", "tab");
     button.setAttribute("aria-controls", "activity-body");
-    button.addEventListener("click", () => { active = id; lastSignature = ""; selectedSpan = null; selectedTrace = "latest"; visibleEventCount = 40; render(); });
+    button.addEventListener("click", () => { active = id; lastSignature = ""; selectedSpan = null; selectedTrace = id === "wasm" ? "all" : "latest"; visibleEventCount = 40; render(); });
     tablist.append(button);
     return button;
   });
@@ -203,18 +204,19 @@ function installActivityDrawer(client, wasm) {
       const spans = recorded.filter(s => matchingTraces.has(s.trace));
       const roots = spans.filter(s => !s.parent);
       const defaultRoot = isWasm ? roots.findLast(s => s.name === "doc.render") || roots.at(-1) : roots.at(-1);
-      const chosen = selectedTrace === "latest" ? defaultRoot : roots.find(s => s.id === selectedTrace);
-      const visible = isWasm ? spans : chosen ? spans.filter(s => s.trace === chosen.trace) : [];
+      const chosen = selectedTrace === "latest" || selectedTrace === "all" ? defaultRoot : roots.find(s => s.id === selectedTrace);
+      const visible = isWasm && selectedTrace === "all" ? spans : chosen ? spans.filter(s => s.trace === chosen.trace) : [];
       if (roots.length) {
         const chooser = el("select", "activity-trace-choice");
         chooser.setAttribute("aria-label", "Choose a recorded trace");
+        if (isWasm) {const all=el("option",null,"All retained capabilities");all.value="all";chooser.append(all);}
         const latest = el("option", null, isWasm ? (defaultRoot?.name === "doc.render" ? "Follow latest render" : "Follow latest retained trace") : "Follow latest action");
         latest.value = "latest"; chooser.append(latest);
         for (const root of [...roots].reverse()) {
           const option = el("option", null, `${root.name} · ${duration(root.duration)} · ${new Date(root.start).toLocaleTimeString()}`);
           option.value = root.id; chooser.append(option);
         }
-        if (selectedTrace !== "latest" && !chosen) {
+        if (selectedTrace !== "latest" && selectedTrace !== "all" && !chosen) {
           const gone = el("option", null, "Selected trace is no longer retained"); gone.value = selectedTrace; chooser.append(gone);
         }
         chooser.value = selectedTrace;
@@ -240,7 +242,7 @@ function installActivityDrawer(client, wasm) {
       else {
         const layout = layoutSpans(visible);
         const traceHeading = el("div", "activity-trace-heading");
-        traceHeading.append(el("strong", null, isWasm ? "Spans from every loaded capability" : chosen.name), el("span", null, [chosen.fields?.actor, chosen.fields?.outcome, duration(chosen.duration)].filter(Boolean).join(" · ")));
+        traceHeading.append(el("strong", null, isWasm && selectedTrace === "all" ? "Spans from every loaded capability" : chosen.name), el("span", null, [chosen.fields?.actor, chosen.fields?.outcome, duration(chosen.duration)].filter(Boolean).join(" · ")));
         body.append(traceHeading);
         const axis = el("p", "activity-note", `${new Date(layout.start).toLocaleTimeString()} · ${duration(layout.duration)} elapsed · ${visible.length} spans`);
         const chart = el("div", "flame-chart");
@@ -279,7 +281,7 @@ function installActivityDrawer(client, wasm) {
         const spanList = el("details", "flame-span-list");
         spanList.append(el("summary", null, `All ${layout.spans.length} measured spans`));
         for (const span of layout.spans) {
-          const row = el("button", null, `${span.parent ? "↳ " : ""}${span.name} · ${duration(span.duration)}`);
+          const row = el("button", null, `${span.parent ? "↳ " : ""}${span.name} · ${duration(span.duration)} · ${span.id}${span.parent ? ` ← ${span.parent}` : ""}`);
           row.type = "button";
           row.addEventListener("click", () => {
             showSpan(span);
@@ -310,7 +312,6 @@ function installActivityDrawer(client, wasm) {
     if (open) { void refreshData(); buttons[Object.keys(names).indexOf(active)].focus(); }
     else toggle.focus();
   };
-  toggle.addEventListener("click", () => setOpen(drawer.hidden));
   close.addEventListener("click", () => setOpen(false));
   drawer.addEventListener("keydown", event => { if (event.key === "Escape") { event.stopPropagation(); setOpen(false); } });
   pause.addEventListener("click", () => { paused = !paused; pause.textContent = paused ? "Resume view" : "Pause view"; pause.setAttribute("aria-pressed", String(paused)); if (!paused) void refreshData(); else render(); });
@@ -326,7 +327,7 @@ function installActivityDrawer(client, wasm) {
   client.on("surface.activity", () => { if (!drawer.hidden && !paused) void refreshData(); });
   // Poll only while the drawer is open. The host journal also catches external MCP activity.
   setInterval(() => { if (!drawer.hidden && !paused && !document.hidden) void refreshData(); }, 2000);
-  document.addEventListener("samepage:trace-open",()=>setOpen(true));
+  document.addEventListener("samepage:trace-open",event=>setOpen(event.detail?.open ?? true));
   setOpen(true);
 
 }
@@ -355,5 +356,5 @@ export function activate({wasm, application, client}) {
 }
 const STYLE=`
 .activity-drawer {position:fixed;inset:120px 18px 20px;z-index:30;background:#f7f9fc;color:#253044;border:1px solid #8291a8;border-radius:12px;box-shadow:0 12px 60px #17233855;display:flex;flex-direction:column;padding:18px;}
-.activity-drawer[hidden]{display:none}.activity-header{display:flex;flex-wrap:wrap;align-items:center;gap:16px}.activity-header h2{margin:0}.activity-controls{display:flex;gap:8px}.activity-controls button{padding:8px}.activity-status{flex:1}.activity-tabs{display:flex;gap:12px;padding:16px 0}.activity-body{overflow:auto;flex:1}.activity-note{color:#59647b}.flame-chart{height:var(--chart-height);position:relative;background:#e4ebf4;min-height:80px}.flame-span{position:absolute;left:var(--span-left);width:var(--span-width);top:var(--span-top);height:28px;background:#c2ddf8;border:1px solid #729eca;text-align:left;white-space:nowrap;overflow:hidden;font-size:12px}.flame-detail{padding:16px;background:white}.flame-span-list button{display:block;margin:6px}.activity-event{display:flex;gap:12px;flex-wrap:wrap;padding:10px;border-bottom:1px solid #ccd6e4}.activity-event details{flex-basis:100%}.activity-body pre{white-space:pre-wrap;overflow-wrap:anywhere}.activity-coverage{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.activity-drawer[hidden]{display:none}.activity-header{display:flex;flex-wrap:wrap;align-items:center;gap:16px}.activity-header h2{margin:0}.activity-controls{display:flex;gap:8px}.activity-controls button{padding:8px}.activity-status{flex:1}.activity-tabs{display:flex;gap:12px;padding:16px 0}.activity-body{overflow:auto;flex:1}.activity-note{color:#59647b}.flame-chart{height:var(--chart-height);position:relative;background:#e4ebf4;min-height:80px}.flame-span{position:absolute;left:var(--span-left);width:var(--span-width);top:var(--span-top);height:28px;background:#c2ddf8;border:1px solid #729eca;text-align:left;white-space:nowrap;overflow:hidden;font-size:12px}.activity-trace-heading{display:flex;gap:16px;align-items:center}.flame-detail{padding:16px;background:white}.flame-span-list button{display:block;margin:6px}.activity-event{display:flex;gap:12px;flex-wrap:wrap;padding:10px;border-bottom:1px solid #ccd6e4}.activity-event details{flex-basis:100%}.activity-body pre{white-space:pre-wrap;overflow-wrap:anywhere}.activity-coverage{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
 `;

@@ -315,6 +315,9 @@ pub trait SurfaceState: Send + Sync + 'static {
 
     /// Runtime-installed host activity service. Application state returns
     /// `None`; the wrapper installed by [`App::serve`] supplies the feed.
+    /// Unrecorded diagnostic spans, without retaining any trace state.
+    fn activity_dropped(&self) -> u64 { 0 }
+
     fn activity_feed(&self) -> Option<&ActivityFeed> {
         None
     }
@@ -3533,7 +3536,7 @@ async fn extensions_handler(State(st): State<RouterState>) -> Json<ExtensionMani
 async fn extensions_with_activity_handler(State(st): State<RouterState>) -> Json<JsonValue> {
     let Json(manifest) = extensions_handler(State(st.clone())).await;
     let mut manifest = serde_json::to_value(manifest).expect("extension manifest serializes");
-    manifest["activity"] = serde_json::json!({"enabled":st.rt.activity.is_enabled(), "dropped":st.rt.activity.dropped()});
+    manifest["activity"] = serde_json::json!({"enabled":st.rt.activity.is_enabled(), "dropped":st.rt.activity.dropped().saturating_add(st.surface.state().activity_dropped())});
     Json(manifest)
 }
 

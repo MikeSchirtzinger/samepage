@@ -50,3 +50,34 @@ impl ActivitySink for TraceHost {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn native_trace_read_clear_and_benchmark_share_the_portable_ring() {
+        let host = TraceHost::new();
+        let empty: Value =
+            serde_json::from_str(&host.invoke("trace_read", json!({})).unwrap()).unwrap();
+        assert_eq!(empty["ok"]["records"], json!([]));
+        assert!(host
+            .invoke("trace_benchmark", json!({"iterations":0,"samples":1}))
+            .is_err());
+        let result: Value = serde_json::from_str(
+            &host
+                .invoke("trace_benchmark", json!({"iterations":2,"samples":1}))
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(result["ok"]["iterations"], 2);
+        let snapshot: Value =
+            serde_json::from_str(&host.invoke("trace_read", json!({})).unwrap()).unwrap();
+        assert_eq!(snapshot["ok"]["emitted"], 8);
+        assert!(!snapshot
+            .to_string()
+            .contains("trace-secret-negative-control"));
+        let cleared: Value =
+            serde_json::from_str(&host.invoke("trace_clear", json!({})).unwrap()).unwrap();
+        assert_eq!(cleared["ok"]["records"], json!([]));
+    }
+}

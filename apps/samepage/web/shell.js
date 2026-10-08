@@ -64,7 +64,7 @@ function createKernel({ documentModule, manifest }) {
       const box = card.getBoundingClientRect();
       return [card.dataset.id, [box.left-stageBox.left-x, box.top-stageBox.top-y, box.right-stageBox.left-x, box.bottom-stageBox.top-y]];
     }));
-    const unavailable = (runtime?.errors || []).map(entry => ({code:'capability_unavailable', message:`${entry.id}: ${entry.error?.message || entry.status}`}));
+    const unavailable = (runtime?.errors || []).filter(entry => entry.id !== "trace").map(entry => ({code:'capability_unavailable', message:`${entry.id}: ${entry.error?.message || entry.status}`}));
     const report = {stream:observationStream, revision:renderedRevision, bounds, errors:[...renderErrors, ...unavailable].slice(-32)};
     const signature = JSON.stringify(report);
     if (signature === lastObservation && Date.now() - lastObservedAt < 5000) return;
@@ -314,10 +314,22 @@ try {
   void updateTraceHealth(); setInterval(()=>void updateTraceHealth(),2000);
   document.getElementById("activity-toggle")?.addEventListener("click", async () => {
     try {
-      if (!kernel.hasCapability("trace")) { await updateTraceHealth(); return; }
+      if (!kernel.hasCapability("trace")) {
+        await updateTraceHealth();
+        let unavailable=document.getElementById("trace-unavailable");
+        if (!unavailable) {
+          unavailable=document.createElement("section");unavailable.id="trace-unavailable";
+          unavailable.setAttribute("role","status");
+          unavailable.style.cssText="padding:18px;margin:18px;border:1px solid #728ca0;border-radius:8px";
+          document.getElementById("trace").append(unavailable);
+        }
+        unavailable.textContent=traceHealth.textContent+". Activity recording was not selected.";
+        return;
+      }
       const loaded = document.getElementById("activity-drawer");
+      const open = loaded?.hidden ?? true;
       await kernel.activateForRoute("activity");
-      if (loaded) document.dispatchEvent(new CustomEvent("samepage:trace-open"));
+      if (loaded) document.dispatchEvent(new CustomEvent("samepage:trace-open", {detail:{open}}));
     } catch(error) { traceHealth.textContent=`trace unavailable: ${error.message}`;showError(`trace unavailable: ${error.message}`); }
   });
   // Exposes observations without a second document or mutation channel.

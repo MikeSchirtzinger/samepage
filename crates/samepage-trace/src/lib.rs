@@ -92,6 +92,8 @@ impl Ring {
         ) || event.capability.is_empty()
             || event.capability.len() > 64
             || event.name.len() > 256
+            || event.target.len() > 256
+            || event.level.len() > 16
             || event.span_id.len() > 128
             || event.trace_id.len() > 128
             || event
@@ -174,6 +176,8 @@ impl Ring {
                     trace_id: id.clone(),
                     parent_span_id: None,
                     name: "trace.probe".into(),
+                    target: "samepage::trace".into(),
+                    level: "INFO".into(),
                     at_ms: f64::from(i),
                     started_monotonic_ms: Some(f64::from(i)),
                     duration_ms: None,

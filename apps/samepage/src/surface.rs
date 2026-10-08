@@ -583,6 +583,7 @@ fn map_actor(actor: &SurfaceActor) -> Result<Actor, String> {
 }
 
 impl SurfaceState for SamePageState {
+    fn activity_dropped(&self) -> u64 { samepage_capability::activity::dropped() }
     fn backing(&self) -> StateBacking {
         StateBacking::Crdt
     }

@@ -12,6 +12,10 @@ pub struct ActivityRecord {
     pub trace_id: String,
     pub parent_span_id: Option<String>,
     pub name: String,
+    #[serde(default)]
+    pub target: String,
+    #[serde(default)]
+    pub level: String,
     pub at_ms: f64,
     pub started_monotonic_ms: Option<f64>,
     pub duration_ms: Option<f64>,
@@ -89,6 +93,19 @@ pub fn now() -> f64 {
             * 1000.0
     }
 }
+fn wall_time() -> f64 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now()
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0.0, |d| d.as_secs_f64() * 1000.0)
+    }
+}
+
 /// A span never records inputs, credentials, source text or action arguments.
 /// Identity includes the artifact namespace, since WASM binaries have separate counters.
 pub struct Span {
@@ -116,7 +133,9 @@ impl Span {
             trace_id: trace,
             parent_span_id: parent,
             name: name.into(),
-            at_ms: started,
+            target: format!("samepage::{capability}"),
+            level: "INFO".into(),
+            at_ms: wall_time(),
             started_monotonic_ms: Some(started),
             duration_ms: None,
             fields: [("origin".into(), json!(origin))].into(),
@@ -131,8 +150,8 @@ impl Drop for Span {
             p.borrow_mut().pop();
         });
         self.record.kind = "span_close".into();
-        self.record.at_ms = now();
-        self.record.duration_ms = Some((self.record.at_ms - self.started).max(0.0));
+        self.record.at_ms = wall_time();
+        self.record.duration_ms = Some((now() - self.started).max(0.0));
         emit(self.record.clone());
     }
 }

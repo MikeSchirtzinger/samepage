@@ -6,9 +6,11 @@ fn record(id: &str, parent: Option<&str>, kind: &str, cap: &str) -> ActivityReco
         kind: kind.into(),
         capability: cap.into(),
         span_id: id.into(),
-        trace_id: "wasm:doc:1".into(),
+        trace_id: format!("wasm:{cap}:1"),
         parent_span_id: parent.map(str::to_string),
         name: format!("{cap}.test"),
+        target: format!("samepage::{cap}"),
+        level: "INFO".into(),
         at_ms: 10.0,
         started_monotonic_ms: Some(5.0),
         duration_ms: (kind == "span_close").then_some(5.0),
@@ -108,6 +110,7 @@ fn cross_artifact_capture_keeps_doc_and_map_ids_and_parents_distinct() {
     }
     let s = ring.snapshot();
     assert_ne!(s.records[0].event.span_id, s.records[2].event.span_id);
+    assert_ne!(s.records[0].event.trace_id, s.records[2].event.trace_id);
     assert_eq!(
         s.records[1].event.parent_span_id.as_ref(),
         Some(&s.records[0].event.span_id)

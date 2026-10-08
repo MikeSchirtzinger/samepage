@@ -1082,6 +1082,8 @@ impl SurfaceState for HostedState {
         self.inner.state().activity_state_revision()
     }
 
+    fn activity_dropped(&self) -> u64 { self.inner.state().activity_dropped() }
+
     fn activity_feed(&self) -> Option<&crate::ActivityFeed> {
         self.inner.state().activity_feed()
     }
