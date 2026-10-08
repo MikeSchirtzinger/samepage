@@ -615,6 +615,7 @@ impl Host {
     // ── replica frames ───────────────────────────────────────────────────
 
     pub fn receive_frame(&self, actor: &Actor, frame: &[u8]) -> Result<FrameReply, FrameRefusal> {
+        let _span = samepage_capability::activity::Span::new("doc", "doc.sync.receive");
         let messages = sync::parse(frame)?;
         let mut commits = Vec::new();
         let mut late_refusals = Vec::new();
@@ -1107,6 +1108,7 @@ impl Host {
                 action: preferred.clone(),
                 args,
             };
+            let _plan_span = samepage_capability::activity::Span::new(&capability_id, &format!("{capability_id}.plan"));
             let batch =
                 capability
                     .plan_batch(&call, &view)
@@ -1221,6 +1223,7 @@ impl Host {
     /// resolved here against the live document; a batch that resolved
     /// elsewhere is never accepted as such.
     pub fn commit_batch(&self, actor: &Actor, batch: &Batch) -> Result<Commit, CommitError> {
+        let _span = samepage_capability::activity::Span::new("doc", "doc.batch.apply");
         let mut commits = Vec::new();
         let mut refusals = Vec::new();
         let result = {
@@ -1246,6 +1249,7 @@ impl Host {
         action: Option<String>,
         origin: &Origin,
     ) -> Result<(Commit, BTreeMap<String, String>, Vec<String>), CommitError> {
+        let _span = samepage_capability::activity::Span::new("doc", "doc.batch.resolve");
         let before = inner.live.view();
         if batch.base_revision != before.revision() {
             return Err(PlanError::Stale {

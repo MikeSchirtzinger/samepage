@@ -21,5 +21,9 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 wasm-bindgen = { workspace = true, optional = true }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+
 [lints]
 workspace = true

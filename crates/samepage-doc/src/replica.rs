@@ -101,6 +101,7 @@ impl Replica {
 
     /// Apply a frame from the host; returns frames to send back.
     pub fn receive(&mut self, frame: &[u8]) -> Result<Vec<Vec<u8>>, ReplicaError> {
+        let _span = samepage_capability::activity::Span::new("doc", "doc.sync.receive");
         self.check_refused()?;
         let mut replies = Vec::new();
         for message in sync::parse(frame)? {
@@ -155,6 +156,7 @@ impl Replica {
     }
 
     pub fn apply_batch(&mut self, batch: &Batch) -> Result<Applied, ReplicaError> {
+        let _span = samepage_capability::activity::Span::new("doc", "doc.batch.apply");
         self.check_refused()?;
         let composition = self
             .composition
@@ -169,6 +171,7 @@ impl Replica {
             .into());
         }
         let mut minter = self.document.minter();
+        let _resolve = samepage_capability::activity::Span::new("doc", "doc.batch.resolve");
         let mut builder = BatchBuilder::new(composition, &view);
         for entry in &batch.entries {
             builder.push(&entry.capability, &entry.plan, &mut minter)?;

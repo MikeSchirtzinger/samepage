@@ -1,0 +1,241 @@
+{
+  "view": {
+    "revision": "r",
+    "records": []
+  },
+  "calls": [
+    {
+      "export": "descriptor"
+    },
+    {
+      "export": "project"
+    },
+    {
+      "export": "digest"
+    },
+    {
+      "export": "legend"
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "trace_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "trace_clear",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "trace_benchmark",
+        "args": {
+          "iterations": 3,
+          "samples": 2
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "trace_benchmark",
+        "args": {
+          "iterations": 0,
+          "samples": 1
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "trace_read",
+        "args": {
+          "token": "secret"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "unknown",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": "bad json"
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [],
+        "modified": {},
+        "deleted": []
+      }
+    },
+    {
+      "export": "cascade",
+      "deleted": []
+    },
+    {
+      "export": "changes",
+      "before": {},
+      "after": {}
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "snapshot"
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "record",
+        "record": {
+          "kind": "span_open",
+          "capability": "doc",
+          "span_id": "wasm:doc:1",
+          "trace_id": "wasm:doc:1",
+          "parent_span_id": null,
+          "name": "doc.apply",
+          "at_ms": 1,
+          "started_monotonic_ms": 1,
+          "duration_ms": null,
+          "fields": {
+            "valid": true,
+            "count": 3,
+            "api_token": "negative-control",
+            "nested": {
+              "password": "secret"
+            }
+          }
+        }
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "record",
+        "record": {
+          "kind": "event",
+          "capability": "doc",
+          "span_id": "wasm:doc:2",
+          "trace_id": "wasm:doc:1",
+          "parent_span_id": "wasm:doc:1",
+          "name": "doc.apply",
+          "at_ms": 1,
+          "started_monotonic_ms": 1,
+          "duration_ms": null,
+          "fields": {
+            "valid": true,
+            "count": 3,
+            "api_token": "negative-control",
+            "nested": {
+              "password": "secret"
+            }
+          }
+        }
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "record",
+        "record": {
+          "kind": "span_close",
+          "capability": "doc",
+          "span_id": "wasm:doc:1",
+          "trace_id": "wasm:doc:1",
+          "parent_span_id": null,
+          "name": "doc.apply",
+          "at_ms": 1,
+          "started_monotonic_ms": 1,
+          "duration_ms": 2,
+          "fields": {
+            "valid": true,
+            "count": 3,
+            "api_token": "negative-control",
+            "nested": {
+              "password": "secret"
+            }
+          }
+        }
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "snapshot"
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "benchmark",
+        "iterations": 0,
+        "samples": 1,
+        "clock_step_ms": 1
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "snapshot"
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "clear"
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "snapshot"
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "benchmark",
+        "iterations": 70,
+        "samples": 2,
+        "clock_step_ms": 1
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "snapshot"
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "clear"
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "benchmark",
+        "iterations": 1,
+        "samples": 0,
+        "clock_step_ms": 1
+      }
+    },
+    {
+      "export": "trace_operation",
+      "input": {
+        "operation": "unknown"
+      }
+    }
+  ]
+}

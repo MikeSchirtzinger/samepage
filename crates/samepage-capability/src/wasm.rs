@@ -38,11 +38,17 @@ macro_rules! export_capability {
 
             #[wasm_bindgen(wasm_bindgen = $crate::__private::wasm_bindgen)]
             pub fn project(view: &str) -> String {
+                let id = $crate::Capability::descriptor(instance()).id;
+                let _span = $crate::activity::Span::new(&id, &format!("{id}.project"));
+                let _child = $crate::activity::Span::new(&id, &format!("{id}.project.dispatch"));
                 $crate::envelope::project(instance(), view)
             }
 
             #[wasm_bindgen(wasm_bindgen = $crate::__private::wasm_bindgen)]
             pub fn plan(call: &str, view: &str) -> String {
+                let id = $crate::Capability::descriptor(instance()).id;
+                let _span = $crate::activity::Span::new(&id, &format!("{id}.plan"));
+                let _child = $crate::activity::Span::new(&id, &format!("{id}.plan.dispatch"));
                 $crate::envelope::plan(instance(), call, view)
             }
 
@@ -58,6 +64,9 @@ macro_rules! export_capability {
 
             #[wasm_bindgen(wasm_bindgen = $crate::__private::wasm_bindgen)]
             pub fn digest(view: &str) -> String {
+                let id = $crate::Capability::descriptor(instance()).id;
+                let _span = $crate::activity::Span::new(&id, &format!("{id}.digest"));
+                let _child = $crate::activity::Span::new(&id, &format!("{id}.digest.dispatch"));
                 $crate::envelope::digest(instance(), view)
             }
 

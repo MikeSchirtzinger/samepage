@@ -22,6 +22,7 @@ members = [
   "crates/samepage-diagrams",
   "crates/samepage-review",
   "crates/samepage-architecture",
+  "crates/samepage-trace",
   "apps/samepage",
   "examples/same-page-room",
   "examples/same-page-atlas",

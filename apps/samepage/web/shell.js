@@ -304,6 +304,22 @@ try {
       document.dispatchEvent(new CustomEvent("samepage:architecture-open"));
     } catch (error) { showError(`Architecture unavailable: ${error.message}`); }
   });
+  const traceHealth = document.getElementById("trace-health");
+  async function updateTraceHealth() {
+    const response=await fetch("/extensions");
+    if (!response.ok) return;
+    const health=(await response.json()).activity;
+    traceHealth.textContent=`${kernel.hasCapability("trace") ? "trace" : "trace unavailable"} · ${(health?.dropped || 0)+(globalThis.__samepageTraceDropped || 0)} unrecorded`;
+  }
+  void updateTraceHealth(); setInterval(()=>void updateTraceHealth(),2000);
+  document.getElementById("activity-toggle")?.addEventListener("click", async () => {
+    try {
+      if (!kernel.hasCapability("trace")) { await updateTraceHealth(); return; }
+      const loaded = document.getElementById("activity-drawer");
+      await kernel.activateForRoute("activity");
+      if (loaded) document.dispatchEvent(new CustomEvent("samepage:trace-open"));
+    } catch(error) { traceHealth.textContent=`trace unavailable: ${error.message}`;showError(`trace unavailable: ${error.message}`); }
+  });
   // Exposes observations without a second document or mutation channel.
   globalThis.samepageReadback = () => kernel.diagnostics();
 } catch (error) {

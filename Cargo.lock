@@ -2875,6 +2875,7 @@ dependencies = [
  "samepage-doc",
  "samepage-map",
  "samepage-review",
+ "samepage-trace",
  "serde",
  "serde_json",
  "sha2",
@@ -2899,6 +2900,7 @@ dependencies = [
 name = "samepage-capability"
 version = "0.1.0"
 dependencies = [
+ "js-sys",
  "serde",
  "serde_json",
  "thiserror",
@@ -2980,6 +2982,16 @@ dependencies = [
  "sha2",
  "wasm-bindgen",
  "yrs",
+]
+
+[[package]]
+name = "samepage-trace"
+version = "0.1.0"
+dependencies = [
+ "samepage-capability",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
 ]
 
 [[package]]
