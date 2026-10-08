@@ -80,6 +80,7 @@ pub struct SelectedArtifacts {
     map: CapabilityArtifact,
     diagrams: Option<CapabilityArtifact>,
     review: Option<CapabilityArtifact>,
+    board: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -92,13 +93,14 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=4).contains(&manifest.artifacts.len()) {
-            return Err("requires doc, map and optional diagrams/review artifacts".to_string());
+        if !(2..=5).contains(&manifest.artifacts.len()) {
+            return Err("requires doc, map and optional diagrams/review/board artifacts".to_string());
         }
         let mut document = None;
         let mut map = None;
         let mut diagrams = None;
         let mut review = None;
+        let mut board = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -124,13 +126,14 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review"
+                "map" | "diagrams" | "review" | "board"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
                     let compiled = serde_json::to_value(match artifact.id.as_str() {
                         "map" => samepage_map::descriptor(),
                         "review" => samepage_review::descriptor(),
+                        "board" => samepage_board::descriptor(),
                         _ => samepage_diagrams::descriptor(),
                     })
                     .map_err(|error| error.to_string())?;
@@ -154,6 +157,7 @@ impl SelectedArtifacts {
                     match artifact.id.as_str() {
                         "map" => map = Some(capability),
                         "review" => review = Some(capability),
+                        "board" => board = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
@@ -165,6 +169,7 @@ impl SelectedArtifacts {
             map: map.ok_or("map artifact is missing")?,
             diagrams,
             review,
+            board,
         })
     }
 }
@@ -181,9 +186,11 @@ type HostSaver = Arc<dyn Fn(&Host) -> Result<(), String> + Send + Sync>;
 type EventEmitter = Arc<dyn Fn(&str, Value) + Send + Sync>;
 
 pub struct SamePageState {
-    host: Arc<Host>,
+    pub(crate) host: Arc<Host>,
     review: Option<Arc<ReviewHost>>,
-    validation: Arc<crate::host::page_validation::PageValidation>,
+    pub(crate) validation: Arc<crate::host::page_validation::PageValidation>,
+    pub(crate) input: Arc<crate::host::board::InputSignals>,
+    board: Mutex<Option<Arc<crate::host::board::BoardHost>>>,
     save_progress: Arc<(Mutex<SaveProgress>, Condvar)>,
     refusal_tx: broadcast::Sender<WsRefusal>,
     /// A Host commit is live before its observer returns. Keep every external
@@ -274,10 +281,13 @@ impl SamePageState {
             }),
             Condvar::new(),
         ));
+        let input = Arc::new(crate::host::board::InputSignals::default());
         let state = Arc::new(Self {
             host: host.clone(),
             review,
             validation: Arc::default(),
+            input: input.clone(),
+            board: Mutex::new(None),
             save_progress: save_progress.clone(),
             refusal_tx: refusal_tx.clone(),
             operation: Mutex::new(()),
@@ -287,6 +297,7 @@ impl SamePageState {
         let callback_progress = save_progress.clone();
         let callback_emit = emit_event.clone();
         host.on_commit(move |commit| {
+            input.changed.notify_waiters();
             if commit_tx.send(commit.clone()).is_err() {
                 let message = "commit persistence worker stopped".to_string();
                 let mut emit = |message| {
@@ -343,7 +354,7 @@ impl SamePageState {
         }).await.map_err(|e|format!("validation worker failed: {e}"))?
     }
 
-    fn durable_operation(&self) -> Result<MutexGuard<'_, ()>, String> {
+    pub(crate) fn durable_operation(&self) -> Result<MutexGuard<'_, ()>, String> {
         let guard = self
             .operation
             .lock()
@@ -434,6 +445,7 @@ impl SamePageState {
         } else {
             None
         };
+        if invoked.action == "map_read" { self.input.acknowledge(&actor.participant, self.host.journal().seq); }
         let readback = report
             .as_ref()
             .and_then(|r| r["readback"].as_str())
@@ -555,11 +567,15 @@ impl SurfaceState for SamePageState {
         serde_json::to_string(&json!({
             "revision": self.host.revision(),
             "map": projection,
+            "board": self.board.lock().map_err(|_|"board binding lock poisoned")?.as_ref().map(|b|b.peek()),
             "persistence_error": self.fault(),
         }))
         .map_err(|error| error.to_string())
     }
 
+    fn reconnect_events(&self)->Vec<(String,Value)> {
+        self.board.lock().unwrap_or_else(|p|p.into_inner()).as_ref().map(|b|vec![(crate::host::board::CHANGED_EVENT.into(),b.snapshot())]).unwrap_or_default()
+    }
     fn snapshot(&self) -> Result<StateSnapshot, String> {
         let _operation = self.durable_operation()?;
         Ok(StateSnapshot {
@@ -597,6 +613,7 @@ pub struct SamePageSurface {
     state: Arc<SamePageState>,
     tools: Vec<ActionDef>,
     artifacts: SelectedArtifacts,
+    board: Option<Arc<crate::host::board::BoardHost>>,
 }
 
 impl SamePageSurface {
@@ -606,6 +623,10 @@ impl SamePageSurface {
         transport: Transport,
         project: &Path,
     ) -> Result<Self, String> {
+        let board = if artifacts.board.is_some() {
+            let emit=transport.clone();
+            Some(crate::host::board::BoardHost::open(path.with_file_name("board.json"),Arc::new(move |name,value|emit.emit(name,value)))?)
+        } else { None };
         let with_diagrams = artifacts.diagrams.is_some();
         let with_review = artifacts.review.is_some();
         let state = if with_diagrams || with_review {
@@ -623,6 +644,7 @@ impl SamePageSurface {
         } else {
             SamePageState::open(path, transport)?
         };
+        *state.board.lock().map_err(|_|"board binding lock poisoned")?=board.clone();
         let mut declarations = samepage_map::descriptor().actions;
         if with_diagrams {
             declarations.extend(samepage_diagrams::descriptor().actions);
@@ -715,10 +737,19 @@ impl SamePageSurface {
                 if report["status"]=="failed"{Err(report.to_string())}else{Ok(report.to_string())}
             }))
         }));
+        if let Some(board) = &board {
+            let revision_state=state.clone();
+            tools.extend(board.actions(Arc::new(move || {
+                let _operation=revision_state.durable_operation()?;
+                Ok(revision_state.host.revision())
+            })));
+            tools.push(crate::host::board_input::input_action(state.clone(),board.clone()));
+        }
         Ok(Self {
             state,
             tools,
             artifacts,
+            board,
         })
     }
 }
@@ -726,6 +757,29 @@ impl SamePageSurface {
 impl Surface for SamePageSurface {
     fn state(&self) -> &dyn SurfaceState {
         self.state.as_ref()
+    }
+    fn bind_semantic_targets(&self, service: &Arc<ag_ui_surface::SemanticTargetService>) {
+        self.state.input.bind_attention(service.clone());
+    }
+    fn semantic_target_namespaces(&self) -> Vec<String> {
+        let mut namespaces=vec!["map".into()];
+        if self.board.is_some() { namespaces.push("board".into()); }
+        namespaces
+    }
+    fn resolve_semantic_target(&self,target:&ag_ui_surface::SemanticTargetRef)->Result<Option<ag_ui_surface::SemanticTarget>,String> {
+        let description=if target.extension_id=="board" { self.board.as_ref().and_then(|b|b.resolve(&target.target_id)) }
+        else if target.extension_id=="map" {
+            let _operation=self.state.durable_operation()?;
+            self.state.host.view().get(&target.target_id).map(|r| format!("{} [{}]",samepage_map::prop_str(r,"label").unwrap_or("object"),r.id))
+        } else { None };
+        Ok(description.map(|text|ag_ui_surface::SemanticTarget::new(target.clone(),text.clone(),text)))
+    }
+    fn routes(&self)->Vec<ag_ui_surface::RouteDef> {
+        let Some(board)=&self.board else { return vec![] };
+        let board=board.clone();
+        vec![ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/board/state",handler:Box::new(move |_|{
+            let board=board.clone(); Box::pin(async move { ag_ui_surface::RouteResponse::json(200,board.snapshot()) })
+        })},ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/board/primitives",handler:Box::new(move |_|Box::pin(async move { ag_ui_surface::RouteResponse::json(200,samepage_board::assertion::catalog()) }))}]
     }
     fn tools(&self) -> &[ActionDef] {
         &self.tools
@@ -778,6 +832,14 @@ impl Surface for SamePageSurface {
                 if action.audience != samepage_capability::Audience::Agent {
                     module = module.action(action.name);
                 }
+            }
+            modules.push(module);
+        }
+        if let Some(artifact) = &self.artifacts.board {
+            let mut module=ClientModule::lazy("board",samepage_board::VERSION,artifact.entry.url.clone(),"board")
+                .verified_artifact(artifact.clone()).optional().capability("samepage.board").event(crate::host::board::CHANGED_EVENT);
+            for action in samepage_board::descriptor().actions {
+                if action.audience != samepage_capability::Audience::Agent { module=module.action(action.name); }
             }
             modules.push(module);
         }
@@ -1506,3 +1568,7 @@ mod tests {
 #[cfg(test)]
 #[path = "review_tests.rs"]
 mod review_tests;
+
+#[cfg(test)]
+#[path="board_tests.rs"]
+mod board_tests;

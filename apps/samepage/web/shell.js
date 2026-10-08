@@ -277,6 +277,21 @@ try {
   client.on("samepage.persistence-error", ({value}) => kernel.setPersistenceFailure(value?.error || "save failed"));
   client.on("samepage.persistence-wait", ({value}) => kernel.setPersistencePending(value?.message || "save is still pending"));
   client.on("samepage.persistence-resolved", () => kernel.setPersistenceResolved());
+  const boardMount=document.getElementById("board");
+  const openBoard=async () => {
+    boardMount.hidden=false;
+    try {
+      if (!kernel.hasCapability("board")) throw new Error("board capability is unavailable in this composition");
+      await kernel.activate("board");
+    } catch (error) {
+      boardMount.dataset.extensionState="failed";
+      boardMount.textContent=`board is unavailable: ${error.message}`;
+    }
+  };
+  document.getElementById("board-open").addEventListener("click",()=>void openBoard());
+  client.on("board.changed",({value})=>{
+    if ((value?.board?.entries?.length || value?.board?.subject || value?.revision > 0) && kernel.hasCapability("board")) void openBoard();
+  });
   await client.connect();
   kernel.connect();
   document.getElementById("add-card").addEventListener("submit", async (event) => {

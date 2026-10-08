@@ -17,10 +17,12 @@
       <form id="add-card"><label for="new-card-label">New card</label><input id="new-card-label" name="label" maxlength="140" required><button type="submit">Add card</button></form>
       <span id="map-count" aria-live="polite">Loading map…</span>
     </section>
+    <button id="board-open" type="button">Board</button>
     <div id="diagrams" aria-label="Diagram capability status"></div>
     <div class="surface-layout">
       <div id="map" aria-label="Shared cards and links"></div>
       <aside id="review" aria-label="Review" hidden></aside>
+      <aside id="board" aria-label="Board" hidden></aside>
     </div>
   </main>
   <script type="module" src="/shell.js"></script>

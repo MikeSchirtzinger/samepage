@@ -1,0 +1,110 @@
+{
+  "conflicts": [],
+  "meta": {
+    "advisory_only": true,
+    "artifact": "govern-obligations",
+    "atlas_document_revision": "AQIDBA",
+    "board_revision": 4,
+    "cemented_at": "2026-07-31T12:00:00Z",
+    "note": "Cemented intent is a review draft. Every obligation remains prose-only and advisory until a reviewer supplies scope and a deterministic checker.",
+    "source": "cement-receipt.json",
+    "source_sha256": "62d65ed2ee302716e980a8cd868743a3c1ee1cbaae3c7a6683b10b4de43e60c1",
+    "status": "draft",
+    "version": "0.1.0-draft"
+  },
+  "obligations": [
+    {
+      "also_stated_by": [],
+      "checker": {
+        "mode": "prose_only"
+      },
+      "convergence_test": {
+        "check": "DRAFT: define a deterministic checker before promoting this obligation.",
+        "fails_when": "The checker is undefined; prose-only remains unknown rather than passing.",
+        "id": "conv-atlas-runtime-boundary"
+      },
+      "descends_from": {
+        "decision": "runtime-boundary",
+        "source": {
+          "file": "cement-receipt.json",
+          "lines": "/assertions/0",
+          "sha256": "62d65ed2ee302716e980a8cd868743a3c1ee1cbaae3c7a6683b10b4de43e60c1"
+        },
+        "title": "claim (settled): Cementing remains example-local and does not couple the runtime kernel to Govern.",
+        "why": "Signed off by you at 2026-07-31T11:05:00Z on board revision 2.",
+        "why_kind": "human_signoff"
+      },
+      "id": "OBL-ATLAS-runtime-boundary",
+      "rule": {
+        "kind": "atlas_settled_assertion",
+        "params": {
+          "assertion": {
+            "id": "runtime-boundary",
+            "kind": "claim",
+            "status": "settled",
+            "text": "Cementing remains example-local and does not couple the runtime kernel to Govern."
+          },
+          "author_byline": "reviewer",
+          "signed_off_by": "you"
+        }
+      },
+      "scope": {
+        "crates": [],
+        "paths": []
+      },
+      "signal": {
+        "advisory": true,
+        "conflict_kind": null,
+        "gate": "none",
+        "wiring": "unwired_draft"
+      }
+    },
+    {
+      "also_stated_by": [],
+      "checker": {
+        "mode": "prose_only"
+      },
+      "convergence_test": {
+        "check": "DRAFT: define a deterministic checker before promoting this obligation.",
+        "fails_when": "The checker is undefined; prose-only remains unknown rather than passing.",
+        "id": "conv-atlas-advisory-draft"
+      },
+      "descends_from": {
+        "decision": "advisory-draft",
+        "source": {
+          "file": "cement-receipt.json",
+          "lines": "/assertions/1",
+          "sha256": "62d65ed2ee302716e980a8cd868743a3c1ee1cbaae3c7a6683b10b4de43e60c1"
+        },
+        "title": "claim (settled): Cemented obligations begin as advisory prose-only drafts.",
+        "why": "Signed off by you at 2026-07-31T11:11:00Z on board revision 4.",
+        "why_kind": "human_signoff"
+      },
+      "id": "OBL-ATLAS-advisory-draft",
+      "rule": {
+        "kind": "atlas_settled_assertion",
+        "params": {
+          "assertion": {
+            "id": "advisory-draft",
+            "kind": "claim",
+            "status": "settled",
+            "text": "Cemented obligations begin as advisory prose-only drafts."
+          },
+          "author_byline": "you",
+          "signed_off_by": "you"
+        }
+      },
+      "scope": {
+        "crates": [],
+        "paths": []
+      },
+      "signal": {
+        "advisory": true,
+        "conflict_kind": null,
+        "gate": "none",
+        "wiring": "unwired_draft"
+      }
+    }
+  ],
+  "open_questions": []
+}

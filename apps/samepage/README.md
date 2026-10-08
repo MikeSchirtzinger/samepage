@@ -41,3 +41,19 @@ To import a legacy Atlas base64 state file, use a **new** target path. The sourc
 ```sh
 "$CARGO_TARGET_DIR/debug/samepage" import-legacy /path/to/atlas.json /path/to/new-document.json
 ```
+
+## Optional Board
+
+Add `board=crates/samepage-board=apps/samepage/modules/board.js` to the build
+selection to include the independent Board capability. Its artifact is
+`/capabilities/board/samepage_board_bg.wasm`. It loads on the first Board action,
+opening the Board panel, or receiving saved Board data. A missing or corrupt
+optional artifact produces a named failure while Map remains usable.
+
+The native adapter saves `board.json` in `SAMEPAGE_STATE_DIR`, separately from
+the CRDT document. Existing Board JSON loads directly with authors and marks
+intact; reader cursors reset on restart. Human sign-off is checked against the
+current assertion revision. Agent rewrites retain the mark and show stale
+sign-off. The native `await_input` combines Board, document, human attention,
+browser validation and chat wakes. Board cement is a human-approved advisory
+export. See [the Board contract](../../crates/samepage-board/README.md).

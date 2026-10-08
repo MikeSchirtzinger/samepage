@@ -2869,6 +2869,7 @@ name = "samepage-app"
 version = "0.1.0"
 dependencies = [
  "ag-ui-surface",
+ "samepage-board",
  "samepage-capability",
  "samepage-diagrams",
  "samepage-doc",
@@ -2878,6 +2879,19 @@ dependencies = [
  "serde_json",
  "sha2",
  "tokio",
+]
+
+[[package]]
+name = "samepage-board"
+version = "0.1.0"
+dependencies = [
+ "ag-ui-surface",
+ "samepage-capability",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "wasm-bindgen",
 ]
 
 [[package]]
