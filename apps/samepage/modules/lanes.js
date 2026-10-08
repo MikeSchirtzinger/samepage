@@ -35,7 +35,7 @@ export function activate({wasm, application, mount}) {
       const findings=el('div',undefined,'lane-findings');
       for(const lane of all.slice(page,page+20)) {
         const item=el('details',undefined,'lane-finding');item.dataset.laneId=lane.lane_id;item.open=expanded.has(lane.lane_id);
-        item.append(el('summary',`${lane.matched_node_id?'✓ Claimed':'? Unresolved'} · ${lane.label} · ${lane.evidence.path}:${lane.evidence.line}${lane.removal?' · '+lane.removal.chip:''}`),el('p',lane.detail),el('pre',lane.evidence.snippet,'lane-evidence'));
+        item.append(el('summary',`${lane.matched_node_id?'✓ Claimed':lane.removal?.tier==='gate-met'?'✓ Removal met':'? Unresolved'} · ${lane.label} · ${lane.evidence.path}:${lane.evidence.line}${lane.removal?' · '+lane.removal.chip:''}`),el('p',lane.detail),el('pre',lane.evidence.snippet,'lane-evidence'));
         const binding=view.records.find(r=>r.kind==='binding'&&r.props.lane_id===lane.lane_id);
         if(binding)item.append(el('p',`Claimed by ${binding.props.touched_by||binding.props.created_by||'unknown'} for ${nodes.find(n=>n.id===binding.props.node)?.props.label||binding.props.node}`,'lane-byline'));
         const excerpt=el('pre','', 'lane-excerpt');item.append(excerpt);

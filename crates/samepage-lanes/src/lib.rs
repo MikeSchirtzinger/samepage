@@ -158,6 +158,12 @@ pub fn reconcile(view: &View, facts: &Facts) -> Value {
         .filter(|l| l["matched_node_id"].is_null())
         .cloned()
         .collect();
+    // The legacy undeclared list retains every unmatched finding. A met
+    // removal remains inspectable while no longer counting as unresolved.
+    let unresolved_count = undeclared
+        .iter()
+        .filter(|l| l["removal"]["tier"] != "gate-met")
+        .count();
     let mut groups: BTreeMap<String, Vec<Value>> = BTreeMap::new();
     for l in &lanes {
         let key = format!(
@@ -168,7 +174,7 @@ pub fn reconcile(view: &View, facts: &Facts) -> Value {
         groups.entry(key).or_default().push(l.clone());
     }
     let groups:Vec<_>=groups.into_iter().map(|(name,all)|json!({"name":name,"count":all.len(),"shown":all.iter().take(20).collect::<Vec<_>>(),"more":all.len().saturating_sub(20)})).collect();
-    let mut readback=format!("LANES: {} unresolved; {} found or retained; {} source files scanned. Static extraction, not runtime proof.\n",undeclared.len(),lanes.len(),facts.scan.scanned_files);
+    let mut readback=format!("LANES: {} unresolved; {} found or retained; {} source files scanned. Static extraction, not runtime proof.\n",unresolved_count,lanes.len(),facts.scan.scanned_files);
     for l in &lanes {
         readback.push_str(&format!(
             "[{}] {} {}:{} — {}{}\n",
@@ -186,7 +192,7 @@ pub fn reconcile(view: &View, facts: &Facts) -> Value {
                 .unwrap_or_default()
         ));
     }
-    json!({"revision":view.revision(),"root":facts.scan.root,"scanned_files":facts.scan.scanned_files,"languages":facts.scan.languages,"skipped":facts.scan.skipped,"lanes":lanes,"undeclared":undeclared,"unresolved_count":undeclared.len(),"groups":groups,"readback":readback})
+    json!({"revision":view.revision(),"root":facts.scan.root,"scanned_files":facts.scan.scanned_files,"languages":facts.scan.languages,"skipped":facts.scan.skipped,"lanes":lanes,"undeclared":undeclared,"unresolved_count":unresolved_count,"groups":groups,"readback":readback})
 }
 pub fn pin_check(lane: &Lane, facts: &Facts) -> Result<String, CapError> {
     if facts.file_hashes.get(&lane.lane_id) != Some(&lane.evidence.sha256) {

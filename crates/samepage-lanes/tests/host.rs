@@ -68,6 +68,14 @@ fn a_removal_whose_lane_vanished_from_the_scan_still_renders_and_can_read_gate_m
     assert_eq!(unmet["lanes"].as_array().unwrap().len(), 2);
     assert_eq!(unmet["lanes"][1]["removal"]["chip"], "REMOVE unmet");
     f.clean.insert("ATLAS-REMOVE-bbbb2222".into());
+    assert_eq!(samepage_lanes::reconcile(&v, &f)["unresolved_count"], 1);
+    assert_eq!(
+        samepage_lanes::reconcile(&v, &f)["undeclared"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
     assert_eq!(
         samepage_lanes::reconcile(&v, &f)["lanes"][1]["removal"]["chip"],
         "REMOVE met"

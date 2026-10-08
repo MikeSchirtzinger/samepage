@@ -82,6 +82,7 @@ pub struct SelectedArtifacts {
     review: Option<CapabilityArtifact>,
     sources: Option<CapabilityArtifact>,
     lanes: Option<CapabilityArtifact>,
+    cement: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -94,9 +95,9 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=6).contains(&manifest.artifacts.len()) {
+        if !(2..=7).contains(&manifest.artifacts.len()) {
             return Err(
-                "requires doc, map and optional diagrams/review/sources/lanes artifacts"
+                "requires doc, map and optional diagrams/review/sources/lanes/cement artifacts"
                     .to_string(),
             );
         }
@@ -106,6 +107,7 @@ impl SelectedArtifacts {
         let mut review = None;
         let mut sources = None;
         let mut lanes = None;
+        let mut cement = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -131,7 +133,7 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review" | "sources" | "lanes"
+                "map" | "diagrams" | "review" | "sources" | "lanes" | "cement"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
@@ -140,6 +142,7 @@ impl SelectedArtifacts {
                         "review" => samepage_review::descriptor(),
                         "sources" => samepage_sources::descriptor(),
                         "lanes" => samepage_lanes::descriptor(),
+                        "cement" => samepage_cement::descriptor(),
                         "diagrams"
                             if artifact.descriptor.as_ref().is_some_and(|d| {
                                 d["depends_on"].as_array().is_some_and(|deps| {
@@ -174,11 +177,15 @@ impl SelectedArtifacts {
                         "review" => review = Some(capability),
                         "sources" => sources = Some(capability),
                         "lanes" => lanes = Some(capability),
+                        "cement" => cement = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
                 _ => return Err(format!("unsupported C4 artifact {}", artifact.id)),
             }
+        }
+        if cement.is_some() && (sources.is_none() || lanes.is_none() || review.is_none()) {
+            return Err("cement requires Sources, Lanes and Review artifacts".into());
         }
         if lanes.is_some() && sources.is_none() {
             return Err("lanes requires the selected sources artifact".into());
@@ -198,6 +205,7 @@ impl SelectedArtifacts {
             review,
             sources,
             lanes,
+            cement,
         })
     }
 }
@@ -218,6 +226,7 @@ pub struct SamePageState {
     review: Option<Arc<ReviewHost>>,
     sources: Option<Arc<crate::host::sources::SourcesHost>>,
     lanes: Option<Arc<crate::host::lanes::LanesHost>>,
+    cement: Option<Arc<crate::host::cement::CementHost>>,
     validation: Arc<crate::host::page_validation::PageValidation>,
     save_progress: Arc<(Mutex<SaveProgress>, Condvar)>,
     refusal_tx: broadcast::Sender<WsRefusal>,
@@ -275,6 +284,7 @@ impl SamePageState {
             with_review,
             false,
             false,
+            false,
         )
     }
 
@@ -290,6 +300,7 @@ impl SamePageState {
         with_review: bool,
         with_sources: bool,
         with_lanes: bool,
+        with_cement: bool,
     ) -> Result<Arc<Self>, String> {
         let sources = if with_sources {
             Some(Arc::new(crate::host::sources::SourcesHost::open(
@@ -334,6 +345,16 @@ impl SamePageState {
             descriptors.push(samepage_lanes::descriptor());
             capabilities.push(Arc::new(samepage_lanes::Lanes));
         }
+        let cement = if with_cement {
+            descriptors.push(samepage_cement::descriptor());
+            capabilities.push(Arc::new(samepage_cement::Cement));
+            Some(Arc::new(crate::host::cement::CementHost::open(
+                project.ok_or("cement needs project root")?,
+                &path,
+            )?))
+        } else {
+            None
+        };
         let composition = Composition::new(descriptors).map_err(|error| error.to_string())?;
         let mut host = Host::open(path, composition, capabilities).map_err(|e| e.to_string())?;
         if with_diagrams && !with_sources {
@@ -367,6 +388,11 @@ impl SamePageState {
                 .with_verifier("lanes", lanes.clone())
                 .map_err(|e| e.to_string())?;
         }
+        if let Some(cement) = &cement {
+            host = host
+                .with_verifier("cement", cement.clone())
+                .map_err(|e| e.to_string())?;
+        }
         let host = Arc::new(host);
         let (commit_tx, commit_rx) = mpsc::channel::<Commit>();
         let (refusal_tx, _) = broadcast::channel(128);
@@ -383,6 +409,7 @@ impl SamePageState {
             review,
             sources,
             lanes,
+            cement,
             validation: Arc::default(),
             save_progress: save_progress.clone(),
             refusal_tx: refusal_tx.clone(),
@@ -518,7 +545,23 @@ impl SamePageState {
     ) -> Result<String, String> {
         let _operation = self.durable_operation()?;
         let actor = map_actor(surface_actor)?;
-        let invoked = if matches!(action, "lane_claim" | "atlas_claim_lane") {
+        let mut cement_result = None;
+        let mut publication = None;
+        let invoked = if matches!(action, "decision_cement" | "atlas_cement_decision") {
+            if actor.caller != Caller::Human {
+                return Err("only a human may publish a reviewed decision".into());
+            }
+            let cement = self.cement.as_ref().ok_or("cement unavailable")?;
+            let mut pending = cement.publish(&self.host.view(), &args)?;
+            let result = self.host.invoke_composed(&actor, action, &pending.batch);
+            if let Err(e) = &result {
+                let cleanup = pending.rollback();
+                return Err(format!("{e}; rollback: {cleanup:?}"));
+            }
+            cement_result = Some(pending.result.clone());
+            publication = Some(pending);
+            result
+        } else if matches!(action, "lane_claim" | "atlas_claim_lane") {
             let lanes = self.lanes.as_ref().ok_or("lanes unavailable")?;
             let sources = self.sources.as_ref().ok_or("sources unavailable")?;
             let batch = lanes.prepare(
@@ -541,17 +584,50 @@ impl SamePageState {
             self.host.invoke(&actor, action, args.clone())
         }
         .map_err(|e| e.to_string())?;
+        if let Some(pending) = publication {
+            pending.accept();
+        }
         if invoked.commit.is_some() {
             // One accepted change can release quarantined changes and announce
             // several commits. Do not release the operation gate until the
             // complete resulting journal prefix is durable.
             self.wait_saved(self.host.journal().seq)?;
         }
+        if self.cement.is_some()
+            && samepage_cement::descriptor()
+                .actions
+                .iter()
+                .any(|a| a.name == invoked.action)
+        {
+            let cement = self.cement.as_ref().ok_or("cement unavailable")?;
+            if cement_result.is_none() {
+                cement_result = Some(match invoked.action.as_str() {
+                    "decision_preview" => cement.preview(&self.host.view(), &args, true)?,
+                    "decision_cement_propose" => cement.preview(&self.host.view(), &args, false)?,
+                    "decision_list" => cement.history()?,
+                    "map_cement" => cement.map_cement(
+                        &self.host.view(),
+                        &args,
+                        self.sources.as_ref().ok_or("sources unavailable")?,
+                    )?,
+                    "lane_remove" => cement.remove(
+                        &self.host.view(),
+                        &args,
+                        self.lanes.as_ref().ok_or("lanes unavailable")?,
+                        self.sources.as_ref().ok_or("sources unavailable")?,
+                    )?,
+                    _ => samepage_cement::Cement
+                        .project(&self.host.view())
+                        .map_err(|e| e.to_string())?,
+                });
+            }
+            (self.emit_event)("samepage.capability-used", json!({"id":"cement"}));
+        }
         let validation = self.validation.report(&self.host.view())?;
         if invoked.commit.is_some() && validation["status"] == "failed" {
             return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":invoked.commit.as_ref().map(|c|c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),"revision":self.host.revision(),"validation":validation}).to_string());
         }
-        let source_result = if let Some(s) = &self.sources {
+        let mut source_result = if let Some(s) = &self.sources {
             if matches!(
                 invoked.action.as_str(),
                 "source_read" | "source_list" | "sources_read"
@@ -563,6 +639,18 @@ impl SamePageState {
         } else {
             None
         };
+        if let (Some(cement), Some(source)) = (&self.cement, &mut source_result) {
+            if source.get("facts").is_some() {
+                let (gates, check) = cement.gates(&self.host.view())?;
+                source["facts"]["gates"] =
+                    serde_json::to_value(gates).map_err(|e| e.to_string())?;
+                let facts =
+                    serde_json::from_value(source["facts"].clone()).map_err(|e| e.to_string())?;
+                source["projection"] = samepage_sources::project(&self.host.view(), &facts)
+                    .map_err(|e| e.to_string())?;
+                source["g8_check"] = check;
+            }
+        }
         if matches!(
             invoked.action.as_str(),
             "source_read" | "source_list" | "sources_read"
@@ -572,7 +660,22 @@ impl SamePageState {
         let lane_result = if matches!(invoked.action.as_str(), "lane_claim" | "lanes_read") {
             let lanes = self.lanes.as_ref().ok_or("lanes unavailable")?;
             let source = self.sources.as_ref().ok_or("sources unavailable")?;
-            let result = lanes.inspect(&self.host.view(), source.facts(&self.host.view())?)?;
+            let mut result = lanes.inspect(&self.host.view(), source.facts(&self.host.view())?)?;
+            if let Some(cement) = &self.cement {
+                let check = cement.check()?;
+                result["facts"]["clean"] = json!(check["obligations"]
+                    .as_array()
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[])
+                    .iter()
+                    .filter(|o| o["status"] == "passed")
+                    .map(|o| o["id"].clone())
+                    .collect::<Vec<_>>());
+                let facts =
+                    serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
+                result["projection"] = samepage_lanes::reconcile(&self.host.view(), &facts);
+            }
+
             (self.emit_event)("samepage.capability-used", json!({"id":"lanes"}));
             Some(result)
         } else {
@@ -632,6 +735,7 @@ impl SamePageState {
             "review": report,
             "sources": source_result,
             "lanes": lane_result,
+            "cement": cement_result,
             "validation": validation,
             "ids": invoked.ids,
             "revision": self.host.revision(),
@@ -799,6 +903,7 @@ impl SamePageSurface {
         let with_review = artifacts.review.is_some();
         let with_sources = artifacts.sources.is_some();
         let with_lanes = artifacts.lanes.is_some();
+        let with_cement = artifacts.cement.is_some();
         let state = if with_diagrams || with_review || with_sources {
             let emit = transport.clone();
             SamePageState::open_capabilities(
@@ -812,6 +917,7 @@ impl SamePageSurface {
                 with_review,
                 with_sources,
                 with_lanes,
+                with_cement,
             )?
         } else {
             SamePageState::open(path, transport)?
@@ -828,6 +934,9 @@ impl SamePageSurface {
         }
         if with_lanes {
             declarations.extend(samepage_lanes::descriptor().actions);
+        }
+        if with_cement {
+            declarations.extend(samepage_cement::descriptor().actions);
         }
         let mut tools: Vec<ActionDef> = declarations
             .into_iter()
@@ -1007,6 +1116,23 @@ impl Surface for SamePageSurface {
             .capability("samepage.lanes");
             for action in samepage_lanes::descriptor().actions {
                 module = module.action(action.name);
+            }
+            modules.push(module);
+        }
+        if let Some(artifact) = &self.artifacts.cement {
+            let mut module = ClientModule::lazy(
+                "cement",
+                samepage_cement::VERSION,
+                artifact.entry.url.clone(),
+                "cement",
+            )
+            .verified_artifact(artifact.clone())
+            .optional()
+            .capability("samepage.cement");
+            for action in samepage_cement::descriptor().actions {
+                if action.audience != samepage_capability::Audience::Agent {
+                    module = module.action(action.name);
+                }
             }
             modules.push(module);
         }

@@ -89,3 +89,8 @@ body { margin: 0; }
 .lane-finding { padding: 10px; border-top: 1px solid #486878; }
 .lane-finding > summary { cursor: pointer; }
 .lane-evidence, .lane-excerpt { max-height: 180px; overflow: auto; white-space: pre-wrap; }
+
+.cement-strip { margin: 12px 20px; padding: 16px; border: 1px solid #789; border-radius: 8px; background: #142b36; }
+.cement-strip button, .cement-strip select { margin-left: 12px; }
+.cement-review pre, .cement-history pre { max-height: 340px; overflow: auto; white-space: pre-wrap; }
+.source-gate-reason { max-height: 90px; overflow: auto; font-size: 12px; }

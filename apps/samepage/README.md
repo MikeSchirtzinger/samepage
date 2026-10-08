@@ -55,3 +55,9 @@ counts, inspectable static findings and verified extra-binding claims. Append
 `lanes=crates/samepage-lanes=apps/samepage/modules/lanes.js` with Sources
 selected. It loads when the strip opens, a lane action runs or a saved binding
 is present. See [Lanes](../../crates/samepage-lanes/README.md).
+
+Cement is optional: add `cement=crates/samepage-cement=apps/samepage/modules/cement.js`
+to the selected build, alongside Sources, Lanes and Review. Its native adapter
+requires real `g8` 0.1.4 from PATH and the selected Git project root. Agents draft
+and propose decisions; the person previews and publishes from the Cement strip.
+Current gates and their reasons refresh together on Sources cards without reload.

@@ -105,11 +105,12 @@ export function activate({wasm, application}) {
       if (data.revision !== view.revision) return;
       latest = envelope(wasm.project_with_facts(JSON.stringify(view), JSON.stringify(data.facts)));
       for (const card of document.querySelectorAll('.map-card')) {
-        card.querySelectorAll('.source-tier,.source-view-open').forEach(n => n.remove());
+        card.querySelectorAll('.source-tier,.source-view-open,.source-gate-reason').forEach(n => n.remove());
         const tier = latest.cards[card.dataset.id];
         if (!tier || (!tier.bindings.length && tier.tier === 'claimed')) continue;
         const chip = el('span', `${tier.symbol} ${tier.chip}`, `source-tier source-tier-${tier.tier}`);
         card.dataset.sourceTier = tier.tier; card.append(chip);
+        if (tier.gate) card.append(el('p', tier.gate.reason, 'source-gate-reason'));
         if (tier.bindings.length) {
           const open = el('button', 'View source', 'source-view-open'); open.type = 'button';
           open.addEventListener('pointerdown', e => e.stopPropagation());

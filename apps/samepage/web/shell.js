@@ -288,6 +288,14 @@ try {
     });
     document.querySelector('.toolbar').append(button);
   }
+  if (kernel.hasCapability('cement')) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'cement-open'; button.textContent = 'Cement';
+    button.addEventListener('click', async () => {
+      try { await kernel.activateForRoute('cement'); document.dispatchEvent(new CustomEvent('samepage:cement-open')); }
+      catch(error) { showError(`Cement unavailable: ${error.message}`); }
+    });
+    document.querySelector('.toolbar').append(button);
+  }
   if (kernel.hasCapability('sources')) {
     const button = document.createElement('button'); button.type = 'button'; button.id = 'sources-open'; button.textContent = 'Sources';
     button.addEventListener('click', async () => {

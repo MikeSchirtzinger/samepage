@@ -24,6 +24,7 @@ members = [
   "apps/samepage",
   "crates/samepage-sources",
   "crates/samepage-lanes",
+  "crates/samepage-cement",
   "examples/same-page-room",
   "examples/same-page-atlas",
   "examples/same-page-atlas/core",
