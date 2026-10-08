@@ -13,6 +13,13 @@ cursors in memory. Restart preserves assertions, authors and marks, and clears
 reader cursors. Legacy authors survive migration; missing sign-off timestamps
 and participants are never invented.
 
+The host retains authenticated participant display names in the Board's
+additive `participants` registry. Marker display compares the stored signer ID
+with the reader ID: `you` for that reader, the registered name for others.
+Missing signer identity or a missing registry entry is reported as unavailable;
+names are never inferred from the author or the `Author::You` role. That role
+still controls human transitions and fresh sign-off, independently of display.
+
 Agents use `board_read`, `board_revision`, `board_assert`, `board_retract` and
 `board_subject`. Humans use `board_compose`, `board_mark`, `board_unmark`,
 `board_seen`, `board_clear` and the read-only `board_snapshot`. The server
@@ -39,7 +46,11 @@ native Board to that interface; the descriptor claims no document kinds or
 properties. Query plans return one empty Batch with read-back. Mutation plans
 refuse with `native_store_required`, since a document Batch cannot publish a
 native JSON store. Additional JSON exports are `transition`, `project_board`,
-`validate_board`, `delta`, `migrate`, `readback` and `advisory_preview`. A transition
+`validate_board`, `delta`, `migrate`, `readback` and `advisory_preview`.
+`project_board_for` and `readback_for` additionally accept a JSON reader ID
+(or null); `snapshot_view_for` supplies the same reader to the standard ABI.
+The human-only `board_snapshot` includes authenticated viewer-relative read-back
+without advancing its cursor. A transition
 returns the resulting Board and any semantic-prefix error for the native host
 to publish. The browser uses the verified WASM projection, with writes through
 authenticated host actions.

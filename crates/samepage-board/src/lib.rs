@@ -214,12 +214,18 @@ pub fn transition_at(board: &Board, call: &Call, ctx: &Context) -> Result<Outcom
 }
 /// A transient projection input only; it is never applied to the shared doc.
 pub fn snapshot_view(board: &Board) -> View {
+    snapshot_view_for(board, None)
+}
+
+pub fn snapshot_view_for(board: &Board, reader: Option<&str>) -> View {
     View::new(
         board.revision().to_string(),
-        vec![Record::new("board.snapshot", "board-snapshot").with(
-            "json",
-            serde_json::to_string(board).expect("board serializes"),
-        )],
+        vec![Record::new("board.snapshot", "board-snapshot")
+            .with(
+                "json",
+                serde_json::to_string(board).expect("board serializes"),
+            )
+            .with("reader", reader.unwrap_or_default())],
     )
     .expect("snapshot record")
 }
@@ -227,13 +233,20 @@ fn from_view(view: &View) -> Result<Board, CapError> {
     let raw=view.get("board.snapshot").and_then(|r|r.props.get("json")).and_then(|s|s.as_str()).ok_or_else(||CapError::new("board_snapshot_required","board lives in the native JSON store; use a transient board snapshot for projection"))?;
     serde_json::from_str(raw).map_err(|e| invalid(e.to_string()))
 }
+fn reader_from_view(view: &View) -> Option<&str> {
+    view.get("board.snapshot")?
+        .props
+        .get("reader")?
+        .as_str()
+        .filter(|s| !s.is_empty())
+}
 pub struct BoardCapability;
 impl Capability for BoardCapability {
     fn descriptor(&self) -> Descriptor {
         descriptor()
     }
     fn project(&self, view: &View) -> Result<Value, CapError> {
-        Ok(project(&from_view(view)?, 0))
+        Ok(project_for(&from_view(view)?, 0, reader_from_view(view)))
     }
     fn digest(&self, view: &View) -> Result<Value, CapError> {
         Ok(json!({"board":from_view(view)?}))
@@ -243,7 +256,7 @@ impl Capability for BoardCapability {
         let name =
             preferred(&call.action).ok_or_else(|| CapError::new("unknown_action", &call.action))?;
         let readback=match name.as_str() {
-            "board_read"=>board.render(0),"board_revision"=>board.revision().to_string(),
+            "board_read"=>board.render_for(0, reader_from_view(view)),"board_revision"=>board.revision().to_string(),
             "board_snapshot"=>serde_json::to_string(&board).map_err(|e|invalid(e.to_string()))?,
             _=>return Err(CapError::new("native_store_required","board transitions publish through the native LWW adapter, never document ops; use transition with host-supplied context")),
         };
@@ -259,7 +272,7 @@ impl Capability for BoardCapability {
         &self,
         before: &Value,
         after: &Value,
-        _reader: &str,
+        reader: &str,
     ) -> Result<Vec<String>, CapError> {
         let a: Board =
             serde_json::from_value(before["board"].clone()).map_err(|e| invalid(e.to_string()))?;
@@ -269,7 +282,7 @@ impl Capability for BoardCapability {
         Ok(d.changed
             .iter()
             .map(|id| format!("written: {id}"))
-            .chain(d.marked.iter().map(|id| format!("marked by you: {id}")))
+            .chain(b.marked_changes(&d.marked, Some(reader)))
             .collect())
     }
 }
@@ -295,12 +308,16 @@ pub fn validate_state(board: &Board) -> Result<(), CapError> {
     Ok(())
 }
 pub fn project(board: &Board, since: u64) -> Value {
+    project_for(board, since, None)
+}
+
+pub fn project_for(board: &Board, since: u64, reader: Option<&str>) -> Value {
     let delta = board.delta_since(since);
     let entries:Vec<_>=board.entries().iter().map(|entry|{
         let mut value=serde_json::to_value(&entry.assertion).expect("assertion serializes");
         value["author"]=json!(entry.author.word()); value["author_participant"]=json!(entry.author_participant);
         value["authored_at"]=json!(entry.authored_at); value["authored_at_revision"]=json!(entry.authored_at_revision); value["changed_at"]=json!(entry.changed_at);
-        value["mark"]=entry.mark.as_ref().map(|(m,n)|json!({"as":m.word(),"glyph":m.glyph(),"note":n,"by":entry.marked_by.as_ref().map(Author::word),"participant":entry.marked_by_participant,"at":entry.marked_at,"board_revision":entry.marked_at_revision})).unwrap_or(Value::Null);
+        value["mark"]=entry.mark.as_ref().map(|(m,n)|json!({"as":m.word(),"glyph":m.glyph(),"note":n,"by":board.marker_byline(entry, reader),"participant":entry.marked_by_participant,"at":entry.marked_at,"board_revision":entry.marked_at_revision})).unwrap_or(Value::Null);
         value["fresh_agreement"]=json!(fresh_agreement(entry));
         value["standing"]=json!(if fresh_agreement(entry){"SETTLED"}else if entry.mark.as_ref().is_some_and(|(m,_)|*m==Mark::Agree){"STALE SIGN-OFF"}else{"OPEN"});
         value
@@ -340,6 +357,19 @@ pub fn project_board(board_json: &str, since_json: &str) -> String {
     all(target_arch = "wasm32", feature = "wasm-export"),
     wasm_bindgen::prelude::wasm_bindgen
 )]
+pub fn project_board_for(board_json: &str, since_json: &str, reader_json: &str) -> String {
+    response((|| {
+        Ok(project_for(
+            &decode(board_json)?,
+            decode(since_json)?,
+            decode::<Option<String>>(reader_json)?.as_deref(),
+        ))
+    })())
+}
+#[cfg_attr(
+    all(target_arch = "wasm32", feature = "wasm-export"),
+    wasm_bindgen::prelude::wasm_bindgen
+)]
 pub fn validate_board(board_json: &str) -> String {
     response((|| validate_state(&decode(board_json)?))())
 }
@@ -366,6 +396,18 @@ pub fn migrate(board_json: &str) -> String {
 pub fn readback(board_json: &str, since_json: &str) -> String {
     response((|| {
         Ok(decode::<Board>(board_json)?.render(decode(since_json)?))
+    })())
+}
+#[cfg_attr(
+    all(target_arch = "wasm32", feature = "wasm-export"),
+    wasm_bindgen::prelude::wasm_bindgen
+)]
+pub fn readback_for(board_json: &str, since_json: &str, reader_json: &str) -> String {
+    response((|| {
+        Ok(decode::<Board>(board_json)?.render_for(
+            decode(since_json)?,
+            decode::<Option<String>>(reader_json)?.as_deref(),
+        ))
     })())
 }
 #[cfg(all(target_arch = "wasm32", feature = "wasm-export"))]

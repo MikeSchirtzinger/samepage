@@ -292,6 +292,11 @@ pub struct Entry {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Board {
     entries: Vec<Entry>,
+    /// Display names supplied by the authenticated native host. These are
+    /// presentation data, never roles or authorization input. Retaining them
+    /// lets a saved sign-off name its signer after presence expires or restart.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    participants: BTreeMap<String, String>,
     revision: u64,
     #[serde(skip)]
     agent_saw: u64,
@@ -321,6 +326,49 @@ impl Delta {
 }
 
 impl Board {
+    pub fn bind_participant(&mut self, participant: &str, name: &str) {
+        if !participant.trim().is_empty() && !name.trim().is_empty() {
+            self.participants.insert(participant.into(), name.into());
+        }
+    }
+
+    /// Resolve only the participant stored on this mark. `You` remains a role
+    /// in the persisted entry; it is not a viewer-independent display name.
+    pub fn marker_byline<'a>(&'a self, entry: &Entry, reader: Option<&str>) -> Option<&'a str> {
+        entry.mark.as_ref()?;
+        let participant = entry
+            .marked_by_participant
+            .as_deref()
+            .filter(|p| !p.trim().is_empty())?;
+        if reader == Some(participant) {
+            Some("you")
+        } else {
+            self.participants
+                .get(participant)
+                .map(String::as_str)
+                .filter(|name| !name.trim().is_empty())
+        }
+    }
+
+    pub fn marked_changes(&self, ids: &[String], reader: Option<&str>) -> Vec<String> {
+        let mut markers: BTreeMap<Option<&str>, Vec<&str>> = BTreeMap::new();
+        for id in ids {
+            if let Some(entry) = self.get(id).filter(|entry| entry.mark.is_some()) {
+                markers
+                    .entry(self.marker_byline(entry, reader))
+                    .or_default()
+                    .push(id);
+            }
+        }
+        markers
+            .into_iter()
+            .map(|(marker, ids)| match marker {
+                Some(marker) => format!("marked by {marker}: {}", ids.join(", ")),
+                None => format!("marked: {} (marker identity unavailable)", ids.join(", ")),
+            })
+            .collect()
+    }
+
     pub fn bind_author(&mut self, id: &str, participant: &str) {
         if let Some(entry) = self.entries.iter_mut().find(|e| e.assertion.id() == id) {
             entry.author_participant = Some(participant.into());
@@ -481,6 +529,9 @@ impl Board {
             .ok_or_else(|| format!("`{id}` is not on the board"))?;
         entry.mark = Some((mark, note));
         entry.marked_by = Some(Author::You);
+        // A new mark cannot inherit the previous person's identity. The host
+        // transition binds the actual signer after this succeeds.
+        entry.marked_by_participant = None;
         entry.marked_at = Some(marked_at);
         entry.marked_at_revision = Some(revision);
         entry.changed_at = revision;
@@ -581,6 +632,10 @@ impl Board {
     }
 
     pub fn render(&self, since: u64) -> String {
+        self.render_for(since, None)
+    }
+
+    pub fn render_for(&self, since: u64, reader: Option<&str>) -> String {
         let delta = self.delta_since(since);
 
         let mut out = String::new();
@@ -614,7 +669,11 @@ impl Board {
                 entry.author.word()
             ));
             if let Some((mark, note)) = &entry.mark {
-                out.push_str(&format!("\n  marked {} by you", mark.word()));
+                out.push_str(&format!("\n  marked {}", mark.word()));
+                match self.marker_byline(entry, reader) {
+                    Some(marker) => out.push_str(&format!(" by {marker}")),
+                    None => out.push_str(" (marker identity unavailable)"),
+                }
                 if let Some(note) = note {
                     out.push_str(&format!(": {note}"));
                 }
@@ -642,7 +701,9 @@ impl Board {
                 out.push_str(&format!("written: {}\n", delta.changed.join(", ")));
             }
             if !delta.marked.is_empty() {
-                out.push_str(&format!("marked by you: {}\n", delta.marked.join(", ")));
+                for change in self.marked_changes(&delta.marked, reader) {
+                    out.push_str(&format!("{change}\n"));
+                }
             }
         }
         out.push_str("\nThe vocabulary is at GET /board/primitives.\n");

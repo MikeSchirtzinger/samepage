@@ -18,3 +18,5 @@ shasum -a 256 "$artifact"
 "$bindgen" --target nodejs --out-dir "$out/pkg" "$artifact"
 node "$here/check.mjs" "$out/pkg" "$here/cases.json" "$out/results.json"
 SAMEPAGE_BOARD_WASM_RESULTS="$out/results.json" cargo test --locked -p samepage-board --test wasm_equivalence -- --ignored --nocapture
+node "$here/check.mjs" "$out/pkg" "$here/cases.json" "$out/reader-results.json" readers
+SAMEPAGE_BOARD_READER_WASM_RESULTS="$out/reader-results.json" cargo test --locked -p samepage-board --test wasm_byline_equivalence -- --ignored --nocapture

@@ -84,7 +84,7 @@ impl BoardHost {
     pub fn read(&self, participant: &str) -> Result<String, String> {
         let mut state = self.state.lock().map_err(|_| "board lock poisoned")?;
         let since = state.agents.get(participant).copied().unwrap_or(0);
-        let read = state.board.render(since);
+        let read = state.board.render_for(since, Some(participant));
         let revision = state.board.revision();
         state.agents.insert(participant.into(), revision);
         Ok(read)
@@ -123,7 +123,8 @@ impl BoardHost {
             "board_revision" => return Ok(self.revision().to_string()),
             "board_snapshot" => {
                 let state = self.state.lock().map_err(|_| "board lock poisoned")?;
-                return Ok(json!({"board":state.board,"seen_at":state.humans.get(participant).copied().unwrap_or(0)}).to_string());
+                let seen_at = state.humans.get(participant).copied().unwrap_or(0);
+                return Ok(json!({"board":state.board,"seen_at":seen_at,"readback":state.board.render_for(seen_at,Some(participant))}).to_string());
             }
             "board_seen" => {
                 let mut state = self.state.lock().map_err(|_| "board lock poisoned")?;
@@ -169,9 +170,12 @@ impl BoardHost {
             timestamp: now_iso()?,
         };
         let mut state = self.state.lock().map_err(|_| "board lock poisoned")?;
-        let outcome =
-            samepage_board::transition_at(&state.board, &Call { action: name, args }, &ctx)
-                .map_err(|e| e.to_string())?;
+        let mut candidate = state.board.clone();
+        if let Some(label) = &actor.label {
+            candidate.bind_participant(participant, label);
+        }
+        let outcome = samepage_board::transition_at(&candidate, &Call { action: name, args }, &ctx)
+            .map_err(|e| e.to_string())?;
         if outcome.board.revision() != state.board.revision() {
             // Prefix publication happens even when outcome.error is present.
             // A filesystem error refuses publication visibly and leaves memory

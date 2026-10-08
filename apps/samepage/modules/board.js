@@ -39,11 +39,11 @@ const RELATION_WORDS = {
 export async function activate({ client, mount, action, wasm, application, whoAmI }) {
   // Verified entries are imported from blob URLs; resolve host assets explicitly.
   const { semanticTargetNamespace, attachSemanticTargetHost } = await import(new URL("/_agui/semantic-targets.js", location.origin).href);
-  if (!wasm?.project_board) throw new Error("board portable projection is unavailable");
+  if (!wasm?.project_board_for) throw new Error("board portable projection is unavailable");
   application.registerCapability("board",wasm);
   let seenAt=0;
   function projected(value) {
-    const result=JSON.parse(wasm.project_board(JSON.stringify(value.board),JSON.stringify(seenAt)));
+    const result=JSON.parse(wasm.project_board_for(JSON.stringify(value.board),JSON.stringify(seenAt),JSON.stringify(person.id)));
     if (result.error) throw new Error(`board: ${result.error.message}`);
     return result.ok;
   }
@@ -285,8 +285,9 @@ export async function activate({ client, mount, action, wasm, application, whoAm
     if (entry.mark) {
       const mark = el("p", "board-mark");
       mark.append(line("span", "glyph", MARK_GLYPH[entry.mark.as] || entry.mark.glyph));
+      mark.append(line("span", "board-marker-byline", entry.mark.by ? `by ${entry.mark.by}` : "marker identity unavailable"));
       mark.append(
-        line("span", "", entry.mark.note ? `you: ${entry.mark.note}` : MARK_WORDS[entry.mark.as] || entry.mark.as)
+        line("span", "", entry.mark.note || entry.mark.as)
       );
       article.append(mark);
     }
@@ -332,7 +333,7 @@ export async function activate({ client, mount, action, wasm, application, whoAm
       meta.append(line(
         "span",
         "board-clause-mark",
-        `${MARK_GLYPH[entry.mark.as] || entry.mark.glyph} ${MARK_WORDS[entry.mark.as] || entry.mark.as}`,
+        `${MARK_GLYPH[entry.mark.as] || entry.mark.glyph} ${entry.mark.by ? `by ${entry.mark.by}` : "marker identity unavailable"}${entry.mark.note ? `: ${entry.mark.note}` : ""}`,
       ));
     }
     section.append(meta, markControls(entry, "board-controls compact"));

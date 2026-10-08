@@ -1795,6 +1795,1091 @@
           "subject": "Atlas cementing"
         }
       }
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "3",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+              "reader": "human-a"
+            }
+          }
+        ]
+      },
+      "expected_by": "Blair"
+    },
+    {
+      "export": "plan",
+      "view": {
+        "revision": "3",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+              "reader": "human-a"
+            }
+          }
+        ]
+      },
+      "call": {
+        "action": "board_read",
+        "args": {}
+      },
+      "expected_readback": "marked question by Blair"
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "3",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+              "reader": "human-b"
+            }
+          }
+        ]
+      },
+      "expected_by": "you"
+    },
+    {
+      "export": "plan",
+      "view": {
+        "revision": "3",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+              "reader": "human-b"
+            }
+          }
+        ]
+      },
+      "call": {
+        "action": "board_read",
+        "args": {}
+      },
+      "expected_readback": "marked question by you"
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "3",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+              "reader": "agent"
+            }
+          }
+        ]
+      },
+      "expected_by": "Blair"
+    },
+    {
+      "export": "plan",
+      "view": {
+        "revision": "3",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+              "reader": "agent"
+            }
+          }
+        ]
+      },
+      "call": {
+        "action": "board_read",
+        "args": {}
+      },
+      "expected_readback": "marked question by Blair"
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "3",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+              "reader": ""
+            }
+          }
+        ]
+      },
+      "expected_by": "Blair"
+    },
+    {
+      "export": "plan",
+      "view": {
+        "revision": "3",
+        "records": [
+          {
+            "id": "board.snapshot",
+            "kind": "board-snapshot",
+            "props": {
+              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+              "reader": ""
+            }
+          }
+        ]
+      },
+      "call": {
+        "action": "board_read",
+        "args": {}
+      },
+      "expected_readback": "marked question by Blair"
+    },
+    {
+      "export": "transition",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "call": {
+        "action": "board_mark",
+        "args": {
+          "id": "two-humans",
+          "mark": "agree"
+        }
+      },
+      "context": {
+        "author": "you",
+        "participant": "human-a",
+        "timestamp": "2026-10-08T12:03:00Z"
+      }
+    }
+  ],
+  "reader_calls": [
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-a",
+      "since": 0,
+      "expected_by": "Blair"
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-a",
+      "since": 0,
+      "expected_by": "Blair"
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "settled"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "agree",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-a",
+      "since": 0,
+      "expected_by": "Blair",
+      "expected_fresh": true
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "settled"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "agree",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-a",
+      "since": 0,
+      "expected_by": "Blair",
+      "expected_fresh": true
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "since": 0,
+      "expected_by": "you"
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "since": 0,
+      "expected_by": "you"
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "settled"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "agree",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "since": 0,
+      "expected_by": "you",
+      "expected_fresh": true
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "settled"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "agree",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "since": 0,
+      "expected_by": "you",
+      "expected_fresh": true
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "agent",
+      "since": 0,
+      "expected_by": "Blair"
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "agent",
+      "since": 0,
+      "expected_by": "Blair"
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "settled"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "agree",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "agent",
+      "since": 0,
+      "expected_by": "Blair",
+      "expected_fresh": true
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "settled"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "agree",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "agent",
+      "since": 0,
+      "expected_by": "Blair",
+      "expected_fresh": true
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": null,
+      "since": 0,
+      "expected_by": "Blair"
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": null,
+      "since": 0,
+      "expected_by": "Blair"
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "settled"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "agree",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": null,
+      "since": 0,
+      "expected_by": "Blair",
+      "expected_fresh": true
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "settled"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "agree",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "human-b",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": null,
+      "since": 0,
+      "expected_by": "Blair",
+      "expected_fresh": true
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": null,
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "expected_by": null
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": null,
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "expected_by": null
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "expected_by": null
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "expected_by": null
+    },
+    {
+      "export": "project_board_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "unknown-human",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "expected_by": null
+    },
+    {
+      "export": "readback_for",
+      "board": {
+        "entries": [
+          {
+            "assertion": {
+              "kind": "claim",
+              "id": "two-humans",
+              "text": "Agent assertion; two human verdicts",
+              "status": "proposed"
+            },
+            "author": {
+              "named": "Reviewer"
+            },
+            "author_participant": "agent",
+            "authored_at": "2026-10-08T12:00:00Z",
+            "authored_at_revision": 1,
+            "changed_at": 3,
+            "mark": [
+              "question",
+              null
+            ],
+            "marked_by": "you",
+            "marked_by_participant": "unknown-human",
+            "marked_at": "2026-10-08T12:02:00Z",
+            "marked_at_revision": 3
+          }
+        ],
+        "revision": 3,
+        "subject": null,
+        "participants": {
+          "human-a": "Alice",
+          "human-b": "Blair",
+          "agent": "Reviewer"
+        }
+      },
+      "reader": "human-b",
+      "expected_by": null
     }
   ]
 }
