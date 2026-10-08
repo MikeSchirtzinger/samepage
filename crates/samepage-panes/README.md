@@ -46,8 +46,12 @@ filesystem path. The immutable history stores every original JSON field and
 log entry alongside the migrated document. Numbers and key order use a
 canonical JSON representation, not original file formatting. Historical
 bylines remain historical until their specific aspect receives a new write.
-The imported author's identity is never used as caller authority. Importing
-again changes no document bytes, revision or journal entry. Conflicting pane
+The projection exposes schema 3, the shared revision hash, `legacy_revision`,
+and the retained legacy `log`; current writes use the document host journal.
+Historical bylines are explicitly labeled historical and never resolve to
+"You", even if an imported id matches a current participant. The imported
+author's identity is never used as caller authority. Importing again changes
+no document bytes, revision or journal entry. Conflicting pane
 ids, existing Panes settings and exceeding the retained 24-pane limit refuse
 the first import atomically.
 
@@ -55,8 +59,10 @@ Sources retain the room's root, text-type, private-directory, credential-name,
 range and size limits. Deleted sources render and read back a named error.
 Runnable catalog entries report exact declared default ports and live HTTP
 status; portless commands remain portless. They never execute commands.
-External embeds retain the room's explicit human Load gate. Sandbox HTML is
-served by this app at `/panes/html`; iframe points retain the transient browser
+External embeds require the explicit human Load gate for agents, companions,
+historical imports and authors whose role is no longer in the host's recent
+journal. A current, host-identified human author may load their own embed.
+Sandbox HTML is served by this app at `/panes/html`; iframe points retain the transient browser
 activation gate. The gate does not prove which frame element was clicked.
 
 Verification:

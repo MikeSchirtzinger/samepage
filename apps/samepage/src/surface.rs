@@ -443,6 +443,15 @@ impl SamePageState {
             // complete resulting journal prefix is durable.
             self.wait_saved(self.host.journal().seq)?;
         }
+        if self.panes.is_some()
+            && (invoked.action.starts_with("pane_") || invoked.action.starts_with("panes_"))
+            && invoked.action != "panes_present"
+        {
+            (self.emit_event)(
+                "samepage.capability-used",
+                json!({"id":"panes","tool":invoked.action}),
+            );
+        }
         let validation = self.validation.report(&self.host.view())?;
         if invoked.commit.is_some() && validation["status"] == "failed" {
             return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":invoked.commit.as_ref().map(|c|c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),"revision":self.host.revision(),"validation":validation}).to_string());
@@ -708,6 +717,7 @@ impl SamePageSurface {
                 let actor=current_actor().and_then(|a|map_actor(&a).ok());
                 SurfaceEffect::AsyncQuery(Box::pin(async move {
                     let actor=actor.ok_or("authenticated actor missing")?;
+                    (state.emit_event)("samepage.capability-used",json!({"id":"panes","tool":"panes_await"}));
                     let panes=state.panes.as_ref().ok_or("panes is unavailable")?;
                     let deadline=tokio::time::Instant::now()+Duration::from_secs(seconds);
                     loop {
@@ -764,7 +774,7 @@ impl SamePageSurface {
             .alias("atlas_validate"),
         );
         let wait_state = state.clone();
-        tools.push(ActionDef::new("review_wait","Wait for fresh browser validation, including late measurement errors from your own write.",json!({"type":"object","required":[],"properties":{"seconds":{"type":"integer","minimum":0,"maximum":60}},"additionalProperties":false}),move |args|{
+        tools.push(ActionDef::new("review_wait","Wait for fresh browser validation, including late measurement errors from your own write.",json!({"type":"object","properties":{"seconds":{"type":"integer","minimum":0,"maximum":60}},"additionalProperties":false}),move |args|{
             let state=wait_state.clone();let seconds=args["seconds"].as_u64().unwrap_or(30);
             SurfaceEffect::AsyncQuery(Box::pin(async move {
                 let generation=state.validation.generation();

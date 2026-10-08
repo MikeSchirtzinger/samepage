@@ -274,6 +274,10 @@ try {
     return kernel;
   } });
   kernel.attachRuntime(runtime);
+  client.on("samepage.capability-used",async ({value})=>{
+    try {await kernel.activateForTool(value?.tool);}
+    catch(error){showError(`${value?.id || 'capability'} is unavailable: ${error.message}`);}
+  });
   client.on("samepage.persistence-error", ({value}) => kernel.setPersistenceFailure(value?.error || "save failed"));
   client.on("samepage.persistence-wait", ({value}) => kernel.setPersistencePending(value?.message || "save is still pending"));
   client.on("samepage.persistence-resolved", () => kernel.setPersistenceResolved());
@@ -288,7 +292,7 @@ try {
   document.getElementById('open-panes').addEventListener('click',async()=>{
     const mount=document.getElementById('panes');mount.hidden=false;
     try {if(!kernel.hasCapability('panes'))throw new Error('panes is unavailable');await kernel.activateForRoute('panes');}
-    catch(error){mount.textContent=`panes is unavailable: ${error.message}`;showError(mount.textContent);}
+    catch(error){mount.textContent=error.message.includes('panes')?error.message:`panes is unavailable: ${error.message}`;showError(mount.textContent);}
   });
   document.getElementById('person-display-name').value=person.name || '';
   document.getElementById('person-name').addEventListener('submit',async event=>{

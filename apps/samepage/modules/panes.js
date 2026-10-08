@@ -634,10 +634,10 @@ function renderEmbed(node, ctx) {
 
   // An embed the agent wrote is a proposal to load a site, not permission to.
   // One the person typed is already their decision.
-  if (ctx.paneAuthor === "agent") {
+  if (ctx.paneAuthor !== "human" || ctx.paneHistorical) {
     const gate = el("div", "embed-gate");
     gate.style.setProperty("height", `${height}px`);
-    gate.append(el("p", "n-text tone-muted", "The agent wants to open this site in the room."));
+    gate.append(el("p", "n-text tone-muted", "Load this site in the pane when you are ready."));
     const load = el("button", "n-button tone-accent", "Load it");
     load.type = "button";
     load.addEventListener("click", () => gate.replaceWith(frame()));
@@ -715,7 +715,7 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
     // Built on `whoIs` rather than repeating it, because the two resolving a
     // participant differently is precisely how one person ends up reading as
     // "you" on a pane and by name on the note inside it.
-    const { mine, name, hue } = whoIs(pane.by_id, pane.by_name);
+    const { mine, name, hue } = whoIs(pane.by_id, pane.by_name, pane.historical);
     return {
       mine,
       text: mine ? "you" : name || CATEGORY[pane.author] || pane.author,
@@ -735,11 +735,11 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
   /// The shared half of every byline in the panes: pane authors, note writers
   /// and mark setters all resolve the same way, so one person cannot read as
   /// "you" in one corner of a pane and by name in another.
-  function whoIs(id, recorded) {
+  function whoIs(id, recorded, historical = false) {
     const roster = state?.participants || {};
-    const known = id ? roster[id] : null;
-    const name = known?.name || recorded || null;
-    const mine = Boolean(me?.id && id && id === me.id);
+    const known = id && !historical ? roster[id] : null;
+    const name = historical ? `${recorded || "unnamed author"} (historical)` : known?.name || recorded || null;
+    const mine = !historical && Boolean(me?.id && id && id === me.id);
     return {
       mine,
       name,
@@ -756,7 +756,7 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
   /// says their name on hover; it stays uncoloured when the mark is your own,
   /// because everyone sees their own marks as theirs.
   function applyMarks(article, marks, pane) {
-    const who = whoIs(pane.mark_by, pane.mark_by_name);
+    const who = whoIs(pane.mark_by, pane.mark_by_name, pane.mark_historical);
     for (const mark of MARKS) {
       const button = marks.querySelector(`[data-mark="${mark.id}"]`);
       const on = pane.mark === mark.id;
@@ -1172,7 +1172,7 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
       // Signed with whoever actually wrote it. This said "you" unconditionally,
       // which was true for the only reader a single-occupancy room had and
       // became a lie about the other person the moment there were two.
-      const who = whoIs(pane.note_by, pane.note_by_name);
+      const who = whoIs(pane.note_by, pane.note_by_name, pane.note_historical);
       const tag = el("span", "pane-note-mark", who.text);
       if (who.hue !== null) tag.style.setProperty("--by-hue", String(who.hue));
       if (who.mine) tag.classList.add("mine");
@@ -1185,7 +1185,7 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
       // "somebody clicked Run" is not something either of them can act on.
       // "pointed" alone when nobody was identified, which is the pre-identity
       // case and still what a caller who never joined gets.
-      const who = whoIs(pane.pointed_by, pane.pointed_by_name);
+      const who = whoIs(pane.pointed_by, pane.pointed_by_name, pane.pointed_historical);
       const signed = who.mine || who.name;
       const tag = el("span", "pane-note-mark", signed ? `${who.text} pointed` : "pointed");
       if (who.hue !== null) tag.style.setProperty("--by-hue", String(who.hue));
@@ -1229,13 +1229,18 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
       article.classList.add("moving");
       holdStill(true);
     }
-    source.setPointerCapture(event.pointerId);
+    // Capturing an undecided body press retargets the eventual click to the
+    // article, losing the first click on a deck button. Track the window until
+    // it becomes a drag, then capture the pointer.
+    const listening = moving ? source : window;
+    if (moving) source.setPointerCapture(event.pointerId);
 
     const onMove = (move) => {
       if (!moving) {
         const travel = Math.hypot(move.clientX - origin.x, move.clientY - origin.y);
         if (travel < threshold) return;
         moving = true;
+        source.setPointerCapture(event.pointerId);
         article.classList.add("moving");
         // Only now, once the press has turned out to be a drag. Clearing on
         // press would wipe a selection they made deliberately and then clicked
@@ -1261,9 +1266,9 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
     };
 
     const finish = () => {
-      source.removeEventListener("pointermove", onMove);
-      source.removeEventListener("pointerup", finish);
-      source.removeEventListener("pointercancel", finish);
+      listening.removeEventListener("pointermove", onMove);
+      listening.removeEventListener("pointerup", finish);
+      listening.removeEventListener("pointercancel", finish);
       article.classList.remove("moving");
       holdStill(false);
       clearGuides();
@@ -1283,9 +1288,9 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
       queued(() => ["panes_arrange", { panes: [{ id: paneId, spot: placed }] }]);
     };
 
-    source.addEventListener("pointermove", onMove);
-    source.addEventListener("pointerup", finish);
-    source.addEventListener("pointercancel", finish);
+    listening.addEventListener("pointermove", onMove);
+    listening.addEventListener("pointerup", finish);
+    listening.addEventListener("pointercancel", finish);
   }
 
   function renderPane(pane) {
@@ -1420,6 +1425,7 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
       ...ctx,
       openInRoom,
       paneAuthor: pane.author,
+      paneHistorical: pane.historical,
       paneId: pane.id,
       htmlIndex,
       revision: state?.revision,
@@ -1551,9 +1557,8 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
     // the way. Once it is selected the body is content again and a press there
     // means what the content says it means.
     //
-    // `pointerdown` runs before `mousedown`, so this still sees the selection
-    // as it was *before* this very press selects the pane, which is the whole
-    // distinction being drawn.
+    // These pointer listeners run in order: the body drag checks the prior
+    // focus before this press selects the pane.
     article.addEventListener("pointerdown", (event) => {
       if (event.button !== 0 || expanded === pane.id) return;
       if (focused === pane.id) return;
@@ -1568,7 +1573,8 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
     // It also brings it forward, because the thing you just reached for being
     // the thing you can see is not a preference, it is what every window on
     // the person's desktop already does.
-    article.addEventListener("mousedown", () => {
+    article.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
       focused = pane.id;
       canvas.querySelectorAll(".pane.focused").forEach((node) => node.classList.remove("focused"));
       article.classList.add("focused");

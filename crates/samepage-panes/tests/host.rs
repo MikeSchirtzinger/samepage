@@ -430,3 +430,76 @@ fn untouched_unknown_records_and_extension_props_survive() {
     drop(reopened);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn legacy_document_fields_and_log_are_projected_without_impersonation() {
+    let h = host();
+    call(&h, &agent(), "panes_import", json!({"document":old()}));
+    let value = projection(&h);
+    assert_eq!(value["schema_version"], 3);
+    assert_eq!(value["legacy_revision"], 3);
+    assert_eq!(value["revision"], h.revision());
+    assert_eq!(value["log"], old()["log"]);
+    assert_eq!(value["panes"][0]["by_id"], "old-agent");
+    let record = h
+        .view()
+        .records()
+        .find(|r| {
+            r.kind == "pane" && r.props["pane_id"] == samepage_capability::Scalar::from("old")
+        })
+        .unwrap()
+        .clone();
+    assert_eq!(
+        record.props["touched_by_participant"],
+        samepage_capability::Scalar::from("agent")
+    );
+}
+#[test]
+fn a_new_pane_can_be_pinned_and_its_removal_is_atomic() {
+    let h = host();
+    call(
+        &h,
+        &agent(),
+        "pane_put",
+        json!({"id":"pinned","title":"Pinned","view":{"kind":"text","text":"Keep it"},"pinned":true}),
+    );
+    assert_eq!(p(&h)["pinned"], true);
+    let before = (h.revision(), h.encode_full(), h.journal().seq);
+    assert!(h
+        .invoke(
+            &agent(),
+            "pane_remove",
+            json!({"expected_revision":h.revision(),"id":"pinned"})
+        )
+        .is_err());
+    assert_eq!(before, (h.revision(), h.encode_full(), h.journal().seq));
+}
+
+#[test]
+fn importing_a_matching_human_id_retains_history_and_never_mints_a_live_byline() {
+    let h = host();
+    let mut document = old();
+    document["panes"][1]["by_id"] = json!(human().participant);
+    document["panes"][1]["by_name"] = json!("Sam");
+    document["panes"][1]["note_by"] = json!(human().participant);
+    call(&h, &agent(), "panes_import", json!({"document":document}));
+    let value = projection(&h);
+    let imported = &value["panes"][1];
+    assert_eq!(imported["by_id"], human().participant);
+    assert_eq!(imported["historical"], true);
+    assert_eq!(imported["note_historical"], true);
+    assert_eq!(imported["imported_by"], "Panes worker");
+    assert!(samepage_panes::describe_projection(&value)
+        .unwrap()
+        .contains("Sam (historical)"));
+    call(
+        &h,
+        &human(),
+        "pane_annotate",
+        json!({"id":"wide","note":"A new note"}),
+    );
+    let current = &projection(&h)["panes"][1];
+    assert_eq!(current["historical"], true);
+    assert_eq!(current["note_historical"], false);
+    assert_eq!(current["note_by"], human().participant);
+}

@@ -851,7 +851,7 @@ pub fn projection(v: &View, facts: &BTreeMap<String, Json>) -> Result<Json, CapE
             aspect(v, &p.id, "pane-layout", "").ok_or_else(|| invalid("pane has no layout"))?;
         let node: view::Node = parse(str_(p, "tree"))?;
         let (by_id, by_name, author) = byline(p, "");
-        let mut projected = json!({"id":str_(p,"pane_id"),"record_id":p.id,"title":str_(p,"title"),"view":view::resolve(&node,facts),"spot":spot(v,&p.id)?,"stack":layout.props.get("stack"),"pinned":layout.props.get("pinned"),"by_id":by_id,"by_name":by_name,"author":author,"mark":"none","note":"","pointed":"","pointed_path":[],"revision":historical(p)["revision"]});
+        let mut projected = json!({"id":str_(p,"pane_id"),"record_id":p.id,"title":str_(p,"title"),"view":view::resolve(&node,facts),"spot":spot(v,&p.id)?,"stack":layout.props.get("stack"),"pinned":layout.props.get("pinned"),"by_id":by_id,"by_name":by_name,"author":author,"historical":!historical(p).is_null(),"imported_by":if historical(p).is_null(){Json::Null}else{json!(str_(p,"touched_by"))},"mark":"none","note":"","pointed":"","pointed_path":[],"revision":historical(p)["revision"]});
         let (id, name, _) = byline(layout, "");
         projected["layout_by_id"] = id;
         projected["layout_by_name"] = name;
@@ -859,6 +859,7 @@ pub fn projection(v: &View, facts: &BTreeMap<String, Json>) -> Result<Json, CapE
             if let Some(r) = aspect(v, &p.id, "pane-annotation", slot) {
                 let value: Json = parse(str_(r, "value"))?;
                 let (id, name, _) = byline(r, slot);
+                projected[format!("{slot}_historical")] = json!(!historical(r).is_null());
                 projected[format!("{slot}_by")] = id;
                 projected[format!("{slot}_by_name")] = name;
                 if slot == "pointed" {
@@ -875,7 +876,7 @@ pub fn projection(v: &View, facts: &BTreeMap<String, Json>) -> Result<Json, CapE
     let settings = v.records().find(|r| r.kind == "panes-settings");
     let history = v.records().find(|r| r.kind == "panes-history");
     Ok(
-        json!({"revision":v.revision(),"panes":panes,"intent":settings.map(|r|str_(r,"intent")).unwrap_or(""),"theme":settings.map(|r|parse::<Json>(str_(r,"theme"))).transpose()?.unwrap_or(json!(model::Theme::default())),"history":history.map(|r|parse::<Json>(str_(r,"migrated"))).transpose()?,"original":history.map(|r|parse::<Json>(str_(r,"original"))).transpose()?}),
+        json!({"schema_version":3,"revision":v.revision(),"panes":panes,"intent":settings.map(|r|str_(r,"intent")).unwrap_or(""),"theme":settings.map(|r|parse::<Json>(str_(r,"theme"))).transpose()?.unwrap_or(json!(model::Theme::default())),"history":history.map(|r|parse::<Json>(str_(r,"migrated"))).transpose()?,"original":history.map(|r|parse::<Json>(str_(r,"original"))).transpose()?,"legacy_revision":history.map(|r|parse::<Json>(str_(r,"migrated")).map(|h|h["revision"].clone())).transpose()?,"log":history.map(|r|parse::<Json>(str_(r,"migrated")).map(|h|h["log"].clone())).transpose()?.unwrap_or(json!([]))}),
     )
 }
 pub fn describe(v: &View) -> Result<String, CapError> {
@@ -895,18 +896,32 @@ pub fn describe_projection(p: &Json) -> Result<String, CapError> {
             pane["id"].as_str().unwrap_or(""),
             pane["title"].as_str().unwrap_or(""),
             view::summarize(&node),
-            pane["by_name"]
-                .as_str()
-                .unwrap_or("historical unnamed author")
+            format_args!(
+                "{}{}",
+                pane["by_name"].as_str().unwrap_or("unnamed author"),
+                if pane["historical"] == true {
+                    " (historical)"
+                } else {
+                    ""
+                }
+            )
         ));
         for slot in ["mark", "note", "pointed"] {
             let value = pane[slot].as_str().unwrap_or("");
             if !value.is_empty() && value != "none" {
                 out.push_str(&format!(
                     "  {slot}: {value} (by {})\n",
-                    pane[format!("{slot}_by_name")]
-                        .as_str()
-                        .unwrap_or("someone")
+                    format_args!(
+                        "{}{}",
+                        pane[format!("{slot}_by_name")]
+                            .as_str()
+                            .unwrap_or("someone"),
+                        if pane[format!("{slot}_historical")] == true {
+                            " (historical)"
+                        } else {
+                            ""
+                        }
+                    )
                 ));
             }
         }
