@@ -151,7 +151,18 @@ impl Ring {
         &mut self,
         iterations: u32,
         samples: u32,
+        clock: impl FnMut() -> f64,
+    ) -> Result<Value, CapError> {
+        self.benchmark_at(iterations, samples, clock, 0.0)
+    }
+    /// A monotonic clock plus its epoch offset. Runtime records retain real
+    /// per-probe timings; fixtures supply a deterministic clock and offset.
+    pub fn benchmark_at(
+        &mut self,
+        iterations: u32,
+        samples: u32,
         mut clock: impl FnMut() -> f64,
+        epoch_ms: f64,
     ) -> Result<Value, CapError> {
         bounds(iterations, samples)?;
         let mut disabled = Vec::new();
@@ -169,6 +180,7 @@ impl Ring {
             for i in 0..iterations {
                 checksum = checksum.wrapping_add(u64::from(i) * 31);
                 let id = format!("benchmark:trace:{sample}:{i}");
+                let probe_start = clock();
                 let event = ActivityRecord {
                     kind: "span_open".into(),
                     capability: ID.into(),
@@ -178,8 +190,8 @@ impl Ring {
                     name: "trace.probe".into(),
                     target: "samepage::trace".into(),
                     level: "INFO".into(),
-                    at_ms: f64::from(i),
-                    started_monotonic_ms: Some(f64::from(i)),
+                    at_ms: epoch_ms + probe_start,
+                    started_monotonic_ms: Some(probe_start),
                     duration_ms: None,
                     fields: [
                         ("iteration".into(), json!(i)),
@@ -191,16 +203,21 @@ impl Ring {
                 self.record(event.clone())?;
                 let mut tick = event.clone();
                 tick.kind = "event".into();
+                tick.at_ms = epoch_ms + clock();
                 tick.parent_span_id = Some(id);
                 tick.fields.insert("checksum".into(), json!(checksum));
                 self.record(tick)?;
                 let mut exit = event.clone();
                 exit.kind = "span_exit".into();
-                exit.duration_ms = Some(0.0);
+                let exited = clock();
+                exit.at_ms = epoch_ms + exited;
+                exit.duration_ms = Some((exited - probe_start).max(0.0));
                 self.record(exit)?;
                 let mut close = event;
                 close.kind = "span_close".into();
-                close.duration_ms = Some(0.0);
+                let closed = clock();
+                close.at_ms = epoch_ms + closed;
+                close.duration_ms = Some((closed - probe_start).max(0.0));
                 self.record(close)?;
             }
             enabled.push((clock() - start).max(0.0));
@@ -340,7 +357,13 @@ pub fn operate(ring: &mut Ring, raw: &str) -> String {
                         tick
                     })
                 } else {
-                    ring.benchmark(i, s, samepage_capability::activity::now)
+                    ring.benchmark_at(
+                        i,
+                        s,
+                        samepage_capability::activity::now,
+                        samepage_capability::activity::wall_time()
+                            - samepage_capability::activity::now(),
+                    )
                 }
             }
             _ => Err(CapError::new("unknown_action", "unknown trace operation")),

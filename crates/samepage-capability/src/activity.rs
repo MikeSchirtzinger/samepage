@@ -93,7 +93,7 @@ pub fn now() -> f64 {
             * 1000.0
     }
 }
-fn wall_time() -> f64 {
+pub fn wall_time() -> f64 {
     #[cfg(target_arch = "wasm32")]
     {
         js_sys::Date::now()
