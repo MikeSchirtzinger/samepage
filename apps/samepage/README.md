@@ -49,3 +49,9 @@ selected build. The first bound card, source action or viewer opening loads
 the artifact. A failed source binding publishes no document change. When
 Sources and Diagrams are selected together, the build transfers Diagrams'
 provisional binding keys to Sources. See [Sources](../../crates/samepage-sources/README.md).
+
+Optional Lanes adds the collapsed “Found in source” strip with unresolved
+counts, inspectable static findings and verified extra-binding claims. Append
+`lanes=crates/samepage-lanes=apps/samepage/modules/lanes.js` with Sources
+selected. It loads when the strip opens, a lane action runs or a saved binding
+is present. See [Lanes](../../crates/samepage-lanes/README.md).

@@ -280,6 +280,14 @@ try {
   client.on("samepage.persistence-resolved", () => kernel.setPersistenceResolved());
   await client.connect();
   kernel.connect();
+  if (kernel.hasCapability('lanes')) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'lanes-open'; button.textContent = 'Lanes · scan source';
+    button.addEventListener('click', async () => {
+      try { await kernel.activateForRoute('lanes'); document.dispatchEvent(new CustomEvent('samepage:lanes-open')); }
+      catch(error) { showError(`Lanes unavailable: ${error.message}`); }
+    });
+    document.querySelector('.toolbar').append(button);
+  }
   if (kernel.hasCapability('sources')) {
     const button = document.createElement('button'); button.type = 'button'; button.id = 'sources-open'; button.textContent = 'Sources';
     button.addEventListener('click', async () => {

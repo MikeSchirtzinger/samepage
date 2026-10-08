@@ -2872,6 +2872,8 @@ dependencies = [
  "samepage-capability",
  "samepage-diagrams",
  "samepage-doc",
+ "samepage-extract",
+ "samepage-lanes",
  "samepage-map",
  "samepage-review",
  "samepage-sources",
@@ -2938,6 +2940,22 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "samepage-lanes"
+version = "0.1.0"
+dependencies = [
+ "samepage-capability",
+ "samepage-doc",
+ "samepage-extract",
+ "samepage-map",
+ "samepage-sources",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
+ "wasm-bindgen",
 ]
 
 [[package]]

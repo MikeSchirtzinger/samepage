@@ -561,14 +561,28 @@ impl SourcesHost {
             extras: next.extra_bindings.clone(),
             ..Default::default()
         };
+        // The host supplies extra verified bindings from the optional Lanes
+        // owner's durable records. Sources' portable descriptor stays acyclic.
+        for r in view.records().filter(|r| r.kind == "binding") {
+            let node = string(r, "node");
+            let b = Binding {
+                path: string(r, "path").into(),
+                lines: string(r, "lines").into(),
+            };
+            let extra = facts.extras.entry(node.into()).or_default();
+            if !extra.contains(&b) {
+                extra.push(b.clone());
+            }
+            if !string(r, "baseline_sha256").is_empty() {
+                next.binding_hashes
+                    .entry(binding_key(node, &b))
+                    .or_insert_with(|| string(r, "baseline_sha256").into());
+            }
+        }
         for n in view.records().filter(|r| r.kind == "node") {
-            for b in effective_bindings(
-                n,
-                next.extra_bindings
-                    .get(&n.id)
-                    .map(Vec::as_slice)
-                    .unwrap_or(&[]),
-            ) {
+            for b in
+                effective_bindings(n, facts.extras.get(&n.id).map(Vec::as_slice).unwrap_or(&[]))
+            {
                 let key = binding_key(&n.id, &b);
                 let fact = match self.repo.read(&b.path, &b.lines) {
                     Ok(text) => {

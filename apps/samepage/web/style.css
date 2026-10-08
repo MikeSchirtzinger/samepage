@@ -83,3 +83,9 @@ body { margin: 0; }
 .source-line-number { width: 3em; color: #8fadb9; text-align: right; user-select: none; }
 .source-highlight { background: #29463c; border-left: 3px solid #a4d6b3; }
 .source-error { color: #ffb4a9; }
+.lanes-strip { margin: 12px 20px; padding: 12px; border: 1px solid #648fa2; border-radius: 8px; background: #172a36; }
+.lanes-strip > summary { cursor: pointer; font-weight: 600; }
+.lanes-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+.lane-finding { padding: 10px; border-top: 1px solid #486878; }
+.lane-finding > summary { cursor: pointer; }
+.lane-evidence, .lane-excerpt { max-height: 180px; overflow: auto; white-space: pre-wrap; }

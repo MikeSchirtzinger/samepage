@@ -81,6 +81,7 @@ pub struct SelectedArtifacts {
     diagrams: Option<CapabilityArtifact>,
     review: Option<CapabilityArtifact>,
     sources: Option<CapabilityArtifact>,
+    lanes: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -93,9 +94,10 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=5).contains(&manifest.artifacts.len()) {
+        if !(2..=6).contains(&manifest.artifacts.len()) {
             return Err(
-                "requires doc, map and optional diagrams/review/sources artifacts".to_string(),
+                "requires doc, map and optional diagrams/review/sources/lanes artifacts"
+                    .to_string(),
             );
         }
         let mut document = None;
@@ -103,6 +105,7 @@ impl SelectedArtifacts {
         let mut diagrams = None;
         let mut review = None;
         let mut sources = None;
+        let mut lanes = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -128,7 +131,7 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review" | "sources"
+                "map" | "diagrams" | "review" | "sources" | "lanes"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
@@ -136,6 +139,7 @@ impl SelectedArtifacts {
                         "map" => samepage_map::descriptor(),
                         "review" => samepage_review::descriptor(),
                         "sources" => samepage_sources::descriptor(),
+                        "lanes" => samepage_lanes::descriptor(),
                         "diagrams"
                             if artifact.descriptor.as_ref().is_some_and(|d| {
                                 d["depends_on"].as_array().is_some_and(|deps| {
@@ -169,11 +173,15 @@ impl SelectedArtifacts {
                         "map" => map = Some(capability),
                         "review" => review = Some(capability),
                         "sources" => sources = Some(capability),
+                        "lanes" => lanes = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
                 _ => return Err(format!("unsupported C4 artifact {}", artifact.id)),
             }
+        }
+        if lanes.is_some() && sources.is_none() {
+            return Err("lanes requires the selected sources artifact".into());
         }
         if let Some(diagram) = &diagrams {
             let integrated = diagram.descriptor["depends_on"]
@@ -189,6 +197,7 @@ impl SelectedArtifacts {
             diagrams,
             review,
             sources,
+            lanes,
         })
     }
 }
@@ -208,6 +217,7 @@ pub struct SamePageState {
     host: Arc<Host>,
     review: Option<Arc<ReviewHost>>,
     sources: Option<Arc<crate::host::sources::SourcesHost>>,
+    lanes: Option<Arc<crate::host::lanes::LanesHost>>,
     validation: Arc<crate::host::page_validation::PageValidation>,
     save_progress: Arc<(Mutex<SaveProgress>, Condvar)>,
     refusal_tx: broadcast::Sender<WsRefusal>,
@@ -264,6 +274,7 @@ impl SamePageState {
             with_diagrams,
             with_review,
             false,
+            false,
         )
     }
 
@@ -278,10 +289,19 @@ impl SamePageState {
         with_diagrams: bool,
         with_review: bool,
         with_sources: bool,
+        with_lanes: bool,
     ) -> Result<Arc<Self>, String> {
         let sources = if with_sources {
             Some(Arc::new(crate::host::sources::SourcesHost::open(
                 project.ok_or("sources needs a project root")?,
+                &path,
+            )?))
+        } else {
+            None
+        };
+        let lanes = if with_lanes {
+            Some(Arc::new(crate::host::lanes::LanesHost::open(
+                project.ok_or("lanes needs a project root")?,
                 &path,
             )?))
         } else {
@@ -310,6 +330,10 @@ impl SamePageState {
         } else {
             None
         };
+        if with_lanes {
+            descriptors.push(samepage_lanes::descriptor());
+            capabilities.push(Arc::new(samepage_lanes::Lanes));
+        }
         let composition = Composition::new(descriptors).map_err(|error| error.to_string())?;
         let mut host = Host::open(path, composition, capabilities).map_err(|e| e.to_string())?;
         if with_diagrams && !with_sources {
@@ -338,6 +362,11 @@ impl SamePageState {
                 .with_verifier("map", Arc::new(crate::host::review::ReviewUnavailable))
                 .map_err(|e| e.to_string())?;
         }
+        if let Some(lanes) = &lanes {
+            host = host
+                .with_verifier("lanes", lanes.clone())
+                .map_err(|e| e.to_string())?;
+        }
         let host = Arc::new(host);
         let (commit_tx, commit_rx) = mpsc::channel::<Commit>();
         let (refusal_tx, _) = broadcast::channel(128);
@@ -353,6 +382,7 @@ impl SamePageState {
             host: host.clone(),
             review,
             sources,
+            lanes,
             validation: Arc::default(),
             save_progress: save_progress.clone(),
             refusal_tx: refusal_tx.clone(),
@@ -488,7 +518,16 @@ impl SamePageState {
     ) -> Result<String, String> {
         let _operation = self.durable_operation()?;
         let actor = map_actor(surface_actor)?;
-        let invoked = if self.sources.is_some() && matches!(action, "card_place" | "atlas_place") {
+        let invoked = if matches!(action, "lane_claim" | "atlas_claim_lane") {
+            let lanes = self.lanes.as_ref().ok_or("lanes unavailable")?;
+            let sources = self.sources.as_ref().ok_or("sources unavailable")?;
+            let batch = lanes.prepare(
+                args.clone(),
+                &self.host.view(),
+                sources.facts(&self.host.view())?,
+            )?;
+            self.host.invoke_composed(&actor, action, &batch)
+        } else if self.sources.is_some() && matches!(action, "card_place" | "atlas_place") {
             let batch = samepage_sources::place_batch(
                 &samepage_capability::Call {
                     action: "card_place".into(),
@@ -530,6 +569,15 @@ impl SamePageState {
         ) {
             (self.emit_event)("samepage.capability-used", json!({"id":"sources"}));
         }
+        let lane_result = if matches!(invoked.action.as_str(), "lane_claim" | "lanes_read") {
+            let lanes = self.lanes.as_ref().ok_or("lanes unavailable")?;
+            let source = self.sources.as_ref().ok_or("sources unavailable")?;
+            let result = lanes.inspect(&self.host.view(), source.facts(&self.host.view())?)?;
+            (self.emit_event)("samepage.capability-used", json!({"id":"lanes"}));
+            Some(result)
+        } else {
+            None
+        };
         let report = if invoked.action == "review_read" {
             Some(
                 self.review
@@ -560,6 +608,12 @@ impl SamePageState {
         {
             readback.push(text.into());
         }
+        if let Some(text) = lane_result
+            .as_ref()
+            .and_then(|r| r["projection"]["readback"].as_str())
+        {
+            readback.push(text.into());
+        }
         if invoked.action == "source_read" {
             if let Some(excerpt) = &source_result {
                 let excerpt = serde_json::from_value::<samepage_sources::Excerpt>(excerpt.clone())
@@ -577,6 +631,7 @@ impl SamePageState {
             "readback": readback,
             "review": report,
             "sources": source_result,
+            "lanes": lane_result,
             "validation": validation,
             "ids": invoked.ids,
             "revision": self.host.revision(),
@@ -743,6 +798,7 @@ impl SamePageSurface {
         let with_diagrams = artifacts.diagrams.is_some();
         let with_review = artifacts.review.is_some();
         let with_sources = artifacts.sources.is_some();
+        let with_lanes = artifacts.lanes.is_some();
         let state = if with_diagrams || with_review || with_sources {
             let emit = transport.clone();
             SamePageState::open_capabilities(
@@ -755,6 +811,7 @@ impl SamePageSurface {
                 with_diagrams,
                 with_review,
                 with_sources,
+                with_lanes,
             )?
         } else {
             SamePageState::open(path, transport)?
@@ -768,6 +825,9 @@ impl SamePageSurface {
         }
         if with_sources {
             declarations.extend(samepage_sources::descriptor().actions);
+        }
+        if with_lanes {
+            declarations.extend(samepage_lanes::descriptor().actions);
         }
         let mut tools: Vec<ActionDef> = declarations
             .into_iter()
@@ -932,6 +992,21 @@ impl Surface for SamePageSurface {
                 if action.audience != samepage_capability::Audience::Agent {
                     module = module.action(action.name);
                 }
+            }
+            modules.push(module);
+        }
+        if let Some(artifact) = &self.artifacts.lanes {
+            let mut module = ClientModule::lazy(
+                "lanes",
+                samepage_lanes::VERSION,
+                artifact.entry.url.clone(),
+                "lanes",
+            )
+            .verified_artifact(artifact.clone())
+            .optional()
+            .capability("samepage.lanes");
+            for action in samepage_lanes::descriptor().actions {
+                module = module.action(action.name);
             }
             modules.push(module);
         }
