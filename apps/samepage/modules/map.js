@@ -121,6 +121,7 @@ export function activate({ mount, wasm, application }) {
       const node = document.createElement("article");
       node.className = "map-card";
       node.dataset.id = card.id;
+      if (cards.some(child => child.parent === card.id)) node.classList.add("map-container");
       node.dataset.status = card.status || "open";
       const geometry = local.get(card.id);
       node.dataset.heightSource = geometry?.source || card.height_source || "estimated";
@@ -251,6 +252,7 @@ export function activate({ mount, wasm, application }) {
       const diagnostic = document.createElement("p");
       diagnostic.textContent = `UNSAT sequence cycle: ${state.core.join(", ")}`;
       diagnostic.dataset.status = "unsat";
+      diagnostic.className = "map-constraint-cycle";
       panel.appendChild(diagnostic);
     }
     const list = document.createElement("ul");

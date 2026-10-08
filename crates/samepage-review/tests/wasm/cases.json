@@ -859,6 +859,111 @@
         },
         "deleted": []
       }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "Persistence",
+              "x": 0.0,
+              "y": 0.0,
+              "w": 232.0,
+              "status": "open"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Browser",
+              "x": 0.0,
+              "y": 0.0,
+              "w": 232.0,
+              "status": "open"
+            }
+          },
+          {
+            "id": "claim-open",
+            "kind": "claim",
+            "props": {
+              "about": "n1",
+              "text": "The write is durable",
+              "basis": "inferred",
+              "path": "",
+              "lines": "",
+              "revision": "",
+              "verdict": "open",
+              "withdrawn": false,
+              "created_by": "Agent",
+              "touched_by": "Human"
+            }
+          },
+          {
+            "id": "claim-accepted",
+            "kind": "claim",
+            "props": {
+              "about": "n1",
+              "text": "The write is durable",
+              "basis": "inferred",
+              "path": "",
+              "lines": "",
+              "revision": "",
+              "verdict": "accepted",
+              "withdrawn": false,
+              "created_by": "Agent",
+              "touched_by": "Human"
+            }
+          },
+          {
+            "id": "claim-unknown",
+            "kind": "claim",
+            "props": {
+              "about": "n1",
+              "text": "The write is durable",
+              "basis": "unknown",
+              "path": "",
+              "lines": "",
+              "revision": "",
+              "verdict": "open",
+              "withdrawn": false,
+              "created_by": "Agent",
+              "touched_by": "Human"
+            }
+          },
+          {
+            "id": "context0",
+            "kind": "understanding-context",
+            "props": {
+              "definition": "{\"question\": \"How do peers sync?\", \"altitude\": \"system\", \"subjects\": [\"n1\"], \"assumptions\": \"\", \"replaces\": []}",
+              "created_by": "Human"
+            }
+          },
+          {
+            "id": "mark0",
+            "kind": "mark",
+            "props": {
+              "target": "n1",
+              "glyph": "?",
+              "text": "When is it durable?",
+              "answer": "Before acknowledgment",
+              "context_ids": "context0",
+              "created_by": "Human"
+            }
+          }
+        ]
+      }
     }
   ]
 }

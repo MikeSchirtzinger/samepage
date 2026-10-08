@@ -241,21 +241,43 @@ impl Capability for Sources {
     }
     fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
         Ok([
-            ("claimed", "?"),
-            ("verified", "✓"),
-            ("drifted", "△"),
-            ("proposed", "↪"),
-            ("gate-met", "✓"),
-            ("gate-unmet", "!"),
+            (
+                "tier",
+                "verified",
+                "VERIFIED",
+                "source-tier source-tier-verified",
+                "✓",
+            ),
+            (
+                "tier",
+                "drifted",
+                "DRIFTED",
+                "source-tier source-tier-drifted",
+                "△",
+            ),
+            (
+                "tier",
+                "claimed",
+                "CLAIMED",
+                "source-tier source-tier-claimed",
+                "?",
+            ),
+            (
+                "tier",
+                "proposed",
+                "PROPOSED",
+                "source-tier source-tier-proposed",
+                "↪",
+            ),
         ]
         .into_iter()
-        .map(|(v, s)| LegendEntry {
+        .map(|(attribute, value, label, class, symbol)| LegendEntry {
             capability: ID.into(),
-            attribute: "tier".into(),
-            value: v.into(),
-            label: v.into(),
-            class: Some(format!("source-tier-{v}")),
-            symbol: Some(s.into()),
+            attribute: attribute.into(),
+            value: value.into(),
+            label: label.into(),
+            class: Some(class.into()),
+            symbol: Some(symbol.into()),
         })
         .collect())
     }

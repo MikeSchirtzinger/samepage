@@ -394,7 +394,47 @@ impl Capability for Review {
         Ok(changes(before, after, reader))
     }
     fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
-        Ok(vec![])
+        Ok([
+            (
+                "element",
+                "mark",
+                "Human question, objection or emphasis",
+                "review-mark-glyphs",
+                "? ! *",
+            ),
+            (
+                "state",
+                "SETTLED",
+                "All live claims accepted",
+                "review-badge",
+                "SETTLED",
+            ),
+            (
+                "state",
+                "UNDER CHALLENGE",
+                "Open or rejected claim",
+                "review-badge",
+                "UNDER CHALLENGE",
+            ),
+            (
+                "state",
+                "NO CLAIMS",
+                "No live claims on this card",
+                "review-badge",
+                "NO CLAIMS",
+            ),
+            ("status", "agreed", "Agreed card", "map-card", "✓ AGREED"),
+        ]
+        .into_iter()
+        .map(|(attribute, value, label, class, symbol)| LegendEntry {
+            capability: ID.into(),
+            attribute: attribute.into(),
+            value: value.into(),
+            label: label.into(),
+            class: Some(class.into()),
+            symbol: Some(symbol.into()),
+        })
+        .collect())
     }
 }
 

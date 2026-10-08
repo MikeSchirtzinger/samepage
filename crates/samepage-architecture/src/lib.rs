@@ -4,7 +4,7 @@ pub use graph::*;
 
 use samepage_capability::{
     ActionDecl, Artifact, Audience, Call, CallerKind, CapError, Capability, Change, Delta,
-    Descriptor, Effect, Op, Origin, Plan, Record, Target, Trigger, Value, View,
+    Descriptor, Effect, LegendEntry, Op, Origin, Plan, Record, Target, Trigger, Value, View,
 };
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
@@ -148,6 +148,42 @@ impl Capability for Architecture {
     }
     fn project(&self, view: &View) -> Result<JsonValue, CapError> {
         inspect(view)
+    }
+    fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
+        Ok([
+            ("element", "added", "Added relationship", "edge-added", "+"),
+            (
+                "element",
+                "removed",
+                "Removed relationship",
+                "edge-removed",
+                "−",
+            ),
+            (
+                "element",
+                "direct",
+                "Directly affected component",
+                "comparison-node node-direct",
+                "DIRECT",
+            ),
+            (
+                "element",
+                "upstream",
+                "Upstream component to review",
+                "comparison-node node-upstream",
+                "UPSTREAM",
+            ),
+        ]
+        .into_iter()
+        .map(|(attribute, value, label, class, symbol)| LegendEntry {
+            capability: ID.into(),
+            attribute: attribute.into(),
+            value: value.into(),
+            label: label.into(),
+            class: Some(class.into()),
+            symbol: Some(symbol.into()),
+        })
+        .collect())
     }
     fn digest(&self, view: &View) -> Result<JsonValue, CapError> {
         inspect(view)

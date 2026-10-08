@@ -3,7 +3,7 @@ pub mod decision;
 use decision::{Draft, DraftInput};
 use samepage_capability::{
     ActionDecl, Artifact, Audience, Batch, BatchEntry, Call, CallerKind, CapError, Capability,
-    Change, Delta, Descriptor, Effect, Op, Plan, Record, Target, Trigger, View,
+    Change, Delta, Descriptor, Effect, LegendEntry, Op, Plan, Record, Target, Trigger, View,
 };
 use samepage_sources::string;
 use serde::{Deserialize, Serialize};
@@ -315,6 +315,34 @@ impl Capability for Cement {
         Ok(
             json!({"mode":mode(v),"drafts":v.records().filter(|r|r.kind==decision::KIND).map(|r|draft(v,&r.id)).collect::<Result<Vec<_>,_>>()?,"coverage":v.records().filter(|r|r.kind=="node"&&!string(r,"cemented").is_empty()).map(|n|json!({"id":n.id,"current":covers(v,n),"record":string(n,"cemented")})).collect::<Vec<_>>()}),
         )
+    }
+    fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
+        Ok([
+            (
+                "tier",
+                "gate-met",
+                "Current gate passes",
+                "source-tier source-tier-gate-met",
+                "✓ GATE MET",
+            ),
+            (
+                "tier",
+                "gate-unmet",
+                "Current gate fails",
+                "source-tier source-tier-gate-unmet",
+                "! GATE UNMET",
+            ),
+        ]
+        .into_iter()
+        .map(|(attribute, value, label, class, symbol)| LegendEntry {
+            capability: ID.into(),
+            attribute: attribute.into(),
+            value: value.into(),
+            label: label.into(),
+            class: Some(class.into()),
+            symbol: Some(symbol.into()),
+        })
+        .collect())
     }
     fn digest(&self, v: &View) -> Result<Value, CapError> {
         self.project(v)

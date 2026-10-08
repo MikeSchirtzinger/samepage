@@ -1144,6 +1144,47 @@
         "action": "panes_present",
         "args": {}
       }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"text\", \"text\": \"Hello\"}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      }
     }
   ]
 }
