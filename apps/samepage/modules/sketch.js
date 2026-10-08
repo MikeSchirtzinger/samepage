@@ -4,7 +4,7 @@ export function activate({wasm, application, mount}) {
   if (!wasm || !application || !mount) throw Error('Sketch needs its verified WASM and shared document');
   application.registerCapability('sketch', wasm);
   const map = document.getElementById('map'), ns = 'http://www.w3.org/2000/svg';
-  let tool='select', selected=null, handedOff=null, latest=null, dragging=null, disposed=false;
+  let tool='select', selected=null, handedOff=null, reviewHandoff=false, latest=null, dragging=null, disposed=false;
   const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
   const svg=(tag,attrs={})=>{const n=document.createElementNS(ns,tag);for(const[k,v]of Object.entries(attrs))n.setAttribute(k,String(v));return n;};
   const path=points=>points.map(([x,y],i)=>`${i?'L':'M'}${x} ${y}`).join(' ');
@@ -12,13 +12,13 @@ export function activate({wasm, application, mount}) {
   const decode=raw=>{const r=JSON.parse(raw);if(r.error)throw Error(`${r.error.code}: ${r.error.message}`);return r.ok;};
   const button=(id,title,fn)=>{const b=el('button',null,title);b.type='button';b.id=id;b.addEventListener('click',()=>Promise.resolve().then(fn).catch(failure));mount.append(b);return b;};
   const setTool=value=>{tool=value;map.dataset.sketchTool=tool;mount.querySelectorAll('[data-sketch-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.sketchTool===tool)));};
-  const showResult=result=>{const strings=result?.readback||[];resultNode.textContent=strings.join('\n');};
+  const showResult=result=>{const strings=result?.readback||[];resultNode.textContent=strings.map(raw=>{let value;try{value=JSON.parse(raw);}catch{return raw;}const lines=[];if(value.drawn!==undefined)lines.push(`Drew ${value.drawn} drawing(s).`);if(value.imported!==undefined)lines.push(`Imported ${value.imported} drawing(s); reconnected ${value.bound_connectors} connector(s).`);if(value.reading)lines.push(value.reading);for(const skipped of value.skipped||[])lines.push(`Skipped: ${skipped}`);for(const note of value.notes||[])lines.push(`Note: ${note}`);return lines.join('\n')||raw;}).join('\n');};
   const write=async patches=>{const batch=await application.plan('sketch','sketch',{shapes:patches});const result=application.applyBatch(batch);showResult({readback:batch.entries.map(e=>e.plan.readback)});return result;};
   const world=event=>{const stage=map.querySelector('.map-stage');const b=stage.getBoundingClientRect();return {x:event.clientX-b.left-Number(stage.dataset.originX),y:event.clientY-b.top-Number(stage.dataset.originY)};};
   const target=event=>{const hit=document.elementFromPoint(event.clientX,event.clientY);const card=hit?.closest('.map-card');if(card)return card.dataset.id;const id=hit?.closest('.sketch-shape')?.dataset.id;const s=latest?.shapes.find(s=>s.shape.id===id)?.shape;return s&&['rect','ellipse','diamond','text','frame'].includes(s.form)?id:null;};
   const label=el('input');label.id='sketch-label';label.placeholder='Label selected drawing';label.maxLength=140;label.setAttribute('aria-label','Drawing label');mount.append(label);
   button('sketch-label-save','Save label',async()=>{if(!selected)throw Error('Select a drawing first');await write([{id:selected,label:label.value}]);});
-  const lift=button('sketch-lift','Make this a card',async()=>{if(!selected)throw Error('Select a labeled drawing first');if(application.hasCapability('review'))await application.activate('review');const result=await application.dispatch('shape_lift',{id:selected});const value=typeof result==='string'?JSON.parse(result):result;selected=null;handedOff=value?.ids?.['lifted-card'];showResult(value);document.dispatchEvent(new CustomEvent('samepage:object-selected',{detail:{id:handedOff,kind:'node'}}));await render({view:application.view()});});
+  const lift=button('sketch-lift','Make this a card',async()=>{if(!selected)throw Error('Select a labeled drawing first');if(application.hasCapability('review'))await application.activate('review');const response=await application.dispatch('shape_lift',{id:selected});const result=response.result??response;const value=typeof result==='string'?JSON.parse(result):result;selected=null;handedOff=value?.ids?.['lifted-card'];reviewHandoff=application.hasCapability('review');showResult(value);document.dispatchEvent(new CustomEvent('samepage:object-selected',{detail:{id:handedOff,kind:'node'}}));await render({view:application.view()});});
   const markText=el('input');markText.id='sketch-question';markText.placeholder='Question about this drawing';markText.setAttribute('aria-label','Question about selected drawing');mount.append(markText);
   const mark=button('sketch-mark','Place ? mark',async()=>{if(!selected)throw Error('Select a drawing first');if(!application.hasCapability('review'))throw Error('review capability is not loaded');await application.activateForTool('mark_add');await application.dispatch('mark_add',{target:selected,glyph:'?',text:markText.value});});
   button('sketch-export','Export .excalidraw',async()=>{const batch=await application.plan('sketch','sketch_export',{});const documentText=batch.entries[0].plan.readback;const url=URL.createObjectURL(new Blob([documentText],{type:'application/json'}));const a=el('a');a.href=url;a.download='drawing.excalidraw';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);resultNode.textContent='Drawn layer exported as drawing.excalidraw.';});
@@ -46,6 +46,7 @@ export function activate({wasm, application, mount}) {
   async function render({view}){
     if(disposed)return;const stage=map.querySelector('.map-stage');if(!stage)return;
     for(const card of stage.querySelectorAll('.map-card')){const active=card.dataset.id===handedOff;card.classList.toggle('sketch-lifted-card',active);card.setAttribute('aria-selected',String(active));}
+    if(reviewHandoff&&view.records.some(r=>r.kind==='node'&&r.id===handedOff)){reviewHandoff=false;requestAnimationFrame(()=>document.dispatchEvent(new CustomEvent('samepage:review-open',{detail:{id:handedOff}})));}
     const stageBox=stage.getBoundingClientRect(),ox=Number(stage.dataset.originX),oy=Number(stage.dataset.originY);
     const bounds=Object.fromEntries([...stage.querySelectorAll('.map-card')].map(n=>{const b=n.getBoundingClientRect();return[n.dataset.id,[b.left-stageBox.left-ox,b.top-stageBox.top-oy,b.right-stageBox.left-ox,b.bottom-stageBox.top-oy]];}));
     latest=decode(wasm.project_with_bounds(JSON.stringify(view),JSON.stringify(bounds)));

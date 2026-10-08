@@ -605,4 +605,146 @@ fn legacy_constraint_members_convert_and_deduplicate_in_the_lift() {
     let map = &plan.entries[0].plan;
     assert_eq!(map.ops.iter().filter(|op|matches!(op,samepage_capability::Op::Create{kind,..}if kind=="constraint-member")).count(),1);
     assert!(map.ops.iter().any(|op|matches!(op,samepage_capability::Op::Set{props,..}if props.get("member_schema")==Some(&samepage_capability::Value::from("records")))));
+    let composition = Composition::new(vec![
+        samepage_map::descriptor(),
+        samepage_sketch::descriptor(),
+    ])
+    .unwrap();
+    let mut builder = samepage_capability::BatchBuilder::new(&composition, &v);
+    let mut next = 0;
+    let mut mint = || {
+        next += 1;
+        format!("lift-{next}")
+    };
+    for entry in &plan.entries {
+        builder
+            .push(&entry.capability, &entry.plan, &mut mint)
+            .unwrap();
+    }
+    let resolved = builder.finish().unwrap();
+    let lifted = &resolved.ids()["lifted-card"];
+    let projected = resolved.projected();
+    assert!(!projected.contains(&s));
+    assert!(!projected.contains(&t));
+    let members: Vec<_> = projected
+        .records()
+        .filter(|r| r.kind == "constraint-member" && prop_str(r, "constraint") == Some("legacy"))
+        .collect();
+    assert_eq!(members.len(), 1);
+    assert_eq!(prop_str(members[0], "target"), Some(lifted.as_str()));
+}
+
+fn saved_host(name: &str) -> (Host, std::path::PathBuf) {
+    let dir = std::env::temp_dir().join(format!("sketch-{name}-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("document.json");
+    let h = Host::open(
+        &path,
+        Composition::new(vec![
+            samepage_map::descriptor(),
+            samepage_review::descriptor(),
+            samepage_sketch::descriptor(),
+        ])
+        .unwrap(),
+        vec![Arc::new(Map), Arc::new(Review), Arc::new(Sketch)],
+    )
+    .unwrap()
+    .with_composer("sketch", Arc::new(sketch_host::SketchHost { review: true }))
+    .unwrap()
+    .with_plan_context("map", &["shape"])
+    .unwrap()
+    .with_plan_context("review", &["shape"])
+    .unwrap();
+    (h, dir)
+}
+
+#[test]
+fn reopening_without_review_refuses_a_marked_lift_atomically() {
+    let (h, dir) = saved_host("no-review");
+    let shape = rect(&h, "keep my mark", 100.0, 100.0, 260.0, 120.0);
+    let mark = invoke(
+        &h,
+        "mark_add",
+        json!({"target":shape,"glyph":"?","text":"why?"}),
+    )
+    .ids["mark"]
+        .clone();
+    h.save().unwrap();
+    drop(h);
+    let h = Host::open(
+        dir.join("document.json"),
+        Composition::new(vec![
+            samepage_map::descriptor(),
+            samepage_sketch::descriptor(),
+        ])
+        .unwrap(),
+        vec![Arc::new(Map), Arc::new(Sketch)],
+    )
+    .unwrap()
+    .with_composer(
+        "sketch",
+        Arc::new(sketch_host::SketchHost { review: false }),
+    )
+    .unwrap();
+    unchanged_refusal(&h, &shape, "review capability is not loaded");
+    assert_eq!(
+        prop_str(h.view().get(&mark).unwrap(), "target"),
+        Some(shape.as_str())
+    );
+    drop(h);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn reopening_without_sketch_keeps_map_edits_and_refuses_orphaned_bindings() {
+    let (h, dir) = saved_host("no-sketch");
+    let a = card(&h, "a", 100.0, 100.0);
+    let b = card(&h, "b", 600.0, 100.0);
+    let arrow = draw(&h, json!({"form":"arrow","from":a,"to":b}));
+    h.save().unwrap();
+    drop(h);
+    let h = Host::open(
+        dir.join("document.json"),
+        Composition::new(vec![
+            samepage_map::descriptor(),
+            samepage_review::descriptor(),
+        ])
+        .unwrap(),
+        vec![Arc::new(Map), Arc::new(Review)],
+    )
+    .unwrap()
+    .with_verifier(
+        "map",
+        Arc::new(sketch_host::MissingOwners {
+            review: true,
+            sketch: false,
+        }),
+    )
+    .unwrap();
+    invoke(&h, "card_place", json!({"id":a,"x":150.0}));
+    let before = (h.revision(), h.encode_full(), h.journal().seq);
+    let error = h
+        .invoke(&human(), "object_remove", json!({"id":b}))
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("sketch capability is not loaded"), "{error}");
+    assert_eq!(before, (h.revision(), h.encode_full(), h.journal().seq));
+    assert_eq!(
+        prop_str(h.view().get(&arrow).unwrap(), "to"),
+        Some(b.as_str())
+    );
+    drop(h);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn an_entirely_unsupported_import_names_the_element_without_mutation() {
+    let h = host();
+    let before = (h.revision(), h.encode_full(), h.journal().seq);
+    let error = h.invoke(&human(), "sketch_import", json!({"document":json!({"elements":[{"type":"image","id":"unbringable-image"}]}).to_string()})).unwrap_err().to_string();
+    assert!(
+        error.contains("image") && error.contains("unbringable-image"),
+        "{error}"
+    );
+    assert_eq!(before, (h.revision(), h.encode_full(), h.journal().seq));
 }

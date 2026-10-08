@@ -21,6 +21,7 @@ const results = calls.map((c) => {
     case "plan": return map.plan(typeof c.call === "string" ? c.call : JSON.stringify(c.call), viewJson);
     case "validate": return map.validate(JSON.stringify(c.delta), viewJson);
     case "cascade": return map.cascade(JSON.stringify(c.deleted), viewJson);
+    case "detach_with_before": return map.detach_with_before(JSON.stringify(c.deleted), viewJson, typeof c.view === "string" ? c.view : JSON.stringify(c.view));
     case "changes": {
       const after = c.after === "project" ? JSON.parse(map.project(viewJson)).ok : c.after;
       return map.changes(JSON.stringify(c.before), JSON.stringify(after), "agent");

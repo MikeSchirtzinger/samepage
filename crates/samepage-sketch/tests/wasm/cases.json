@@ -451,6 +451,72 @@
       "export": "changes",
       "before": {},
       "after": "project"
+    },
+    {
+      "export": "detach_with_before",
+      "deleted": [
+        "card"
+      ],
+      "view": {
+        "revision": "fixture",
+        "records": [
+          {
+            "id": "rect",
+            "kind": "shape",
+            "props": {
+              "form": "rect",
+              "label": "Cache",
+              "x": 100,
+              "y": 100,
+              "w": 260,
+              "h": 120,
+              "ink": "blue",
+              "opacity": 100
+            }
+          },
+          {
+            "id": "arrow",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "rect",
+              "to": "card",
+              "head": "triangle",
+              "points": "0,0 100,0",
+              "x": 100,
+              "y": 100
+            }
+          },
+          {
+            "id": "text",
+            "kind": "shape",
+            "props": {
+              "form": "text",
+              "label": "Check this",
+              "x": 320,
+              "y": 120,
+              "w": 240,
+              "font_size": 16
+            }
+          },
+          {
+            "id": "labels",
+            "kind": "constraint",
+            "props": {
+              "op": "labels",
+              "members": "rect",
+              "text": "evidence"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "detach_with_before",
+      "deleted": [
+        "card"
+      ],
+      "view": "not JSON"
     }
   ]
 }

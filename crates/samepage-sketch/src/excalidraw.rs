@@ -491,7 +491,7 @@ pub fn from_excalidraw(document: &str) -> Result<Import, AtlasError> {
                 format!("element {id:?} has no type")
             } else {
                 format!(
-                    "{kind} {id:?} — the atlas has no such form, so it would have arrived as an invisible object"
+                    "{kind} {id:?} — sketch has no such form, so it would have arrived as an invisible object"
                 )
             });
             continue;
@@ -614,8 +614,8 @@ pub fn from_excalidraw(document: &str) -> Result<Import, AtlasError> {
 
     if import.shapes.is_empty() {
         return Err(format!(
-            "nothing in that document could land on the atlas ({} element(s) skipped)",
-            import.skipped.len()
+            "nothing in that document could land in sketch; skipped: {}",
+            import.skipped.join("; ")
         ));
     }
     Ok(import)

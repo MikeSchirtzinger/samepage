@@ -1183,3 +1183,25 @@ pub fn project_with_bounds(view_json: &str, bounds_json: &str) -> String {
         Err(e) => json!({"abi":samepage_capability::ABI,"error":e}).to_string(),
     }
 }
+
+/// Detach bindings using the final painted positions from the prior view.
+/// The native document uses the same pure rule while committing a deletion.
+#[cfg_attr(
+    all(target_arch = "wasm32", feature = "wasm-export"),
+    wasm_bindgen::prelude::wasm_bindgen
+)]
+pub fn detach_with_before(deleted_json: &str, before_json: &str, view_json: &str) -> String {
+    let result = (|| {
+        let deleted: Vec<String> = serde_json::from_str(deleted_json)
+            .map_err(|e| CapError::new("bad_input", e.to_string()))?;
+        let before: View = serde_json::from_str(before_json)
+            .map_err(|e| CapError::new("bad_input", e.to_string()))?;
+        let view: View = serde_json::from_str(view_json)
+            .map_err(|e| CapError::new("bad_input", e.to_string()))?;
+        Sketch.cascade_with_before(&deleted, &before, &view)
+    })();
+    match result {
+        Ok(plan) => json!({"abi":samepage_capability::ABI,"ok":plan}).to_string(),
+        Err(e) => json!({"abi":samepage_capability::ABI,"error":e}).to_string(),
+    }
+}

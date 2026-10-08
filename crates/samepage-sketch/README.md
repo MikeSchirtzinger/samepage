@@ -8,4 +8,4 @@ Sketch owns ordinary shapes, pen strokes, captions and bound arrows in the share
 
 Shared writes carry host-stamped identities. Drawing tools keep pointer previews and selection local, then submit Sketch plans. A lifted card receives the person's byline and the local selection. Historical unsupported forms remain visible as named unsupported drawings and cannot be silently revised into supported forms.
 
-Run `cargo test --locked -p samepage-sketch` for the retained and composition tests. Run `tests/wasm/run-check.sh` with wasm-bindgen 0.2.126 for 36 native/WASM envelope comparisons, including import, lift, export, readback and local measured-card projection. The ignored harness only counts as proven when that script is run.
+Run `cargo test --locked -p samepage-sketch` for the retained and composition tests. Run `tests/wasm/run-check.sh` with wasm-bindgen 0.2.126 for 38 native/WASM envelope comparisons, including import, lift, export, readback, deletion with prior binding geometry and local measured-card projection. The ignored harness only counts as proven when that script is run.

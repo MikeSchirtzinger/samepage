@@ -42,6 +42,14 @@ fn every_export_matches_the_native_capability() {
             }
             "validate" => envelope::validate(&Sketch, &call["delta"].to_string(), &view),
             "cascade" => envelope::cascade(&Sketch, &call["deleted"].to_string(), &view),
+            "detach_with_before" => samepage_sketch::detach_with_before(
+                &call["deleted"].to_string(),
+                &view,
+                &match &call["view"] {
+                    JsonValue::String(raw) => raw.clone(),
+                    other => other.to_string(),
+                },
+            ),
             "changes" => {
                 let projected: JsonValue =
                     serde_json::from_str(&envelope::project(&Sketch, &view)).unwrap();
