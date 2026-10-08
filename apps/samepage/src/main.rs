@@ -1,4 +1,5 @@
 mod diagram_sources;
+mod host;
 mod surface;
 
 use std::path::PathBuf;

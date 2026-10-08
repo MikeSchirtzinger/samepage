@@ -17,6 +17,7 @@ samepage-capability = { path = "../../crates/samepage-capability" }
 samepage-doc = { path = "../../crates/samepage-doc" }
 samepage-map = { path = "../../crates/samepage-map" }
 samepage-diagrams = { path = "../../crates/samepage-diagrams" }
+samepage-review = { path = "../../crates/samepage-review" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }

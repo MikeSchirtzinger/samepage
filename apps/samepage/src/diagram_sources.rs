@@ -24,6 +24,9 @@ impl DiagramSources {
         Ok(Self { root })
     }
     pub fn check(&self, relative: &str, lines: &str) -> Result<(), CapError> {
+        self.read(relative, lines).map(|_| ())
+    }
+    pub fn read(&self, relative: &str, lines: &str) -> Result<String, CapError> {
         let fail = |message: &str| {
             CapError::new("source_invalid", format!("{relative}:{lines}: {message}"))
         };
@@ -107,6 +110,7 @@ impl DiagramSources {
         let mut reader = BufReader::new(file);
         let mut buffer = Vec::new();
         let mut chars = 0;
+        let mut excerpt = String::new();
         // Scan only through the requested end. Large modules are supported;
         // memory is bounded independently of the whole file's size.
         for line in 1..=end {
@@ -124,13 +128,14 @@ impl DiagramSources {
             }
             let text = std::str::from_utf8(&buffer).map_err(|_| fail("file must be UTF-8 text"))?;
             if line >= start {
+                excerpt.push_str(text);
                 chars += text.chars().count();
                 if chars > 24_000 {
                     return Err(fail("source excerpt exceeds 24000 characters"));
                 }
             }
         }
-        Ok(())
+        Ok(excerpt)
     }
 }
 impl Verifier for DiagramSources {

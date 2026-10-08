@@ -13,6 +13,7 @@
 //! checks and imports come with the full map later.
 
 pub mod rules;
+pub mod validation;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -1205,9 +1206,14 @@ fn projection(view: &View) -> JsonValue {
             })
         })
         .collect();
+    let constraint_state = validation::constraint_state(&constraints);
+    if constraint_state["status"] == "unsat" {
+        problems.push(format!("UNSAT sequence cycle: {}", constraint_state["core"]));
+    }
     json!({
         "cards": cards,
         "links": links,
+        "constraint_state": constraint_state,
         "constraints": constraints,
         "problems": problems,
     })

@@ -151,6 +151,25 @@ export function activate({ mount, wasm, application }) {
         meta.textContent += ` · legacy h ${card.legacy_h}`;
       }
       node.appendChild(meta);
+      if (application.hasCapability?.("review")) {
+        const question = document.createElement("button");
+        question.type = "button";
+        question.className = "review-open";
+        question.textContent = "?";
+        question.setAttribute("aria-label", `Question ${card.label || "card"}`);
+        question.addEventListener("pointerdown", event => event.stopPropagation());
+        question.addEventListener("click", async () => {
+          try {
+            await application.activateForTool("mark_add");
+            document.dispatchEvent(new CustomEvent("samepage:review-open", {detail: {id:card.id}}));
+          } catch (error) {
+            const alert = document.getElementById("error-banner");
+            alert.textContent = `Review unavailable: ${error.message}`;
+            alert.hidden = false;
+          }
+        });
+        node.appendChild(question);
+      }
       node.addEventListener("pointerdown", (event) => {
         if (event.button !== 0 || !application.ready()) return;
         event.preventDefault();
@@ -198,7 +217,7 @@ export function activate({ mount, wasm, application }) {
       empty.style.padding = "52px";
       stage.appendChild(empty);
     }
-    const panel = renderConstraints(constraints, byId);
+    const panel = renderConstraints(constraints, byId, projection.constraint_state);
     mount.replaceChildren(stage, ...(panel ? [panel] : []));
     const hasDiagram = links.some(link => link.transition) || cards.some(card => (card.other_keys || []).some(key => ['diagram_kind','state_initial','state_terminal'].includes(key)));
     const diagramState = application.status?.().capabilities?.find(capability => capability.id === 'diagrams');
@@ -221,13 +240,19 @@ export function activate({ mount, wasm, application }) {
   // Every field here (members, per-member resolved/unresolved, constraint
   // status) comes straight from the Map projection's own `constraints` array.
   // No arity, resolution or status rule is recomputed here.
-  function renderConstraints(constraints, byId) {
+  function renderConstraints(constraints, byId, state) {
     if (!constraints.length) return null;
     const panel = document.createElement("aside");
     panel.className = "map-constraints";
     const heading = document.createElement("h3");
     heading.textContent = `Constraints · ${constraints.length}`;
     panel.appendChild(heading);
+    if (state?.status === "unsat") {
+      const diagnostic = document.createElement("p");
+      diagnostic.textContent = `UNSAT sequence cycle: ${state.core.join(", ")}`;
+      diagnostic.dataset.status = "unsat";
+      panel.appendChild(diagnostic);
+    }
     const list = document.createElement("ul");
     for (const constraint of constraints) {
       const item = document.createElement("li");

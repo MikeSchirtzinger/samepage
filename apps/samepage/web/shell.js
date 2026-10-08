@@ -44,7 +44,43 @@ function createKernel({ documentModule, manifest }) {
   let persistenceState = Object.freeze({failure:null, pending:null, generation:0});
   let connectGeneration = 0;
   let renderQueued = false;
+  let rendering = false;
+  let renderedRevision = null;
   let seenHello = 0;
+  const observationStream = crypto.randomUUID();
+  let observationSequence = 0;
+  let lastObservation = '';
+  let renderErrors = [];
+  let lastObservedAt = 0;
+  let observing = false;
+  const observeLayout = async () => {
+    if (sync !== 'ready' || rendering || observing || renderedRevision !== replica.revision()) return;
+    const stage = document.querySelector('.map-stage');
+    if (!stage) return;
+    const stageBox = stage.getBoundingClientRect();
+    const x = Number(stage.dataset.originX), y = Number(stage.dataset.originY);
+    const bounds = Object.fromEntries([...stage.querySelectorAll('.map-card')].map(card => {
+      const box = card.getBoundingClientRect();
+      return [card.dataset.id, [box.left-stageBox.left-x, box.top-stageBox.top-y, box.right-stageBox.left-x, box.bottom-stageBox.top-y]];
+    }));
+    const unavailable = (runtime?.errors || []).map(entry => ({code:'capability_unavailable', message:`${entry.id}: ${entry.error?.message || entry.status}`}));
+    const report = {stream:observationStream, revision:renderedRevision, bounds, errors:[...renderErrors, ...unavailable].slice(-32)};
+    const signature = JSON.stringify(report);
+    if (signature === lastObservation && Date.now() - lastObservedAt < 5000) return;
+    lastObservation = signature;
+    lastObservedAt = Date.now();
+    observing = true;
+    try { await client.action('page_observe', {...report, sequence:++observationSequence}); }
+    catch (error) {
+      // A newer CRDT revision may arrive while the observation is in flight.
+      // Retry its actual geometry on the next render; never mark it passed.
+      lastObservation = '';
+      if (!String(error.message).includes('stale revision')) showError(`Page validation unavailable: ${error.message}`);
+    } finally { observing = false; }
+  };
+  // Re-measure a healthy unchanged page before host evidence expires.
+  setInterval(() => void observeLayout(), 5000);
+  const sizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => void observeLayout()) : null;
 
   const state = () => Object.freeze({ sync, refusal, persistence: persistenceState.failure, savePending: persistenceState.pending, revision: replica.revision(), capabilities: runtime?.loaded.map(({id,status}) => ({id,status})) || [] });
   const notify = () => {
@@ -54,11 +90,31 @@ function createKernel({ documentModule, manifest }) {
   };
   const view = (kinds = [], ids) => JSON.parse(replica.view(JSON.stringify(kinds), ids === undefined ? undefined : JSON.stringify(ids)));
   const render = async () => {
+    if (rendering) { renderQueued = true; return; }
+    rendering = true;
     renderQueued = false;
+    renderedRevision = null;
     const snapshot = Object.freeze({ view: view(), revision: replica.revision(), status: state() });
-    for (const [id, renderer] of renderers) {
-      try { await renderer.render(snapshot); }
-      catch (error) { showError(`${id} renderer failed: ${error.message}`); }
+    const errors = [];
+    try {
+      for (const [id, renderer] of renderers) {
+        if (snapshot.revision !== replica.revision()) break;
+        try { await renderer.render(snapshot); }
+        catch (error) { errors.push({code:"renderer_failure",message:`${id}: ${error.message}`}); showError(`${id} renderer failed: ${error.message}`); }
+      }
+      if (snapshot.revision === replica.revision()) {
+        renderedRevision = snapshot.revision;
+        renderErrors = errors;
+        sizeObserver?.disconnect();
+        document.querySelectorAll('.map-card').forEach(card => sizeObserver?.observe(card));
+      }
+    } finally {
+      rendering = false;
+      void observeLayout();
+      if (renderQueued || snapshot.revision !== replica.revision()) {
+        renderQueued = false;
+        scheduleRender();
+      }
     }
   };
   const scheduleRender = () => {
@@ -78,6 +134,9 @@ function createKernel({ documentModule, manifest }) {
     const persistenceAtStart = beginPersistenceHandshake(persistenceState);
     sync = "connecting";
     seenHello = 0;
+    lastObservation = "";
+    lastObservedAt = 0;
+    renderedRevision = null;
     notify();
     const ws = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`);
     socket = ws;
@@ -189,6 +248,7 @@ function createKernel({ documentModule, manifest }) {
       flush(); void activateForCurrentView(); scheduleRender(); notify();
       return result;
     },
+    hasCapability: (id) => descriptors.some(d => d.id === id),
     activate: (id) => runtime?.activate(id),
     activateForKind: (kind) => runtime?.activateForKind(kind),
     activateForView: (selectedView = view()) => runtime?.activateForView(selectedView),
@@ -201,7 +261,7 @@ function createKernel({ documentModule, manifest }) {
     setPersistencePending(message) { persistenceState = persistencePending(persistenceState, message); showError(persistencePresentation(persistenceState).banner); notify(); },
     setPersistenceResolved() { persistenceState = persistenceResolved(persistenceState); if (!persistenceState.failure && !refusal) errorNode.hidden = true; notify(); },
     // Read-only diagnostics for real cross-peer verification.
-    diagnostics: () => ({ clientId: replica.client_id(), revision: replica.revision(), status: state(), view: view() }),
+    diagnostics: () => ({ renderedRevision, observationStream, clientId: replica.client_id(), revision: replica.revision(), status: state(), view: view() }),
   });
   return api;
 }
