@@ -161,7 +161,25 @@ fn real_scan_claim_adds_a_pinned_binding_and_refuses_stale_or_absent_lanes_atomi
     let b = lh
         .prepare(args.clone(), &h.view(), sh.facts(&h.view()).unwrap())
         .unwrap();
-    let claimed = h.invoke_composed(&a, "atlas_claim_lane", &b).unwrap();
+    let legacy = lh
+        .prepare(
+            json!({"card_id":node,"lane_id":l.lane_id,"scan_sha256":l.evidence.sha256}),
+            &h.view(),
+            sh.facts(&h.view()).unwrap(),
+        )
+        .unwrap();
+    assert_eq!(
+        serde_json::to_value(&b).unwrap(),
+        serde_json::to_value(&legacy).unwrap()
+    );
+    assert!(lh
+        .prepare(
+            json!({"card_id":"other","node_id":node,"lane_id":l.lane_id}),
+            &h.view(),
+            sh.facts(&h.view()).unwrap()
+        )
+        .is_err());
+    let claimed = h.invoke_composed(&a, "atlas_claim_lane", &legacy).unwrap();
     assert_eq!(claimed.action, "lane_claim");
     assert_eq!(h.journal().seq, 2);
     assert_eq!(

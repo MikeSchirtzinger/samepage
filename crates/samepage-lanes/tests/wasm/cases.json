@@ -1643,6 +1643,141 @@
       "export": "changes",
       "before": {},
       "after": "project"
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "lane_id": "l2",
+          "card_id": "n"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "lane_id": "l2",
+          "card_id": "n",
+          "node_id": "other"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
     }
   ]
 }

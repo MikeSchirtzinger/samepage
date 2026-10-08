@@ -8,7 +8,8 @@ bounded strip read-back. Static findings describe source patterns; they do
 not prove that a process is running.
 
 `lane_claim` (legacy `atlas_claim_lane`) adds a host-stamped `binding` record
-without replacing the card's primary source. The native verifier rescans and
+without replacing the card's primary source. Both `node_id` and the legacy
+`card_id` input are accepted; contradictory ids are refused. The native verifier rescans and
 checks its source excerpt, file hash and baseline before the one Batch lands.
 The browser includes the inspected hash so a changed finding requires a new
 scan. Sources receives extra bindings and pins as raw native facts, keeping

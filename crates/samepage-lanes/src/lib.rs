@@ -83,7 +83,7 @@ pub fn descriptor() -> Descriptor {
         "Add a verified current execution lane to a Map card; retain its primary binding.",
     )
     .alias("atlas_claim_lane");
-    claim.input_schema = json!({"type":"object","required":["lane_id","node_id"],"properties":{"lane_id":{"type":"string"},"node_id":{"type":"string"},"scan_sha256":{"type":"string"}},"additionalProperties":false});
+    claim.input_schema = json!({"type":"object","required":["lane_id"],"anyOf":[{"required":["node_id"]},{"required":["card_id"]}],"properties":{"lane_id":{"type":"string"},"node_id":{"type":"string"},"card_id":{"type":"string"},"scan_sha256":{"type":"string"}},"additionalProperties":false});
     let mut read=ActionDecl::new("lanes_read", Audience::Both, Effect::Query, "Scan source and read grouped, unresolved execution-lane evidence. Static extraction is not runtime proof.");
     read.input_schema = json!({"type":"object","properties":{},"additionalProperties":false});
     Descriptor::new(ID, VERSION, Artifact::Wasm)
@@ -205,9 +205,20 @@ pub fn claim_plan(call: &Call, view: &View, facts: &Facts) -> Result<Plan, CapEr
     let id = call.args["lane_id"]
         .as_str()
         .ok_or_else(|| invalid("missing lane_id"))?;
-    let node = call.args["node_id"]
-        .as_str()
-        .ok_or_else(|| invalid("missing node_id"))?;
+    let node = call
+        .args
+        .get("node_id")
+        .or_else(|| call.args.get("card_id"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| invalid("missing node_id or legacy card_id"))?;
+    if call.args.get("node_id").is_some()
+        && call
+            .args
+            .get("card_id")
+            .is_some_and(|id| id.as_str() != Some(node))
+    {
+        return Err(invalid("node_id and card_id disagree"));
+    }
     if !view.get(node).is_some_and(|r| r.kind == "node") {
         return Err(invalid("claim needs an existing Map card"));
     }
