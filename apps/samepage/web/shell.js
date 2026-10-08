@@ -285,6 +285,21 @@ try {
     try { await kernel.dispatch("card_place", {label:input.value.trim()}); input.value = ""; }
     catch (error) { showError(`Card was not added: ${error.message}`); }
   });
+  document.getElementById('open-panes').addEventListener('click',async()=>{
+    const mount=document.getElementById('panes');mount.hidden=false;
+    try {if(!kernel.hasCapability('panes'))throw new Error('panes is unavailable');await kernel.activateForRoute('panes');}
+    catch(error){mount.textContent=`panes is unavailable: ${error.message}`;showError(mount.textContent);}
+  });
+  document.getElementById('person-display-name').value=person.name || '';
+  document.getElementById('person-name').addEventListener('submit',async event=>{
+    event.preventDefault();
+    try {
+      const response=await fetch('/surface/me',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:document.getElementById('person-display-name').value.trim()})});
+      if(!response.ok)throw new Error(`identity update refused (${response.status})`);
+      rememberMe(await response.json());
+      location.reload();
+    }catch(error){showError(error.message);}
+  });
   // Exposes observations without a second document or mutation channel.
   globalThis.samepageReadback = () => kernel.diagnostics();
 } catch (error) {

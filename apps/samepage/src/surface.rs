@@ -14,6 +14,7 @@ use samepage_diagrams::Diagrams;
 use samepage_doc::host::{Commit, Host};
 use samepage_doc::{Actor, Caller};
 use samepage_map::Map;
+use samepage_capability::Scalar;
 use samepage_review::Review;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -80,6 +81,7 @@ pub struct SelectedArtifacts {
     map: CapabilityArtifact,
     diagrams: Option<CapabilityArtifact>,
     review: Option<CapabilityArtifact>,
+    pub(crate) panes: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -92,13 +94,14 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=4).contains(&manifest.artifacts.len()) {
-            return Err("requires doc, map and optional diagrams/review artifacts".to_string());
+        if !(2..=5).contains(&manifest.artifacts.len()) {
+            return Err("requires doc, map and optional diagrams/review/panes artifacts".to_string());
         }
         let mut document = None;
         let mut map = None;
         let mut diagrams = None;
         let mut review = None;
+        let mut panes = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -124,13 +127,14 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review"
+                "map" | "diagrams" | "review" | "panes"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
                     let compiled = serde_json::to_value(match artifact.id.as_str() {
                         "map" => samepage_map::descriptor(),
                         "review" => samepage_review::descriptor(),
+                        "panes" => samepage_panes::descriptor(),
                         _ => samepage_diagrams::descriptor(),
                     })
                     .map_err(|error| error.to_string())?;
@@ -154,6 +158,7 @@ impl SelectedArtifacts {
                     match artifact.id.as_str() {
                         "map" => map = Some(capability),
                         "review" => review = Some(capability),
+                        "panes" => panes = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
@@ -165,6 +170,7 @@ impl SelectedArtifacts {
             map: map.ok_or("map artifact is missing")?,
             diagrams,
             review,
+            panes,
         })
     }
 }
@@ -183,6 +189,7 @@ type EventEmitter = Arc<dyn Fn(&str, Value) + Send + Sync>;
 pub struct SamePageState {
     host: Arc<Host>,
     review: Option<Arc<ReviewHost>>,
+    panes: Option<Arc<crate::host::panes::PanesHost>>,
     validation: Arc<crate::host::page_validation::PageValidation>,
     save_progress: Arc<(Mutex<SaveProgress>, Condvar)>,
     refusal_tx: broadcast::Sender<WsRefusal>,
@@ -229,6 +236,11 @@ impl SamePageState {
         with_diagrams: bool,
         with_review: bool,
     ) -> Result<Arc<Self>, String> {
+        Self::open_with_panes(path,ws_tx,saver,emit_event,save_wait,project,with_diagrams,with_review,false)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn open_with_panes(path:PathBuf,ws_tx:broadcast::Sender<Vec<u8>>,saver:HostSaver,emit_event:EventEmitter,save_wait:Duration,project:Option<&Path>,with_diagrams:bool,with_review:bool,with_panes:bool)->Result<Arc<Self>,String> {
         let mut descriptors = vec![samepage_map::descriptor()];
         let mut capabilities: Vec<Arc<dyn Capability>> = vec![Arc::new(Map)];
         if with_diagrams {
@@ -243,6 +255,11 @@ impl SamePageState {
         } else {
             None
         };
+        let panes=if with_panes {
+            descriptors.push(samepage_panes::descriptor());
+            capabilities.push(Arc::new(samepage_panes::Panes));
+            Some(Arc::new(crate::host::panes::PanesHost::open(project.ok_or("panes needs a project root")?)?))
+        } else { None };
         let composition = Composition::new(descriptors).map_err(|error| error.to_string())?;
         let mut host = Host::open(path, composition, capabilities).map_err(|e| e.to_string())?;
         if with_diagrams {
@@ -277,6 +294,7 @@ impl SamePageState {
         let state = Arc::new(Self {
             host: host.clone(),
             review,
+            panes,
             validation: Arc::default(),
             save_progress: save_progress.clone(),
             refusal_tx: refusal_tx.clone(),
@@ -286,7 +304,9 @@ impl SamePageState {
         });
         let callback_progress = save_progress.clone();
         let callback_emit = emit_event.clone();
+        let pane_wake=state.panes.clone();
         host.on_commit(move |commit| {
+            if let Some(panes)=&pane_wake { panes.changed.notify_waiters(); }
             if commit_tx.send(commit.clone()).is_err() {
                 let message = "commit persistence worker stopped".to_string();
                 let mut emit = |message| {
@@ -410,6 +430,9 @@ impl SamePageState {
     ) -> Result<String, String> {
         let _operation = self.durable_operation()?;
         let actor = map_actor(surface_actor)?;
+        if actor.caller==Caller::Agent && (action=="pane_put" || action=="room_put_pane") && (args.get("spot").is_some() || args.get("raise").is_some()) {
+            return Err("the agent cannot send a rectangle or raise; use relations and named sizes".into());
+        }
         let invoked = self
             .host
             .invoke(&actor, action, args)
@@ -424,6 +447,9 @@ impl SamePageState {
         if invoked.commit.is_some() && validation["status"] == "failed" {
             return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":invoked.commit.as_ref().map(|c|c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),"revision":self.host.revision(),"validation":validation}).to_string());
         }
+        let pane_read=if invoked.action=="panes_read" {
+            Some(self.panes.as_ref().ok_or("panes is unavailable")?.read(&self.host.view(),&self.host.journal(),&actor.participant)?)
+        } else { None };
         let report = if invoked.action == "review_read" {
             Some(
                 self.review
@@ -438,6 +464,7 @@ impl SamePageState {
             .as_ref()
             .and_then(|r| r["readback"].as_str())
             .map(|s| vec![s.to_string()])
+            .or_else(||pane_read.map(|text|vec![text]))
             .unwrap_or(invoked.readback);
         serde_json::to_string(&json!({
             "action": invoked.action,
@@ -608,9 +635,10 @@ impl SamePageSurface {
     ) -> Result<Self, String> {
         let with_diagrams = artifacts.diagrams.is_some();
         let with_review = artifacts.review.is_some();
-        let state = if with_diagrams || with_review {
+        let with_panes = artifacts.panes.is_some();
+        let state = if with_diagrams || with_review || with_panes {
             let emit = transport.clone();
-            SamePageState::open_selected(
+            SamePageState::open_with_panes(
                 path,
                 transport.ws_tx.clone(),
                 Arc::new(|h| h.save().map(|_| ()).map_err(|e| e.to_string())),
@@ -619,6 +647,7 @@ impl SamePageSurface {
                 Some(project),
                 with_diagrams,
                 with_review,
+                with_panes,
             )?
         } else {
             SamePageState::open(path, transport)?
@@ -630,6 +659,7 @@ impl SamePageSurface {
         if with_review {
             declarations.extend(samepage_review::descriptor().actions);
         }
+        if with_panes { declarations.extend(samepage_panes::descriptor().actions.into_iter().filter(|a|a.name!="panes_await"&&a.name!="panes_present")); }
         let mut tools: Vec<ActionDef> = declarations
             .into_iter()
             .map(|decl| {
@@ -664,6 +694,36 @@ impl SamePageSurface {
                 action
             })
             .collect();
+        if with_panes {
+            let present_state=state.clone();
+            let mut present=ActionDef::new("panes_present","Resolve current pane source and workspace facts for the human renderer.",json!({"type":"object","required":[],"properties":{},"additionalProperties":false}),move |_| {
+                let state=present_state.clone();SurfaceEffect::Query(Box::new(move |_| {
+                    let _operation=state.durable_operation()?;
+                    state.panes.as_ref().ok_or("panes is unavailable")?.inspect(&state.host.view(),&state.host.journal()).map(|v|v.to_string())
+                }))
+            });present.audience=ActionAudience::Human;tools.push(present);
+            let wait_state=state.clone();
+            let mut wait=ActionDef::new("panes_await","Wait for unread pane changes from other participants.",json!({"type":"object","required":[],"properties":{"seconds":{"type":"integer","minimum":0,"maximum":60}},"additionalProperties":false}),move |args| {
+                let state=wait_state.clone();let seconds=args["seconds"].as_u64().unwrap_or(30);
+                let actor=current_actor().and_then(|a|map_actor(&a).ok());
+                SurfaceEffect::AsyncQuery(Box::pin(async move {
+                    let actor=actor.ok_or("authenticated actor missing")?;
+                    let panes=state.panes.as_ref().ok_or("panes is unavailable")?;
+                    let deadline=tokio::time::Instant::now()+Duration::from_secs(seconds);
+                    loop {
+                        let notified=panes.changed.notified();tokio::pin!(notified);notified.as_mut().enable();
+                        let check=state.clone();let participant=actor.participant.clone();
+                        let unread=tokio::task::spawn_blocking(move || {
+                            let _operation=check.durable_operation()?;
+                            check.panes.as_ref().unwrap().unread_from_others(&check.host.view(),&check.host.journal(),&participant)
+                        }).await.map_err(|e|e.to_string())??;
+                        if unread {break;}
+                        if tokio::time::timeout_at(deadline,notified).await.is_err(){return Ok("The panes are quiet; no unread changes from another participant.".into());}
+                    }
+                    let state=state.clone();tokio::task::spawn_blocking(move || {let _operation=state.durable_operation()?;state.panes.as_ref().unwrap().read(&state.host.view(),&state.host.journal(),&actor.participant)}).await.map_err(|e|e.to_string())?
+                }))
+            }).alias("await_room");wait.audience=ActionAudience::Agent;tools.push(wait);
+        }
         let observe_state = state.clone();
         let mut observe = ActionDef::new(
             "page_observe",
@@ -704,7 +764,7 @@ impl SamePageSurface {
             .alias("atlas_validate"),
         );
         let wait_state = state.clone();
-        tools.push(ActionDef::new("review_wait","Wait for fresh browser validation, including late measurement errors from your own write.",json!({"type":"object","properties":{"seconds":{"type":"integer","minimum":0,"maximum":60}},"additionalProperties":false}),move |args|{
+        tools.push(ActionDef::new("review_wait","Wait for fresh browser validation, including late measurement errors from your own write.",json!({"type":"object","required":[],"properties":{"seconds":{"type":"integer","minimum":0,"maximum":60}},"additionalProperties":false}),move |args|{
             let state=wait_state.clone();let seconds=args["seconds"].as_u64().unwrap_or(30);
             SurfaceEffect::AsyncQuery(Box::pin(async move {
                 let generation=state.validation.generation();
@@ -724,6 +784,31 @@ impl SamePageSurface {
 }
 
 impl Surface for SamePageSurface {
+    fn focus_events(&self) -> &[&str] { &["panes.pane.focused"] }
+    fn resolve_focus(&self,event:&str,id:&str)->Result<Option<String>,String> {
+        if event!="panes.pane.focused" {return Ok(None)}
+        let _operation=self.state.durable_operation()?;
+        Ok(self.state.host.view().records().find(|r|r.kind=="pane"&&r.props.get("pane_id").and_then(Scalar::as_str)==Some(id)).map(|r|format!("Pane [{}] {}",id,r.props.get("title").and_then(Scalar::as_str).unwrap_or(""))))
+    }
+
+    fn routes(&self)->Vec<ag_ui_surface::RouteDef> {
+        if self.state.panes.is_none(){return vec![];}
+        let state=self.state.clone();
+        vec![ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/panes/html",handler:Box::new(move |request:ag_ui_surface::RouteRequest|{
+            let state=state.clone();Box::pin(async move {
+                let markup=(||->Result<String,String>{
+                    let _operation=state.durable_operation()?;let view=state.host.view();
+                    let slug=request.query.get("pane").map(String::as_str).unwrap_or("");
+                    let record=view.records().find(|r|r.kind=="pane"&&r.props.get("pane_id").and_then(|s|s.as_str())==Some(slug)).ok_or("no such pane")?;
+                    let tree:samepage_panes::view::Node=serde_json::from_str(record.props.get("tree").and_then(|s|s.as_str()).ok_or("no tree")?).map_err(|e|e.to_string())?;
+                    let mut html=vec![];samepage_panes::view::collect_html(&tree,&mut html);
+                    let index=request.query.get("index").and_then(|s|s.parse::<usize>().ok()).unwrap_or(0);
+                    Ok(format!("{}{}",crate::host::panes_html::POINTER_BRIDGE_DOC,html.get(index).ok_or("no such html node")?))
+                })();
+                match markup {Ok(body)=>ag_ui_surface::RouteResponse{status:200,body:ag_ui_surface::RouteBody::Html(body)},Err(_)=>ag_ui_surface::RouteResponse{status:404,body:ag_ui_surface::RouteBody::Html("<!doctype html><p>panes: no such html node</p>".into())}}
+            })
+        })}]
+    }
     fn state(&self) -> &dyn SurfaceState {
         self.state.as_ref()
     }
@@ -779,6 +864,11 @@ impl Surface for SamePageSurface {
                     module = module.action(action.name);
                 }
             }
+            modules.push(module);
+        }
+        if let Some(artifact)=&self.artifacts.panes {
+            let mut module=ClientModule::lazy("panes",samepage_panes::VERSION,artifact.entry.url.clone(),"panes").verified_artifact(artifact.clone()).optional().capability("samepage.panes");
+            for action in samepage_panes::descriptor().actions {if action.audience!=samepage_capability::Audience::Agent {module=module.action(action.name);}}
             modules.push(module);
         }
         modules

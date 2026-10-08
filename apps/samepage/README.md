@@ -41,3 +41,12 @@ To import a legacy Atlas base64 state file, use a **new** target path. The sourc
 ```sh
 "$CARGO_TARGET_DIR/debug/samepage" import-legacy /path/to/atlas.json /path/to/new-document.json
 ```
+
+## Optional Panes
+
+Add `panes=crates/samepage-panes=apps/samepage/modules/panes.js` to the selected
+build to load the retained shared pane renderer on first use. Panes uses the
+same document as Map and requires no Map capability dependency. Human drag,
+resize, raise, marks and notes preserve separate host bylines; agents place
+panes by relation and named size. See [the Panes contract](../../crates/samepage-panes/README.md)
+for preferred actions, aliases, source policy, legacy import and verification.

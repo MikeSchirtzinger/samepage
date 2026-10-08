@@ -115,6 +115,10 @@ if (id === 'doc') {
 fs.writeFileSync(receipt, JSON.stringify(identity));
 JS
   if [[ "$id" != doc ]]; then cp "$root/$entry" "$staging/$id/index.js"; fi
+  # Optional capability-local styling travels only with the selected package.
+  if [[ "$id" != doc && -f "$root/${entry%.js}.css" ]]; then
+    cp "$root/${entry%.js}.css" "$staging/$id/style.css"
+  fi
   shopt -u nullglob
 done
 if (( found_doc != 1 )); then echo 'one document package is required' >&2; exit 2; fi

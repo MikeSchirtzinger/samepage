@@ -2869,10 +2869,12 @@ name = "samepage-app"
 version = "0.1.0"
 dependencies = [
  "ag-ui-surface",
+ "parking_lot",
  "samepage-capability",
  "samepage-diagrams",
  "samepage-doc",
  "samepage-map",
+ "samepage-panes",
  "samepage-review",
  "serde",
  "serde_json",
@@ -2947,6 +2949,20 @@ dependencies = [
  "samepage-doc",
  "serde",
  "serde_json",
+ "wasm-bindgen",
+ "yrs",
+]
+
+[[package]]
+name = "samepage-panes"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "samepage-capability",
+ "samepage-doc",
+ "serde",
+ "serde_json",
+ "sha2",
  "wasm-bindgen",
  "yrs",
 ]

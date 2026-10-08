@@ -81,7 +81,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(PathBuf::from)
         .ok_or("SAMEPAGE_PROJECT_ROOT is required")?;
     let source_root = project_root.clone();
+    let panes_focus = manifest.panes.is_some();
     App::new()
+        .hitl(ag_ui_surface::Hitl { focus: panes_focus, ..Default::default() })
         .try_surface(move |transport| surface::SamePageSurface::open(document, manifest, transport, &source_root))?
         .providers(Providers::from_required_file(models)?)
         .default_provider("none")
