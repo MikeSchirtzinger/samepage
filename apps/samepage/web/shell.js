@@ -53,6 +53,7 @@ function createKernel({ documentModule, manifest }) {
   let renderErrors = [];
   let lastObservedAt = 0;
   let observing = false;
+  let observationError = null;
   const observeLayout = async () => {
     if (sync !== 'ready' || rendering || observing || renderedRevision !== replica.revision()) return;
     const stage = document.querySelector('.map-stage');
@@ -70,12 +71,23 @@ function createKernel({ documentModule, manifest }) {
     lastObservation = signature;
     lastObservedAt = Date.now();
     observing = true;
-    try { await client.action('page_observe', {...report, sequence:++observationSequence}); }
+    const observationGeneration = connectGeneration;
+    try {
+      await client.action('page_observe', {...report, sequence:++observationSequence});
+      if (observationGeneration === connectGeneration && observationError) {
+        if (errorNode.textContent === observationError) errorNode.hidden = true;
+        observationError = null;
+      }
+    }
     catch (error) {
       // A newer CRDT revision may arrive while the observation is in flight.
       // Retry its actual geometry on the next render; never mark it passed.
+      if (observationGeneration !== connectGeneration || sync !== 'ready') return;
       lastObservation = '';
-      if (!String(error.message).includes('stale revision')) showError(`Page validation unavailable: ${error.message}`);
+      if (!String(error.message).includes('stale revision')) {
+        observationError = `Page validation unavailable: ${error.message}`;
+        showError(observationError);
+      }
     } finally { observing = false; }
   };
   // Re-measure a healthy unchanged page before host evidence expires.

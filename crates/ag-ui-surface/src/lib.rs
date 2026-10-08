@@ -3095,7 +3095,7 @@ fn action_route_caller(headers: &HeaderMap, st: &RouterState) -> Caller {
         headers,
         &human_route_cookie(st.rt.port),
         st.human_route_token.as_ref(),
-    );
+    ) || person_from(st, headers).is_some();
 
     match (authorization_present, agent, human) {
         (true, true, false) => Caller::Agent,
@@ -7269,6 +7269,23 @@ mod tests {
             websocket_upgrade_status_line(state, Some(person_cookie)).await,
             "HTTP/1.1 101 Switching Protocols"
         );
+    }
+
+    #[tokio::test]
+    async fn joined_person_keeps_action_authority_after_navigation_cookie_rotation() {
+        let state = test_router_state(websocket_surface_with_human_route());
+        let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await.into_response();
+        let person = joined.headers().get(header::SET_COOKIE).unwrap()
+            .to_str().unwrap().split(';').next().unwrap();
+        let mut headers = HeaderMap::new();
+        headers.insert(header::COOKIE, format!("{}=expired; {person}", human_route_cookie(state.rt.port)).parse().unwrap());
+        assert_eq!(action_route_caller(&headers, &state), Caller::Human);
+        headers.insert(header::AUTHORIZATION, format!("Bearer {}", state.rt.mcp_token).parse().unwrap());
+        assert_eq!(action_route_caller(&headers, &state), Caller::Unknown);
+        headers.remove(header::AUTHORIZATION);
+        headers.insert(header::COOKIE, format!("{}=forged", person_cookie(state.rt.port)).parse().unwrap());
+        assert_eq!(action_route_caller(&headers, &state), Caller::Unknown);
     }
 
     #[test]
