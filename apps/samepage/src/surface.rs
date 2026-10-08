@@ -252,6 +252,7 @@ impl SamePageState {
         )
     }
 
+    #[cfg(test)]
     #[allow(clippy::too_many_arguments)]
     fn open_selected_architecture(
         path: PathBuf, ws_tx: broadcast::Sender<Vec<u8>>, saver: HostSaver, emit_event: EventEmitter,
