@@ -1,3 +1,4 @@
+pub mod lanes;
 pub mod page_validation;
 pub mod review;
 pub mod board;
@@ -7,3 +8,5 @@ pub mod trace;
 pub mod panes;
 pub mod panes_catalog;
 pub mod panes_html;
+pub mod sources;
+pub mod cement;

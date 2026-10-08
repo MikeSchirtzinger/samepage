@@ -1,0 +1,520 @@
+{
+  "view": {
+    "revision": "r",
+    "records": [
+      {
+        "id": "n",
+        "kind": "node",
+        "props": {
+          "label": "Engine",
+          "status": "agreed",
+          "path": "src/lib.rs",
+          "lines": "1"
+        }
+      },
+      {
+        "id": "c",
+        "kind": "claim",
+        "props": {
+          "about": "n",
+          "text": "Two variants",
+          "basis": "verified",
+          "path": "src/lib.rs",
+          "lines": "1",
+          "revision": "",
+          "verdict": "accepted",
+          "withdrawn": false
+        }
+      },
+      {
+        "id": "ctx",
+        "kind": "understanding-context",
+        "props": {
+          "definition": "{\"altitude\":\"implementation\",\"assumptions\":\"\",\"question\":\"What must State preserve?\",\"replaces\":[],\"subjects\":[\"n\"]}"
+        }
+      },
+      {
+        "id": "d",
+        "kind": "decision-draft",
+        "props": {
+          "definition": "{\"content\":\"8d74fb7d4660a2a601eef00e41e169695404f38becd3dcd0576f6909ea65d17e\",\"context_ids\":[\"ctx\"],\"created_by\":\"\",\"id\":\"\",\"input\":{\"alternatives\":[{\"option\":\"Strings\",\"reason_not_chosen\":\"No exhaustive matching\"}],\"checks\":[{\"check\":{\"args\":{\"enum_name\":\"State\",\"expected_serde_rename_all\":null,\"expected_variants\":[\"Ready\",\"Done\"],\"file\":\"src/lib.rs\"},\"backend\":\"rust_enum_shape\"},\"evidence_files\":[\"src/lib.rs\"],\"id\":\"CEMENT-DEMO-STATE\",\"requirement\":\"Keep two states\"}],\"consequences\":\"Gate catches drift\",\"decision\":\"Keep State explicit\",\"ids\":[\"n\"],\"not_enforced\":[\"Runtime behavior\"],\"rationale\":\"Reviewable variants\",\"title\":\"State contract\",\"tradeoffs\":\"Review on change\"}}",
+          "created_by": "Agent"
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "export": "descriptor"
+    },
+    {
+      "export": "project"
+    },
+    {
+      "export": "digest"
+    },
+    {
+      "export": "legend"
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "mode_set",
+        "args": {
+          "mode": "learning"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "mode_set",
+        "args": {
+          "mode": "alignment"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "mode_set",
+        "args": {
+          "mode": "map"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "mode_set",
+        "args": {
+          "mode": "explain"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "mode_set",
+        "args": {
+          "mode": "cement"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "mode_set",
+        "args": {
+          "mode": "bad"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "mode_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "decision_draft",
+        "args": {
+          "draft": {
+            "ids": [
+              "n"
+            ],
+            "title": "State contract",
+            "decision": "Keep State explicit",
+            "rationale": "Reviewable variants",
+            "alternatives": [
+              {
+                "option": "Strings",
+                "reason_not_chosen": "No exhaustive matching"
+              }
+            ],
+            "tradeoffs": "Review on change",
+            "consequences": "Gate catches drift",
+            "checks": [
+              {
+                "id": "CEMENT-DEMO-STATE",
+                "requirement": "Keep two states",
+                "check": {
+                  "backend": "rust_enum_shape",
+                  "args": {
+                    "file": "src/lib.rs",
+                    "enum_name": "State",
+                    "expected_variants": [
+                      "Ready",
+                      "Done"
+                    ],
+                    "expected_serde_rename_all": null
+                  }
+                },
+                "evidence_files": [
+                  "src/lib.rs"
+                ]
+              }
+            ],
+            "not_enforced": [
+              "Runtime behavior"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "decision_cement",
+        "args": {
+          "ids": [
+            "n"
+          ],
+          "draft_id": "d",
+          "review_token": "a"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "map_cement",
+        "args": {
+          "ids": [
+            "n"
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "lane_remove",
+        "args": {
+          "lane_id": "l"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "decision_preview",
+        "args": {
+          "ids": [
+            "n"
+          ],
+          "draft_id": "d"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "decision_list",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "decision_cement_propose",
+        "args": {
+          "ids": [
+            "n"
+          ],
+          "draft_id": "d"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "unknown",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "mode_set",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": "{"
+    },
+    {
+      "export": "bundle_with_facts",
+      "args": {
+        "ids": [
+          "n"
+        ],
+        "draft_id": "d"
+      },
+      "facts": {
+        "repository": "/repo",
+        "at": "2026-10-08T00:00:00Z",
+        "number": 1,
+        "spec_hash": null,
+        "index_hash": null,
+        "evidence": {
+          "src/lib.rs": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "bundle_with_facts",
+      "args": {
+        "ids": [
+          "other"
+        ],
+        "draft_id": "d"
+      },
+      "facts": {
+        "repository": "/repo",
+        "at": "2026-10-08T00:00:00Z",
+        "number": 1,
+        "spec_hash": null,
+        "index_hash": null,
+        "evidence": {
+          "src/lib.rs": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [],
+        "modified": {},
+        "deleted": []
+      }
+    },
+    {
+      "export": "cascade",
+      "deleted": [
+        "n"
+      ]
+    },
+    {
+      "export": "changes",
+      "before": {},
+      "after": "project"
+    },
+    {
+      "export": "bundle_with_facts",
+      "args": {
+        "ids": [
+          "n"
+        ],
+        "draft_id": "d"
+      },
+      "facts": {
+        "repository": "/repo",
+        "at": "2026-10-08T00:00:00Z",
+        "number": 1,
+        "spec_hash": null,
+        "index_hash": null,
+        "evidence": {
+          "src/lib.rs": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "Engine",
+              "status": "agreed",
+              "path": "src/lib.rs",
+              "lines": "1"
+            }
+          },
+          {
+            "id": "c",
+            "kind": "claim",
+            "props": {
+              "about": "n",
+              "text": "Two variants",
+              "basis": "verified",
+              "path": "src/lib.rs",
+              "lines": "1",
+              "revision": "",
+              "verdict": "open",
+              "withdrawn": false
+            }
+          },
+          {
+            "id": "ctx",
+            "kind": "understanding-context",
+            "props": {
+              "definition": "{\"altitude\":\"implementation\",\"assumptions\":\"\",\"question\":\"What must State preserve?\",\"replaces\":[],\"subjects\":[\"n\"]}"
+            }
+          },
+          {
+            "id": "d",
+            "kind": "decision-draft",
+            "props": {
+              "definition": "{\"content\":\"8d74fb7d4660a2a601eef00e41e169695404f38becd3dcd0576f6909ea65d17e\",\"context_ids\":[\"ctx\"],\"created_by\":\"\",\"id\":\"\",\"input\":{\"alternatives\":[{\"option\":\"Strings\",\"reason_not_chosen\":\"No exhaustive matching\"}],\"checks\":[{\"check\":{\"args\":{\"enum_name\":\"State\",\"expected_serde_rename_all\":null,\"expected_variants\":[\"Ready\",\"Done\"],\"file\":\"src/lib.rs\"},\"backend\":\"rust_enum_shape\"},\"evidence_files\":[\"src/lib.rs\"],\"id\":\"CEMENT-DEMO-STATE\",\"requirement\":\"Keep two states\"}],\"consequences\":\"Gate catches drift\",\"decision\":\"Keep State explicit\",\"ids\":[\"n\"],\"not_enforced\":[\"Runtime behavior\"],\"rationale\":\"Reviewable variants\",\"title\":\"State contract\",\"tradeoffs\":\"Review on change\"}}",
+              "created_by": "Agent"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "obligations_with_facts",
+      "args": {
+        "kind": "map",
+        "ids": [
+          "n"
+        ]
+      },
+      "facts": {
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "excerpts": {
+          "n\u0001src/lib.rs\u00011": "pub enum State { Ready, Done }\n"
+        }
+      }
+    },
+    {
+      "export": "obligations_with_facts",
+      "args": {
+        "kind": "map",
+        "ids": [
+          "n"
+        ]
+      },
+      "facts": {
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "excerpts": {}
+      }
+    },
+    {
+      "export": "obligations_with_facts",
+      "args": {
+        "kind": "removal",
+        "reason": "Remove listener"
+      },
+      "facts": {
+        "lane": {
+          "lane_id": "found",
+          "kind": "listener",
+          "label": "Listener",
+          "package": null,
+          "detail": "Source pattern",
+          "evidence": {
+            "path": "src/lib.rs",
+            "line": 1,
+            "snippet": "TcpListener::bind(\"x\")",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }
+      }
+    },
+    {
+      "export": "obligations_with_facts",
+      "args": {
+        "kind": "merge",
+        "entries": [
+          {
+            "id": "A",
+            "description": "updated"
+          }
+        ]
+      },
+      "facts": {
+        "existing": {
+          "meta": {
+            "retain": true
+          },
+          "obligations": [
+            {
+              "id": "A"
+            },
+            {
+              "id": "B",
+              "description": "retain"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "obligations_with_facts",
+      "args": {
+        "kind": "advisory",
+        "revision": "r",
+        "at": "now"
+      },
+      "facts": {
+        "assertions": [
+          {
+            "id": "A",
+            "text": "Agreed words",
+            "status": "settled",
+            "human_mark": "agree",
+            "signed_by": "human",
+            "authored_by": "Agent",
+            "authored_revision": 1,
+            "signed_revision": 2,
+            "changed_revision": 2,
+            "authored_at": "then",
+            "signed_at": "now"
+          }
+        ]
+      }
+    },
+    {
+      "export": "obligations_with_facts",
+      "args": {
+        "kind": "advisory",
+        "revision": "r",
+        "at": "now"
+      },
+      "facts": {
+        "assertions": [
+          {
+            "id": "A",
+            "text": "Agreed words",
+            "status": "settled",
+            "human_mark": "agree",
+            "signed_by": "agent",
+            "authored_by": "Agent",
+            "authored_revision": 1,
+            "signed_revision": 2,
+            "changed_revision": 2,
+            "authored_at": "then",
+            "signed_at": "now"
+          },
+          {
+            "id": "B",
+            "text": "Agreed words",
+            "status": "disputed",
+            "human_mark": "agree",
+            "signed_by": "human",
+            "authored_by": "Agent",
+            "authored_revision": 1,
+            "signed_revision": 2,
+            "changed_revision": 2,
+            "authored_at": "then",
+            "signed_at": "now"
+          }
+        ]
+      }
+    }
+  ]
+}

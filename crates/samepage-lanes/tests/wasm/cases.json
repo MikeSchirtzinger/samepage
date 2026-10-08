@@ -1,0 +1,1783 @@
+{
+  "view": {
+    "revision": "r",
+    "records": [
+      {
+        "id": "n",
+        "kind": "node",
+        "props": {
+          "label": "Engine",
+          "path": "a.rs",
+          "lines": "10"
+        }
+      },
+      {
+        "id": "other",
+        "kind": "node",
+        "props": {
+          "label": "CLI"
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "export": "descriptor"
+    },
+    {
+      "export": "project"
+    },
+    {
+      "export": "digest"
+    },
+    {
+      "export": "legend"
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "lanes_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "lane_id": "l1",
+          "node_id": "n"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "atlas_claim_lane",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": "bad json"
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {
+            "gone": {
+              "obligation_id": "REMOVE-1",
+              "kind": "spawn",
+              "label": "gone",
+              "path": "c.rs",
+              "line": 4,
+              "snippet": "spawn()"
+            }
+          },
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {
+            "gone": {
+              "obligation_id": "REMOVE-1",
+              "kind": "spawn",
+              "label": "gone",
+              "path": "c.rs",
+              "line": 4,
+              "snippet": "spawn()"
+            }
+          },
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [
+          "REMOVE-1"
+        ],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {
+            "l2": "other"
+          },
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {
+            "other": [
+              {
+                "path": "b.rs",
+                "lines": "21"
+              }
+            ]
+          },
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "1",
+              "kind": "listener",
+              "label": "1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 1,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "2",
+              "kind": "listener",
+              "label": "2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 2,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "3",
+              "kind": "listener",
+              "label": "3",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 3,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "4",
+              "kind": "listener",
+              "label": "4",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 4,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "5",
+              "kind": "listener",
+              "label": "5",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 5,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "6",
+              "kind": "listener",
+              "label": "6",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 6,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "7",
+              "kind": "listener",
+              "label": "7",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 7,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "8",
+              "kind": "listener",
+              "label": "8",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 8,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "9",
+              "kind": "listener",
+              "label": "9",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 9,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "10",
+              "kind": "listener",
+              "label": "10",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 10,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "11",
+              "kind": "listener",
+              "label": "11",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 11,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "12",
+              "kind": "listener",
+              "label": "12",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "13",
+              "kind": "listener",
+              "label": "13",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 13,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "14",
+              "kind": "listener",
+              "label": "14",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 14,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "15",
+              "kind": "listener",
+              "label": "15",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 15,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "16",
+              "kind": "listener",
+              "label": "16",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 16,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "17",
+              "kind": "listener",
+              "label": "17",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 17,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "18",
+              "kind": "listener",
+              "label": "18",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 18,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "19",
+              "kind": "listener",
+              "label": "19",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 19,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "20",
+              "kind": "listener",
+              "label": "20",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 20,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "21",
+              "kind": "listener",
+              "label": "21",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 21,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "22",
+              "kind": "listener",
+              "label": "22",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 22,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "23",
+              "kind": "listener",
+              "label": "23",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 23,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "24",
+              "kind": "listener",
+              "label": "24",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 24,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "25",
+              "kind": "listener",
+              "label": "25",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 25,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "26",
+              "kind": "listener",
+              "label": "26",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "27",
+              "kind": "listener",
+              "label": "27",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 27,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "28",
+              "kind": "listener",
+              "label": "28",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 28,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "29",
+              "kind": "listener",
+              "label": "29",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 29,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "30",
+              "kind": "listener",
+              "label": "30",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 30,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "31",
+              "kind": "listener",
+              "label": "31",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 31,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "32",
+              "kind": "listener",
+              "label": "32",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 32,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "33",
+              "kind": "listener",
+              "label": "33",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 33,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "34",
+              "kind": "listener",
+              "label": "34",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 34,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "35",
+              "kind": "listener",
+              "label": "35",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 35,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "36",
+              "kind": "listener",
+              "label": "36",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 36,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "37",
+              "kind": "listener",
+              "label": "37",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 37,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "38",
+              "kind": "listener",
+              "label": "38",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 38,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "39",
+              "kind": "listener",
+              "label": "39",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 39,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "40",
+              "kind": "listener",
+              "label": "40",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 40,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "41",
+              "kind": "listener",
+              "label": "41",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 41,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "42",
+              "kind": "listener",
+              "label": "42",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 42,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "43",
+              "kind": "listener",
+              "label": "43",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 43,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "44",
+              "kind": "listener",
+              "label": "44",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "c.rs",
+                "line": 44,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "node_id": "n",
+          "lane_id": "l2"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "node_id": "missing",
+          "lane_id": "l2"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "node_id": "n",
+          "lane_id": "missing"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "node_id": "n",
+          "lane_id": "l2"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      }
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "node_id": "n",
+          "lane_id": "l2"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {},
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "node_id": "n",
+          "lane_id": "l2",
+          "scan_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "binding"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "Engine",
+              "path": "a.rs",
+              "lines": "10"
+            }
+          },
+          {
+            "id": "other",
+            "kind": "node",
+            "props": {
+              "label": "CLI"
+            }
+          },
+          {
+            "id": "binding",
+            "kind": "binding",
+            "props": {
+              "node": "n",
+              "lane_id": "l1",
+              "path": "a.rs",
+              "lines": "12",
+              "baseline_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "scan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "binding"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "Engine",
+              "path": "a.rs",
+              "lines": "10"
+            }
+          },
+          {
+            "id": "other",
+            "kind": "node",
+            "props": {
+              "label": "CLI"
+            }
+          },
+          {
+            "id": "binding",
+            "kind": "binding",
+            "props": {
+              "node": "absent",
+              "lane_id": "l1",
+              "path": "a.rs",
+              "lines": "12",
+              "baseline_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "scan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "binding"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "Engine",
+              "path": "a.rs",
+              "lines": "10"
+            }
+          },
+          {
+            "id": "other",
+            "kind": "node",
+            "props": {
+              "label": "CLI"
+            }
+          },
+          {
+            "id": "binding",
+            "kind": "binding",
+            "props": {
+              "node": "n",
+              "lane_id": "l1",
+              "path": "a.rs",
+              "lines": "12",
+              "scan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "binding"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "Engine",
+              "path": "a.rs",
+              "lines": "10"
+            }
+          },
+          {
+            "id": "other",
+            "kind": "node",
+            "props": {
+              "label": "CLI"
+            }
+          },
+          {
+            "id": "binding",
+            "kind": "binding",
+            "props": {
+              "node": "n",
+              "lane_id": "l1",
+              "path": "a.rs",
+              "lines": "0",
+              "baseline_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "scan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "cascade",
+      "deleted": [
+        "n"
+      ],
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "Engine",
+              "path": "a.rs",
+              "lines": "10"
+            }
+          },
+          {
+            "id": "other",
+            "kind": "node",
+            "props": {
+              "label": "CLI"
+            }
+          },
+          {
+            "id": "binding",
+            "kind": "binding",
+            "props": {
+              "node": "n",
+              "lane_id": "l1",
+              "path": "a.rs",
+              "lines": "12",
+              "baseline_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "scan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "changes",
+      "before": {},
+      "after": "project"
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "lane_id": "l2",
+          "card_id": "n"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "export": "claim_with_facts",
+      "call": {
+        "action": "lane_claim",
+        "args": {
+          "lane_id": "l2",
+          "card_id": "n",
+          "node_id": "other"
+        }
+      },
+      "facts": {
+        "scan": {
+          "root": "/repo",
+          "lanes": [
+            {
+              "lane_id": "l1",
+              "kind": "listener",
+              "label": "l1",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "a.rs",
+                "line": 12,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            },
+            {
+              "lane_id": "l2",
+              "kind": "listener",
+              "label": "l2",
+              "package": null,
+              "detail": "static listener",
+              "evidence": {
+                "path": "b.rs",
+                "line": 26,
+                "snippet": "TcpListener::bind(...)",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              }
+            }
+          ],
+          "scanned_files": 3,
+          "languages": [
+            "rust"
+          ],
+          "skipped": []
+        },
+        "registry": {
+          "lane_claims": {},
+          "removals": {},
+          "last_seen": {}
+        },
+        "sources": {
+          "extras": {},
+          "bindings": {},
+          "gates": {}
+        },
+        "clean": [],
+        "excerpt_hashes": {
+          "l1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "l2": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "file_hashes": {
+          "l1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "l2": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    }
+  ]
+}

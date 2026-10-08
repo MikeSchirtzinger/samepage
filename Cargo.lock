@@ -2873,17 +2873,22 @@ dependencies = [
  "samepage-architecture",
  "samepage-board",
  "samepage-capability",
+ "samepage-cement",
  "samepage-diagrams",
  "samepage-doc",
+ "samepage-extract",
+ "samepage-lanes",
  "samepage-map",
  "samepage-panes",
  "samepage-review",
  "samepage-sketch",
+ "samepage-sources",
  "samepage-trace",
  "serde",
  "serde_json",
  "sha2",
  "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -2921,6 +2926,25 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "samepage-cement"
+version = "0.1.0"
+dependencies = [
+ "samepage-capability",
+ "samepage-diagrams",
+ "samepage-doc",
+ "samepage-extract",
+ "samepage-lanes",
+ "samepage-map",
+ "samepage-review",
+ "samepage-sources",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
  "wasm-bindgen",
 ]
 
@@ -2970,6 +2994,22 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "samepage-lanes"
+version = "0.1.0"
+dependencies = [
+ "samepage-capability",
+ "samepage-doc",
+ "samepage-extract",
+ "samepage-map",
+ "samepage-sources",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -3030,6 +3070,22 @@ dependencies = [
  "sha2",
  "wasm-bindgen",
  "yrs",
+]
+
+[[package]]
+name = "samepage-sources"
+version = "0.1.0"
+dependencies = [
+ "samepage-capability",
+ "samepage-diagrams",
+ "samepage-doc",
+ "samepage-map",
+ "samepage-review",
+ "serde",
+ "serde_json",
+ "sha2",
+ "toml",
+ "wasm-bindgen",
 ]
 
 [[package]]

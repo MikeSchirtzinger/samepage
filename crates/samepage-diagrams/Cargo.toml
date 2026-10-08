@@ -15,6 +15,9 @@ crate-type = ["cdylib", "rlib"]
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
 
+[features]
+integrated-sources = []
+
 [dependencies]
 samepage-capability = { path = "../samepage-capability" }
 samepage-map = { path = "../samepage-map", default-features = false }

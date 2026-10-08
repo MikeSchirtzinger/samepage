@@ -92,3 +92,23 @@ same document as Map and requires no Map capability dependency. Human drag,
 resize, raise, marks and notes preserve separate host bylines; agents place
 panes by relation and named size. See [the Panes contract](../../crates/samepage-panes/README.md)
 for preferred actions, aliases, source policy, legacy import and verification.
+
+Optional Sources adds verified bindings, drift chips and a host-resolved
+source viewer. Append
+`sources=crates/samepage-sources=apps/samepage/modules/sources.js` to the
+selected build. The first bound card, source action or viewer opening loads
+the artifact. A failed source binding publishes no document change. When
+Sources and Diagrams are selected together, the build transfers Diagrams'
+provisional binding keys to Sources. See [Sources](../../crates/samepage-sources/README.md).
+
+Optional Lanes adds the collapsed “Found in source” strip with unresolved
+counts, inspectable static findings and verified extra-binding claims. Append
+`lanes=crates/samepage-lanes=apps/samepage/modules/lanes.js` with Sources
+selected. It loads when the strip opens, a lane action runs or a saved binding
+is present. See [Lanes](../../crates/samepage-lanes/README.md).
+
+Cement is optional: add `cement=crates/samepage-cement=apps/samepage/modules/cement.js`
+to the selected build, alongside Sources, Lanes and Review. Its native adapter
+requires real `g8` 0.1.4 from PATH and the selected Git project root. Agents draft
+and propose decisions; the person previews and publishes from the Cement strip.
+Current gates and their reasons refresh together on Sources cards without reload.

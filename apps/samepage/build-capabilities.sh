@@ -34,6 +34,10 @@ staging="$(mktemp -d "${out%/}/.stage.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
 seen='|'
 found_doc=0
+integrated_sources=0
+for selection in "$@"; do
+  if [[ "$selection" == sources=* ]]; then integrated_sources=1; fi
+done
 for spec in "$@"; do
   IFS='=' read -r id crate entry extra <<< "$spec"
   if [[ -n "${extra:-}" || ! "$id" =~ ^[a-z][a-z0-9_-]*$ || -z "$crate" ]]; then
@@ -82,7 +86,9 @@ while pending:
 print(f'checked selected WASM Cargo closure: {pkg["name"] if len(seen)==1 else len(seen)} packages')
 PY
   mkdir -p "$staging/$id"
-  wasm-pack build "$root/$crate" --release --target web --out-dir "$staging/$id" --no-typescript -- --locked
+  extra_features=()
+  if [[ "$id" == diagrams && "$integrated_sources" == 1 ]]; then extra_features=(--features integrated-sources); fi
+  wasm-pack build "$root/$crate" --release --target web --out-dir "$staging/$id" --no-typescript -- --locked "${extra_features[@]}"
   shopt -s nullglob
   glues=("$staging/$id/"*_bg.wasm)
   scripts=("$staging/$id/"*.js)

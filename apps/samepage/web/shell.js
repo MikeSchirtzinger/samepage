@@ -287,8 +287,10 @@ try {
   } });
   kernel.attachRuntime(runtime);
   client.on("samepage.capability-used",async ({value})=>{
-    try {await kernel.activateForTool(value?.tool);}
-    catch(error){showError(`${value?.id || 'capability'} is unavailable: ${error.message}`);}
+    try {
+      if (value?.tool) await kernel.activateForTool(value.tool);
+      else if (kernel.hasCapability(value?.id)) await kernel.activate(value.id);
+    } catch(error){showError(`${value?.id || "capability"} is unavailable: ${error.message}`);}
   });
   client.on("samepage.persistence-error", ({value}) => kernel.setPersistenceFailure(value?.error || "save failed"));
   client.on("samepage.persistence-wait", ({value}) => kernel.setPersistencePending(value?.message || "save is still pending"));
@@ -310,6 +312,30 @@ try {
   });
   await client.connect();
   kernel.connect();
+  if (kernel.hasCapability('lanes')) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'lanes-open'; button.textContent = 'Lanes · scan source';
+    button.addEventListener('click', async () => {
+      try { await kernel.activateForRoute('lanes'); document.dispatchEvent(new CustomEvent('samepage:lanes-open')); }
+      catch(error) { showError(`Lanes unavailable: ${error.message}`); }
+    });
+    document.querySelector('.toolbar').append(button);
+  }
+  if (kernel.hasCapability('cement')) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'cement-open'; button.textContent = 'Cement';
+    button.addEventListener('click', async () => {
+      try { await kernel.activateForRoute('cement'); document.dispatchEvent(new CustomEvent('samepage:cement-open')); }
+      catch(error) { showError(`Cement unavailable: ${error.message}`); }
+    });
+    document.querySelector('.toolbar').append(button);
+  }
+  if (kernel.hasCapability('sources')) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'sources-open'; button.textContent = 'Sources';
+    button.addEventListener('click', async () => {
+      try { await kernel.activateForRoute('sources'); document.dispatchEvent(new CustomEvent('samepage:sources-open')); }
+      catch (error) { showError(`Sources unavailable: ${error.message}`); }
+    });
+    document.querySelector('.toolbar').append(button);
+  }
   document.getElementById("add-card").addEventListener("submit", async (event) => {
     event.preventDefault();
     const input = document.getElementById("new-card-label");
