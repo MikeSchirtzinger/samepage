@@ -1,2907 +1,2907 @@
 {
-  "view": {
+ "view": {
+  "revision": "2",
+  "records": [
+   {
+    "id": "board.snapshot",
+    "kind": "board-snapshot",
+    "props": {
+     "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
+    }
+   }
+  ]
+ },
+ "calls": [
+  {
+   "export": "descriptor",
+   "view": {
     "revision": "2",
     "records": [
-      {
-        "id": "board.snapshot",
-        "kind": "board-snapshot",
-        "props": {
-          "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-        }
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
+     }
     ]
+   }
   },
-  "calls": [
-    {
-      "export": "descriptor",
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+  {
+   "export": "project",
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "project",
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   }
+  },
+  {
+   "export": "digest",
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "digest",
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   }
+  },
+  {
+   "export": "legend",
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "legend",
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   }
+  },
+  {
+   "export": "validate",
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "validate",
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
-      },
-      "delta": {
-        "created": [],
-        "modified": {},
-        "deleted": []
+     }
+    ]
+   },
+   "delta": {
+    "created": [],
+    "modified": {},
+    "deleted": []
+   }
+  },
+  {
+   "export": "cascade",
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "cascade",
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
-      },
-      "deleted": [
-        "absent"
-      ]
-    },
-    {
-      "export": "plan",
-      "call": {
-        "action": "board_read",
-        "args": {}
-      },
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   },
+   "deleted": [
+    "absent"
+   ]
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "board_read",
+    "args": {}
+   },
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "plan",
-      "call": {
-        "action": "board_revision",
-        "args": {}
-      },
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "board_revision",
+    "args": {}
+   },
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "plan",
-      "call": {
-        "action": "board_snapshot",
-        "args": {}
-      },
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "board_snapshot",
+    "args": {}
+   },
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "plan",
-      "call": {
-        "action": "board_assert",
-        "args": {}
-      },
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "board_assert",
+    "args": {}
+   },
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "plan",
-      "call": {
-        "action": "ghost",
-        "args": {}
-      },
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   }
+  },
+  {
+   "export": "plan",
+   "call": {
+    "action": "ghost",
+    "args": {}
+   },
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "plan",
-      "call": "invalid json",
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
+     }
+    ]
+   }
+  },
+  {
+   "export": "plan",
+   "call": "invalid json",
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
       }
-    },
-    {
-      "export": "project",
-      "view": {
-        "revision": "r",
-        "records": []
+     }
+    ]
+   }
+  },
+  {
+   "export": "project",
+   "view": {
+    "revision": "r",
+    "records": []
+   }
+  },
+  {
+   "export": "project_board",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "since": 0
+  },
+  {
+   "export": "delta",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "since": 0
+  },
+  {
+   "export": "readback",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "since": 0
+  },
+  {
+   "export": "validate_board",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "since": 0
+  },
+  {
+   "export": "migrate",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "since": 0
+  },
+  {
+   "export": "project_board",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 0
+  },
+  {
+   "export": "delta",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 0
+  },
+  {
+   "export": "readback",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 0
+  },
+  {
+   "export": "validate_board",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 0
+  },
+  {
+   "export": "migrate",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 0
+  },
+  {
+   "export": "project_board",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "since": 0
+  },
+  {
+   "export": "delta",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "since": 0
+  },
+  {
+   "export": "readback",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "since": 0
+  },
+  {
+   "export": "validate_board",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "since": 0
+  },
+  {
+   "export": "migrate",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "since": 0
+  },
+  {
+   "export": "project_board",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 1
+  },
+  {
+   "export": "delta",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 1
+  },
+  {
+   "export": "project_board",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 2
+  },
+  {
+   "export": "delta",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 2
+  },
+  {
+   "export": "project_board",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 4
+  },
+  {
+   "export": "delta",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "since": 4
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "call": {
+    "action": "board_assert",
+    "args": {
+     "assertions": [
+      {
+       "kind": "claim",
+       "id": "claim",
+       "text": "Portable native and WASM"
       }
-    },
-    {
-      "export": "project_board",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "since": 0
-    },
-    {
-      "export": "delta",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "since": 0
-    },
-    {
-      "export": "readback",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "since": 0
-    },
-    {
-      "export": "validate_board",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "since": 0
-    },
-    {
-      "export": "migrate",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "since": 0
-    },
-    {
-      "export": "project_board",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 0
-    },
-    {
-      "export": "delta",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 0
-    },
-    {
-      "export": "readback",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 0
-    },
-    {
-      "export": "validate_board",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 0
-    },
-    {
-      "export": "migrate",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 0
-    },
-    {
-      "export": "project_board",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "since": 0
-    },
-    {
-      "export": "delta",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "since": 0
-    },
-    {
-      "export": "readback",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "since": 0
-    },
-    {
-      "export": "validate_board",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "since": 0
-    },
-    {
-      "export": "migrate",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "since": 0
-    },
-    {
-      "export": "project_board",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 1
-    },
-    {
-      "export": "delta",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 1
-    },
-    {
-      "export": "project_board",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 2
-    },
-    {
-      "export": "delta",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 2
-    },
-    {
-      "export": "project_board",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 4
-    },
-    {
-      "export": "delta",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "since": 4
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "call": {
-        "action": "board_assert",
-        "args": {
-          "assertions": [
-            {
-              "kind": "claim",
-              "id": "claim",
-              "text": "Portable native and WASM"
-            }
-          ]
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "call": {
-        "action": "board_assert",
-        "args": {
-          "assertions": [
-            {
-              "kind": "claim",
-              "id": "a",
-              "text": "valid"
-            },
-            {
-              "kind": "question",
-              "id": "b",
-              "text": "valid too"
-            },
-            {
-              "kind": "relation",
-              "id": "third",
-              "from": "a",
-              "to": "absent",
-              "how": "supports"
-            }
-          ]
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "call": {
-        "action": "board_assert",
-        "args": {
-          "assertions": [
-            {
-              "kind": "claim",
-              "id": "a",
-              "text": "valid"
-            },
-            {
-              "kind": "ghost",
-              "id": "malformed"
-            }
-          ]
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "call": {
-        "action": "board_assert",
-        "args": {
-          "assertions": [
-            {
-              "kind": "claim",
-              "id": "a",
-              "text": "settled",
-              "status": "settled"
-            }
-          ]
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "call": {
-        "action": "board_assert",
-        "args": {
-          "assertions": [
-            {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "New wording after signoff",
-              "status": "supported"
-            }
-          ]
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_mark",
-        "args": {
-          "id": "old-agent",
-          "mark": "agree"
-        }
-      },
-      "context": {
-        "author": "you",
-        "participant": "person-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_mark",
-        "args": {
-          "id": "old-agent",
-          "mark": "agree"
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_mark",
-        "args": {
-          "id": "old-agent",
-          "mark": "bogus"
-        }
-      },
-      "context": {
-        "author": "you",
-        "participant": "person-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "call": {
-        "action": "board_unmark",
-        "args": {
-          "id": "runtime-boundary"
-        }
-      },
-      "context": {
-        "author": "you",
-        "participant": "person-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "call": {
-        "action": "board_mark",
-        "args": {
-          "id": "runtime-boundary",
-          "mark": "disagree"
-        }
-      },
-      "context": {
-        "author": "you",
-        "participant": "person-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_compose",
-        "args": {
-          "kind": "question",
-          "text": "Human reply"
-        }
-      },
-      "context": {
-        "author": "you",
-        "participant": "person-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_compose",
-        "args": {
-          "kind": "choice",
-          "text": "unsupported"
-        }
-      },
-      "context": {
-        "author": "you",
-        "participant": "person-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_subject",
-        "args": {
-          "subject": "New subject"
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_clear",
-        "args": {}
-      },
-      "context": {
-        "author": "you",
-        "participant": "person-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_retract",
-        "args": {
-          "id": "old-agent"
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "call": {
-        "action": "board_retract",
-        "args": {
-          "id": "ghost"
-        }
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "call": {
-        "action": "unknown_action",
-        "args": {}
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": "2026-10-08T00:00:00Z"
-      }
-    },
-    {
-      "export": "advisory_preview",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "old-agent",
-              "text": "written before named agents",
-              "status": "supported"
-            },
-            "author": "agent",
-            "changed_at": 1,
-            "mark": null
-          },
-          {
-            "assertion": {
-              "kind": "question",
-              "id": "old-you",
-              "text": "does this still load?",
-              "blocking": false
-            },
-            "author": "you",
-            "changed_at": 2,
-            "mark": null
-          }
-        ],
-        "revision": 2,
-        "subject": "legacy board"
-      },
-      "revision": "AQIDBA",
-      "timestamp": "2026-07-31T12:00:00Z"
-    },
-    {
-      "export": "advisory_preview",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "runtime-boundary",
-              "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-              "status": "settled"
-            },
-            "author": {
-              "named": "reviewer"
-            },
-            "authored_at": "2026-07-31T11:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 2,
-            "mark": [
-              "agree",
-              "keep the boundary"
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:05:00Z",
-            "marked_at_revision": 2
-          },
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "advisory-draft",
-              "text": "Cemented obligations begin as advisory prose-only drafts.",
-              "status": "settled"
-            },
-            "author": "you",
-            "authored_at": "2026-07-31T11:10:00Z",
-            "authored_at_revision": 3,
-            "changed_at": 4,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_at": "2026-07-31T11:11:00Z",
-            "marked_at_revision": 4
-          }
-        ],
-        "revision": 4,
-        "subject": "Atlas cementing"
-      },
-      "revision": "AQIDBA",
-      "timestamp": "2026-07-31T12:00:00Z"
-    },
-    {
-      "export": "advisory_preview",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "revision": "AQIDBA",
-      "timestamp": "2026-07-31T12:00:00Z"
-    },
-    {
-      "export": "migrate",
-      "board": "malformed"
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [],
-        "revision": 0,
-        "subject": null
-      },
-      "call": {
-        "action": "board_assert",
-        "args": {}
-      },
-      "context": {
-        "author": {
-          "named": "Board proof"
-        },
-        "participant": "agent-proof",
-        "timestamp": ""
-      }
-    },
-    {
-      "export": "changes",
-      "before": {
-        "board": {
-          "entries": [
-            {
-              "assertion": {
-                "kind": "claim",
-                "id": "old-agent",
-                "text": "written before named agents",
-                "status": "supported"
-              },
-              "author": "agent",
-              "changed_at": 1,
-              "mark": null
-            },
-            {
-              "assertion": {
-                "kind": "question",
-                "id": "old-you",
-                "text": "does this still load?",
-                "blocking": false
-              },
-              "author": "you",
-              "changed_at": 2,
-              "mark": null
-            }
-          ],
-          "revision": 2,
-          "subject": "legacy board"
-        }
-      },
-      "after": {
-        "board": {
-          "entries": [
-            {
-              "assertion": {
-                "kind": "claim",
-                "id": "runtime-boundary",
-                "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
-                "status": "settled"
-              },
-              "author": {
-                "named": "reviewer"
-              },
-              "authored_at": "2026-07-31T11:00:00Z",
-              "authored_at_revision": 1,
-              "changed_at": 2,
-              "mark": [
-                "agree",
-                "keep the boundary"
-              ],
-              "marked_by": "you",
-              "marked_at": "2026-07-31T11:05:00Z",
-              "marked_at_revision": 2
-            },
-            {
-              "assertion": {
-                "kind": "claim",
-                "id": "advisory-draft",
-                "text": "Cemented obligations begin as advisory prose-only drafts.",
-                "status": "settled"
-              },
-              "author": "you",
-              "authored_at": "2026-07-31T11:10:00Z",
-              "authored_at_revision": 3,
-              "changed_at": 4,
-              "mark": [
-                "agree",
-                null
-              ],
-              "marked_by": "you",
-              "marked_at": "2026-07-31T11:11:00Z",
-              "marked_at_revision": 4
-            }
-          ],
-          "revision": 4,
-          "subject": "Atlas cementing"
-        }
-      }
-    },
-    {
-      "export": "project",
-      "view": {
-        "revision": "3",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
-              "reader": "human-a"
-            }
-          }
-        ]
-      },
-      "expected_by": "Blair"
-    },
-    {
-      "export": "plan",
-      "view": {
-        "revision": "3",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
-              "reader": "human-a"
-            }
-          }
-        ]
-      },
-      "call": {
-        "action": "board_read",
-        "args": {}
-      },
-      "expected_readback": "marked question by Blair"
-    },
-    {
-      "export": "project",
-      "view": {
-        "revision": "3",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
-              "reader": "human-b"
-            }
-          }
-        ]
-      },
-      "expected_by": "you"
-    },
-    {
-      "export": "plan",
-      "view": {
-        "revision": "3",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
-              "reader": "human-b"
-            }
-          }
-        ]
-      },
-      "call": {
-        "action": "board_read",
-        "args": {}
-      },
-      "expected_readback": "marked question by you"
-    },
-    {
-      "export": "project",
-      "view": {
-        "revision": "3",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
-              "reader": "agent"
-            }
-          }
-        ]
-      },
-      "expected_by": "Blair"
-    },
-    {
-      "export": "plan",
-      "view": {
-        "revision": "3",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
-              "reader": "agent"
-            }
-          }
-        ]
-      },
-      "call": {
-        "action": "board_read",
-        "args": {}
-      },
-      "expected_readback": "marked question by Blair"
-    },
-    {
-      "export": "project",
-      "view": {
-        "revision": "3",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
-              "reader": ""
-            }
-          }
-        ]
-      },
-      "expected_by": "Blair"
-    },
-    {
-      "export": "plan",
-      "view": {
-        "revision": "3",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
-              "reader": ""
-            }
-          }
-        ]
-      },
-      "call": {
-        "action": "board_read",
-        "args": {}
-      },
-      "expected_readback": "marked question by Blair"
-    },
-    {
-      "export": "transition",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "call": {
-        "action": "board_mark",
-        "args": {
-          "id": "two-humans",
-          "mark": "agree"
-        }
-      },
-      "context": {
-        "author": "you",
-        "participant": "human-a",
-        "timestamp": "2026-10-08T12:03:00Z"
-      }
+     ]
     }
-  ],
-  "reader_calls": [
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-a",
-      "since": 0,
-      "expected_by": "Blair"
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
     },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "call": {
+    "action": "board_assert",
+    "args": {
+     "assertions": [
+      {
+       "kind": "claim",
+       "id": "a",
+       "text": "valid"
       },
-      "reader": "human-a",
-      "since": 0,
-      "expected_by": "Blair"
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "settled"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
+      {
+       "kind": "question",
+       "id": "b",
+       "text": "valid too"
       },
-      "reader": "human-a",
-      "since": 0,
-      "expected_by": "Blair",
-      "expected_fresh": true
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "settled"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-a",
-      "since": 0,
-      "expected_by": "Blair",
-      "expected_fresh": true
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "since": 0,
-      "expected_by": "you"
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "since": 0,
-      "expected_by": "you"
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "settled"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "since": 0,
-      "expected_by": "you",
-      "expected_fresh": true
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "settled"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "since": 0,
-      "expected_by": "you",
-      "expected_fresh": true
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "agent",
-      "since": 0,
-      "expected_by": "Blair"
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "agent",
-      "since": 0,
-      "expected_by": "Blair"
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "settled"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "agent",
-      "since": 0,
-      "expected_by": "Blair",
-      "expected_fresh": true
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "settled"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "agent",
-      "since": 0,
-      "expected_by": "Blair",
-      "expected_fresh": true
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": null,
-      "since": 0,
-      "expected_by": "Blair"
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": null,
-      "since": 0,
-      "expected_by": "Blair"
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "settled"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": null,
-      "since": 0,
-      "expected_by": "Blair",
-      "expected_fresh": true
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "settled"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "agree",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "human-b",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": null,
-      "since": 0,
-      "expected_by": "Blair",
-      "expected_fresh": true
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": null,
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "expected_by": null
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": null,
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "expected_by": null
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "expected_by": null
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "expected_by": null
-    },
-    {
-      "export": "project_board_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "unknown-human",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "expected_by": null
-    },
-    {
-      "export": "readback_for",
-      "board": {
-        "entries": [
-          {
-            "assertion": {
-              "kind": "claim",
-              "id": "two-humans",
-              "text": "Agent assertion; two human verdicts",
-              "status": "proposed"
-            },
-            "author": {
-              "named": "Reviewer"
-            },
-            "author_participant": "agent",
-            "authored_at": "2026-10-08T12:00:00Z",
-            "authored_at_revision": 1,
-            "changed_at": 3,
-            "mark": [
-              "question",
-              null
-            ],
-            "marked_by": "you",
-            "marked_by_participant": "unknown-human",
-            "marked_at": "2026-10-08T12:02:00Z",
-            "marked_at_revision": 3
-          }
-        ],
-        "revision": 3,
-        "subject": null,
-        "participants": {
-          "human-a": "Alice",
-          "human-b": "Blair",
-          "agent": "Reviewer"
-        }
-      },
-      "reader": "human-b",
-      "expected_by": null
-    },
-    {
-      "export": "legend",
-      "view": {
-        "revision": "legend-empty",
-        "records": []
+      {
+       "kind": "relation",
+       "id": "third",
+       "from": "a",
+       "to": "absent",
+       "how": "supports"
       }
-    },
-    {
-      "export": "legend",
-      "view": {
-        "revision": "2",
-        "records": [
-          {
-            "id": "board.snapshot",
-            "kind": "board-snapshot",
-            "props": {
-              "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
-            }
-          }
-        ]
-      }
+     ]
     }
-  ]
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "call": {
+    "action": "board_assert",
+    "args": {
+     "assertions": [
+      {
+       "kind": "claim",
+       "id": "a",
+       "text": "valid"
+      },
+      {
+       "kind": "ghost",
+       "id": "malformed"
+      }
+     ]
+    }
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "call": {
+    "action": "board_assert",
+    "args": {
+     "assertions": [
+      {
+       "kind": "claim",
+       "id": "a",
+       "text": "settled",
+       "status": "settled"
+      }
+     ]
+    }
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "call": {
+    "action": "board_assert",
+    "args": {
+     "assertions": [
+      {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "New wording after signoff",
+       "status": "supported"
+      }
+     ]
+    }
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_mark",
+    "args": {
+     "id": "old-agent",
+     "mark": "agree"
+    }
+   },
+   "context": {
+    "author": "you",
+    "participant": "person-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_mark",
+    "args": {
+     "id": "old-agent",
+     "mark": "agree"
+    }
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_mark",
+    "args": {
+     "id": "old-agent",
+     "mark": "bogus"
+    }
+   },
+   "context": {
+    "author": "you",
+    "participant": "person-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "call": {
+    "action": "board_unmark",
+    "args": {
+     "id": "runtime-boundary"
+    }
+   },
+   "context": {
+    "author": "you",
+    "participant": "person-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "call": {
+    "action": "board_mark",
+    "args": {
+     "id": "runtime-boundary",
+     "mark": "disagree"
+    }
+   },
+   "context": {
+    "author": "you",
+    "participant": "person-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_compose",
+    "args": {
+     "kind": "question",
+     "text": "Human reply"
+    }
+   },
+   "context": {
+    "author": "you",
+    "participant": "person-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_compose",
+    "args": {
+     "kind": "choice",
+     "text": "unsupported"
+    }
+   },
+   "context": {
+    "author": "you",
+    "participant": "person-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_subject",
+    "args": {
+     "subject": "New subject"
+    }
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_clear",
+    "args": {}
+   },
+   "context": {
+    "author": "you",
+    "participant": "person-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_retract",
+    "args": {
+     "id": "old-agent"
+    }
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "call": {
+    "action": "board_retract",
+    "args": {
+     "id": "ghost"
+    }
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "call": {
+    "action": "unknown_action",
+    "args": {}
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": "2026-10-08T00:00:00Z"
+   }
+  },
+  {
+   "export": "advisory_preview",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "old-agent",
+       "text": "written before named agents",
+       "status": "supported"
+      },
+      "author": "agent",
+      "changed_at": 1,
+      "mark": null
+     },
+     {
+      "assertion": {
+       "kind": "question",
+       "id": "old-you",
+       "text": "does this still load?",
+       "blocking": false
+      },
+      "author": "you",
+      "changed_at": 2,
+      "mark": null
+     }
+    ],
+    "revision": 2,
+    "subject": "legacy board"
+   },
+   "revision": "AQIDBA",
+   "timestamp": "2026-07-31T12:00:00Z"
+  },
+  {
+   "export": "advisory_preview",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "runtime-boundary",
+       "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+       "status": "settled"
+      },
+      "author": {
+       "named": "reviewer"
+      },
+      "authored_at": "2026-07-31T11:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 2,
+      "mark": [
+       "agree",
+       "keep the boundary"
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:05:00Z",
+      "marked_at_revision": 2
+     },
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "advisory-draft",
+       "text": "Cemented obligations begin as advisory prose-only drafts.",
+       "status": "settled"
+      },
+      "author": "you",
+      "authored_at": "2026-07-31T11:10:00Z",
+      "authored_at_revision": 3,
+      "changed_at": 4,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_at": "2026-07-31T11:11:00Z",
+      "marked_at_revision": 4
+     }
+    ],
+    "revision": 4,
+    "subject": "Atlas cementing"
+   },
+   "revision": "AQIDBA",
+   "timestamp": "2026-07-31T12:00:00Z"
+  },
+  {
+   "export": "advisory_preview",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "revision": "AQIDBA",
+   "timestamp": "2026-07-31T12:00:00Z"
+  },
+  {
+   "export": "migrate",
+   "board": "malformed"
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [],
+    "revision": 0,
+    "subject": null
+   },
+   "call": {
+    "action": "board_assert",
+    "args": {}
+   },
+   "context": {
+    "author": {
+     "named": "Board proof"
+    },
+    "participant": "agent-proof",
+    "timestamp": ""
+   }
+  },
+  {
+   "export": "changes",
+   "before": {
+    "board": {
+     "entries": [
+      {
+       "assertion": {
+        "kind": "claim",
+        "id": "old-agent",
+        "text": "written before named agents",
+        "status": "supported"
+       },
+       "author": "agent",
+       "changed_at": 1,
+       "mark": null
+      },
+      {
+       "assertion": {
+        "kind": "question",
+        "id": "old-you",
+        "text": "does this still load?",
+        "blocking": false
+       },
+       "author": "you",
+       "changed_at": 2,
+       "mark": null
+      }
+     ],
+     "revision": 2,
+     "subject": "legacy board"
+    }
+   },
+   "after": {
+    "board": {
+     "entries": [
+      {
+       "assertion": {
+        "kind": "claim",
+        "id": "runtime-boundary",
+        "text": "Cementing remains example-local and does not couple the runtime kernel to Govern.",
+        "status": "settled"
+       },
+       "author": {
+        "named": "reviewer"
+       },
+       "authored_at": "2026-07-31T11:00:00Z",
+       "authored_at_revision": 1,
+       "changed_at": 2,
+       "mark": [
+        "agree",
+        "keep the boundary"
+       ],
+       "marked_by": "you",
+       "marked_at": "2026-07-31T11:05:00Z",
+       "marked_at_revision": 2
+      },
+      {
+       "assertion": {
+        "kind": "claim",
+        "id": "advisory-draft",
+        "text": "Cemented obligations begin as advisory prose-only drafts.",
+        "status": "settled"
+       },
+       "author": "you",
+       "authored_at": "2026-07-31T11:10:00Z",
+       "authored_at_revision": 3,
+       "changed_at": 4,
+       "mark": [
+        "agree",
+        null
+       ],
+       "marked_by": "you",
+       "marked_at": "2026-07-31T11:11:00Z",
+       "marked_at_revision": 4
+      }
+     ],
+     "revision": 4,
+     "subject": "Atlas cementing"
+    }
+   }
+  },
+  {
+   "export": "project",
+   "view": {
+    "revision": "3",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+       "reader": "human-a"
+      }
+     }
+    ]
+   },
+   "expected_by": "Blair"
+  },
+  {
+   "export": "plan",
+   "view": {
+    "revision": "3",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+       "reader": "human-a"
+      }
+     }
+    ]
+   },
+   "call": {
+    "action": "board_read",
+    "args": {}
+   },
+   "expected_readback": "marked question by Blair"
+  },
+  {
+   "export": "project",
+   "view": {
+    "revision": "3",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+       "reader": "human-b"
+      }
+     }
+    ]
+   },
+   "expected_by": "you"
+  },
+  {
+   "export": "plan",
+   "view": {
+    "revision": "3",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+       "reader": "human-b"
+      }
+     }
+    ]
+   },
+   "call": {
+    "action": "board_read",
+    "args": {}
+   },
+   "expected_readback": "marked question by you"
+  },
+  {
+   "export": "project",
+   "view": {
+    "revision": "3",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+       "reader": "agent"
+      }
+     }
+    ]
+   },
+   "expected_by": "Blair"
+  },
+  {
+   "export": "plan",
+   "view": {
+    "revision": "3",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+       "reader": "agent"
+      }
+     }
+    ]
+   },
+   "call": {
+    "action": "board_read",
+    "args": {}
+   },
+   "expected_readback": "marked question by Blair"
+  },
+  {
+   "export": "project",
+   "view": {
+    "revision": "3",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+       "reader": ""
+      }
+     }
+    ]
+   },
+   "expected_by": "Blair"
+  },
+  {
+   "export": "plan",
+   "view": {
+    "revision": "3",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\": [{\"assertion\": {\"kind\": \"claim\", \"id\": \"two-humans\", \"text\": \"Agent assertion; two human verdicts\", \"status\": \"proposed\"}, \"author\": {\"named\": \"Reviewer\"}, \"author_participant\": \"agent\", \"authored_at\": \"2026-10-08T12:00:00Z\", \"authored_at_revision\": 1, \"changed_at\": 3, \"mark\": [\"question\", null], \"marked_by\": \"you\", \"marked_by_participant\": \"human-b\", \"marked_at\": \"2026-10-08T12:02:00Z\", \"marked_at_revision\": 3}], \"revision\": 3, \"subject\": null, \"participants\": {\"human-a\": \"Alice\", \"human-b\": \"Blair\", \"agent\": \"Reviewer\"}}",
+       "reader": ""
+      }
+     }
+    ]
+   },
+   "call": {
+    "action": "board_read",
+    "args": {}
+   },
+   "expected_readback": "marked question by Blair"
+  },
+  {
+   "export": "transition",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "call": {
+    "action": "board_mark",
+    "args": {
+     "id": "two-humans",
+     "mark": "agree"
+    }
+   },
+   "context": {
+    "author": "you",
+    "participant": "human-a",
+    "timestamp": "2026-10-08T12:03:00Z"
+   }
+  },
+  {
+   "export": "legend",
+   "view": {
+    "revision": "legend-empty",
+    "records": []
+   }
+  },
+  {
+   "export": "legend",
+   "view": {
+    "revision": "2",
+    "records": [
+     {
+      "id": "board.snapshot",
+      "kind": "board-snapshot",
+      "props": {
+       "json": "{\"entries\":[{\"assertion\":{\"kind\":\"claim\",\"id\":\"old-agent\",\"text\":\"written before named agents\",\"status\":\"supported\"},\"author\":\"agent\",\"changed_at\":1,\"mark\":null},{\"assertion\":{\"kind\":\"question\",\"id\":\"old-you\",\"text\":\"does this still load?\",\"blocking\":false},\"author\":\"you\",\"changed_at\":2,\"mark\":null}],\"revision\":2,\"subject\":\"legacy board\"}"
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "reader_calls": [
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-a",
+   "since": 0,
+   "expected_by": "Blair"
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-a",
+   "since": 0,
+   "expected_by": "Blair"
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "settled"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-a",
+   "since": 0,
+   "expected_by": "Blair",
+   "expected_fresh": true
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "settled"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-a",
+   "since": 0,
+   "expected_by": "Blair",
+   "expected_fresh": true
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "since": 0,
+   "expected_by": "you"
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "since": 0,
+   "expected_by": "you"
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "settled"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "since": 0,
+   "expected_by": "you",
+   "expected_fresh": true
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "settled"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "since": 0,
+   "expected_by": "you",
+   "expected_fresh": true
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "agent",
+   "since": 0,
+   "expected_by": "Blair"
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "agent",
+   "since": 0,
+   "expected_by": "Blair"
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "settled"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "agent",
+   "since": 0,
+   "expected_by": "Blair",
+   "expected_fresh": true
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "settled"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "agent",
+   "since": 0,
+   "expected_by": "Blair",
+   "expected_fresh": true
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": null,
+   "since": 0,
+   "expected_by": "Blair"
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": null,
+   "since": 0,
+   "expected_by": "Blair"
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "settled"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": null,
+   "since": 0,
+   "expected_by": "Blair",
+   "expected_fresh": true
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "settled"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "agree",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "human-b",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": null,
+   "since": 0,
+   "expected_by": "Blair",
+   "expected_fresh": true
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": null,
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "expected_by": null
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": null,
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "expected_by": null
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "expected_by": null
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "expected_by": null
+  },
+  {
+   "export": "project_board_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "unknown-human",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "expected_by": null
+  },
+  {
+   "export": "readback_for",
+   "board": {
+    "entries": [
+     {
+      "assertion": {
+       "kind": "claim",
+       "id": "two-humans",
+       "text": "Agent assertion; two human verdicts",
+       "status": "proposed"
+      },
+      "author": {
+       "named": "Reviewer"
+      },
+      "author_participant": "agent",
+      "authored_at": "2026-10-08T12:00:00Z",
+      "authored_at_revision": 1,
+      "changed_at": 3,
+      "mark": [
+       "question",
+       null
+      ],
+      "marked_by": "you",
+      "marked_by_participant": "unknown-human",
+      "marked_at": "2026-10-08T12:02:00Z",
+      "marked_at_revision": 3
+     }
+    ],
+    "revision": 3,
+    "subject": null,
+    "participants": {
+     "human-a": "Alice",
+     "human-b": "Blair",
+     "agent": "Reviewer"
+    }
+   },
+   "reader": "human-b",
+   "expected_by": null
+  }
+ ]
 }
