@@ -923,9 +923,10 @@ impl Surface for SamePageSurface {
     }
 
     fn routes(&self)->Vec<ag_ui_surface::RouteDef> {
-        if self.state.panes.is_none(){return vec![];}
+        let mut routes=Vec::new();
+        if self.state.panes.is_some(){
         let state=self.state.clone();
-        vec![ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/panes/html",handler:Box::new(move |request:ag_ui_surface::RouteRequest|{
+        routes.push(ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/panes/html",handler:Box::new(move |request:ag_ui_surface::RouteRequest|{
             let state=state.clone();Box::pin(async move {
                 let markup=(||->Result<String,String>{
                     let _operation=state.durable_operation()?;let view=state.host.view();
@@ -938,7 +939,16 @@ impl Surface for SamePageSurface {
                 })();
                 match markup {Ok(body)=>ag_ui_surface::RouteResponse{status:200,body:ag_ui_surface::RouteBody::Html(body)},Err(_)=>ag_ui_surface::RouteResponse{status:404,body:ag_ui_surface::RouteBody::Html("<!doctype html><p>panes: no such html node</p>".into())}}
             })
-        })}]
+        })});
+        }
+        if let Some(board)=&self.board {
+        let board=board.clone();
+        routes.push(ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/board/state",handler:Box::new(move |_|{
+            let board=board.clone(); Box::pin(async move { ag_ui_surface::RouteResponse::json(200,board.snapshot()) })
+        })});
+        routes.push(ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/board/primitives",handler:Box::new(move |_|Box::pin(async move { ag_ui_surface::RouteResponse::json(200,samepage_board::assertion::catalog()) }))});
+        }
+        routes
     }
     fn state(&self) -> &dyn SurfaceState {
         self.state.as_ref()
@@ -958,13 +968,6 @@ impl Surface for SamePageSurface {
             self.state.host.view().get(&target.target_id).map(|r| format!("{} [{}]",samepage_map::prop_str(r,"label").unwrap_or("object"),r.id))
         } else { None };
         Ok(description.map(|text|ag_ui_surface::SemanticTarget::new(target.clone(),text.clone(),text)))
-    }
-    fn routes(&self)->Vec<ag_ui_surface::RouteDef> {
-        let Some(board)=&self.board else { return vec![] };
-        let board=board.clone();
-        vec![ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/board/state",handler:Box::new(move |_|{
-            let board=board.clone(); Box::pin(async move { ag_ui_surface::RouteResponse::json(200,board.snapshot()) })
-        })},ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/board/primitives",handler:Box::new(move |_|Box::pin(async move { ag_ui_surface::RouteResponse::json(200,samepage_board::assertion::catalog()) }))}]
     }
     fn tools(&self) -> &[ActionDef] {
         &self.tools
