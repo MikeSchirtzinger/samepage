@@ -169,6 +169,18 @@ pub trait Capability: Send + Sync + 'static {
         Ok(Plan::default())
     }
 
+    /// Native deletion composition may need the removed target's last geometry.
+    /// The default keeps the ABI cascade behavior; owners that detach spatial
+    /// bindings use the scoped pre-change view without inventing coordinates.
+    fn cascade_with_before(
+        &self,
+        deleted: &[String],
+        _before: &View,
+        view: &View,
+    ) -> Result<Plan, CapError> {
+        self.cascade(deleted, view)
+    }
+
     /// This capability's section of the agent read-back.
     fn digest(&self, view: &View) -> Result<serde_json::Value, CapError>;
 

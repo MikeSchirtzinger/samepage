@@ -67,3 +67,20 @@ body { margin: 0; }
 .review-badge[data-state="SETTLED"] { border-color: #7fb496; background: #193c30; color: #b6ecd0; }
 .review-mark-glyphs { position: absolute; top: -13px; right: 9px; border-radius: 12px; padding: 1px 7px; background: #f0cf86; color: #34280e; font-weight: 700; }
 @media (max-width: 780px) { .surface-layout { flex-direction: column; } #review { flex-basis: auto; max-height: none; border-left: 0; border-top: 1px solid #345066; } }
+
+#sketch { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px 20px; }
+#sketch:empty { display:none; }
+#sketch button[aria-pressed="true"] { background:#233959; border-color:#6ea8ff; }
+#sketch input { max-width:220px; }
+#sketch textarea { width:220px; }
+.sketch-result { max-height:72px; overflow:auto; white-space:pre-wrap; width:100%; margin:0; font-size:11px; }
+.sketch-result:empty { display:none; }
+.sketch-layer { position:absolute; top:0; left:0; pointer-events:none; overflow:visible; z-index:2; }
+.sketch-caption { width:100%; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.25; }
+.sketch-grip { pointer-events:all; cursor:nwse-resize; }
+.map-card.sketch-lifted-card { outline:2px solid #6ea8ff; outline-offset:3px; }
+.sketch-byline { fill:#b7c5dc; font:12px system-ui; pointer-events:none; }
+.sketch-preview { pointer-events:none; }
+.sketch-mark-glyphs { fill:#fbbf24; font:bold 24px system-ui; pointer-events:none; }
+.sketch-editor { position:absolute; z-index:8; padding:6px; background:#172132; display:flex; gap:5px; }
+#map[data-sketch-tool="rectangle"], #map[data-sketch-tool="ellipse"], #map[data-sketch-tool="arrow"], #map[data-sketch-tool="pen"], #map[data-sketch-tool="text"] { cursor:crosshair; }

@@ -285,6 +285,20 @@ try {
     try { await kernel.dispatch("card_place", {label:input.value.trim()}); input.value = ""; }
     catch (error) { showError(`Card was not added: ${error.message}`); }
   });
+  if (kernel.hasCapability("sketch")) {
+    const rail = document.getElementById("sketch");
+    for (const [tool, label] of [["select","Select"],["rectangle","Rectangle"],["ellipse","Ellipse"],["arrow","Arrow"],["pen","Pen"],["text","Text"]]) {
+      const button = document.createElement("button");
+      button.type = "button"; button.dataset.sketchTool = tool; button.textContent = label;
+      button.addEventListener("click", async () => {
+        try {
+          await kernel.activateForTool(`sketch-${tool}`);
+          document.dispatchEvent(new CustomEvent("samepage:sketch-tool", {detail: {tool}}));
+        } catch (error) { showError(`Sketch unavailable: ${error.message}`); }
+      });
+      rail.append(button);
+    }
+  }
   // Exposes observations without a second document or mutation channel.
   globalThis.samepageReadback = () => kernel.diagnostics();
 } catch (error) {

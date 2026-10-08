@@ -15,6 +15,7 @@ use samepage_doc::host::{Commit, Host};
 use samepage_doc::{Actor, Caller};
 use samepage_map::Map;
 use samepage_review::Review;
+use samepage_sketch::Sketch;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -80,6 +81,7 @@ pub struct SelectedArtifacts {
     map: CapabilityArtifact,
     diagrams: Option<CapabilityArtifact>,
     review: Option<CapabilityArtifact>,
+    sketch: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -92,13 +94,14 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=4).contains(&manifest.artifacts.len()) {
-            return Err("requires doc, map and optional diagrams/review artifacts".to_string());
+        if !(2..=5).contains(&manifest.artifacts.len()) {
+            return Err("requires doc, map and optional diagrams/review/sketch artifacts".to_string());
         }
         let mut document = None;
         let mut map = None;
         let mut diagrams = None;
         let mut review = None;
+        let mut sketch = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -124,13 +127,14 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review"
+                "map" | "diagrams" | "review" | "sketch"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
                     let compiled = serde_json::to_value(match artifact.id.as_str() {
                         "map" => samepage_map::descriptor(),
                         "review" => samepage_review::descriptor(),
+                        "sketch" => samepage_sketch::descriptor(),
                         _ => samepage_diagrams::descriptor(),
                     })
                     .map_err(|error| error.to_string())?;
@@ -154,6 +158,7 @@ impl SelectedArtifacts {
                     match artifact.id.as_str() {
                         "map" => map = Some(capability),
                         "review" => review = Some(capability),
+                        "sketch" => sketch = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
@@ -165,6 +170,7 @@ impl SelectedArtifacts {
             map: map.ok_or("map artifact is missing")?,
             diagrams,
             review,
+            sketch,
         })
     }
 }
@@ -229,6 +235,15 @@ impl SamePageState {
         with_diagrams: bool,
         with_review: bool,
     ) -> Result<Arc<Self>, String> {
+        Self::open_selected_sketch(path, ws_tx, saver, emit_event, save_wait, project, with_diagrams, with_review, false)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn open_selected_sketch(
+        path: PathBuf, ws_tx: broadcast::Sender<Vec<u8>>, saver: HostSaver,
+        emit_event: EventEmitter, save_wait: Duration, project: Option<&Path>,
+        with_diagrams: bool, with_review: bool, with_sketch: bool,
+    ) -> Result<Arc<Self>, String> {
         let mut descriptors = vec![samepage_map::descriptor()];
         let mut capabilities: Vec<Arc<dyn Capability>> = vec![Arc::new(Map)];
         if with_diagrams {
@@ -243,6 +258,10 @@ impl SamePageState {
         } else {
             None
         };
+        if with_sketch {
+            descriptors.push(samepage_sketch::descriptor());
+            capabilities.push(Arc::new(Sketch));
+        }
         let composition = Composition::new(descriptors).map_err(|error| error.to_string())?;
         let mut host = Host::open(path, composition, capabilities).map_err(|e| e.to_string())?;
         if with_diagrams {
@@ -258,10 +277,18 @@ impl SamePageState {
             host = host
                 .with_verifier("review", review.clone())
                 .map_err(|e| e.to_string())?;
-        } else {
-            host = host
-                .with_verifier("map", Arc::new(crate::host::review::ReviewUnavailable))
+        }
+        if !with_review || !with_sketch {
+            host = host.with_verifier("map", Arc::new(crate::host::sketch::MissingOwners { review: with_review, sketch: with_sketch }))
                 .map_err(|e| e.to_string())?;
+        }
+        if with_sketch {
+            host = host.with_composer("sketch", Arc::new(crate::host::sketch::SketchHost { review: with_review }))
+                .map_err(|e| e.to_string())?;
+        }
+        if with_sketch {
+            host = host.with_plan_context("map", &["shape"]).map_err(|e| e.to_string())?;
+            if with_review { host = host.with_plan_context("review", &["shape"]).map_err(|e| e.to_string())?; }
         }
         let host = Arc::new(host);
         let (commit_tx, commit_rx) = mpsc::channel::<Commit>();
@@ -555,6 +582,7 @@ impl SurfaceState for SamePageState {
         serde_json::to_string(&json!({
             "revision": self.host.revision(),
             "map": projection,
+            "sketch": if self.host.composition().descriptor("sketch").is_some() { Some(samepage_sketch::Sketch.digest(&view).map_err(|e| e.to_string())?) } else { None },
             "persistence_error": self.fault(),
         }))
         .map_err(|error| error.to_string())
@@ -608,9 +636,10 @@ impl SamePageSurface {
     ) -> Result<Self, String> {
         let with_diagrams = artifacts.diagrams.is_some();
         let with_review = artifacts.review.is_some();
-        let state = if with_diagrams || with_review {
+        let with_sketch = artifacts.sketch.is_some();
+        let state = if with_diagrams || with_review || with_sketch {
             let emit = transport.clone();
-            SamePageState::open_selected(
+            SamePageState::open_selected_sketch(
                 path,
                 transport.ws_tx.clone(),
                 Arc::new(|h| h.save().map(|_| ()).map_err(|e| e.to_string())),
@@ -619,6 +648,7 @@ impl SamePageSurface {
                 Some(project),
                 with_diagrams,
                 with_review,
+                with_sketch,
             )?
         } else {
             SamePageState::open(path, transport)?
@@ -629,6 +659,9 @@ impl SamePageSurface {
         }
         if with_review {
             declarations.extend(samepage_review::descriptor().actions);
+        }
+        if with_sketch {
+            declarations.extend(samepage_sketch::descriptor().actions);
         }
         let mut tools: Vec<ActionDef> = declarations
             .into_iter()
@@ -779,6 +812,12 @@ impl Surface for SamePageSurface {
                     module = module.action(action.name);
                 }
             }
+            modules.push(module);
+        }
+        if let Some(artifact) = &self.artifacts.sketch {
+            let mut module = ClientModule::lazy("sketch", samepage_sketch::VERSION, artifact.entry.url.clone(), "sketch")
+                .verified_artifact(artifact.clone()).optional().capability("samepage.sketch");
+            for action in samepage_sketch::descriptor().actions { module = module.action(action.name); }
             modules.push(module);
         }
         modules

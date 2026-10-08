@@ -1208,7 +1208,10 @@ fn projection(view: &View) -> JsonValue {
         .collect();
     let constraint_state = validation::constraint_state(&constraints);
     if constraint_state["status"] == "unsat" {
-        problems.push(format!("UNSAT sequence cycle: {}", constraint_state["core"]));
+        problems.push(format!(
+            "UNSAT sequence cycle: {}",
+            constraint_state["core"]
+        ));
     }
     json!({
         "cards": cards,
@@ -1375,3 +1378,68 @@ fn legend(view: &View) -> Vec<LegendEntry> {
 
 #[cfg(all(target_arch = "wasm32", feature = "wasm-export"))]
 samepage_capability::export_capability!(Map, Map);
+
+/// Retarget and deduplicate memberships during an atomic drawing-to-card lift.
+/// Legacy comma lists are converted rather than encoding a temporary id inside
+/// a scalar. The frozen legacy value remains history.
+pub fn retarget_members(view: &View, from: &[String], to: Target) -> Result<Plan, CapError> {
+    let value = match to {
+        Target::Id(id) => Value::from(id),
+        Target::Ref(reference) => Value::reference(&reference),
+    };
+    let mut ops = Vec::new();
+    for constraint in view.records().filter(|r| r.kind == CONSTRAINT) {
+        let members = membership(view, &constraint.id);
+        if !members.iter().any(|m| from.contains(m)) {
+            continue;
+        }
+        let mut seen = BTreeSet::new();
+        if converted(constraint) {
+            for member in member_records(view, &constraint.id) {
+                let target = prop_str(member, K_TARGET).unwrap_or_default();
+                let changed = from.iter().any(|id| id == target);
+                let key = if changed { "\0lifted-card" } else { target };
+                if !seen.insert(key.to_string()) {
+                    ops.push(Op::Delete {
+                        target: Target::Id(member.id.clone()),
+                    });
+                } else if changed {
+                    ops.push(set(&member.id, vec![(K_TARGET, value.clone())]));
+                }
+            }
+        } else {
+            ops.push(set(
+                &constraint.id,
+                vec![(K_MEMBER_SCHEMA, SCHEMA_RECORDS.into())],
+            ));
+            for (index, target) in members.iter().enumerate() {
+                let changed = from.contains(target);
+                let key = if changed { "\0lifted-card" } else { target };
+                if !seen.insert(key.to_string()) {
+                    continue;
+                }
+                ops.push(Op::Create {
+                    reference: format!("lift-member-{}-{index}", constraint.id),
+                    kind: CONSTRAINT_MEMBER.into(),
+                    props: [
+                        (K_CONSTRAINT.into(), constraint.id.clone().into()),
+                        (
+                            K_TARGET.into(),
+                            if changed {
+                                value.clone()
+                            } else {
+                                target.clone().into()
+                            },
+                        ),
+                        (K_ORDER.into(), (index as f64).into()),
+                    ]
+                    .into(),
+                });
+            }
+        }
+    }
+    Ok(Plan {
+        ops,
+        readback: String::new(),
+    })
+}

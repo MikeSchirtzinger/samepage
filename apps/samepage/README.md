@@ -18,6 +18,8 @@ cargo build --locked -j 2 -p samepage-app
 
 Omit the diagrams selection for a Map-only composition. For a worktree-contained build, artifact output may also live under the ignored `.local/` directory.
 
+To include ordinary drawing, append `sketch=crates/samepage-sketch=apps/samepage/modules/sketch.js` to the build selections. Sketch loads when a shape appears, a sketch action runs, or a person chooses a drawing tool. Its rail supports rectangles, ellipses, arrows, pen strokes, text, movement, resizing, Excalidraw import/export, and lifting a labeled drawing into a card. Review remains optional; append `review=crates/samepage-review=apps/samepage/modules/review.js` for human marks. The native host composes lift with review retargeting in one document commit and refuses a marked lift if review is absent. See [the sketch contract](../../crates/samepage-sketch/README.md).
+
 The build script inspects the selected Cargo dependency closure, builds real WASM packages, optimizes them, verifies their exported ABIs and descriptors, and publishes a manifest with file sizes and SHA-256 hashes. The native host checks the selected files and compiled Map descriptor before serving. Keep the artifact directory intact while the host runs.
 
 ## Run
