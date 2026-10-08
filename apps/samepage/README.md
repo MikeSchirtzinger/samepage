@@ -70,3 +70,12 @@ current assertion revision. Agent rewrites retain the mark and show stale
 sign-off. The native `await_input` combines Board, document, human attention,
 browser validation and chat wakes. Board cement is a human-approved advisory
 export. See [the Board contract](../../crates/samepage-board/README.md).
+
+## Optional walkthroughs
+
+Append `explain=crates/samepage-explain=apps/samepage/modules/explain.js` together
+with Sketch to the build selection. Explain loads on the first explanation
+record or walkthrough action. It provides shared steps, revisioned controls,
+point/reveal animations, connector tracing, button and response transitions,
+and scoped drawing. `walkthrough_read` exposes the same cursor to agents;
+`replay-motion` is visibly unsupported. See [the contract](../../crates/samepage-explain/README.md).

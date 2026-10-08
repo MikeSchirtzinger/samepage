@@ -84,6 +84,7 @@ pub struct SelectedArtifacts {
     architecture: Option<CapabilityArtifact>,
     board: Option<CapabilityArtifact>,
     sketch: Option<CapabilityArtifact>,
+    explain: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -96,8 +97,8 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=5).contains(&manifest.artifacts.len()) {
-            return Err("requires doc, map and optional diagrams/review/architecture/board/sketch artifacts".to_string());
+        if !(2..=8).contains(&manifest.artifacts.len()) {
+            return Err("requires doc, map and optional diagrams/review/architecture/board/sketch/explain artifacts".to_string());
         }
         let mut document = None;
         let mut map = None;
@@ -106,6 +107,7 @@ impl SelectedArtifacts {
         let mut architecture = None;
         let mut board = None;
         let mut sketch = None;
+        let mut explain = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -131,7 +133,7 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review" | "architecture" | "board" | "sketch"
+                "map" | "diagrams" | "review" | "architecture" | "board" | "sketch" | "explain"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
@@ -141,6 +143,7 @@ impl SelectedArtifacts {
                         "architecture" => samepage_architecture::descriptor(),
                         "board" => samepage_board::descriptor(),
                         "sketch" => samepage_sketch::descriptor(),
+                        "explain" => samepage_explain::descriptor(),
                         _ => samepage_diagrams::descriptor(),
                     })
                     .map_err(|error| error.to_string())?;
@@ -167,6 +170,7 @@ impl SelectedArtifacts {
                         "architecture" => architecture = Some(capability),
                         "board" => board = Some(capability),
                         "sketch" => sketch = Some(capability),
+                        "explain" => explain = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
@@ -181,6 +185,7 @@ impl SelectedArtifacts {
             architecture,
             board,
             sketch,
+            explain,
         })
     }
 }
@@ -248,7 +253,7 @@ impl SamePageState {
         with_review: bool,
     ) -> Result<Arc<Self>, String> {
         Self::open_selected_capabilities(
-            path, ws_tx, saver, emit_event, save_wait, project, with_diagrams, with_review, false, false,
+            path, ws_tx, saver, emit_event, save_wait, project, with_diagrams, with_review, false, false, false,
         )
     }
 
@@ -259,7 +264,7 @@ impl SamePageState {
         save_wait: Duration, project: Option<&Path>, with_diagrams: bool, with_review: bool, with_architecture: bool,
     ) -> Result<Arc<Self>, String> {
         Self::open_selected_capabilities(
-            path, ws_tx, saver, emit_event, save_wait, project, with_diagrams, with_review, with_architecture, false,
+            path, ws_tx, saver, emit_event, save_wait, project, with_diagrams, with_review, with_architecture, false, false,
         )
     }
 
@@ -277,6 +282,7 @@ impl SamePageState {
         with_review: bool,
         with_architecture: bool,
         with_sketch: bool,
+        with_explain: bool,
     ) -> Result<Arc<Self>, String> {
         let mut descriptors = vec![samepage_map::descriptor()];
         let mut capabilities: Vec<Arc<dyn Capability>> = vec![Arc::new(Map)];
@@ -300,6 +306,10 @@ impl SamePageState {
             descriptors.push(samepage_sketch::descriptor());
             capabilities.push(Arc::new(Sketch));
         }
+        if with_explain {
+            descriptors.push(samepage_explain::descriptor());
+            capabilities.push(Arc::new(samepage_explain::Explain));
+        }
         let composition = Composition::new(descriptors).map_err(|error| error.to_string())?;
         let mut host = Host::open(path, composition, capabilities).map_err(|e| e.to_string())?;
         if with_diagrams {
@@ -316,9 +326,12 @@ impl SamePageState {
                 .with_verifier("review", review.clone())
                 .map_err(|e| e.to_string())?;
         }
-        if !with_review || !with_sketch {
-            host = host.with_verifier("map", Arc::new(crate::host::sketch::MissingOwners { review: with_review, sketch: with_sketch }))
+        if !with_review || !with_sketch || !with_explain {
+            host = host.with_verifier("map", Arc::new(crate::host::explain::MissingOwners { review: with_review, sketch: with_sketch, explain: with_explain }))
                 .map_err(|e| e.to_string())?;
+        }
+        if with_sketch && !with_explain {
+            host = host.with_verifier("sketch", Arc::new(crate::host::explain::ExplainUnavailable)).map_err(|e|e.to_string())?;
         }
         if with_sketch {
             host = host.with_composer("sketch", Arc::new(crate::host::sketch::SketchHost { review: with_review }))
@@ -479,6 +492,8 @@ impl SamePageState {
     ) -> Result<String, String> {
         let _operation = self.durable_operation()?;
         let actor = map_actor(surface_actor)?;
+        let flow_id = args["flow_id"].as_str().or_else(|| args["flow"]["id"].as_str()).unwrap_or("").to_string();
+        let reenter = args["command"] == "restart";
         let invoked = self
             .host
             .invoke(&actor, action, args)
@@ -515,7 +530,11 @@ impl SamePageState {
         } else {
             None
         };
-        serde_json::to_string(&json!({
+        let walkthrough = if invoked.action.starts_with("walkthrough_") {
+            Some(samepage_explain::read(&self.host.view(), if invoked.action == "walkthrough_read" && !flow_id.is_empty() { Some(&flow_id) } else { None }).map_err(|e| e.to_string())?)
+        } else { None };
+        let result = serde_json::to_string(&json!({
+            "walkthrough": walkthrough,
             "architecture": architecture,
             "action": invoked.action,
             "readback": readback,
@@ -524,7 +543,20 @@ impl SamePageState {
             "ids": invoked.ids,
             "revision": self.host.revision(),
         }))
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string());
+        drop(_operation);
+        if invoked.commit.is_some() && (matches!(invoked.action.as_str(), "walkthrough_define" | "walkthrough_advance") || (invoked.action == "walkthrough_control" && reenter)) {
+            if let Err(error) = crate::host::explain::attend(&self.host.view(), &flow_id, surface_actor, self.input.attention().as_deref()) {
+                // Attention is ephemeral and occurs after the durable commit.
+                // Report its failure without calling the accepted write refused.
+                return result.and_then(|raw| {
+                    let mut value: Value = serde_json::from_str(&raw).map_err(|e|e.to_string())?;
+                    value["attention_error"] = json!(error);
+                    serde_json::to_string(&value).map_err(|e|e.to_string())
+                });
+            }
+        }
+        result
     }
 }
 
@@ -633,6 +665,7 @@ impl SurfaceState for SamePageState {
             "revision": self.host.revision(),
             "map": projection,
             "board": self.board.lock().map_err(|_|"board binding lock poisoned")?.as_ref().map(|b|b.peek()),
+            "explain": if self.host.composition().descriptor("explain").is_some() { Some(samepage_explain::read(&view,None).map_err(|e|e.to_string())?) } else { None },
             "sketch": if self.host.composition().descriptor("sketch").is_some() { Some(samepage_sketch::Sketch.digest(&view).map_err(|e| e.to_string())?) } else { None },
             "persistence_error": self.fault(),
         }))
@@ -697,7 +730,8 @@ impl SamePageSurface {
         let with_review = artifacts.review.is_some();
         let with_architecture = artifacts.architecture.is_some();
         let with_sketch = artifacts.sketch.is_some();
-        let state = if with_diagrams || with_review || with_architecture || with_sketch {
+        let with_explain = artifacts.explain.is_some();
+        let state = if with_diagrams || with_review || with_architecture || with_sketch || with_explain {
             let emit = transport.clone();
             SamePageState::open_selected_capabilities(
                 path,
@@ -710,6 +744,7 @@ impl SamePageSurface {
                 with_review,
                 with_architecture,
                 with_sketch,
+                with_explain,
             )?
         } else {
             SamePageState::open(path, transport)?
@@ -728,6 +763,7 @@ impl SamePageSurface {
         if with_sketch {
             declarations.extend(samepage_sketch::descriptor().actions);
         }
+        if with_explain { declarations.extend(samepage_explain::descriptor().actions); }
         let mut tools: Vec<ActionDef> = declarations
             .into_iter()
             .map(|decl| {
@@ -938,6 +974,12 @@ impl Surface for SamePageSurface {
             let mut module = ClientModule::lazy("sketch", samepage_sketch::VERSION, artifact.entry.url.clone(), "sketch")
                 .verified_artifact(artifact.clone()).optional().capability("samepage.sketch");
             for action in samepage_sketch::descriptor().actions { module = module.action(action.name); }
+            modules.push(module);
+        }
+        if let Some(artifact) = &self.artifacts.explain {
+            let mut module = ClientModule::lazy("explain", samepage_explain::VERSION, artifact.entry.url.clone(), "explain")
+                .verified_artifact(artifact.clone()).optional().capability("samepage.explain");
+            for action in samepage_explain::descriptor().actions.into_iter().filter(|a| a.audience != samepage_capability::Audience::Agent) { module = module.action(action.name); }
             modules.push(module);
         }
         modules
