@@ -36,9 +36,9 @@ const RELATION_WORDS = {
   answers: "answers",
 };
 
-export async function activate({ client, mount, action, wasm, application }) {
+export async function activate({ client, mount, action, wasm, application, whoAmI }) {
   // Verified entries are imported from blob URLs; resolve host assets explicitly.
-  const { semanticTargetNamespace } = await import(new URL("/_agui/semantic-targets.js", location.origin).href);
+  const { semanticTargetNamespace, attachSemanticTargetHost } = await import(new URL("/_agui/semantic-targets.js", location.origin).href);
   if (!wasm?.project_board) throw new Error("board portable projection is unavailable");
   application.registerCapability("board",wasm);
   let seenAt=0;
@@ -96,7 +96,7 @@ export async function activate({ client, mount, action, wasm, application }) {
   composeContext.hidden = true;
   const composeTarget = line("span", "board-compose-target", "");
   const composeAttachment = line("span", "board-compose-attachment", "not attached to the picture");
-  composeAttachment.title = "Board assertions cannot store a reference to an Atlas picture object yet.";
+  composeAttachment.title = "This reply is a separate assertion; pointing does not create a relation.";
   composeContext.append(composeTarget, composeAttachment);
   form.append(composeContext, kind, text, send);
 
@@ -127,6 +127,17 @@ export async function activate({ client, mount, action, wasm, application }) {
   }
   document.addEventListener("map-selection-changed", onAtlasSelection);
   showAtlasTarget(window.samepageSelection || null);
+  // Bind semantic gestures to the same joined person as Board actions. The
+  // existing host API uses a composer to display the current attention anchor.
+  form.setAnchor = (anchor) => {
+    atlasTarget = { summary: anchor.label };
+    composeContext.hidden = false;
+    composeTarget.textContent = `Pointing at ${anchor.label}`;
+  };
+  form.clearAnchor = () => showAtlasTarget(null);
+  const person = await whoAmI();
+  if (!person) throw new Error("board semantic attention requires a joined person");
+  await attachSemanticTargetHost({ client, composer: form, participant: { id: person.id, label: person.name || "You" } });
 
   function render(value) {
     if (value?.board) value=projected(value);
