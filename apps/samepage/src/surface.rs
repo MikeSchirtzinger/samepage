@@ -1121,6 +1121,57 @@ impl SamePageSurface {
                 action
             })
             .collect();
+        let page_state = state.clone();
+        let page_trace = trace_host.clone();
+        tools.push(
+            ActionDef::new(
+                "page_read",
+                "Read the shared page across every selected capability, including board and trace.",
+                json!({"type":"object","properties":{},"additionalProperties":false}),
+                move |_| {
+                    let state = page_state.clone();
+                    let trace = page_trace.clone();
+                    SurfaceEffect::Query(Box::new(move |_| {
+                        let _operation = state.durable_operation()?;
+                        let actor = map_actor(&current_actor().ok_or("authenticated reader missing")?)?;
+                        let mut sections = serde_json::Map::new();
+                        let mut readback = vec![format!("DOC\nRevision: {}", state.host.revision())];
+                        for (id, action) in [
+                            ("map", "map_read"),
+                            ("diagrams", "diagram_read"),
+                            ("review", "review_read"),
+                            ("architecture", "architecture_read"),
+                            ("sketch", "sketch_read"),
+                        ] {
+                            if state.host.composition().descriptor(id).is_some() {
+                                let result = state.host.invoke(&actor, action, json!({}))
+                                    .map_err(|e| e.to_string())?;
+                                readback.push(format!("{}\n{}", id.to_uppercase(), result.readback.join("\n")));
+                                sections.insert(id.into(), json!(result.readback));
+                            }
+                        }
+                        let board = state.board.lock().map_err(|_| "board binding lock poisoned")?.clone();
+                        if let Some(board) = board {
+                            let result = board.read(&actor.participant)?;
+                            readback.push(format!("BOARD\n{result}"));
+                            sections.insert("board".into(), json!(result));
+                        }
+                        if let Some(trace) = trace {
+                            let result: Value = serde_json::from_str(&trace.invoke("trace_read", json!({}))?)
+                                .map_err(|e| e.to_string())?;
+                            readback.push(format!("TRACE\n{}", result["ok"]));
+                            sections.insert("trace".into(), result["ok"].clone());
+                        }
+                        state.input.acknowledge(&actor.participant, state.host.journal().seq);
+                        Ok(json!({"action":"page_read","revision":state.host.revision(),
+                            "sections":sections,"readback":readback,
+                            "validation":state.validation.report(&state.host.view())?}).to_string())
+                    }))
+                },
+            )
+            .audience(ActionAudience::Agent)
+            .alias("atlas_read"),
+        );
         if let Some(trace_host) = trace_host {
             for decl in samepage_trace::descriptor().actions {
                 let host = trace_host.clone(); let name = decl.name.clone();
