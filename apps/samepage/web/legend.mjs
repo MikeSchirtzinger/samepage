@@ -23,7 +23,15 @@ export function createLegend({mount, read, decode}) {
   function candidates(entry) {
     if(!entry.class)return [];
     const selector=entry.class.split(/\s+/).map(c=>'.'+CSS.escape(c)).join('');
-    const nodes=[...document.querySelectorAll(selector)].filter(n=>{const r=n.getBoundingClientRect();return r.width>0||r.height>0;});
+    const nodes=[...document.querySelectorAll(selector)].filter(n=>{
+      const r=n.getBoundingClientRect();if(!r.width&&!r.height)return false;
+      // Chromium can retain geometry for content in a closed details element.
+      // Only its summary is painted until the person opens it.
+      for(let p=n.parentElement;p;p=p.parentElement){
+        if(p.tagName==='DETAILS'&&!p.open&&!p.querySelector(':scope > summary')?.contains(n))return false;
+      }
+      return true;
+    });
     if(entry.attribute==='element'||entry.attribute==='state_role')return nodes;
     const key=entry.attribute.replace(/_/g,'-');
     return nodes.filter(n=>n.getAttribute('data-'+key)===entry.value ||

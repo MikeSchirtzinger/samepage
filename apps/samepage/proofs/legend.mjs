@@ -29,6 +29,8 @@ try {
       let left = Math.max(0,r.left), top = Math.max(0,r.top);
       let right = Math.min(innerWidth,r.right), bottom = Math.min(innerHeight,r.bottom);
       for (let p = n.parentElement; p; p = p.parentElement) {
+        if (p.tagName === 'DETAILS' && !p.open &&
+            !p.querySelector(':scope > summary')?.contains(n)) return false;
         const s = getComputedStyle(p), b = p.getBoundingClientRect();
         if (s.visibility === 'hidden' || s.display === 'none') return false;
         if (['auto','scroll','hidden','clip'].includes(s.overflowX)) {
