@@ -753,7 +753,11 @@ impl SamePageState {
             let lanes = self.lanes.as_ref().ok_or("lanes unavailable")?;
             let source = self.sources.as_ref().ok_or("sources unavailable")?;
             let mut result = lanes.inspect(&self.host.view(), source.facts(&self.host.view())?)?;
-            if let Some(cement) = &self.cement {
+            if let Some(cement) = self.cement.as_ref().filter(|_| {
+                result["facts"]["registry"]["removals"].as_object().is_some_and(|r| {
+                    r.values().any(|removal| removal["obligation_id"].as_str().is_some_and(|id| !id.is_empty()))
+                })
+            }) {
                 let check = cement.check()?;
                 result["facts"]["clean"] = json!(check["obligations"]
                     .as_array()
@@ -1136,6 +1140,7 @@ impl SamePageSurface {
                         let actor = map_actor(&current_actor().ok_or("authenticated reader missing")?)?;
                         let mut sections = serde_json::Map::new();
                         let mut readback = vec![format!("DOC\nRevision: {}", state.host.revision())];
+                        sections.insert("doc".into(), json!({"revision":state.host.revision()}));
                         for (id, action) in [
                             ("map", "map_read"),
                             ("diagrams", "diagram_read"),
@@ -1149,6 +1154,51 @@ impl SamePageSurface {
                                 readback.push(format!("{}\n{}", id.to_uppercase(), result.readback.join("\n")));
                                 sections.insert(id.into(), json!(result.readback));
                             }
+                        }
+                        let view = state.host.view();
+                        if let Some(panes) = &state.panes {
+                            let result = panes.read(&view, &state.host.journal(), &actor.participant)?;
+                            readback.push(format!("PANES\n{result}"));
+                            sections.insert("panes".into(), json!(result));
+                        }
+                        if let Some(sources) = &state.sources {
+                            let mut result = sources.action("sources_read", &json!({}), &view)?;
+                            if let Some(cement) = &state.cement {
+                                let (gates, check) = cement.gates(&view)?;
+                                result["facts"]["gates"] = serde_json::to_value(gates).map_err(|e| e.to_string())?;
+                                let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
+                                result["projection"] = samepage_sources::project(&view, &facts).map_err(|e| e.to_string())?;
+                                result["g8_check"] = check;
+                            }
+                            readback.push(format!("SOURCES\n{}", result["projection"]["readback"].as_str().unwrap_or_default()));
+                            sections.insert("sources".into(), result);
+                            if let Some(lanes) = &state.lanes {
+                                let mut result = lanes.inspect(&view, sources.facts(&view)?)?;
+                                if let Some(cement) = state.cement.as_ref().filter(|_| {
+                                    result["facts"]["registry"]["removals"].as_object().is_some_and(|r| {
+                                        r.values().any(|removal| removal["obligation_id"].as_str().is_some_and(|id| !id.is_empty()))
+                                    })
+                                }) {
+                                    let check = cement.check()?;
+                                    result["facts"]["clean"] = json!(check["obligations"].as_array().map(Vec::as_slice).unwrap_or(&[])
+                                        .iter().filter(|o| o["status"] == "passed").map(|o| o["id"].clone()).collect::<Vec<_>>());
+                                    let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
+                                    result["projection"] = samepage_lanes::reconcile(&view, &facts);
+                                }
+                                readback.push(format!("LANES\n{}", result["projection"]["readback"].as_str().unwrap_or_default()));
+                                sections.insert("lanes".into(), result);
+                            }
+                        }
+                        if let Some(cement) = &state.cement {
+                            let projection = samepage_cement::Cement.project(&view).map_err(|e| e.to_string())?;
+                            let result = json!({"projection":projection,"history":cement.history()?});
+                            readback.push(format!("CEMENT\n{result}"));
+                            sections.insert("cement".into(), result);
+                        }
+                        if state.host.composition().descriptor("explain").is_some() {
+                            let result = samepage_explain::read(&view, None).map_err(|e| e.to_string())?;
+                            readback.push(format!("EXPLAIN\n{result}"));
+                            sections.insert("explain".into(), result);
                         }
                         let board = state.board.lock().map_err(|_| "board binding lock poisoned")?.clone();
                         if let Some(board) = board {
