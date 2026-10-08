@@ -1625,5 +1625,6 @@ mod review_tests;
 #[cfg(test)]
 #[path = "architecture_tests.rs"]
 mod architecture_tests;
-#[path="board_tests.rs"]
+#[cfg(test)]
+#[path = "board_tests.rs"]
 mod board_tests;
