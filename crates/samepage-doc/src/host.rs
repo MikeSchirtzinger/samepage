@@ -1217,6 +1217,82 @@ impl Host {
         result
     }
 
+    /// Commit a batch planned by a native composition adapter for an existing
+    /// action. This is not an input route: the dispatcher supplies the actor
+    /// and the native adapter supplies the plan. All owners' authority hooks,
+    /// native verifiers, resolution, cascades and attribution still run before
+    /// one publication. The journal retains the action's preferred name.
+    pub fn invoke_composed(
+        &self,
+        actor: &Actor,
+        action: &str,
+        batch: &Batch,
+    ) -> Result<Invoked, InvokeError> {
+        let resolved = self
+            .composition
+            .resolve_action(action)
+            .ok_or_else(|| InvokeError::UnknownAction(action.into()))?;
+        let capability = resolved.capability.to_string();
+        let preferred = resolved.preferred.to_string();
+        let declaration = self
+            .composition
+            .descriptor(&capability)
+            .and_then(|d| d.actions.iter().find(|a| a.name == preferred))
+            .ok_or_else(|| InvokeError::UnknownAction(action.into()))?;
+        if !matches!(
+            (actor.caller, declaration.audience),
+            (_, Audience::Both)
+                | (crate::Caller::Human, Audience::Human)
+                | (crate::Caller::Agent, Audience::Agent)
+        ) {
+            return Err(InvokeError::Audience {
+                action: preferred,
+                caller: actor.caller.as_str(),
+            });
+        }
+        if declaration.effect != Effect::Mutate {
+            return Err(InvokeError::QueryMutates {
+                action: preferred,
+                ops: batch.entries.iter().map(|e| e.plan.ops.len()).sum(),
+            });
+        }
+        let origin = Origin::HostAction {
+            capability,
+            action: preferred.clone(),
+        };
+        let mut commits = Vec::new();
+        let mut refusals = Vec::new();
+        let result = {
+            let mut inner = self.lock();
+            match self.commit_locked(&mut inner, actor, batch, Some(preferred.clone()), &origin) {
+                Ok((commit, ids, readback)) => {
+                    commits.push(commit.clone());
+                    self.drain(&mut inner, &mut commits, &mut refusals);
+                    Ok(Invoked {
+                        action: preferred,
+                        readback,
+                        ids,
+                        commit: Some(commit),
+                    })
+                }
+                Err(CommitError::Empty) => Ok(Invoked {
+                    action: preferred,
+                    ids: BTreeMap::new(),
+                    commit: None,
+                    readback: batch
+                        .entries
+                        .iter()
+                        .map(|e| e.plan.readback.clone())
+                        .filter(|s| !s.is_empty())
+                        .collect(),
+                }),
+                Err(e) => Err(e.into()),
+            }
+        };
+        self.announce(&commits, &refusals);
+        result
+    }
+
     /// Commit an untrusted batch (for example one a browser planned). It is
     /// resolved here against the live document; a batch that resolved
     /// elsewhere is never accepted as such.

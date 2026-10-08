@@ -854,5 +854,76 @@ fn projection_with_bounds(
         json!({"machines":machines,"states":states,"containers":containers,"transitions":edges,"problems":problems,"readback":describe(view)?}),
     )
 }
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "integrated-sources")))]
 samepage_capability::export_capability!(Diagrams, Diagrams);
+
+/// Sources-aware composition. The standalone descriptor remains available to
+/// independent consumers; this variant transfers binding ownership to Sources.
+pub struct WithSources;
+impl Capability for WithSources {
+    fn descriptor(&self) -> Descriptor {
+        let mut d = descriptor();
+        for p in &mut d.props {
+            if p.kind == "node" {
+                p.keys.retain(|k| k != "path" && k != "lines");
+            }
+        }
+        d.depends_on(
+            "sources",
+            "0.1.0",
+            "Sources owns and verifies all card bindings",
+        )
+    }
+    fn project(&self, v: &View) -> Result<JsonValue, CapError> {
+        Diagrams.project(v)
+    }
+    fn digest(&self, v: &View) -> Result<JsonValue, CapError> {
+        Diagrams.digest(v)
+    }
+    fn plan(&self, c: &Call, v: &View) -> Result<Plan, CapError> {
+        Diagrams.plan(c, v)
+    }
+    fn plan_batch(&self, c: &Call, v: &View) -> Result<Batch, CapError> {
+        let mut b = Diagrams.plan_batch(c, v)?;
+        let mut sources = Vec::new();
+        for e in &mut b.entries {
+            for op in &mut e.plan.ops {
+                if let Op::Set { target, props } = op {
+                    let mut binding = BTreeMap::new();
+                    for k in ["path", "lines"] {
+                        if let Some(value) = props.remove(k) {
+                            binding.insert(k.into(), value);
+                        }
+                    }
+                    if !binding.is_empty() {
+                        sources.push(Op::Set {
+                            target: target.clone(),
+                            props: binding,
+                        });
+                    }
+                }
+            }
+        }
+        if !sources.is_empty() {
+            b.entries.push(entry("sources", sources, String::new()));
+        }
+        Ok(b)
+    }
+    fn validate(&self, d: &Delta, v: &View) -> Result<(), CapError> {
+        Diagrams.validate(d, v)
+    }
+    fn validate_change(&self, c: &Change<'_>) -> Result<(), CapError> {
+        Diagrams.validate(c.delta, c.after)
+    }
+    fn cascade(&self, d: &[String], v: &View) -> Result<Plan, CapError> {
+        Diagrams.cascade(d, v)
+    }
+    fn changes(&self, b: &JsonValue, a: &JsonValue, r: &str) -> Result<Vec<String>, CapError> {
+        Diagrams.changes(b, a, r)
+    }
+    fn legend(&self, v: &View) -> Result<Vec<LegendEntry>, CapError> {
+        Diagrams.legend(v)
+    }
+}
+#[cfg(all(target_arch = "wasm32", feature = "integrated-sources"))]
+samepage_capability::export_capability!(WithSources, WithSources);

@@ -274,11 +274,20 @@ try {
     return kernel;
   } });
   kernel.attachRuntime(runtime);
+  client.on("samepage.capability-used", ({value}) => { if (kernel.hasCapability(value?.id)) kernel.activate(value.id).catch(error => showError(`Capability unavailable: ${error.message}`)); });
   client.on("samepage.persistence-error", ({value}) => kernel.setPersistenceFailure(value?.error || "save failed"));
   client.on("samepage.persistence-wait", ({value}) => kernel.setPersistencePending(value?.message || "save is still pending"));
   client.on("samepage.persistence-resolved", () => kernel.setPersistenceResolved());
   await client.connect();
   kernel.connect();
+  if (kernel.hasCapability('sources')) {
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'sources-open'; button.textContent = 'Sources';
+    button.addEventListener('click', async () => {
+      try { await kernel.activateForRoute('sources'); document.dispatchEvent(new CustomEvent('samepage:sources-open')); }
+      catch (error) { showError(`Sources unavailable: ${error.message}`); }
+    });
+    document.querySelector('.toolbar').append(button);
+  }
   document.getElementById("add-card").addEventListener("submit", async (event) => {
     event.preventDefault();
     const input = document.getElementById("new-card-label");

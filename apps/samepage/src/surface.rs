@@ -80,6 +80,7 @@ pub struct SelectedArtifacts {
     map: CapabilityArtifact,
     diagrams: Option<CapabilityArtifact>,
     review: Option<CapabilityArtifact>,
+    sources: Option<CapabilityArtifact>,
 }
 
 impl SelectedArtifacts {
@@ -92,13 +93,16 @@ impl SelectedArtifacts {
         if manifest.schema_version != 1 || manifest.build_owner != "samepage-capabilities.v1" {
             return Err("unsupported selected capability manifest".to_string());
         }
-        if !(2..=4).contains(&manifest.artifacts.len()) {
-            return Err("requires doc, map and optional diagrams/review artifacts".to_string());
+        if !(2..=5).contains(&manifest.artifacts.len()) {
+            return Err(
+                "requires doc, map and optional diagrams/review/sources artifacts".to_string(),
+            );
         }
         let mut document = None;
         let mut map = None;
         let mut diagrams = None;
         let mut review = None;
+        let mut sources = None;
         let mut seen = std::collections::BTreeSet::new();
         for artifact in manifest.artifacts {
             if !seen.insert(artifact.id.clone()) {
@@ -124,13 +128,23 @@ impl SelectedArtifacts {
                         layout_version: 1,
                     });
                 }
-                "map" | "diagrams" | "review"
+                "map" | "diagrams" | "review" | "sources"
                     if artifact.kind == "capability"
                         && artifact.abi == "samepage.capability.v2" =>
                 {
                     let compiled = serde_json::to_value(match artifact.id.as_str() {
                         "map" => samepage_map::descriptor(),
                         "review" => samepage_review::descriptor(),
+                        "sources" => samepage_sources::descriptor(),
+                        "diagrams"
+                            if artifact.descriptor.as_ref().is_some_and(|d| {
+                                d["depends_on"].as_array().is_some_and(|deps| {
+                                    deps.iter().any(|dep| dep["id"] == "sources")
+                                })
+                            }) =>
+                        {
+                            samepage_diagrams::WithSources.descriptor()
+                        }
                         _ => samepage_diagrams::descriptor(),
                     })
                     .map_err(|error| error.to_string())?;
@@ -154,10 +168,19 @@ impl SelectedArtifacts {
                     match artifact.id.as_str() {
                         "map" => map = Some(capability),
                         "review" => review = Some(capability),
+                        "sources" => sources = Some(capability),
                         _ => diagrams = Some(capability),
                     }
                 }
                 _ => return Err(format!("unsupported C4 artifact {}", artifact.id)),
+            }
+        }
+        if let Some(diagram) = &diagrams {
+            let integrated = diagram.descriptor["depends_on"]
+                .as_array()
+                .is_some_and(|deps| deps.iter().any(|dep| dep["id"] == "sources"));
+            if integrated != sources.is_some() {
+                return Err("diagrams source ownership differs from the selected composition; rebuild the selected artifacts together".into());
             }
         }
         Ok(Self {
@@ -165,6 +188,7 @@ impl SelectedArtifacts {
             map: map.ok_or("map artifact is missing")?,
             diagrams,
             review,
+            sources,
         })
     }
 }
@@ -183,6 +207,7 @@ type EventEmitter = Arc<dyn Fn(&str, Value) + Send + Sync>;
 pub struct SamePageState {
     host: Arc<Host>,
     review: Option<Arc<ReviewHost>>,
+    sources: Option<Arc<crate::host::sources::SourcesHost>>,
     validation: Arc<crate::host::page_validation::PageValidation>,
     save_progress: Arc<(Mutex<SaveProgress>, Condvar)>,
     refusal_tx: broadcast::Sender<WsRefusal>,
@@ -229,11 +254,53 @@ impl SamePageState {
         with_diagrams: bool,
         with_review: bool,
     ) -> Result<Arc<Self>, String> {
+        Self::open_capabilities(
+            path,
+            ws_tx,
+            saver,
+            emit_event,
+            save_wait,
+            project,
+            with_diagrams,
+            with_review,
+            false,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn open_capabilities(
+        path: PathBuf,
+        ws_tx: broadcast::Sender<Vec<u8>>,
+        saver: HostSaver,
+        emit_event: EventEmitter,
+        save_wait: Duration,
+        project: Option<&Path>,
+        with_diagrams: bool,
+        with_review: bool,
+        with_sources: bool,
+    ) -> Result<Arc<Self>, String> {
+        let sources = if with_sources {
+            Some(Arc::new(crate::host::sources::SourcesHost::open(
+                project.ok_or("sources needs a project root")?,
+                &path,
+            )?))
+        } else {
+            None
+        };
         let mut descriptors = vec![samepage_map::descriptor()];
         let mut capabilities: Vec<Arc<dyn Capability>> = vec![Arc::new(Map)];
+        if with_sources {
+            descriptors.push(samepage_sources::descriptor());
+            capabilities.push(Arc::new(samepage_sources::Sources));
+        }
         if with_diagrams {
-            descriptors.push(samepage_diagrams::descriptor());
-            capabilities.push(Arc::new(Diagrams));
+            if with_sources {
+                descriptors.push(samepage_diagrams::WithSources.descriptor());
+                capabilities.push(Arc::new(samepage_diagrams::WithSources));
+            } else {
+                descriptors.push(samepage_diagrams::descriptor());
+                capabilities.push(Arc::new(Diagrams));
+            }
         }
         let review = if with_review {
             let root = project.ok_or("review needs a project root")?;
@@ -245,12 +312,20 @@ impl SamePageState {
         };
         let composition = Composition::new(descriptors).map_err(|error| error.to_string())?;
         let mut host = Host::open(path, composition, capabilities).map_err(|e| e.to_string())?;
-        if with_diagrams {
+        if with_diagrams && !with_sources {
             let project = project.ok_or("diagrams needs a project root")?;
             host = host
                 .with_verifier(
                     "diagrams",
                     Arc::new(crate::diagram_sources::DiagramSources::open(project)?),
+                )
+                .map_err(|e| e.to_string())?;
+        }
+        if let Some(sources) = &sources {
+            host = host
+                .with_verifier(
+                    "sources",
+                    Arc::new(crate::host::sources::Repository::open(&sources.repo.root)?),
                 )
                 .map_err(|e| e.to_string())?;
         }
@@ -277,6 +352,7 @@ impl SamePageState {
         let state = Arc::new(Self {
             host: host.clone(),
             review,
+            sources,
             validation: Arc::default(),
             save_progress: save_progress.clone(),
             refusal_tx: refusal_tx.clone(),
@@ -340,7 +416,9 @@ impl SamePageState {
         tokio::task::spawn_blocking(move || {
             let _operation = self.durable_operation()?;
             self.validation.report(&self.host.view())
-        }).await.map_err(|e|format!("validation worker failed: {e}"))?
+        })
+        .await
+        .map_err(|e| format!("validation worker failed: {e}"))?
     }
 
     fn durable_operation(&self) -> Result<MutexGuard<'_, ()>, String> {
@@ -410,10 +488,20 @@ impl SamePageState {
     ) -> Result<String, String> {
         let _operation = self.durable_operation()?;
         let actor = map_actor(surface_actor)?;
-        let invoked = self
-            .host
-            .invoke(&actor, action, args)
-            .map_err(|error| error.to_string())?;
+        let invoked = if self.sources.is_some() && matches!(action, "card_place" | "atlas_place") {
+            let batch = samepage_sources::place_batch(
+                &samepage_capability::Call {
+                    action: "card_place".into(),
+                    args: args.clone(),
+                },
+                &self.host.view(),
+            )
+            .map_err(|e| e.to_string())?;
+            self.host.invoke_composed(&actor, action, &batch)
+        } else {
+            self.host.invoke(&actor, action, args.clone())
+        }
+        .map_err(|e| e.to_string())?;
         if invoked.commit.is_some() {
             // One accepted change can release quarantined changes and announce
             // several commits. Do not release the operation gate until the
@@ -423,6 +511,24 @@ impl SamePageState {
         let validation = self.validation.report(&self.host.view())?;
         if invoked.commit.is_some() && validation["status"] == "failed" {
             return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":invoked.commit.as_ref().map(|c|c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),"revision":self.host.revision(),"validation":validation}).to_string());
+        }
+        let source_result = if let Some(s) = &self.sources {
+            if matches!(
+                invoked.action.as_str(),
+                "source_read" | "source_list" | "sources_read"
+            ) {
+                Some(s.action(&invoked.action, &args, &self.host.view())?)
+            } else {
+                Some(s.inspect(&self.host.view())?)
+            }
+        } else {
+            None
+        };
+        if matches!(
+            invoked.action.as_str(),
+            "source_read" | "source_list" | "sources_read"
+        ) {
+            (self.emit_event)("samepage.capability-used", json!({"id":"sources"}));
         }
         let report = if invoked.action == "review_read" {
             Some(
@@ -434,15 +540,43 @@ impl SamePageState {
         } else {
             None
         };
-        let readback = report
+        let mut report = report;
+        if let (Some(report), Some(source)) = (&mut report, &source_result) {
+            if let Some(nodes) = report["nodes"].as_array_mut() {
+                for node in nodes {
+                    let id = node["id"].as_str().unwrap_or_default().to_string();
+                    node["tier"] = source["projection"]["cards"][&id].clone();
+                }
+            }
+        }
+        let mut readback = report
             .as_ref()
             .and_then(|r| r["readback"].as_str())
             .map(|s| vec![s.to_string()])
             .unwrap_or(invoked.readback);
+        if let Some(text) = source_result
+            .as_ref()
+            .and_then(|s| s["projection"]["readback"].as_str())
+        {
+            readback.push(text.into());
+        }
+        if invoked.action == "source_read" {
+            if let Some(excerpt) = &source_result {
+                let excerpt = serde_json::from_value::<samepage_sources::Excerpt>(excerpt.clone())
+                    .map_err(|e| e.to_string())?;
+                readback.push(
+                    samepage_sources::viewer(&excerpt).map_err(|e| e.to_string())?["readback"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .into(),
+                );
+            }
+        }
         serde_json::to_string(&json!({
             "action": invoked.action,
             "readback": readback,
             "review": report,
+            "sources": source_result,
             "validation": validation,
             "ids": invoked.ids,
             "revision": self.host.revision(),
@@ -608,9 +742,10 @@ impl SamePageSurface {
     ) -> Result<Self, String> {
         let with_diagrams = artifacts.diagrams.is_some();
         let with_review = artifacts.review.is_some();
-        let state = if with_diagrams || with_review {
+        let with_sources = artifacts.sources.is_some();
+        let state = if with_diagrams || with_review || with_sources {
             let emit = transport.clone();
-            SamePageState::open_selected(
+            SamePageState::open_capabilities(
                 path,
                 transport.ws_tx.clone(),
                 Arc::new(|h| h.save().map(|_| ()).map_err(|e| e.to_string())),
@@ -619,6 +754,7 @@ impl SamePageSurface {
                 Some(project),
                 with_diagrams,
                 with_review,
+                with_sources,
             )?
         } else {
             SamePageState::open(path, transport)?
@@ -629,6 +765,9 @@ impl SamePageSurface {
         }
         if with_review {
             declarations.extend(samepage_review::descriptor().actions);
+        }
+        if with_sources {
+            declarations.extend(samepage_sources::descriptor().actions);
         }
         let mut tools: Vec<ActionDef> = declarations
             .into_iter()
@@ -749,6 +888,21 @@ impl Surface for SamePageSurface {
             }
         }
         let mut modules = vec![module];
+        if let Some(artifact) = &self.artifacts.sources {
+            let mut m = ClientModule::lazy(
+                "sources",
+                samepage_sources::VERSION,
+                artifact.entry.url.clone(),
+                "sources",
+            )
+            .verified_artifact(artifact.clone())
+            .optional()
+            .capability("samepage.sources");
+            for a in samepage_sources::descriptor().actions {
+                m = m.action(a.name);
+            }
+            modules.push(m);
+        }
         if let Some(artifact) = &self.artifacts.diagrams {
             let mut module = ClientModule::lazy(
                 "diagrams",

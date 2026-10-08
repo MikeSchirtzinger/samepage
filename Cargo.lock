@@ -2874,6 +2874,7 @@ dependencies = [
  "samepage-doc",
  "samepage-map",
  "samepage-review",
+ "samepage-sources",
  "serde",
  "serde_json",
  "sha2",
@@ -2965,6 +2966,21 @@ dependencies = [
  "sha2",
  "wasm-bindgen",
  "yrs",
+]
+
+[[package]]
+name = "samepage-sources"
+version = "0.1.0"
+dependencies = [
+ "samepage-capability",
+ "samepage-diagrams",
+ "samepage-doc",
+ "samepage-map",
+ "samepage-review",
+ "serde",
+ "serde_json",
+ "sha2",
+ "wasm-bindgen",
 ]
 
 [[package]]

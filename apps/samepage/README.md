@@ -41,3 +41,11 @@ To import a legacy Atlas base64 state file, use a **new** target path. The sourc
 ```sh
 "$CARGO_TARGET_DIR/debug/samepage" import-legacy /path/to/atlas.json /path/to/new-document.json
 ```
+
+Optional Sources adds verified bindings, drift chips and a host-resolved
+source viewer. Append
+`sources=crates/samepage-sources=apps/samepage/modules/sources.js` to the
+selected build. The first bound card, source action or viewer opening loads
+the artifact. A failed source binding publishes no document change. When
+Sources and Diagrams are selected together, the build transfers Diagrams'
+provisional binding keys to Sources. See [Sources](../../crates/samepage-sources/README.md).

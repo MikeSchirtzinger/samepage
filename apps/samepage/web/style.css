@@ -67,3 +67,19 @@ body { margin: 0; }
 .review-badge[data-state="SETTLED"] { border-color: #7fb496; background: #193c30; color: #b6ecd0; }
 .review-mark-glyphs { position: absolute; top: -13px; right: 9px; border-radius: 12px; padding: 1px 7px; background: #f0cf86; color: #34280e; font-weight: 700; }
 @media (max-width: 780px) { .surface-layout { flex-direction: column; } #review { flex-basis: auto; max-height: none; border-left: 0; border-top: 1px solid #345066; } }
+.source-tier { display: block; margin-top: 9px; font-size: 12px; font-weight: 700; }
+.source-tier-verified, .source-tier-gate-met { color: #a7e8bc; }
+.source-tier-drifted, .source-tier-gate-unmet { color: #ffce89; }
+.source-view-open { margin-top: 7px; cursor: pointer; }
+.source-viewer { width: min(850px, 90vw); max-height: 85vh; padding: 22px; color: #deedf2; background: #132734; border: 1px solid #739cae; border-radius: 12px; }
+.source-viewer::backdrop { background: #07121bcc; }
+.source-viewer header { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.source-viewer h2 { margin: 0; font-size: 20px; }
+.source-viewer select { max-width: 100%; }
+.source-viewer details { margin-top: 12px; }
+.source-viewer details button { margin: 6px; }
+.source-code { max-height: 50vh; overflow: auto; padding: 12px; background: #071823; line-height: 1.6; }
+.source-line { display: flex; gap: 15px; min-width: max-content; }
+.source-line-number { width: 3em; color: #8fadb9; text-align: right; user-select: none; }
+.source-highlight { background: #29463c; border-left: 3px solid #a4d6b3; }
+.source-error { color: #ffb4a9; }
