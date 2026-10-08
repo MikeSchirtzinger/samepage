@@ -63,24 +63,29 @@ pub enum AuthStoreError {
 /// any token material.
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ClaudeCodeOauthError {
+    #[cfg(target_os = "macos")]
     #[error(
         "Claude subscription unavailable: the USER account name is missing, so macOS Keychain item \"Claude Code-credentials\" cannot be read"
     )]
     #[cfg(target_os = "macos")]
     MissingAccount,
+    #[cfg(target_os = "macos")]
     #[error("Claude subscription unavailable: failed to start /usr/bin/security: {0}")]
     #[cfg(target_os = "macos")]
     StartKeychain(#[source] std::io::Error),
+    #[cfg(target_os = "macos")]
     #[error(
         "Claude subscription unavailable: macOS Keychain lookup for \"Claude Code-credentials\" exceeded the 5 second timeout"
     )]
     #[cfg(target_os = "macos")]
     KeychainTimeout,
+    #[cfg(target_os = "macos")]
     #[error(
         "Claude subscription unavailable: macOS Keychain item \"Claude Code-credentials\" was not found for account {account}; run `claude` to sign in"
     )]
     #[cfg(target_os = "macos")]
     KeychainItemMissing { account: String },
+    #[cfg(target_os = "macos")]
     #[error(
         "Claude subscription unavailable: macOS Keychain item \"Claude Code-credentials\" could not be read for account {account}: {detail}"
     )]

@@ -20,6 +20,7 @@ samepage-diagrams = { path = "../../crates/samepage-diagrams" }
 samepage-review = { path = "../../crates/samepage-review" }
 samepage-architecture = { path = "../../crates/samepage-architecture" }
 samepage-board = { path = "../../crates/samepage-board" }
+samepage-sketch = { path = "../../crates/samepage-sketch" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }

@@ -287,6 +287,13 @@ struct Inner {
     generation: u64,
 }
 
+/// A trusted native composition adapter, called under the document lock after
+/// the portable planner's dependency reach has been checked. Owners still audit
+/// every resulting op, and the whole batch keeps the original preferred action.
+pub trait BatchComposer: Send + Sync {
+    fn compose(&self, call: &Call, view: &View, batch: Batch) -> Result<Batch, CapError>;
+}
+
 pub struct Host {
     inner: Mutex<Inner>,
     /// Serializes saves, so envelopes reach the disk in generation order.
@@ -294,6 +301,8 @@ pub struct Host {
     composition: Composition,
     capabilities: BTreeMap<String, Arc<dyn Capability>>,
     verifiers: BTreeMap<String, Arc<dyn Verifier>>,
+    composers: BTreeMap<String, Arc<dyn BatchComposer>>,
+    plan_context: BTreeMap<String, Vec<String>>,
     path: Option<PathBuf>,
     observers: Mutex<Vec<Observer>>,
     refusal_observers: Mutex<Vec<RefusalObserver>>,
@@ -475,6 +484,8 @@ impl Host {
             composition,
             capabilities,
             verifiers: BTreeMap::new(),
+            composers: BTreeMap::new(),
+            plan_context: BTreeMap::new(),
             path,
             observers: Mutex::new(Vec::new()),
             refusal_observers: Mutex::new(Vec::new()),
@@ -502,6 +513,48 @@ impl Host {
                 "capability {capability:?} already has a verifier"
             )));
         }
+        Ok(self)
+    }
+
+    /// Register an explicit native adapter for cross-capability composition.
+    pub fn with_composer(
+        mut self,
+        capability: &str,
+        composer: Arc<dyn BatchComposer>,
+    ) -> Result<Self, OpenError> {
+        if self.composition.descriptor(capability).is_none()
+            || self.composers.contains_key(capability)
+        {
+            return Err(OpenError::Capabilities(format!(
+                "invalid composer registration for {capability}"
+            )));
+        }
+        self.composers.insert(capability.to_string(), composer);
+        Ok(self)
+    }
+
+    /// Supply explicitly selected optional target kinds to an existing owner.
+    /// This is native composition, not an implicit dependency or write grant.
+    /// It enables mutual references (marks and constraint members on drawings)
+    /// without introducing a cycle into portable capability dependencies.
+    pub fn with_plan_context(
+        mut self,
+        capability: &str,
+        kinds: &[&str],
+    ) -> Result<Self, OpenError> {
+        if self.composition.descriptor(capability).is_none()
+            || kinds
+                .iter()
+                .any(|kind| self.composition.owner_of_kind(kind).is_none())
+        {
+            return Err(OpenError::Capabilities(format!(
+                "unselected planning context for {capability}"
+            )));
+        }
+        self.plan_context.insert(
+            capability.into(),
+            kinds.iter().map(|s| s.to_string()).collect(),
+        );
         Ok(self)
     }
 
@@ -1102,7 +1155,21 @@ impl Host {
         let mut refusals = Vec::new();
         let result = {
             let mut inner = self.lock();
-            let view = scoped_view(&self.composition, &capability_id, &inner.live.view());
+            let full = inner.live.view();
+            let scoped = scoped_view(&self.composition, &capability_id, &full);
+            let view = if let Some(kinds) = self.plan_context.get(&capability_id) {
+                View::new(
+                    scoped.revision(),
+                    scoped.records().cloned().chain(
+                        full.records()
+                            .filter(|r| kinds.contains(&r.kind) && !scoped.contains(&r.id))
+                            .cloned(),
+                    ),
+                )
+                .expect("views from the same valid document are disjoint")
+            } else {
+                scoped
+            };
             let call = Call {
                 action: preferred.clone(),
                 args,
@@ -1148,6 +1215,29 @@ impl Host {
                     )));
                 }
             }
+            let batch = if let Some(composer) = self.composers.get(&capability_id) {
+                let composed =
+                    composer
+                        .compose(&call, &inner.live.view(), batch)
+                        .map_err(|error| InvokeError::Capability {
+                            capability: capability_id.clone(),
+                            error,
+                        })?;
+                if composed.base_revision != view.revision() {
+                    return Err(refuse("native composer changed the base revision".into()));
+                }
+                for entry in &composed.entries {
+                    if self.composition.descriptor(&entry.capability).is_none() {
+                        return Err(refuse(format!(
+                            "{} capability is not loaded",
+                            entry.capability
+                        )));
+                    }
+                }
+                composed
+            } else {
+                batch
+            };
             if declaration.effect == Effect::Query {
                 let ops: usize = batch.entries.iter().map(|entry| entry.plan.ops.len()).sum();
                 if ops > 0 {
@@ -1280,12 +1370,16 @@ impl Host {
                 };
                 let working =
                     scoped_view(&self.composition, &descriptor.id, builder.working_view());
-                let plan = capability.cascade(&deleted, &working).map_err(|error| {
-                    CommitError::Capability {
+                let plan = capability
+                    .cascade_with_before(
+                        &deleted,
+                        &scoped_view(&self.composition, &descriptor.id, &before),
+                        &working,
+                    )
+                    .map_err(|error| CommitError::Capability {
                         capability: descriptor.id.clone(),
                         error,
-                    }
-                })?;
+                    })?;
                 if !plan.ops.is_empty() {
                     builder.push(&descriptor.id, &plan, &mut minter)?;
                 }

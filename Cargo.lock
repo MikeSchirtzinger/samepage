@@ -2876,6 +2876,7 @@ dependencies = [
  "samepage-doc",
  "samepage-map",
  "samepage-review",
+ "samepage-sketch",
  "serde",
  "serde_json",
  "sha2",
@@ -2989,6 +2990,23 @@ dependencies = [
  "samepage-diagrams",
  "samepage-doc",
  "samepage-map",
+ "serde",
+ "serde_json",
+ "sha2",
+ "wasm-bindgen",
+ "yrs",
+]
+
+[[package]]
+name = "samepage-sketch"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "samepage-capability",
+ "samepage-diagrams",
+ "samepage-doc",
+ "samepage-map",
+ "samepage-review",
  "serde",
  "serde_json",
  "sha2",
