@@ -95,7 +95,7 @@ export async function activate({ client, mount, action, wasm, application, whoAm
   const composeContext = el("div", "board-compose-context");
   composeContext.hidden = true;
   const composeTarget = line("span", "board-compose-target", "");
-  const composeAttachment = line("span", "board-compose-attachment", "not attached to the picture");
+  const composeAttachment = line("span", "board-compose-attachment", "Reply is a separate assertion");
   composeAttachment.title = "This reply is a separate assertion; pointing does not create a relation.";
   composeContext.append(composeTarget, composeAttachment);
   form.append(composeContext, kind, text, send);
@@ -143,6 +143,10 @@ export async function activate({ client, mount, action, wasm, application, whoAm
     if (value?.board) value=projected(value);
     current = value || { entries: [], unseen: [] };
     const entries = Array.isArray(current.entries) ? current.entries : [];
+    if (selectedId && !entries.some((entry) => entry.id === selectedId)) {
+      selectedId = null;
+      form.clearAnchor();
+    }
     const unseen = new Set(current.unseen || []);
 
     subject.textContent = current.subject || "Nothing named yet";
@@ -407,7 +411,7 @@ export async function activate({ client, mount, action, wasm, application, whoAm
       text.value = "";
       if (pointed) {
         status.classList.add("success");
-        status.textContent = `Added while pointing at ${pointed.summary}; not attached to the picture.`;
+        status.textContent = `Added while pointing at ${pointed.summary}; reply is a separate assertion.`;
       }
     });
     send.disabled = false;
