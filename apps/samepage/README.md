@@ -24,7 +24,7 @@ The build script inspects the selected Cargo dependency closure, builds real WAS
 
 ## Run
 
-Set `SAMEPAGE_STATE_DIR` to a private writable directory and `SAMEPAGE_CAPABILITIES_DIR` to the selected artifact directory. `SAMEPAGE_APP_ASSETS_DIR` is required and must contain the exact `web/` directory, `models.json`, and built `protocol/` package used by this build; the native host never falls back to its compile-time checkout. Set `SAMEPAGE_PROJECT_ROOT` to a real project path for agent context and `AGUI_MCP_TOKEN` to a private bearer token for MCP clients. `SAMEPAGE_ADDR` defaults to `127.0.0.1:8190`.
+Set `SAMEPAGE_STATE_DIR` to a private writable directory and `SAMEPAGE_CAPABILITIES_DIR` to the selected artifact directory. `SAMEPAGE_APP_ASSETS_DIR` is required and must contain the exact `web/` directory, `models.json`, and built `protocol/` package used by this build; the native host never falls back to its compile-time checkout. Set `SAMEPAGE_PROJECT_ROOT` to a real project path for agent context. **`AGUI_MCP_TOKEN` is optional, and you make up its value**: it is the password an outside MCP client must present, not an issued key. Unset, the host generates a token per process that no outside client can read. `SAMEPAGE_ADDR` defaults to `127.0.0.1:8190`.
 
 ```sh
 SAMEPAGE_STATE_DIR=/path/to/private-state \
@@ -142,8 +142,9 @@ or gesture. There is no separate Legend capability or WASM artifact.
 
 Defaults need no environment: address `127.0.0.1:8190`, four build jobs,
 `target/` in this checkout, and artifacts, assets, temporary files and persistent
-state under `.local/recipes/full/` or `.local/recipes/map-only/`. The default
-local MCP bearer is `local-samepage-token`. Override `AGUI_MCP_TOKEN`,
+state under `.local/recipes/full/` or `.local/recipes/map-only/`. The recipes
+default `AGUI_MCP_TOKEN` to the placeholder `local-samepage-token`; set your own
+string for anything beyond a local try. Override `AGUI_MCP_TOKEN`,
 `SAMEPAGE_ADDR`, `SAMEPAGE_RECIPE_DIR` (absolute output directory),
 `SAMEPAGE_STATE_DIR`, `CARGO_TARGET_DIR` (absolute), `CARGO_BUILD_JOBS` (at most
 four), or `TMPDIR` as needed. The recipes add the usual Cargo and local bin
