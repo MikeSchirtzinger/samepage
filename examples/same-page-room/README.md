@@ -17,6 +17,11 @@ From the repository root, cold start is one command:
 AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
 ```
 
+**`AGUI_MCP_TOKEN` is optional, and you make up its value.** It is a password
+the room shares with the agent you let in over MCP, not an issued key. Leave it
+unset and the room starts with a random token only its own subprocess can see,
+so no outside agent can attach.
+
 Open <http://127.0.0.1:8100>. There is no frontend install, bundler, or separate
 build command. The Rust process serves the browser assets and the pane
 renderer. Starting from a fresh clone therefore takes two shell steps: clone
@@ -24,8 +29,8 @@ and enter the repository, then run the command above.
 
 The room starts without an in-page model. Attach an agent through `POST /mcp`,
 or set `AGUI_ROOM_PROVIDER` to a configured provider id when an in-page agent
-is wanted. An outside MCP client must use the same `AGUI_MCP_TOKEN` value as
-the server. Pick any string; `local-room-token` is only a placeholder.
+is wanted. An outside MCP client must present the same `AGUI_MCP_TOKEN` value
+the room was started with; `local-room-token` is only a placeholder.
 
 State lives in `examples/same-page-room/.local/room.json` by default and
 survives restarts. `AGUI_ROOM_STATE` can point a demo or test at isolated

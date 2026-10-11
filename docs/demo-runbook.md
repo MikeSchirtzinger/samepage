@@ -11,6 +11,10 @@ Use two terminals from the repository root. Keep the room visible at
 AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
 ```
 
+**`AGUI_MCP_TOKEN` is optional, and you make up its value.** `local-room-token`
+is a placeholder, not an issued key; the only rule is that terminal 2 sends the
+same string.
+
 The room has no frontend build step. Wait for `listening on
 http://127.0.0.1:8100`, then open that address in Chrome.
 
