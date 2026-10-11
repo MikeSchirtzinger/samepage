@@ -153,8 +153,8 @@ A host must supply this floor:
 
 Two limits are accepted in v0. The fixed scope table constrains trust only for
 `atlas` and `board`; every other scope falls through without added trust
-discipline. Settlement verification uses this lab's literal `"you"` and
-`"agree"` vocabulary, so nonempty settlements remain lab-only in v0.
+discipline. Settlement verification uses this repository's literal `"you"` and
+`"agree"` vocabulary, so nonempty settlements remain host-specific in v0.
 
 ## Fixtures
 

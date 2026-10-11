@@ -42,6 +42,9 @@ Start the room from the repository root:
 AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
 ```
 
+**`AGUI_MCP_TOKEN` is optional, and the person running the room makes up its
+value.** See [Attach an agent through MCP](#attach-an-agent-through-mcp).
+
 Open <http://127.0.0.1:8100>. The room has no frontend build step. Static
 assets are served by the Rust process, and panes are data interpreted by the
 already compiled renderer.
@@ -120,11 +123,12 @@ The header names three modes and a page-check status:
 
 ## Attach an agent through MCP
 
-An outside MCP client needs `AGUI_MCP_TOKEN` set before the room starts. The
-runtime still requires a bearer token when it generates one automatically, but
-only managed provider adapters receive that generated value. A terminal client
-therefore needs a value both it and the room know. Any string works;
-`local-room-token` is a placeholder, not an issued credential.
+**`AGUI_MCP_TOKEN` is optional, and its value is one the person makes up.** It
+is not an issued credential; `local-room-token` is a placeholder and any string
+works. The room accepts an MCP request only when it carries the same string, so
+an outside client needs a value both it and the room know, set before the room
+starts. Without it the runtime generates a token per process that only its
+managed provider adapters receive, so no outside client can attach.
 
 The attachment sequence is:
 

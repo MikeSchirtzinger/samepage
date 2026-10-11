@@ -66,6 +66,10 @@ From the repository root:
 AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
 ```
 
+**`AGUI_MCP_TOKEN` is optional, and the value is one the person makes up.** It
+is a password shared with the outside MCP client, not an issued key. Set it only
+when an outside client must attach, and use the same string on both sides.
+
 Open <http://127.0.0.1:8100>. An outside MCP client initializes at `POST /mcp`
 with the bearer token. It must echo the host-issued `Mcp-Session-Id` and send
 `MCP-Protocol-Version: 2025-06-18` on later requests. Without the session id,

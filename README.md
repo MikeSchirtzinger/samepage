@@ -92,6 +92,15 @@ From the repository root:
 AGUI_MCP_TOKEN=local-room-token cargo run -p same-page-room
 ```
 
+**`AGUI_MCP_TOKEN` is optional, and you make up its value.** It is not an API
+key, you do not sign up for it, and no service issues it. It is a password
+shared between this room and the agent you let in over MCP: the room accepts an
+MCP request only when it carries the same string, so only the agent you gave it
+to can attach. `local-room-token` above is only a placeholder; any string works,
+as long as the room and the agent use the same one. Leave it unset and the room
+still starts, with a random token per process that only its own subprocess can
+see, so no outside agent can attach.
+
 Open <http://127.0.0.1:8100>. There is no frontend build step: the typed
 protocol client builds itself on first run if `wasm-pack` is on `PATH`
 (install it with `cargo install wasm-pack`); without it, the room still
@@ -99,19 +108,10 @@ starts and the page reports the protocol as unavailable instead of guessing
 at it in JavaScript.
 
 The room starts without an in-page model by default. Your own coding agent
-joins from outside over MCP, and it needs the room's token to do that.
-
-**The token is a password you make up for this room.** It is not an API key,
-you do not sign up for it, and no service issues it. Pick any string, start the
-room with it in `AGUI_MCP_TOKEN`, and give the same string to the agent you
-want to let in. `local-room-token` above is only a placeholder; any value
-works, as long as the room and the agent use the same one.
-
-The agent sends that value as `Authorization: Bearer <your value>` to
-`POST /mcp`. If you start the room without `AGUI_MCP_TOKEN`, it makes up a
-random one per process that only its own subprocess can see, so no outside
-agent can attach. The atlas uses `AGUI_MCP_TOKEN` the same way and prints the
-exact attach command, token included, when it starts.
+joins from outside over MCP, and it needs the room's token to do that. The
+agent sends that value as `Authorization: Bearer <your value>` to `POST /mcp`.
+The atlas uses `AGUI_MCP_TOKEN` the same way and prints the exact attach
+command, token included, when it starts.
 
 Initialization returns an `Mcp-Session-Id`. Every later MCP request must send
 that header and `MCP-Protocol-Version: 2025-06-18`. Omitting the session header
@@ -131,6 +131,11 @@ From the repository root:
 ```bash
 AGUI_MCP_TOKEN=local-map-token cargo run -p same-page-atlas
 ```
+
+**`AGUI_MCP_TOKEN` is optional here too.** Same rule as the room: it is a
+password you make up, not an issued key. Leave it unset and the atlas generates
+one and prints it at startup, with the attach command, so you can still attach
+an agent by copying that line.
 
 Open <http://127.0.0.1:8098>. The first run builds the browser replica with
 `build-web.sh`, which needs `wasm-pack` and `wasm-opt` from
@@ -229,9 +234,9 @@ whole point: two seats, one artifact.
 This section is informational. It describes planned work, not shipped
 behavior.
 
-The map above is an example application exported from the lab where it was
-designed. It carries everything built there, including parts that will not
-ship by default, such as image segmentation and agent ink. Its browser
+The map above is an example application from before the capability split.
+It carries everything built so far, including parts that will not ship by
+default, such as image segmentation and agent ink. Its browser
 replica is one WebAssembly binary with all of it inside: 1,501,801 bytes
 (`stat -f %z examples/same-page-atlas/web/pkg/same_page_atlas_web_bg.wasm`
 after a first run on macOS).
