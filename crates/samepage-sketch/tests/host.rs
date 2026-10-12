@@ -748,3 +748,18 @@ fn an_entirely_unsupported_import_names_the_element_without_mutation() {
     );
     assert_eq!(before, (h.revision(), h.encode_full(), h.journal().seq));
 }
+#[test]
+fn lifting_a_frame_around_cards_makes_it_their_container() {
+    let h = host();
+    let inside = card(&h, "inside", 100.0, 120.0);
+    let outside = card(&h, "outside", 900.0, 120.0);
+    let frame = draw(
+        &h,
+        json!({"form":"frame","label":"service","x":40.0,"y":40.0,"w":500.0,"h":300.0}),
+    );
+    let lifted = lift(&h, &frame);
+    let v = h.view();
+    assert_eq!(samepage_map::prop_str(v.get(&inside).unwrap(), "parent"), Some(lifted.as_str()));
+    assert!(samepage_map::prop_str(v.get(&outside).unwrap(), "parent").unwrap_or("").is_empty());
+    assert!(v.get(&frame).is_none());
+}

@@ -1196,6 +1196,28 @@ fn lift(view: &View, id: &str) -> Result<Vec<BatchEntry>, CapError> {
     card.ops.extend(
         samepage_map::retarget_members(view, &consumed, Target::Ref("lifted-card".into()))?.ops,
     );
+    // A closed shape drawn around cards becomes their container: the lifted
+    // card keeps the grouping instead of lying over the cards as a lid.
+    let drawn = drawing(view);
+    let enclosed: Vec<&model::Node> = if s.is_closed() {
+        drawn
+            .nodes
+            .iter()
+            .filter(|n| s.covers_bounds(n.bounds()) == model::Coverage::Inside)
+            .filter(|n| {
+                view.get(&n.id)
+                    .is_some_and(|r| prop_str(r, "parent").unwrap_or("").is_empty())
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    for node in &enclosed {
+        card.ops.push(Op::Set {
+            target: Target::Id(node.id.clone()),
+            props: BTreeMap::from([("parent".to_string(), Value::reference("lifted-card"))]),
+        });
+    }
     let mut ops = vec![];
     for shape in view
         .records()
@@ -1227,7 +1249,14 @@ fn lift(view: &View, id: &str) -> Result<Vec<BatchEntry>, CapError> {
             ID,
             Plan {
                 ops,
-                readback: format!("Lifted {title:?} into a card; references follow in this batch."),
+                readback: if enclosed.is_empty() {
+                    format!("Lifted {title:?} into a card; references follow in this batch.")
+                } else {
+                    format!(
+                        "Lifted {title:?} into a container card holding {}; references follow in this batch.",
+                        enclosed.iter().map(|n| format!("{:?}", n.label)).collect::<Vec<_>>().join(", ")
+                    )
+                },
             },
         ),
     ])
