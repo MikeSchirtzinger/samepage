@@ -136,6 +136,22 @@ impl CementHost {
         }
         Ok(value)
     }
+    /// Refuse a decision draft whose evidence files cannot be read now,
+    /// naming the check, instead of failing later at review.
+    pub fn check_evidence(&self, args: &Value) -> Result<(), String> {
+        for check in args["draft"]["checks"].as_array().into_iter().flatten() {
+            for file in check["evidence_files"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+                self.repo.check(file, "1").map_err(|e| {
+                    format!(
+                        "check {}: evidence file {file} cannot be read: {}",
+                        check["id"].as_str().unwrap_or("?"),
+                        e.message
+                    )
+                })?;
+            }
+        }
+        Ok(())
+    }
     pub fn check(&self) -> Result<Value, String> {
         self.run(&["check", "--enforce", "--json"], true)
     }
@@ -459,10 +475,20 @@ impl CementHost {
         let ids = if args.get("ids").is_some() {
             ids(args)?
         } else {
-            v.records()
-                .filter(|r| r.kind == "node")
-                .map(|r| r.id.clone())
-                .collect()
+            let agreed: Vec<_> = v
+                .records()
+                .filter(|r| r.kind == "node" && string(r, "status") == "agreed")
+                .map(|r| format!("{:?} [{}]", string(r, "label"), r.id))
+                .collect();
+            let others = v.records().filter(|r| r.kind == "node").count() - agreed.len();
+            return Err(if agreed.is_empty() {
+                format!("Pass ids to cement the agreed subset. No card is agreed yet; a person agrees to a card first ({others} cards are open).")
+            } else {
+                format!(
+                    "Pass ids to cement the agreed subset. Agreed now: {}. {others} other cards are not agreed.",
+                    agreed.join(", ")
+                )
+            });
         };
         samepage_cement::settled(v, &ids).map_err(|e| e.to_string())?;
         self.verify_claims(v, &ids)?;

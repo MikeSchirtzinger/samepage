@@ -642,6 +642,11 @@ impl SamePageState {
                 }
             }
         }
+        if matches!(action, "decision_draft" | "atlas_decision_draft") {
+            if let Some(cement) = &self.cement {
+                cement.check_evidence(&args)?;
+            }
+        }
         let mut cement_result = None;
         let mut publication = None;
         let invoked = if matches!(action, "decision_cement" | "atlas_cement_decision") {
@@ -752,6 +757,11 @@ impl SamePageState {
                         self.lanes.as_ref().ok_or("lanes unavailable")?,
                         self.sources.as_ref().ok_or("sources unavailable")?,
                     )?,
+                    "decision_draft" => {
+                        let view = self.host.view();
+                        let id = invoked.ids.get("draft").ok_or("decision draft id missing")?;
+                        json!({"mode":samepage_cement::mode(&view),"draft":samepage_cement::draft(&view, id).map_err(|e| e.to_string())?})
+                    }
                     _ => samepage_cement::Cement
                         .project(&self.host.view())
                         .map_err(|e| e.to_string())?,
