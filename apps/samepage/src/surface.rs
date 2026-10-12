@@ -752,26 +752,7 @@ impl SamePageState {
         let lane_result = if matches!(invoked.action.as_str(), "lane_claim" | "lanes_read") {
             let lanes = self.lanes.as_ref().ok_or("lanes unavailable")?;
             let source = self.sources.as_ref().ok_or("sources unavailable")?;
-            let mut result = lanes.inspect(&self.host.view(), source.facts(&self.host.view())?)?;
-            if let Some(cement) = self.cement.as_ref().filter(|_| {
-                result["facts"]["registry"]["removals"].as_object().is_some_and(|r| {
-                    r.values().any(|removal| removal["obligation_id"].as_str().is_some_and(|id| !id.is_empty()))
-                })
-            }) {
-                let check = cement.check()?;
-                result["facts"]["clean"] = json!(check["obligations"]
-                    .as_array()
-                    .map(Vec::as_slice)
-                    .unwrap_or(&[])
-                    .iter()
-                    .filter(|o| o["status"] == "passed")
-                    .map(|o| o["id"].clone())
-                    .collect::<Vec<_>>());
-                let facts =
-                    serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
-                result["projection"] = samepage_lanes::reconcile(&self.host.view(), &facts);
-            }
-
+            let result = self.lanes_inspect(lanes, source, &self.host.view())?;
             (self.emit_event)("samepage.capability-used", json!({"id":"lanes"}));
             Some(result)
         } else {
@@ -864,6 +845,205 @@ impl SamePageState {
         }
         result
     }
+}
+
+impl SamePageState {
+    /// The page as one plain-text read-back. Structured facts stay behind each
+    /// capability's own read tool so this reply stays small as a page grows.
+    fn page_text(
+        &self,
+        actor: &Actor,
+        trace: Option<&crate::host::trace::TraceHost>,
+    ) -> Result<String, String> {
+        let view = self.host.view();
+        let mut out = format!("PAGE revision {}\n", self.host.revision());
+        let section = |out: &mut String, header: &str, body: &str| {
+            let body = body.trim();
+            if body.is_empty() {
+                return;
+            }
+            out.push('\n');
+            if !body.starts_with(header) {
+                out.push_str(header);
+                out.push('\n');
+            }
+            out.push_str(body);
+            out.push('\n');
+        };
+        for (id, action, header) in [
+            ("map", "map_read", "MAP"),
+            ("diagrams", "diagram_read", "DIAGRAMS"),
+            ("architecture", "architecture_read", "ARCHITECTURE"),
+            ("sketch", "sketch_read", "SKETCH"),
+        ] {
+            if self.host.composition().descriptor(id).is_some() {
+                let result = self
+                    .host
+                    .invoke(actor, action, json!({}))
+                    .map_err(|e| e.to_string())?;
+                section(&mut out, header, &result.readback.join("\n"));
+            }
+        }
+        if let Some(review) = &self.review {
+            let report = review.read(&view, &actor.participant)?;
+            section(&mut out, "REVIEW", report["readback"].as_str().unwrap_or_default());
+        }
+        if let Some(panes) = &self.panes {
+            if view.records().any(|r| r.kind == "pane") {
+                let text = panes.read(&view, &self.host.journal(), &actor.participant)?;
+                section(&mut out, "PANES", &text);
+            }
+        }
+        if let Some(sources) = &self.sources {
+            let mut result = sources.action("sources_read", &json!({}), &view)?;
+            if let Some(cement) = &self.cement {
+                let (gates, _) = cement.gates(&view)?;
+                result["facts"]["gates"] = serde_json::to_value(gates).map_err(|e| e.to_string())?;
+                let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
+                result["projection"] = samepage_sources::project(&view, &facts).map_err(|e| e.to_string())?;
+            }
+            section(&mut out, "SOURCES", result["projection"]["readback"].as_str().unwrap_or_default());
+            if let Some(lanes) = &self.lanes {
+                let result = self.lanes_inspect(lanes, sources, &view)?;
+                section(&mut out, "LANES", result["projection"]["readback"].as_str().unwrap_or_default());
+            }
+        }
+        if let Some(cement) = &self.cement {
+            let projection = samepage_cement::Cement.project(&view).map_err(|e| e.to_string())?;
+            section(&mut out, "CEMENT", &cement_text(&projection, &cement.history()?));
+        }
+        if self.host.composition().descriptor("explain").is_some() {
+            let result = samepage_explain::read(&view, None).map_err(|e| e.to_string())?;
+            if result["flows"].as_array().is_some_and(|f| !f.is_empty()) {
+                section(&mut out, "EXPLANATION FLOWS", result["readback"].as_str().unwrap_or_default());
+            }
+        }
+        let board = self.board.lock().map_err(|_| "board binding lock poisoned")?.clone();
+        if let Some(board) = board {
+            if board.revision() == 0 {
+                section(&mut out, "BOARD", "BOARD: empty. board_read lists its vocabulary.");
+            } else {
+                section(&mut out, "BOARD", &board.read(&actor.participant)?);
+            }
+        }
+        if let Some(trace) = trace {
+            let result: Value = serde_json::from_str(&trace.invoke("trace_read", json!({}))?)
+                .map_err(|e| e.to_string())?;
+            let ok = &result["ok"];
+            section(
+                &mut out,
+                "TRACE",
+                &format!(
+                    "TRACE: {} spans held, {} dropped; trace_read returns them.",
+                    ok["records"].as_array().map_or(0, Vec::len),
+                    ok["dropped"].as_u64().unwrap_or(0)
+                ),
+            );
+        }
+        section(&mut out, "VALIDATION", &validation_text(&self.validation.report(&view)?));
+        self.input.acknowledge(&actor.participant, self.host.journal().seq);
+        Ok(out)
+    }
+
+    /// Lane facts reconciled with cement removals, shared by every lane read.
+    fn lanes_inspect(
+        &self,
+        lanes: &crate::host::lanes::LanesHost,
+        sources: &crate::host::sources::SourcesHost,
+        view: &samepage_capability::View,
+    ) -> Result<Value, String> {
+        let mut result = lanes.inspect(view, sources.facts(view)?)?;
+        if let Some(cement) = self.cement.as_ref().filter(|_| {
+            result["facts"]["registry"]["removals"].as_object().is_some_and(|r| {
+                r.values().any(|removal| removal["obligation_id"].as_str().is_some_and(|id| !id.is_empty()))
+            })
+        }) {
+            let check = cement.check()?;
+            result["facts"]["clean"] = json!(check["obligations"]
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or(&[])
+                .iter()
+                .filter(|o| o["status"] == "passed")
+                .map(|o| o["id"].clone())
+                .collect::<Vec<_>>());
+            let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
+            result["projection"] = samepage_lanes::reconcile(view, &facts);
+        }
+        Ok(result)
+    }
+}
+
+/// Decisions as text: mode, drafts, cemented coverage and published records.
+fn cement_text(projection: &Value, history: &Value) -> String {
+    let mut out = format!(
+        "CEMENT: mode {}.",
+        projection["mode"].as_str().unwrap_or("learning")
+    );
+    let empty = Vec::new();
+    let drafts = projection["drafts"].as_array().unwrap_or(&empty);
+    if drafts.is_empty() {
+        out.push_str(" No decision drafts.");
+    }
+    for draft in drafts {
+        let ids: Vec<_> = draft["input"]["ids"]
+            .as_array()
+            .unwrap_or(&empty)
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        out.push_str(&format!(
+            "\n- draft [{}] {:?} for [{}] by {}",
+            draft["id"].as_str().unwrap_or_default(),
+            draft["input"]["title"].as_str().unwrap_or_default(),
+            ids.join(", "),
+            draft["created_by"].as_str().filter(|s| !s.is_empty()).unwrap_or("someone")
+        ));
+    }
+    for covered in projection["coverage"].as_array().unwrap_or(&empty) {
+        out.push_str(&format!(
+            "\n- cemented [{}] {}",
+            covered["id"].as_str().unwrap_or_default(),
+            if covered["current"] == true { "current" } else { "STALE: the card changed after cement" }
+        ));
+    }
+    for entry in history.as_array().unwrap_or(&empty) {
+        let entry = &entry["entry"];
+        out.push_str(&format!(
+            "\n- decision {:?} ({}) at {}",
+            entry["title"].as_str().unwrap_or_default(),
+            entry["status"].as_str().unwrap_or_default(),
+            entry["path"].as_str().unwrap_or_default()
+        ));
+    }
+    out
+}
+
+/// Page validation as text: status and one line per problem with its ids.
+fn validation_text(report: &Value) -> String {
+    let status = report["status"].as_str().unwrap_or("pending");
+    let empty = Vec::new();
+    let errors = report["errors"].as_array().unwrap_or(&empty);
+    let mut out = match status {
+        "pending" => "VALIDATION: pending; no open browser has measured this revision yet.".to_string(),
+        "failed" => format!("VALIDATION: failed, {} problem(s).", errors.len()),
+        other => format!("VALIDATION: {other}."),
+    };
+    for error in errors {
+        let ids: Vec<_> = error["ids"]
+            .as_array()
+            .unwrap_or(&empty)
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        out.push_str(&format!(
+            "\n- {}: {}{}",
+            error["code"].as_str().unwrap_or("error"),
+            error["message"].as_str().unwrap_or_default(),
+            if ids.is_empty() { String::new() } else { format!(" [{}]", ids.join(", ")) }
+        ));
+    }
+    out
 }
 
 fn run_persistence_worker<Save, Publish, Fault, Resolved>(
@@ -1130,7 +1310,7 @@ impl SamePageSurface {
         tools.push(
             ActionDef::new(
                 "page_read",
-                "Read the shared page across every selected capability, including board and trace.",
+                "Start here. Read the whole shared page as plain text: cards with notes, colours and bound files, links, diagrams, drawings, claims and marks, source tiers, lanes, decisions, walkthroughs, the board and page problems. One section per capability; each section's own read tool (map_read, review_read, sketch_read, sources_read, lanes_read, board_read, trace_read) returns its structured form.",
                 json!({"type":"object","properties":{},"additionalProperties":false}),
                 move |_| {
                     let state = page_state.clone();
@@ -1138,84 +1318,7 @@ impl SamePageSurface {
                     SurfaceEffect::Query(Box::new(move |_| {
                         let _operation = state.durable_operation()?;
                         let actor = map_actor(&current_actor().ok_or("authenticated reader missing")?)?;
-                        let mut sections = serde_json::Map::new();
-                        let mut readback = vec![format!("DOC\nRevision: {}", state.host.revision())];
-                        sections.insert("doc".into(), json!({"revision":state.host.revision()}));
-                        for (id, action) in [
-                            ("map", "map_read"),
-                            ("diagrams", "diagram_read"),
-                            ("review", "review_read"),
-                            ("architecture", "architecture_read"),
-                            ("sketch", "sketch_read"),
-                        ] {
-                            if state.host.composition().descriptor(id).is_some() {
-                                let result = state.host.invoke(&actor, action, json!({}))
-                                    .map_err(|e| e.to_string())?;
-                                readback.push(format!("{}\n{}", id.to_uppercase(), result.readback.join("\n")));
-                                sections.insert(id.into(), json!(result.readback));
-                            }
-                        }
-                        let view = state.host.view();
-                        if let Some(panes) = &state.panes {
-                            let result = panes.read(&view, &state.host.journal(), &actor.participant)?;
-                            readback.push(format!("PANES\n{result}"));
-                            sections.insert("panes".into(), json!(result));
-                        }
-                        if let Some(sources) = &state.sources {
-                            let mut result = sources.action("sources_read", &json!({}), &view)?;
-                            if let Some(cement) = &state.cement {
-                                let (gates, check) = cement.gates(&view)?;
-                                result["facts"]["gates"] = serde_json::to_value(gates).map_err(|e| e.to_string())?;
-                                let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
-                                result["projection"] = samepage_sources::project(&view, &facts).map_err(|e| e.to_string())?;
-                                result["g8_check"] = check;
-                            }
-                            readback.push(format!("SOURCES\n{}", result["projection"]["readback"].as_str().unwrap_or_default()));
-                            sections.insert("sources".into(), result);
-                            if let Some(lanes) = &state.lanes {
-                                let mut result = lanes.inspect(&view, sources.facts(&view)?)?;
-                                if let Some(cement) = state.cement.as_ref().filter(|_| {
-                                    result["facts"]["registry"]["removals"].as_object().is_some_and(|r| {
-                                        r.values().any(|removal| removal["obligation_id"].as_str().is_some_and(|id| !id.is_empty()))
-                                    })
-                                }) {
-                                    let check = cement.check()?;
-                                    result["facts"]["clean"] = json!(check["obligations"].as_array().map(Vec::as_slice).unwrap_or(&[])
-                                        .iter().filter(|o| o["status"] == "passed").map(|o| o["id"].clone()).collect::<Vec<_>>());
-                                    let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
-                                    result["projection"] = samepage_lanes::reconcile(&view, &facts);
-                                }
-                                readback.push(format!("LANES\n{}", result["projection"]["readback"].as_str().unwrap_or_default()));
-                                sections.insert("lanes".into(), result);
-                            }
-                        }
-                        if let Some(cement) = &state.cement {
-                            let projection = samepage_cement::Cement.project(&view).map_err(|e| e.to_string())?;
-                            let result = json!({"projection":projection,"history":cement.history()?});
-                            readback.push(format!("CEMENT\n{result}"));
-                            sections.insert("cement".into(), result);
-                        }
-                        if state.host.composition().descriptor("explain").is_some() {
-                            let result = samepage_explain::read(&view, None).map_err(|e| e.to_string())?;
-                            readback.push(format!("EXPLAIN\n{result}"));
-                            sections.insert("explain".into(), result);
-                        }
-                        let board = state.board.lock().map_err(|_| "board binding lock poisoned")?.clone();
-                        if let Some(board) = board {
-                            let result = board.read(&actor.participant)?;
-                            readback.push(format!("BOARD\n{result}"));
-                            sections.insert("board".into(), json!(result));
-                        }
-                        if let Some(trace) = trace {
-                            let result: Value = serde_json::from_str(&trace.invoke("trace_read", json!({}))?)
-                                .map_err(|e| e.to_string())?;
-                            readback.push(format!("TRACE\n{}", result["ok"]));
-                            sections.insert("trace".into(), result["ok"].clone());
-                        }
-                        state.input.acknowledge(&actor.participant, state.host.journal().seq);
-                        Ok(json!({"action":"page_read","revision":state.host.revision(),
-                            "sections":sections,"readback":readback,
-                            "validation":state.validation.report(&state.host.view())?}).to_string())
+                        state.page_text(&actor, trace.as_deref())
                     }))
                 },
             )
