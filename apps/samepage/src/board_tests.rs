@@ -95,6 +95,32 @@ async fn unified_wait_wakes_for_other_document_commits_but_not_own_writes() {
         .unwrap()
         .unwrap();
     assert!(read.contains("human card"));
+    assert!(
+        read.contains("woken by: card_place node \"human card\"") && read.contains("by a person"),
+        "the wake names what changed and who changed it: {read}"
+    );
+}
+#[tokio::test]
+async fn a_first_wait_waits_for_new_changes_instead_of_returning_history() {
+    let (s, b, _) = state();
+    s.invoke_as(
+        &actor(ag_ui_surface::Caller::Human),
+        "card_place",
+        json!({"label":"old card","x":450,"y":50}),
+    )
+    .unwrap();
+    let w = waiter(s.clone(), b).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(!w.is_finished(), "history before the first wait must not wake it");
+    s.invoke_as(
+        &actor(ag_ui_surface::Caller::Human),
+        "card_place",
+        json!({"label":"new card","x":450,"y":300}),
+    )
+    .unwrap();
+    let read = tokio::time::timeout(Duration::from_secs(3), w).await.unwrap().unwrap().unwrap();
+    assert!(read.contains("woken by: card_place node \"new card\""), "{read}");
+    assert!(!read.contains("woken by: card_place node \"old card\""), "{read}");
 }
 #[tokio::test]
 async fn unified_wait_wakes_for_browser_validation_errors() {

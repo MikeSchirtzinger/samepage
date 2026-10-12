@@ -394,6 +394,14 @@ impl InputSignals {
             .copied()
             .unwrap_or(0)
     }
+    /// Begin a cursor at `seq` for a participant that has none yet.
+    pub fn start(&self, participant: &str, seq: u64) {
+        self.seen
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .entry(participant.into())
+            .or_insert(seq);
+    }
     pub fn acknowledge(&self, participant: &str, seq: u64) {
         self.seen
             .lock()

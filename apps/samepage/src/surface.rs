@@ -973,6 +973,93 @@ impl SamePageState {
         Ok(out)
     }
 
+    /// What woke a waiter: one line per change another participant made
+    /// since `since`, then the read-back of each capability whose records
+    /// changed (cards and links, review, drawings, walkthroughs).
+    pub(crate) fn wake_text(&self, reader: &str, since: u64) -> Result<String, String> {
+        let view = self.host.view();
+        let journal = self.host.journal();
+        let entries: Vec<_> = journal
+            .recent
+            .iter()
+            .filter(|e| e.seq > since && e.actor.participant != reader)
+            .collect();
+        let name = |actor: &samepage_doc::Actor| {
+            actor.label.clone().filter(|l| !l.trim().is_empty()).unwrap_or_else(|| {
+                if actor.caller == Caller::Human { "a person".into() } else { "an agent".into() }
+            })
+        };
+        let describe = |id: &String| match view.get(id) {
+            Some(r) => {
+                let words = ["label", "text", "title"]
+                    .iter()
+                    .find_map(|k| r.props.get(*k).and_then(Scalar::as_str).filter(|s| !s.is_empty()))
+                    .unwrap_or("");
+                let about = ["about", "target"]
+                    .iter()
+                    .find_map(|k| r.props.get(*k).and_then(Scalar::as_str))
+                    .and_then(|t| view.get(t))
+                    .and_then(|t| t.props.get("label").and_then(Scalar::as_str))
+                    .map(|l| format!(" on {l:?}"))
+                    .unwrap_or_default();
+                format!("{} {:?}{about} [{id}]", r.kind, words.chars().take(80).collect::<String>())
+            }
+            None => format!("removed [{id}]"),
+        };
+        let mut kinds = std::collections::BTreeSet::new();
+        let mut out = String::new();
+        for entry in entries.iter().rev().take(8).rev() {
+            let ids: Vec<_> = entry.created.iter().chain(&entry.modified).chain(&entry.deleted).collect();
+            for id in &ids {
+                if let Some(r) = view.get(id) {
+                    kinds.insert(r.kind.clone());
+                } else {
+                    kinds.insert("node".into());
+                }
+            }
+            let what: Vec<_> = ids.iter().take(3).map(|id| describe(id)).collect();
+            out.push_str(&format!(
+                "woken by: {} {}{} by {}\n",
+                entry.action.as_deref().unwrap_or("edit"),
+                what.join(", "),
+                if ids.len() > 3 { format!(" and {} more", ids.len() - 3) } else { String::new() },
+                name(&entry.actor)
+            ));
+        }
+        if entries.len() > 8 {
+            out.push_str(&format!("({} earlier changes not listed)\n", entries.len() - 8));
+        }
+        let touches = |set: &[&str]| kinds.iter().any(|k| set.contains(&k.as_str()));
+        if touches(&["mark", "claim", "understanding-context"]) {
+            if let Some(review) = &self.review {
+                let report = review.read(&view, reader)?;
+                out.push('\n');
+                out.push_str(report["readback"].as_str().unwrap_or_default());
+            }
+        }
+        if touches(&["shape"]) && self.host.composition().descriptor("sketch").is_some() {
+            let read = samepage_sketch::Sketch
+                .plan(&samepage_capability::Call { action: "sketch_read".into(), args: json!({}) }, &view)
+                .map_err(|e| e.to_string())?;
+            out.push('\n');
+            out.push_str(&read.readback);
+        }
+        if touches(&["explanation-flow"]) && self.host.composition().descriptor("explain").is_some() {
+            let read = samepage_explain::read(&view, None).map_err(|e| e.to_string())?;
+            out.push('\n');
+            out.push_str(read["readback"].as_str().unwrap_or_default());
+        }
+        if touches(&["node", "edge", "constraint", "constraint-member", "binding"]) || out.lines().all(|l| l.starts_with("woken by") || l.starts_with('(')) {
+            let read = Map
+                .plan(&samepage_capability::Call { action: "map_read".into(), args: json!({}) }, &view)
+                .map_err(|e| e.to_string())?;
+            out.push('\n');
+            out.push_str(&read.readback);
+        }
+        self.input.acknowledge(reader, journal.seq);
+        Ok(out)
+    }
+
     /// Lane facts reconciled with cement removals, shared by every lane read.
     fn lanes_inspect(
         &self,
