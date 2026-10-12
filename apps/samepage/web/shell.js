@@ -615,6 +615,67 @@ function wireNamePrompt(person, presence) {
   });
 }
 
+// The inbox lists what waits for this person: answers to their questions,
+// agent claims without a verdict, board activity since they last looked and
+// undecided architecture proposals. Opening an item marks it seen.
+function wireInbox(person) {
+  const toggle = document.getElementById("inbox-toggle");
+  const box = document.getElementById("inbox");
+  const countNode = document.getElementById("inbox-count");
+  const seen = new Set(JSON.parse(remember("samepage.inbox-seen") || "[]"));
+  const markSeen = (key) => { seen.add(key); remember("samepage.inbox-seen", JSON.stringify([...seen].slice(-400))); render(); };
+  let board = null;
+  const refreshBoard = () => fetch("/board/state").then(r => r.ok ? r.json() : null).then(v => { board = v?.board || null; render(); }).catch(() => {});
+  const items = () => {
+    const records = kernel.view(["node", "mark", "claim", "architecture-proposal"]).records;
+    const label = (id) => records.find(r => r.id === id)?.props?.label || "a card";
+    const list = [];
+    for (const mark of records.filter(r => r.kind === "mark" && r.props.answer && r.props.created_by_participant === person.id)) {
+      list.push({key: `answer:${mark.id}:${mark.props.answer}`, title: `${label(mark.props.target)}: your question was answered`, detail: `${mark.props.touched_by_participant === person.id ? "you" : String(mark.props.touched_by || "someone").replace(/-\d+$/, "")}: ${mark.props.answer}`, open: () => { document.dispatchEvent(new CustomEvent("samepage:review-open", {detail: {id: mark.props.target}})); document.dispatchEvent(new CustomEvent("samepage:map-focus", {detail: {id: mark.props.target}})); }, clears: true});
+    }
+    for (const claim of records.filter(r => r.kind === "claim" && !r.props.withdrawn && !["accepted", "rejected"].includes(r.props.verdict))) {
+      list.push({key: `claim:${claim.id}`, title: `${label(claim.props.about)}: a claim waits for your verdict`, detail: `${String(claim.props.created_by || "someone").replace(/-\d+$/, "")}: ${claim.props.text || ""}`, open: () => { void kernel.activate("review").then(() => document.dispatchEvent(new CustomEvent("samepage:review-open", {detail: {id: claim.props.about}}))); document.dispatchEvent(new CustomEvent("samepage:map-focus", {detail: {id: claim.props.about}})); }});
+    }
+    const proposals = records.filter(r => r.kind === "architecture-proposal");
+    const superseded = new Set(proposals.map(r => { try { return JSON.parse(r.props.definition || "{}").previous; } catch { return null; } }).filter(Boolean));
+    for (const proposal of proposals.filter(r => !r.props.verdict && !superseded.has(r.id))) {
+      let title = "Architecture proposal"; try { title = JSON.parse(proposal.props.definition).title || title; } catch {}
+      list.push({key: `proposal:${proposal.id}`, title: `Proposal waits for your decision`, detail: title, open: () => document.getElementById("architecture-open")?.click()});
+    }
+    const lastSeen = Number(remember("samepage.board-seen") || 0);
+    if (board && board.revision > lastSeen && (board.entries?.length || board.subject)) {
+      list.push({key: `board:${board.revision}`, title: "Board changed since you looked", detail: board.subject || `${board.entries.length} items`, open: () => { remember("samepage.board-seen", String(board.revision)); void openTab("board"); }, clears: true});
+    }
+    return list;
+  };
+  function render() {
+    if (!kernel) return;
+    const list = items();
+    const unread = list.filter(item => !(item.clears && seen.has(item.key)));
+    countNode.textContent = String(unread.length);
+    toggle.dataset.unread = String(unread.length > 0);
+    toggle.title = unread.length ? `${unread.length} waiting for you` : "Nothing waiting for you";
+    if (box.hidden) return;
+    const heading = document.createElement("h2"); heading.textContent = unread.length ? `Waiting for you · ${unread.length}` : "Nothing waiting for you";
+    const ul = document.createElement("ul");
+    for (const item of list) {
+      const li = document.createElement("li"); li.dataset.seen = String(Boolean(item.clears && seen.has(item.key)));
+      const button = document.createElement("button"); button.type = "button";
+      const detail = document.createElement("small"); detail.textContent = item.detail;
+      button.append(document.createTextNode(item.title), detail);
+      button.addEventListener("click", () => { box.hidden = true; toggle.setAttribute("aria-expanded", "false"); if (item.clears) markSeen(item.key); item.open(); });
+      li.append(button); ul.append(li);
+    }
+    box.replaceChildren(heading, ...(list.length ? [ul] : [Object.assign(document.createElement("p"), {className: "inbox-empty", textContent: "Answers to your questions, claims for your verdict and board changes appear here."})]));
+  }
+  toggle.addEventListener("click", (event) => { event.stopPropagation(); box.hidden = !box.hidden; toggle.setAttribute("aria-expanded", String(!box.hidden)); render(); });
+  kernel.subscribe(render);
+  client.on("board.changed", () => void refreshBoard());
+  document.addEventListener("samepage:panel-open", (event) => { if (event.detail?.tab === "board" && board) { remember("samepage.board-seen", String(board.revision)); render(); } });
+  for (const tab of document.querySelectorAll('.tab[data-tab="board"]')) tab.addEventListener("click", () => { if (board) { remember("samepage.board-seen", String(board.revision)); render(); } });
+  void refreshBoard();
+}
+
 const railTools = [["select", "Select", "V", "↖"], ["rectangle", "Rectangle", "R", "▭"], ["ellipse", "Ellipse", "O", "◯"], ["arrow", "Arrow", "A", "→"], ["pen", "Pen", "P", "✎"], ["text", "Text", "T", "T"]];
 function wireRail() {
   const rail = document.getElementById("tool-rail");
@@ -718,6 +779,7 @@ try {
   kernel.connect();
   wireModes();
   wireDock();
+  wireInbox(person);
   wireActivity();
   document.getElementById("add-card").addEventListener("submit", async (event) => {
     event.preventDefault();

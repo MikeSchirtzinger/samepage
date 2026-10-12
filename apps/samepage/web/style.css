@@ -74,6 +74,8 @@ body[data-sync="ready"] .connection-status { color: var(--muted); }
 .inbox ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .inbox li button { width: 100%; text-align: left; background: var(--surface-3); border-color: var(--line); }
 .inbox .inbox-empty { color: var(--muted); margin: 0; }
+.inbox li button small { display: block; color: var(--muted); font-size: 12px; }
+.inbox li[data-seen="true"] button { opacity: .6; }
 
 /* Tool rail */
 .tool-rail { grid-area: rail; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; background: var(--surface-2); border-right: 1px solid var(--line); z-index: 10; }
@@ -199,14 +201,18 @@ body[data-panel="closed"] .panel-close, body[data-panel="closed"] .tab-body { di
 .review-claim[data-verdict="accepted"] { border-left: 3px solid #9bd9b7; }
 .review-claim[data-verdict="rejected"] { border-left: 3px solid #f1b397; }
 .review-verdicts { display: flex; gap: 6px; margin-top: 10px; }
-.review-answer { color: #b4e5cd; }
 .review-source, .review-boundary { font-size: 12px; color: #a8bdcb; }
 .review-open { position: absolute; top: 7px; right: 7px; width: 25px; height: 25px; padding: 0; border-radius: 50%; z-index: 3; }
 .map-card:has(.review-open) > h2 { padding-right: 23px; }
 .review-badge { position: absolute; left: 10px; bottom: -12px; font-size: 10px; border: 1px solid #ae8b56; border-radius: 12px; padding: 2px 7px; background: #423629; color: #ffe2b9; }
 .review-badge[data-state="SETTLED"] { border-color: #7fb496; background: #193c30; color: #b6ecd0; }
 .review-badge[data-state="NO CLAIMS"] { border-color: #728ca0; background: #20313c; color: var(--soft); }
-.review-mark-glyphs { position: absolute; top: -13px; right: 9px; border-radius: 12px; padding: 1px 7px; background: var(--warn); color: #34280e; font-weight: 700; }
+.review-mark-glyphs { position: absolute; top: -13px; right: 9px; border-radius: 12px; padding: 1px 7px; background: var(--warn); color: #34280e; font-weight: 700; font-size: 12px; }
+.review-mark-glyphs[data-state="answered"] { background: #193c30; color: #b6ecd0; border: 1px solid #7fb496; }
+.review-mark[data-state="open"] { border-left: 3px solid var(--warn); }
+.review-mark[data-state="answered"] { border-left: 3px solid #7fb496; }
+.review-answer { margin-top: 6px; padding: 6px 8px; border-radius: 5px; background: #193c30; color: #b4e5cd; }
+.review-answer p { margin: 0 0 4px !important; }
 
 /* Board */
 #board h2 { font-size: 17px; margin: 0 0 8px; }
