@@ -666,6 +666,7 @@ impl SamePageState {
         if let Some(pending) = publication {
             pending.accept();
         }
+        let invoked = caller_names(invoked, &args, &self.host.view())?;
         let flow_id = args["flow_id"].as_str().or_else(|| args["flow"]["id"].as_str()).unwrap_or("").to_string();
         let reenter = args["command"] == "restart";
         if invoked.commit.is_some() {
@@ -1115,6 +1116,67 @@ impl SamePageState {
         }
         Ok(result)
     }
+}
+
+/// Key a reply's ids by the names the caller gave: a sketch shape by its
+/// `ref`, a diagram node or container by its `id`, a diagram edge by
+/// "from->to". A sketch's read-back is re-read from the committed page so it
+/// names real ids and bylines instead of pending placeholders.
+fn caller_names(
+    mut invoked: samepage_doc::host::Invoked,
+    args: &Value,
+    view: &samepage_capability::View,
+) -> Result<samepage_doc::host::Invoked, String> {
+    let mut rename = |from: String, to: Option<&str>| {
+        if let Some(to) = to.filter(|t| !t.is_empty()) {
+            if !invoked.ids.contains_key(to) {
+                if let Some(id) = invoked.ids.remove(&from) {
+                    invoked.ids.insert(to.to_string(), id);
+                }
+            }
+        }
+    };
+    match invoked.action.as_str() {
+        "sketch" => {
+            for (i, shape) in args["shapes"].as_array().into_iter().flatten().enumerate() {
+                rename(format!("shape-{i}"), shape["ref"].as_str());
+            }
+        }
+        "diagram_draw" => {
+            let nodes: Vec<&str> = args["nodes"].as_array().into_iter().flatten().map(|n| n["id"].as_str().unwrap_or_default()).collect();
+            for (i, node) in nodes.iter().enumerate() {
+                rename(format!("node-{i}"), Some(node));
+            }
+            let containers = args["containers"].as_array().map(Vec::len).unwrap_or(0);
+            for (i, container) in args["containers"].as_array().into_iter().flatten().enumerate() {
+                rename(format!("container-{i}"), container["id"].as_str());
+            }
+            if containers == 0 {
+                rename("container-0".into(), Some("diagram"));
+            }
+            for (i, edge) in args["edges"].as_array().into_iter().flatten().enumerate() {
+                let name = format!("{}->{}", edge["from"].as_str().unwrap_or_default(), edge["to"].as_str().unwrap_or_default());
+                rename(format!("edge-{i}"), Some(&name));
+            }
+        }
+        _ => {}
+    }
+    if invoked.action == "sketch" && invoked.commit.is_some() {
+        let plan: Value = invoked
+            .readback
+            .first()
+            .and_then(|raw| serde_json::from_str(raw).ok())
+            .unwrap_or(Value::Null);
+        let reading = samepage_sketch::Sketch
+            .plan(&samepage_capability::Call { action: "sketch_read".into(), args: json!({}) }, view)
+            .map_err(|e| e.to_string())?
+            .readback;
+        let mut readback = vec![format!("Drew {} shape(s).", plan["drawn"].as_u64().unwrap_or(0))];
+        readback.extend(plan["skipped"].as_array().into_iter().flatten().filter_map(Value::as_str).map(|s| format!("SKIPPED {s}")));
+        readback.push(reading);
+        invoked.readback = readback;
+    }
+    Ok(invoked)
 }
 
 /// `path` without `lines` binds the whole file: the host reads its length
@@ -2593,3 +2655,31 @@ mod architecture_tests;
 #[cfg(test)]
 #[path = "board_tests.rs"]
 mod board_tests;
+
+#[cfg(test)]
+mod caller_name_tests {
+    use super::*;
+
+    #[test]
+    fn reply_ids_use_the_callers_refs_and_node_ids() {
+        let view = samepage_capability::View::new("r", []).unwrap();
+        let ids = |pairs: &[(&str, &str)]| pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let invoked = samepage_doc::host::Invoked {
+            action: "diagram_draw".into(),
+            readback: vec![],
+            ids: ids(&[("node-0", "a1"), ("node-1", "a2"), ("container-0", "a3"), ("edge-0", "a4")]),
+            commit: None,
+        };
+        let args = json!({"kind":"state_machine","nodes":[{"id":"received"},{"id":"validated"}],"edges":[{"from":"received","to":"validated"}]});
+        let named = caller_names(invoked, &args, &view).unwrap();
+        assert_eq!(named.ids, ids(&[("received", "a1"), ("validated", "a2"), ("diagram", "a3"), ("received->validated", "a4")]));
+        let invoked = samepage_doc::host::Invoked {
+            action: "sketch".into(),
+            readback: vec![],
+            ids: ids(&[("shape-0", "s1"), ("shape-1", "s2")]),
+            commit: None,
+        };
+        let named = caller_names(invoked, &json!({"shapes":[{"ref":"svc"},{"form":"text"}]}), &view).unwrap();
+        assert_eq!(named.ids, ids(&[("svc", "s1"), ("shape-1", "s2")]));
+    }
+}
