@@ -77,6 +77,27 @@ fn entry(id: &str, ops: Vec<Op>, readback: String) -> BatchEntry {
         plan: Plan { ops, readback },
     }
 }
+/// A state is as wide as its name on one line, never narrower than its
+/// longest word or the map's minimum, and wraps only past the normal card
+/// width; it is one title line tall (about 56 to 60 px) unless it carries a
+/// note. A card title renders in 15 px bold, about 9 px per character.
+/// Around it sit 28 px of card padding, up to 6 px of a terminal state's
+/// double border, 23 px the title keeps clear for the mark button, and a
+/// 9 px margin: 66 px in all.
+pub fn state_size(label: &str, note: &str, scale: f64) -> (f64, f64) {
+    const PER_CHAR: f64 = 9.0;
+    const PADDING: f64 = 66.0;
+    let chars = |text: &str| text.chars().count() as f64;
+    let whole = chars(label) * PER_CHAR + PADDING;
+    let longest = label.split_whitespace().map(chars).fold(0.0, f64::max) * PER_CHAR + PADDING;
+    let width = whole
+        .min(232.0)
+        .max(longest)
+        .clamp(samepage_map::rules::MIN_W, samepage_map::rules::MAX_W);
+    let height = samepage_map::estimated_height(label, note, width).max(56.0);
+    ((width * scale).min(samepage_map::rules::MAX_W), (height * scale).min(samepage_map::rules::MAX_H))
+}
+
 fn create(reference: &str, label: &str, rect: PackedRect) -> Op {
     Op::Create {
         reference: reference.into(),
@@ -400,8 +421,12 @@ fn draw(args: &JsonValue, view: &View) -> Result<Batch, CapError> {
             layout::NodeSize::Primary => 1.35,
             layout::NodeSize::Hero => 1.8,
         };
-        let width = 232.0 * scale;
-        let height = samepage_map::estimated_height(&node.label, &note, width).max(150.0) * scale;
+        let (width, height) = if spec.kind == DiagramKind::StateMachine {
+            state_size(&node.label, &note, scale)
+        } else {
+            let width = 232.0 * scale;
+            (width, samepage_map::estimated_height(&node.label, &note, width).max(150.0) * scale)
+        };
         sizes.push((width, height));
         style.insert("note".into(), note.into());
         style.insert(
