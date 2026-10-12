@@ -1225,41 +1225,132 @@ fn projection(view: &View) -> JsonValue {
     })
 }
 
+/// Each card's box `[left, top, right, bottom]` with its label: the
+/// browser-measured box when one is given, otherwise the authored or
+/// estimated size.
+pub fn card_boxes(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> Vec<(String, String, [f64; 4])> {
+    projection(view)["cards"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|card| {
+            let id = card["id"].as_str().unwrap_or_default().to_string();
+            let label = card["label"].as_str().unwrap_or_default().to_string();
+            let bounds = measured.get(&id).copied().unwrap_or_else(|| {
+                let x = card["x"].as_f64().unwrap_or(0.0);
+                let y = card["y"].as_f64().unwrap_or(0.0);
+                [x, y, x + card["width"].as_f64().unwrap_or(DEFAULT_WIDTH), y + card["height"].as_f64().unwrap_or(0.0)]
+            });
+            (id, label, bounds)
+        })
+        .collect()
+}
+
 fn describe(view: &View) -> String {
+    describe_measured(view, &BTreeMap::new())
+}
+
+/// The map as text: one line per card, nested under its container, with the
+/// words, style and size an agent wrote, whole-pixel geometry, and links by
+/// card name. `measured` holds browser-measured card boxes `[left, top,
+/// right, bottom]`; a measured card reports its real height.
+pub fn describe_measured(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> String {
     let projected = projection(view);
     let cards = projected["cards"].as_array().cloned().unwrap_or_default();
     let links = projected["links"].as_array().cloned().unwrap_or_default();
+    let label_of = |id: &str| {
+        cards
+            .iter()
+            .find(|c| c["id"] == id)
+            .and_then(|c| c["label"].as_str())
+            .unwrap_or(id)
+            .to_string()
+    };
+    let ids: BTreeSet<&str> = cards.iter().filter_map(|c| c["id"].as_str()).collect();
     let mut out = format!("MAP: {} cards, {} links.", cards.len(), links.len());
-    for card in &cards {
-        out.push_str(&format!(
-            "\n- [{}] {:?} at ({}, {}) {}x{} ({}), {} / {}{}{}",
-            card["id"].as_str().unwrap_or_default(),
+    fn line(card: &JsonValue, measured: &BTreeMap<String, [f64; 4]>, depth: usize) -> String {
+        let id = card["id"].as_str().unwrap_or_default();
+        let number = |v: &JsonValue| v.as_f64().unwrap_or(0.0).round() as i64;
+        let (w, h, source) = match measured.get(id) {
+            Some([l, t, r, b]) => ((r - l).round() as i64, (b - t).round() as i64, "measured"),
+            None => (
+                number(&card["width"]),
+                number(&card["height"]),
+                card["height_source"].as_str().unwrap_or("estimated"),
+            ),
+        };
+        let mut style = Vec::new();
+        for (key, default) in [("color", ""), ("emphasis", "normal"), ("size", "normal"), ("shape", "rect")] {
+            let value = card[key].as_str().unwrap_or_default();
+            if value != default && !value.is_empty() {
+                style.push(if key == "shape" { format!("kind {value}") } else { format!("{key} {value}") });
+            }
+        }
+        let note = card["note"].as_str().unwrap_or_default();
+        let note = if note.is_empty() {
+            String::new()
+        } else if note.chars().count() > 120 {
+            format!(", note {:?}", format!("{}...", note.chars().take(117).collect::<String>()))
+        } else {
+            format!(", note {note:?}")
+        };
+        format!(
+            "\n{}- [{id}] {:?} at ({}, {}) {w}x{h} ({source}), {} / {}{}{note}{}",
+            "  ".repeat(depth),
             card["label"].as_str().unwrap_or_default(),
-            card["x"],
-            card["y"],
-            card["width"],
-            card["height"],
-            card["height_source"].as_str().unwrap_or_default(),
+            number(&card["x"]),
+            number(&card["y"]),
             card["tone"].as_str().unwrap_or_default(),
             card["status"].as_str().unwrap_or_default(),
-            match card["parent"].as_str() {
-                Some(p) if !p.is_empty() => format!(", inside {p}"),
-                _ => String::new(),
-            },
+            if style.is_empty() { String::new() } else { format!(", {}", style.join(", ")) },
             match card["touched_by"].as_str() {
                 Some(t) if !t.is_empty() => format!(", last by {t}"),
                 _ => String::new(),
             },
-        ));
+        )
+    }
+    // Top-level cards first, each followed by what it contains.
+    let mut visited = BTreeSet::new();
+    let mut stack: Vec<(String, usize)> = cards
+        .iter()
+        .filter(|c| {
+            let parent = c["parent"].as_str().unwrap_or_default();
+            parent.is_empty() || !ids.contains(parent)
+        })
+        .filter_map(|c| c["id"].as_str().map(|id| (id.to_string(), 0)))
+        .rev()
+        .collect();
+    while let Some((id, depth)) = stack.pop() {
+        if !visited.insert(id.clone()) {
+            continue;
+        }
+        if let Some(card) = cards.iter().find(|c| c["id"] == id.as_str()) {
+            out.push_str(&line(card, measured, depth));
+        }
+        let children: Vec<_> = cards
+            .iter()
+            .filter(|c| c["parent"] == id.as_str())
+            .filter_map(|c| c["id"].as_str().map(str::to_string))
+            .collect();
+        for child in children.into_iter().rev() {
+            stack.push((child, depth + 1));
+        }
+    }
+    for card in &cards {
+        if let Some(id) = card["id"].as_str().filter(|id| !visited.contains(*id)) {
+            out.push_str(&line(card, measured, 0));
+            visited.insert(id.to_string());
+        }
     }
     for link in &links {
         out.push_str(&format!(
-            "\n- link [{}] {} -> {}{}",
+            "\n- link [{}] {:?} -> {:?}{}",
             link["id"].as_str().unwrap_or_default(),
-            link["from"].as_str().unwrap_or_default(),
-            link["to"].as_str().unwrap_or_default(),
-            match link["label"].as_str() {
-                Some(l) if !l.is_empty() => format!(" {l:?}"),
+            label_of(link["from"].as_str().unwrap_or_default()),
+            label_of(link["to"].as_str().unwrap_or_default()),
+            match (link["label"].as_str(), link["id"].as_str().and_then(|id| view.get(id)).and_then(|r| prop_str(r, "event"))) {
+                (Some(l), _) if !l.is_empty() => format!(": {l}"),
+                (_, Some(event)) if !event.is_empty() => format!(": on {event}"),
                 _ => String::new(),
             },
         ));

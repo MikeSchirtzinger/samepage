@@ -438,7 +438,9 @@ fn tier_precedence_is_proposed_gate_unreadable_drifted_verified() {
     assert!(projection["readback"]
         .as_str()
         .unwrap()
-        .contains("GATE UNMET: UNATTESTED; 1 source binding(s) (UNATTESTED: GATE passes"));
+        .contains("GATE UNMET: UNATTESTED; source a.rs:1 (UNATTESTED: GATE passes"),
+        "{}",
+        projection["readback"]);
     let v = View::new(
         "r",
         [

@@ -868,6 +868,10 @@ impl SamePageState {
             .map(|s| vec![s.to_string()])
             .or_else(||pane_read.map(|text|vec![text]))
             .unwrap_or(invoked.readback);
+        if invoked.action == "map_read" {
+            let view = self.host.view();
+            readback = vec![samepage_map::describe_measured(&view, &self.validation.measured(&view))];
+        }
         let architecture = if invoked.action == "architecture_read" {
             Some(samepage_architecture::inspect(&self.host.view()).map_err(|e| e.to_string())?)
         } else {
@@ -980,12 +984,17 @@ impl SamePageState {
             out.push_str(body);
             out.push('\n');
         };
+        let measured = self.validation.measured(&view);
+        section(&mut out, "MAP", &samepage_map::describe_measured(&view, &measured));
         for (id, action, header) in [
-            ("map", "map_read", "MAP"),
             ("diagrams", "diagram_read", "DIAGRAMS"),
             ("architecture", "architecture_read", "ARCHITECTURE"),
             ("sketch", "sketch_read", "SKETCH"),
         ] {
+            if id == "sketch" && !measured.is_empty() && self.host.composition().descriptor(id).is_some() {
+                section(&mut out, header, &sketch_measured(&view, &measured)?);
+                continue;
+            }
             if self.host.composition().descriptor(id).is_some() {
                 let result = self
                     .host
@@ -1049,6 +1058,10 @@ impl SamePageState {
                     ok["dropped"].as_u64().unwrap_or(0)
                 ),
             );
+        }
+        let crossings = frame_crossings(&view, &measured);
+        if !crossings.is_empty() {
+            section(&mut out, "LAYOUT", &format!("LAYOUT: cards crossing a frame's edge\n- {}", crossings.join("\n- ")));
         }
         section(&mut out, "VALIDATION", &validation_text(&self.validation.report(&view)?));
         self.input.acknowledge(&actor.participant, self.host.journal().seq);
@@ -1141,11 +1154,8 @@ impl SamePageState {
             out.push_str(read["readback"].as_str().unwrap_or_default());
         }
         if touches(&["node", "edge", "constraint", "constraint-member", "binding"]) || out.lines().all(|l| l.starts_with("woken by") || l.starts_with('(')) {
-            let read = Map
-                .plan(&samepage_capability::Call { action: "map_read".into(), args: json!({}) }, &view)
-                .map_err(|e| e.to_string())?;
             out.push('\n');
-            out.push_str(&read.readback);
+            out.push_str(&samepage_map::describe_measured(&view, &self.validation.measured(&view)));
         }
         self.input.acknowledge(reader, journal.seq);
         Ok(out)
@@ -1190,6 +1200,54 @@ pub const AGENT_GUIDE: &str = "SamePage is a page a person and agents edit toget
 5. Draw with sketch in one call: frames and boxes first, then text, then arrows that bind to refs or card ids.
 6. Only people agree to cards, accept claims and publish decisions. Agents propose: claim_add, decision_draft, decision_cement_propose, and map_cement on agreed cards.
 7. A write that causes a page problem is still applied; repair the ids it names instead of repeating the write.";
+
+/// The sketch read-back with browser-measured card boxes, so ENCLOSES and
+/// NEAR describe the cards as people see them rather than estimated heights.
+fn sketch_measured(
+    view: &samepage_capability::View,
+    measured: &BTreeMap<String, [f64; 4]>,
+) -> Result<String, String> {
+    let view_json = serde_json::to_string(view).map_err(|e| e.to_string())?;
+    let bounds_json = serde_json::to_string(measured).map_err(|e| e.to_string())?;
+    let result: Value = serde_json::from_str(&samepage_sketch::project_with_bounds(&view_json, &bounds_json))
+        .map_err(|e| e.to_string())?;
+    result["ok"]["readback"]
+        .as_str()
+        .map(str::to_string)
+        .ok_or_else(|| format!("sketch read-back failed: {}", result["error"]))
+}
+
+/// Cards that overlap a drawn frame without sitting inside it, with how far
+/// they stick out, using measured boxes when a browser reported them.
+fn frame_crossings(view: &samepage_capability::View, measured: &BTreeMap<String, [f64; 4]>) -> Vec<String> {
+    let num = |r: &samepage_capability::Record, k: &str| r.props.get(k).and_then(Scalar::as_f64).unwrap_or(0.0);
+    let cards = samepage_map::card_boxes(view, measured);
+    let mut out = Vec::new();
+    for frame in view.records().filter(|r| r.kind == "shape" && r.props.get("form").and_then(Scalar::as_str) == Some("frame")) {
+        let (fl, ft) = (num(frame, "x"), num(frame, "y"));
+        let (fr, fb) = (fl + num(frame, "w"), ft + num(frame, "h"));
+        let name = frame.props.get("label").and_then(Scalar::as_str).unwrap_or("");
+        for (id, label, [l, t, r, b]) in &cards {
+            let overlaps = *l < fr && *r > fl && *t < fb && *b > ft;
+            let inside = *l >= fl && *r <= fr && *t >= ft && *b <= fb;
+            if !overlaps || inside {
+                continue;
+            }
+            let sides: Vec<String> = [
+                (fl - l, "left of its left edge"),
+                (r - fr, "right of its right edge"),
+                (ft - t, "above its top"),
+                (b - fb, "below its bottom"),
+            ]
+            .into_iter()
+            .filter(|(by, _)| *by >= 1.0)
+            .map(|(by, side)| format!("{}px {side}", by.round()))
+            .collect();
+            out.push(format!("card {label:?} [{id}] sticks out of frame {name:?}: {}", sides.join(", ")));
+        }
+    }
+    out
+}
 
 /// A record in a few words: its kind, its label or text, and its id.
 fn record_words(view: &samepage_capability::View, r: &samepage_capability::Record) -> String {

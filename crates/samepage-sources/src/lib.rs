@@ -414,10 +414,14 @@ pub fn project(view: &View, facts: &Facts) -> Result<Value, CapError> {
             _ => "?",
         };
         readback.push_str(&format!(
-            "[{}] {:?}: {chip}; {} source binding(s){}\n",
+            "[{}] {:?}: {chip}; {}{}\n",
             n.id,
             string(n, "label"),
-            bindings.len(),
+            match bindings.as_slice() {
+                [] => "no source".to_string(),
+                [one] => format!("source {}:{}", one.path, one.lines),
+                [first, rest @ ..] => format!("source {}:{} and {} more", first.path, first.lines, rest.len()),
+            },
             match gate {
                 Some(g) if tier == "gate-unmet" && !g.reason.is_empty() => format!(" ({})", g.reason),
                 _ => String::new(),
