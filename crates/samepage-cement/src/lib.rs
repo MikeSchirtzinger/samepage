@@ -337,6 +337,7 @@ pub fn draft(v: &View, id: &str) -> Result<Draft, CapError> {
     d.input.validate().map_err(err)?;
     d.id = id.into();
     d.created_by = string(r, "created_by").into();
+    d.created_at = string(r, "created_at").into();
     Ok(d)
 }
 pub fn reviewed(v: &View, id: &str, ids: &[String]) -> Result<Draft, CapError> {
@@ -491,6 +492,7 @@ impl Capability for Cement {
                     input,
                     context_ids: ctx.heads,
                     created_by: String::new(),
+                    created_at: String::new(),
                 };
                 ops.push(Op::Create {
                     reference: "draft".into(),

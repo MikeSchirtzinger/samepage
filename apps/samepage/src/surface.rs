@@ -1576,11 +1576,12 @@ fn cement_text(projection: &Value, history: &Value) -> String {
             .filter_map(Value::as_str)
             .collect();
         out.push_str(&format!(
-            "\n- draft [{}] {:?} for [{}] by {}",
+            "\n- draft [{}] {:?} for [{}] by {}{}",
             draft["id"].as_str().unwrap_or_default(),
             draft["input"]["title"].as_str().unwrap_or_default(),
             ids.join(", "),
-            draft["created_by"].as_str().filter(|s| !s.is_empty()).unwrap_or("someone")
+            draft["created_by"].as_str().filter(|s| !s.is_empty()).unwrap_or("someone"),
+            draft["created_at"].as_str().filter(|s| !s.is_empty()).map(|t| format!(" at {t}")).unwrap_or_default()
         ));
     }
     for covered in projection["coverage"].as_array().unwrap_or(&empty) {

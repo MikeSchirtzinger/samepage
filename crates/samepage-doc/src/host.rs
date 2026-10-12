@@ -1562,10 +1562,12 @@ fn stamp(
 ) -> Result<(), DocError> {
     let byline = Any::from(actor.byline());
     let participant = Any::from(actor.participant.as_str());
+    let created_at = Any::from(rfc3339_now());
     for id in &delta.created {
         let record = document::record(txn, objects, id)?;
         record.insert(txn, "created_by", byline.clone());
         record.insert(txn, "created_by_participant", participant.clone());
+        record.insert(txn, "created_at", created_at.clone());
     }
     for id in delta.created.iter().chain(delta.modified.keys()) {
         let record = document::record(txn, objects, id)?;
@@ -1573,6 +1575,46 @@ fn stamp(
         record.insert(txn, "touched_by_participant", participant.clone());
     }
     Ok(())
+}
+
+/// The host clock as RFC 3339 UTC to the second, for `created_at` stamps.
+fn rfc3339_now() -> String {
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    rfc3339(seconds)
+}
+
+/// Civil date from days since 1970-01-01 (proleptic Gregorian calendar).
+fn rfc3339(seconds: i64) -> String {
+    let days = seconds.div_euclid(86_400);
+    let rest = seconds.rem_euclid(86_400);
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z",
+        rest / 3_600,
+        rest % 3_600 / 60,
+        rest % 60
+    )
+}
+
+#[cfg(test)]
+mod time_tests {
+    #[test]
+    fn rfc3339_matches_known_instants() {
+        assert_eq!(super::rfc3339(0), "1970-01-01T00:00:00Z");
+        assert_eq!(super::rfc3339(951_782_400), "2000-02-29T00:00:00Z");
+        assert_eq!(super::rfc3339(1_791_782_904), "2026-10-12T05:28:24Z");
+    }
 }
 
 fn record(
