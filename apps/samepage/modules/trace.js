@@ -76,7 +76,18 @@ function actorText(actor) {
 }
 
 function installActivityDrawer(client, wasm, application) {
-  const labelOf = (id) => application?.view?.(["node", "shape", "edge"]).records.find((record) => record.id === id)?.props?.label || id;
+  // A target in words: a card, drawing or link by its label; a claim or question by the card it is about.
+  let cached = null, cachedAt = 0;
+  const records = () => { if (!cached || Date.now() - cachedAt > 1000) { cached = application?.view?.().records || []; cachedAt = Date.now(); } return cached; };
+  const labelOf = (id) => {
+    const all = records(), record = all.find((r) => r.id === id);
+    if (!record) return id;
+    if (record.props?.label) return record.props.label;
+    const card = (ref) => all.find((r) => r.id === ref)?.props?.label || "a card";
+    if (record.kind === "claim") return `claim on ${card(record.props.about)}`;
+    if (record.kind === "mark") return `question on ${card(record.props.target)}`;
+    return record.kind;
+  };
   const toggle = document.getElementById("activity-toggle");
   const drawer = el("section", "activity-drawer");
   drawer.id = "activity-drawer";
