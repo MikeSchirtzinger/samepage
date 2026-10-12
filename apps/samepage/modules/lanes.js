@@ -21,15 +21,14 @@ export function activate({wasm, application, mount}) {
       const description=el('p','Static source patterns, not observed running processes. Extraction may miss or misclassify code. A vanished source remains unresolved until reviewed.');
       const controls=el('div',undefined,'lanes-controls');
       const nodes=view.records.filter(r=>r.kind==='node');
-      if(!nodes.some(n=>n.id===selected))selected=nodes[0]?.id||'';
-      const picker=el('select');picker.id='lanes-card';picker.setAttribute('aria-label','Card to claim lane');
-      for(const n of nodes){const o=el('option',n.props.label||n.id);o.value=n.id;o.selected=n.id===selected;picker.append(o);}
-      picker.addEventListener('change',()=>{selected=picker.value;});
+      // The claim uses the card selected on the map, not a list of every node.
+      if(!nodes.some(n=>n.id===selected))selected='';
+      const picker=el('span',undefined,'lanes-selection');picker.id='lanes-card';picker.setAttribute('role','status');
       const groups=el('select');groups.id='lanes-group';groups.setAttribute('aria-label','Finding group');
       if(!projection.groups.some(g=>g.name===group))group=projection.groups[0]?.name||'';
       for(const g of projection.groups){const o=el('option',`${g.name} (${g.count})`);o.value=g.name;o.selected=g.name===group;groups.append(o);}
       groups.addEventListener('change',()=>{group=groups.value;page=0;void render({view:application.view()});});
-      controls.append(el('label','Claim with card: '),picker,el('label','Group: '),groups,button('Rescan',()=>render({view:application.view()})));
+      controls.append(picker,el('label','Group: '),groups,button('Rescan',()=>render({view:application.view()})));
       const all=projection.lanes.filter(l=>`${l.kind} · ${l.package||'project'}`===group);
       if(page>=all.length)page=0;
       const findings=el('div',undefined,'lane-findings');
@@ -42,21 +41,26 @@ export function activate({wasm, application, mount}) {
         item.addEventListener('toggle',async()=>{if(item.open){expanded.add(lane.lane_id);try{const r=await dispatch('source_read',{path:lane.evidence.path,lines:String(lane.evidence.line)});excerpt.textContent=r.sources.text;}catch(e){excerpt.textContent=`Source unavailable: ${e.message}`;}}else expanded.delete(lane.lane_id);});
         if(lane.removal)item.append(el('p',lane.removal.reason||`${lane.removal.chip}: ${lane.removal.obligation_id}`));
         if(!lane.removal || lane.evidence.sha256) {
-          const claim=button('Claim with selected card',async()=>{if(!selected)throw Error('Select a real Map card');await dispatch('lane_claim',{lane_id:lane.lane_id,node_id:selected,scan_sha256:lane.evidence.sha256});await render({view:application.view()});},'lane_claim');claim.className='lane-claim';item.append(claim);
+          const claim=button('Claim with the selected card',async()=>{if(!selected)throw Error('Select a card on the map first');await dispatch('lane_claim',{lane_id:lane.lane_id,node_id:selected,scan_sha256:lane.evidence.sha256});await render({view:application.view()});},'lane_claim');claim.className='lane-claim';item.append(claim);
         }
         findings.append(item);
       }
       const pagination=el('div',undefined,'lanes-controls');pagination.append(el('span',`${all.length? page+1:0}–${Math.min(page+20,all.length)} of ${all.length} in this group`));
       if(page>0)pagination.append(button('Previous findings',()=>{page=Math.max(0,page-20);return render({view:application.view()});}));
       if(page+20<all.length)pagination.append(button('More findings',()=>{page+=20;return render({view:application.view()});}));
-      strip.append(description,controls,findings,pagination);mount.replaceChildren(strip);
+      strip.append(description,controls,findings,pagination);mount.replaceChildren(strip);showSelection();
       application.resolved('lanes','read');
       const opener=document.querySelector('#lanes-open');if(opener){opener.textContent=`Found in source · ${projection.unresolved_count} unresolved`;opener.dataset.attention=String(projection.unresolved_count>0);}
     } catch(e){fail(e);} finally{busy=false;}
   }
   const open=()=>{opened=true;void render({view:application.view()});};
+  function showSelection(){const node=application.view().records.find(r=>r.kind==='node'&&r.id===selected);const label=node?.props.label||'';const hint=mount.querySelector('#lanes-card');if(hint)hint.textContent=label?`Claiming with ${label}`:'Select a card on the map, then claim a finding with it.';mount.querySelectorAll('.lane-claim').forEach(b=>{b.disabled=!label;b.textContent=label?`Claim with ${label}`:'Claim with the selected card';});}
+  const selectionChanged=event=>{selected=event.detail?.kind==='node'?event.detail.id:'';showSelection();};
+  selected=window.samepageSelection?.kind==='node'?window.samepageSelection.id:'';
+  document.addEventListener('map-selection-changed',selectionChanged);
   document.addEventListener('samepage:lanes-open',open);
   const unregister=application.registerRenderer('lanes',{render});
-  const timer=setInterval(()=>void render({view:application.view()}),5000);
-  return {dispose(){disposed=true;clearInterval(timer);unregister();document.removeEventListener('samepage:lanes-open',open);}};
+  // Rescan on a timer only while the findings are on screen.
+  const timer=setInterval(()=>{const drawer=document.getElementById('dock-drawer');if(drawer&&!drawer.hidden&&drawer.dataset.drawer==='lanes')void render({view:application.view()});},5000);
+  return {dispose(){disposed=true;clearInterval(timer);unregister();document.removeEventListener('samepage:lanes-open',open);document.removeEventListener('map-selection-changed',selectionChanged);}};
 }

@@ -7,6 +7,121 @@ export function activate({ mount, wasm, application }) {
   let disposed = false;
   let previousRevision = "";
 
+  // The map is one scroll owner: a camera (scale and translate) on the stage.
+  // Wheel pans, ctrl or cmd with the wheel zooms at the pointer, dragging the
+  // empty background or holding Space pans, Fit frames everything. Card
+  // geometry is always read in stage units, never through the camera.
+  let camera = {scale: 1, x: 0, y: 0};
+  let fitted = false, spaceHeld = false, selectedId = null;
+  const zoomLabel = document.getElementById("zoom-level");
+  const clampScale = (value) => Math.min(2.5, Math.max(0.2, value));
+  const typing = (target) => Boolean(target?.closest?.("input, textarea, select, [contenteditable=''], [contenteditable='true']"));
+  function applyCamera() {
+    const stage = mount.querySelector(".map-stage");
+    if (stage) stage.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
+    mount.dataset.scale = String(camera.scale);
+    if (zoomLabel) zoomLabel.textContent = `${Math.round(camera.scale * 100)}%`;
+  }
+  function zoomAt(factor, cx = mount.clientWidth / 2, cy = mount.clientHeight / 2) {
+    const scale = clampScale(camera.scale * factor);
+    const k = scale / camera.scale;
+    camera = {scale, x: cx - (cx - camera.x) * k, y: cy - (cy - camera.y) * k};
+    applyCamera();
+  }
+  function contentBox() {
+    const stage = mount.querySelector(".map-stage");
+    if (!stage) return null;
+    let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
+    const take = (x1, y1, x2, y2) => { l = Math.min(l, x1); t = Math.min(t, y1); r = Math.max(r, x2); b = Math.max(b, y2); };
+    for (const card of stage.querySelectorAll(".map-card")) take(card.offsetLeft, card.offsetTop, card.offsetLeft + card.offsetWidth, card.offsetTop + card.offsetHeight);
+    const drawn = stage.querySelector(".sketch-layer > g");
+    if (drawn?.childNodes.length) {
+      const box = drawn.getBBox();
+      const ox = Number(stage.dataset.originX), oy = Number(stage.dataset.originY);
+      if (box.width || box.height) take(box.x + ox, box.y + oy - 28, box.x + ox + box.width, box.y + oy + box.height);
+    }
+    return Number.isFinite(l) ? {l, t, r, b} : null;
+  }
+  function fit() {
+    const box = contentBox();
+    if (!box || !mount.clientWidth) return false;
+    const pad = 32, width = mount.clientWidth, height = mount.clientHeight;
+    const w = Math.max(1, box.r - box.l), h = Math.max(1, box.b - box.t);
+    const scale = clampScale(Math.min(1, (width - 2 * pad) / w, (height - 2 * pad - 40) / h));
+    camera = {scale, x: (width - w * scale) / 2 - box.l * scale, y: Math.max(pad, (height - 40 - h * scale) / 2) - box.t * scale};
+    applyCamera();
+    return true;
+  }
+  // Bring one card into view without changing the zoom.
+  function reveal(id) {
+    const card = [...mount.querySelectorAll(".map-card")].find(node => node.dataset.id === id);
+    if (!card) return false;
+    const cx = (card.offsetLeft + card.offsetWidth / 2) * camera.scale + camera.x;
+    const cy = (card.offsetTop + card.offsetHeight / 2) * camera.scale + camera.y;
+    if (cx < 40 || cy < 40 || cx > mount.clientWidth - 40 || cy > mount.clientHeight - 40) {
+      camera = {...camera, x: camera.x + mount.clientWidth / 2 - cx, y: camera.y + mount.clientHeight / 2 - cy};
+      applyCamera();
+    }
+    return true;
+  }
+  function select(id) {
+    selectedId = id;
+    mount.querySelectorAll(".map-card").forEach(node => node.classList.toggle("map-selected", node.dataset.id === id));
+    const card = id ? [...mount.querySelectorAll(".map-card")].find(node => node.dataset.id === id) : null;
+    const label = card?.querySelector("h2")?.textContent || "";
+    const detail = id ? {id, label, count: 1, summary: label, kind: "node"} : null;
+    window.samepageSelection = detail;
+    document.dispatchEvent(new CustomEvent("map-selection-changed", {detail}));
+  }
+  const onWheel = (event) => {
+    if (event.target.closest?.(".map-constraints, .diagram-legend, .sketch-editor")) return;
+    event.preventDefault();
+    const box = mount.getBoundingClientRect();
+    if (event.ctrlKey || event.metaKey) zoomAt(Math.exp(-event.deltaY * 0.0025), event.clientX - box.left, event.clientY - box.top);
+    else { camera = {...camera, x: camera.x - event.deltaX, y: camera.y - event.deltaY}; applyCamera(); }
+  };
+  const onPanStart = (event) => {
+    const background = !event.target.closest?.(".map-card, .sketch-shape, .sketch-editor, .sketch-grip, button, input, textarea, select, a, .map-constraints, .diagram-legend, .map-link-hit");
+    const tool = mount.dataset.sketchTool || "select";
+    if (!(event.button === 1 || (event.button === 0 && spaceHeld) || (event.button === 0 && background && tool === "select"))) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    const start = {x: event.clientX, y: event.clientY, cx: camera.x, cy: camera.y};
+    let moved = false;
+    mount.dataset.panning = "true";
+    const move = (e) => {
+      if (Math.abs(e.clientX - start.x) + Math.abs(e.clientY - start.y) > 3) moved = true;
+      camera = {...camera, x: start.cx + e.clientX - start.x, y: start.cy + e.clientY - start.y}; applyCamera();
+    };
+    const stop = () => {
+      document.removeEventListener("pointermove", move, true); document.removeEventListener("pointerup", stop, true); document.removeEventListener("pointercancel", stop, true);
+      delete mount.dataset.panning;
+      if (!moved && background && event.button === 0 && !spaceHeld) select(null);
+    };
+    document.addEventListener("pointermove", move, true); document.addEventListener("pointerup", stop, true); document.addEventListener("pointercancel", stop, true);
+  };
+  const onKey = (event) => {
+    if (event.code === "Space" && !typing(event.target)) {
+      if (event.type === "keydown") { spaceHeld = true; mount.dataset.space = "true"; event.preventDefault(); }
+      else { spaceHeld = false; delete mount.dataset.space; }
+      return;
+    }
+    if (event.type !== "keydown" || event.metaKey || event.ctrlKey || event.altKey || typing(event.target)) return;
+    if (event.key === "f" || event.key === "F") { fit(); event.preventDefault(); }
+    else if (event.key === "+" || event.key === "=") { zoomAt(1.2); event.preventDefault(); }
+    else if (event.key === "-" || event.key === "_") { zoomAt(1 / 1.2); event.preventDefault(); }
+    else if (event.key === "0") { zoomAt(1 / camera.scale); event.preventDefault(); }
+    else if (event.key === "Escape") { select(null); document.dispatchEvent(new CustomEvent("samepage:sketch-tool", {detail: {tool: "select"}})); }
+  };
+  const onFocus = (event) => { if (event.detail?.id) reveal(event.detail.id); };
+  mount.addEventListener("wheel", onWheel, {passive: false});
+  mount.addEventListener("pointerdown", onPanStart, true);
+  document.addEventListener("keydown", onKey);
+  document.addEventListener("keyup", onKey);
+  document.addEventListener("samepage:map-focus", onFocus);
+  const controls = [["zoom-in", () => zoomAt(1.2)], ["zoom-out", () => zoomAt(1 / 1.2)], ["zoom-fit", () => fit()]];
+  for (const [id, action] of controls) document.getElementById(id)?.addEventListener("click", action);
+  globalThis.samepageMapCamera = () => ({...camera});
+
   // Interface §7: height = max(h_pref, h_min, measurement or estimate). The
   // projection already supplies the server's own max(h_pref, h_min, estimate)
   // as `card.height`. A browser may know better than that text-based
@@ -84,6 +199,7 @@ export function activate({ mount, wasm, application }) {
     const height = Math.max(mount.clientHeight, ...cards.map((card) => originY + Number(card.y || 0) + heightOf(card) + 42));
     const stage = document.createElement("div");
     stage.className = "map-stage";
+    stage.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
     stage.dataset.originX = String(originX);
     stage.dataset.originY = String(originY);
     stage.style.width = `${width}px`;
@@ -170,23 +286,25 @@ export function activate({ mount, wasm, application }) {
         });
         node.appendChild(question);
       }
+      node.classList.toggle("map-selected", card.id === selectedId);
       node.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0 || !application.ready()) return;
+        if (event.button !== 0 || !application.ready() || spaceHeld) return;
         event.preventDefault();
         const startX = event.clientX;
         const startY = event.clientY;
+        const scale = camera.scale;
         node.setPointerCapture(event.pointerId);
         const moving = (move) => {
-          node.style.transform = `translate(${move.clientX - startX}px, ${move.clientY - startY}px)`;
+          node.style.transform = `translate(${(move.clientX - startX) / scale}px, ${(move.clientY - startY) / scale}px)`;
         };
         const finish = async (up) => {
           node.removeEventListener("pointermove", moving);
           node.removeEventListener("pointerup", finish);
           node.removeEventListener("pointercancel", cancel);
           node.style.transform = "";
-          const dx = up.clientX - startX;
-          const dy = up.clientY - startY;
-          if (Math.abs(dx) + Math.abs(dy) < 3) return;
+          const dx = (up.clientX - startX) / scale;
+          const dy = (up.clientY - startY) / scale;
+          if (Math.abs(dx) + Math.abs(dy) < 3) { select(card.id); return; }
           try {
             const planned = await application.plan("map", "card_move", {
               id: card.id, x: Number(card.x || 0) + dx, y: Number(card.y || 0) + dy,
@@ -218,6 +336,10 @@ export function activate({ mount, wasm, application }) {
     }
     const panel = renderConstraints(constraints, byId, projection.constraint_state);
     mount.replaceChildren(stage, ...(panel ? [panel] : []));
+    mount.dataset.scale = String(camera.scale);
+    if (selectedId && !byId.has(selectedId)) select(null);
+    // Frame everything once, after the other capabilities have drawn.
+    if (!fitted && cards.length) setTimeout(() => { if (!fitted && fit()) fitted = true; }, 350);
     const hasDiagram = links.some(link => link.transition) || cards.some(card => (card.other_keys || []).some(key => ['diagram_kind','state_initial','state_terminal'].includes(key)));
     const diagramState = application.status?.().capabilities?.find(capability => capability.id === 'diagrams');
     if (hasDiagram && diagramState?.status !== 'ready') {
@@ -281,5 +403,9 @@ export function activate({ mount, wasm, application }) {
   }
 
   const unregister = application.registerRenderer("map", { render });
-  return { get revision() { return previousRevision; }, dispose() { disposed = true; unregister(); } };
+  return { get revision() { return previousRevision; }, dispose() {
+    disposed = true; unregister();
+    mount.removeEventListener("wheel", onWheel); mount.removeEventListener("pointerdown", onPanStart, true);
+    document.removeEventListener("keydown", onKey); document.removeEventListener("keyup", onKey); document.removeEventListener("samepage:map-focus", onFocus);
+  } };
 }

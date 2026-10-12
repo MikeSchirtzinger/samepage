@@ -50,7 +50,7 @@ export function activate({wasm, application, mount}) {
         if(!reduced)animation=overlay.animate([{strokeDashoffset:String(dash)},{strokeDashoffset:String(-length)}],{duration:2400,iterations:f.state.status==='completed'?1:Infinity,easing:'linear',fill:'forwards'});
       } else {
         node.classList.add('explain-target-active');if(a.kind==='reveal')node.classList.add('explain-target-reveal');
-        if(!previous&&a.kind==='reveal')node.scrollIntoView({behavior:reduced?'instant':'smooth',block:'nearest',inline:'nearest'});
+        if(!previous&&a.kind==='reveal')document.dispatchEvent(new CustomEvent('samepage:map-focus',{detail:{id:a.target_id}}));
         if(!reduced)animation=node.animate([{filter:'brightness(1)'},{filter:'brightness(1.65)'},{filter:'brightness(1)'}],{duration:900,fill:'forwards'});
       }
       if(animation&&savedTime!==undefined&&savedTime!==null)animation.currentTime=savedTime;
@@ -71,7 +71,7 @@ export function activate({wasm, application, mount}) {
     const steps=el('ol',undefined,'explain-steps');for(const b of f.definition.beats){const li=el('li',b.title);li.dataset.beat=b.id;if(b.id===f.state.current_beat){li.classList.add('explain-current');li.setAttribute('aria-current','step');}steps.append(li);}fragment.append(steps);
     fragment.append(el('h3',beat.title),el('p',beat.cue,'explain-cue'));
     const unsupported=projection.unsupported.filter(a=>a.flow_id===f.definition.id);for(const a of unsupported){const warning=el('p',`Unsupported visual action: ${a.kind} (step ${a.beat_id}). Other actions and transitions remain available.`,'explain-unsupported');warning.setAttribute('role','status');fragment.append(warning);}
-    const evidence=el('ul',undefined,'explain-evidence');for(const e of beat.evidence){const li=el('li');li.append(button(e.detail,()=>{const n=target(e.target_id);if(!n)throw Error(`explain evidence target ${e.target_id} is unavailable`);n.scrollIntoView({behavior:'smooth',block:'nearest'});selectedIds=[e.target_id];panelSignature='';void render({view:application.view()}).catch(failure);}));evidence.append(li);}fragment.append(evidence);
+    const evidence=el('ul',undefined,'explain-evidence');for(const e of beat.evidence){const li=el('li');li.append(button(e.detail,()=>{const n=target(e.target_id);if(!n)throw Error(`explain evidence target ${e.target_id} is unavailable`);document.dispatchEvent(new CustomEvent('samepage:map-focus',{detail:{id:e.target_id}}));selectedIds=[e.target_id];panelSignature='';void render({view:application.view()}).catch(failure);}));evidence.append(li);}fragment.append(evidence);
     const controls=el('div',undefined,'explain-controls');for(const command of ['pause','resume','restart','stop']) {
       if(command==='pause'&&f.state.status!=='active'||command==='resume'&&f.state.status!=='paused'||command==='stop'&&!['active','paused'].includes(f.state.status))continue;
       controls.append(button(command[0].toUpperCase()+command.slice(1),()=>dispatch('walkthrough_control',{flow_id:f.definition.id,expected_revision:f.state.revision,command})));

@@ -65,7 +65,7 @@ export function activate({wasm, application}) {
   function focus(id) {
     dialog.close();
     const card = [...document.querySelectorAll(".map-card")].find(n => n.dataset.id === id);
-    card?.scrollIntoView({block:"center", inline:"center"});
+    if (card) document.dispatchEvent(new CustomEvent("samepage:map-focus", {detail: {id}}));
   }
   function render() {
     const report = read(); signature = JSON.stringify(report);

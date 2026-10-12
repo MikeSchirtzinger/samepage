@@ -20,7 +20,8 @@ export function activate({wasm, application, mount}) {
   // One line for the person; the full read-back stays available to agents.
   const showResult=result=>{const strings=result?.readback||[];const lines=strings.map(raw=>{let value;try{value=JSON.parse(raw);}catch{return String(raw).split('\n')[0];}const parts=[];if(value.drawn!==undefined)parts.push(value.drawn===1&&value.form?`Drew a ${value.form}.`:`Drew ${plural(value.drawn,'drawing')}.`);if(value.imported!==undefined)parts.push(`Imported ${plural(value.imported,'drawing')}; reconnected ${plural(value.bound_connectors,'connector')}.`);if(value.skipped?.length)parts.push(`Skipped ${value.skipped.length}.`);return parts.join(' ')||String(value.reading||'').split('\n')[0];}).filter(Boolean);application.toast?.(lines[0]||'Drawing saved.');};
   const write=async patches=>{const scope=map.dataset.explorationId;const batch=scope?await application.plan('explain','walkthrough_draw',{flow_id:scope,shapes:patches}):await application.plan('sketch','sketch',{shapes:patches});const result=application.applyBatch(batch);application.resolved('sketch','draw');const forms={rect:'a rectangle',ellipse:'an ellipse',diamond:'a diamond',arrow:'an arrow',line:'a line',ink:'a pen stroke',text:'text',frame:'a frame'};const p=patches.length===1?patches[0]:null;application.toast?.(p?.form?`Drew ${forms[p.form]||'a drawing'}.`:p?.label!==undefined&&p.x===undefined?'Labelled the drawing.':p?.w!==undefined?'Resized the drawing.':p?.x!==undefined?'Moved the drawing.':`Changed ${patches.length} drawings.`);return result;};
-  const world=event=>{const stage=map.querySelector('.map-stage');const b=stage.getBoundingClientRect();return {x:event.clientX-b.left-Number(stage.dataset.originX),y:event.clientY-b.top-Number(stage.dataset.originY)};};
+  // Pointer positions are divided by the map camera's zoom to reach world units.
+  const world=event=>{const stage=map.querySelector('.map-stage');const b=stage.getBoundingClientRect();const k=Number(map.dataset.scale)||1;return {x:(event.clientX-b.left)/k-Number(stage.dataset.originX),y:(event.clientY-b.top)/k-Number(stage.dataset.originY)};};
   const target=event=>{const hit=document.elementFromPoint(event.clientX,event.clientY);const card=hit?.closest('.map-card');if(card)return card.dataset.id;const id=hit?.closest('.sketch-shape')?.dataset.id;const s=latest?.shapes.find(s=>s.shape.id===id)?.shape;return s&&['rect','ellipse','diamond','text','frame'].includes(s.form)?id:null;};
   mount.dataset.selection='none';
   const label=el('input');label.id='sketch-label';label.placeholder='Label this drawing';label.maxLength=140;label.setAttribute('aria-label','Drawing label');mount.append(label);
@@ -54,8 +55,8 @@ export function activate({wasm, application, mount}) {
     if(disposed)return;const stage=map.querySelector('.map-stage');if(!stage)return;
     for(const card of stage.querySelectorAll('.map-card')){const active=card.dataset.id===handedOff;card.classList.toggle('sketch-lifted-card',active);card.setAttribute('aria-selected',String(active));}
     if(reviewHandoff&&view.records.some(r=>r.kind==='node'&&r.id===handedOff)){reviewHandoff=false;requestAnimationFrame(()=>document.dispatchEvent(new CustomEvent('samepage:review-open',{detail:{id:handedOff}})));}
-    const stageBox=stage.getBoundingClientRect(),ox=Number(stage.dataset.originX),oy=Number(stage.dataset.originY);
-    const bounds=Object.fromEntries([...stage.querySelectorAll('.map-card')].map(n=>{const b=n.getBoundingClientRect();return[n.dataset.id,[b.left-stageBox.left-ox,b.top-stageBox.top-oy,b.right-stageBox.left-ox,b.bottom-stageBox.top-oy]];}));
+    const ox=Number(stage.dataset.originX),oy=Number(stage.dataset.originY);
+    const bounds=Object.fromEntries([...stage.querySelectorAll('.map-card')].map(n=>[n.dataset.id,[n.offsetLeft-ox,n.offsetTop-oy,n.offsetLeft-ox+n.offsetWidth,n.offsetTop-oy+n.offsetHeight]]));
     latest=decode(wasm.project_with_bounds(JSON.stringify(view),JSON.stringify(bounds)));
     stage.querySelector('.sketch-layer')?.remove();
     const shapes=latest.shapes;const width=Math.max(stage.clientWidth,...shapes.map(({shape:s})=>ox+s.x+Math.max(s.w,...s.points.map(p=>p[0]),0)+42));const height=Math.max(stage.clientHeight,...shapes.map(({shape:s})=>oy+s.y+Math.max(s.h,...s.points.map(p=>p[1]),0)+42));stage.style.width=`${width}px`;stage.style.height=`${height}px`;
@@ -77,7 +78,11 @@ export function activate({wasm, application, mount}) {
     const markRecords=view.records.filter(r=>r.kind==='mark');for(const item of shapes){const marks=markRecords.filter(r=>r.props.target===item.shape.id);if(marks.length){const text=svg('text',{x:item.shape.x+item.shape.w-16,y:item.shape.y+20,class:'sketch-mark-glyphs','data-target':item.shape.id});text.textContent=marks.map(m=>m.props.glyph).join(' ');worldLayer.append(text);}}
   }
   const toolEvent=event=>setTool(event.detail.tool);document.addEventListener('samepage:sketch-tool',toolEvent);map.addEventListener('pointerdown',gesture,true);
+  // A card selection or a click on the empty map ends the drawing selection.
+  const cardSelected=()=>{if(selected){selected=null;void render({view:application.view()}).catch(failure);}};document.addEventListener('map-selection-changed',cardSelected);
+  // Delete or Backspace removes the selected drawing; Escape lets it go.
+  const keys=event=>{if(event.target.closest?.('input,textarea,select,[contenteditable]')||event.metaKey||event.ctrlKey||event.altKey)return;if(event.key==='Escape'&&selected){selected=null;void render({view:application.view()}).catch(failure);return;}if((event.key==='Delete'||event.key==='Backspace')&&selected){event.preventDefault();const id=selected;selected=null;Promise.resolve().then(async()=>{const batch=await application.plan('sketch','shape_remove',{id});application.applyBatch(batch);application.resolved('sketch','remove');application.toast?.('Removed the drawing.');}).catch(e=>failure(e,'remove'));}};document.addEventListener('keydown',keys);
   const unregister=application.registerRenderer('sketch',{render});
   setTool('select');
-  return{dispose(){disposed=true;unregister();document.removeEventListener('samepage:sketch-tool',toolEvent);map.removeEventListener('pointerdown',gesture,true);}};
+  return{dispose(){disposed=true;unregister();document.removeEventListener('samepage:sketch-tool',toolEvent);document.removeEventListener('map-selection-changed',cardSelected);document.removeEventListener('keydown',keys);map.removeEventListener('pointerdown',gesture,true);}};
 }

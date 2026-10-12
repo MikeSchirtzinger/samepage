@@ -119,12 +119,10 @@ function createKernel({ documentModule, manifest }) {
     if (sync !== 'ready' || rendering || observing || renderedRevision !== replica.revision()) return;
     const stage = document.querySelector('.map-stage');
     if (!stage) return;
-    const stageBox = stage.getBoundingClientRect();
+    // Stage units, so the map camera's zoom never reaches the host.
     const x = Number(stage.dataset.originX), y = Number(stage.dataset.originY);
-    const bounds = Object.fromEntries([...stage.querySelectorAll('.map-card')].map(card => {
-      const box = card.getBoundingClientRect();
-      return [card.dataset.id, [box.left-stageBox.left-x, box.top-stageBox.top-y, box.right-stageBox.left-x, box.bottom-stageBox.top-y]];
-    }));
+    const bounds = Object.fromEntries([...stage.querySelectorAll('.map-card')].map(card =>
+      [card.dataset.id, [card.offsetLeft-x, card.offsetTop-y, card.offsetLeft-x+card.offsetWidth, card.offsetTop-y+card.offsetHeight]]));
     const unavailable = (runtime?.errors || []).filter(entry => entry.id !== "trace").map(entry => ({code:'capability_unavailable', message:`${entry.id}: ${entry.error?.message || entry.status}`}));
     const report = {stream:observationStream, revision:renderedRevision, bounds, errors:[...renderErrors, ...unavailable].slice(-32)};
     const signature = JSON.stringify(report);

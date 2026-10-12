@@ -51,11 +51,8 @@ export function activate({wasm, application}) {
       if (roles.textContent) node.prepend(roles);
     }
     const x = Number(stage.dataset.originX), y = Number(stage.dataset.originY);
-    const stageBox = stage.getBoundingClientRect();
-    const bounds = Object.fromEntries([...byId].map(([id,node]) => {
-      const box = node.getBoundingClientRect();
-      return [id,[box.left-stageBox.left-x, box.top-stageBox.top-y, box.right-stageBox.left-x, box.bottom-stageBox.top-y]];
-    }));
+    // Stage units: the map camera's zoom never changes what is routed.
+    const bounds = Object.fromEntries([...byId].map(([id,node]) => [id,[node.offsetLeft-x, node.offsetTop-y, node.offsetLeft-x+node.offsetWidth, node.offsetTop-y+node.offsetHeight]]));
     const routed = JSON.parse(wasm.project_with_bounds(JSON.stringify(view), JSON.stringify(bounds)));
     if (routed.abi !== 'samepage.capability.v2' || routed.error || !routed.ok) throw new Error(routed.error?.message || 'Diagrams could not route measured card bounds');
     projection = routed.ok;
