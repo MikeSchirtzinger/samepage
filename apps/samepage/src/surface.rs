@@ -882,6 +882,11 @@ impl SamePageState {
             let view = self.host.view();
             readback = vec![samepage_map::describe_measured(&view, &self.validation.measured(&view))];
         }
+        if matches!(invoked.action.as_str(), "lanes_read" | "sources_read" | "source_read" | "source_list") {
+            // These capabilities read through the host; their own plan only
+            // says so. The host's read, added below, is the answer.
+            readback.clear();
+        }
         let architecture = if invoked.action == "architecture_read" {
             Some(samepage_architecture::inspect(&self.host.view()).map_err(|e| e.to_string())?)
         } else {
@@ -903,7 +908,18 @@ impl SamePageState {
                 }
             }
         }
-        if let Some(text) = lane_result
+        if invoked.action == "lane_claim" {
+            if let Some(result) = &lane_result {
+                let card = args["node_id"].as_str().or(args["card_id"].as_str()).unwrap_or_default();
+                let lanes = result["projection"]["lanes"].as_array().map(Vec::as_slice).unwrap_or(&[]);
+                let vouched = lanes.iter().filter(|l| l["matched_node_id"] == card).count();
+                let label = self.host.view().get(card).and_then(|r| samepage_map::prop_str(r, "label").map(str::to_string)).unwrap_or_default();
+                readback.push(format!(
+                    "{label:?} now vouches for {vouched} lane(s); {} lane(s) remain unresolved.",
+                    result["projection"]["unresolved_count"].as_u64().unwrap_or(0)
+                ));
+            }
+        } else if let Some(text) = lane_result
             .as_ref()
             .and_then(|r| r["projection"]["readback"].as_str())
         {
@@ -931,7 +947,7 @@ impl SamePageState {
             "readback": readback,
             "review": report,
             "sources": if source_action { source_result } else { None },
-            "lanes": lane_result,
+            "lanes": if invoked.action == "lane_claim" { None } else { lane_result },
             "cement": cement_result,
             "validation": validation,
             "ids": invoked.ids,
