@@ -1275,6 +1275,155 @@ fn frame_crossings(view: &samepage_capability::View, measured: &BTreeMap<String,
     out
 }
 
+/// The argument schemas page_draw reuses, taken from the selected
+/// capabilities' own declarations so the two never drift.
+fn declarations_schema(with_diagrams: bool, with_review: bool, with_sketch: bool) -> BTreeMap<&'static str, Value> {
+    let find = |actions: Vec<samepage_capability::ActionDecl>, name: &str| {
+        actions.into_iter().find(|a| a.name == name).map(|a| a.input_schema).unwrap_or(Value::Null)
+    };
+    let mut out = BTreeMap::new();
+    let mut card = find(samepage_map::descriptor().actions, "card_place");
+    card["properties"]["ref"] = json!({"type":"string","description":"Your name for this card; later steps use it in from, to and about."});
+    out.insert("card", card);
+    out.insert("link", find(samepage_map::descriptor().actions, "card_link"));
+    if with_sketch {
+        out.insert("shape", samepage_sketch::shape_schema());
+    }
+    if with_diagrams {
+        out.insert("diagram", find(samepage_diagrams::descriptor().actions, "diagram_draw"));
+    }
+    if with_review {
+        out.insert("claim", find(samepage_review::descriptor().actions, "claim_add"));
+    }
+    out
+}
+
+/// One call that draws a whole picture: shapes, then cards, then links, then
+/// a diagram, then claims, in that order. Names given as `ref` on shapes and
+/// cards, and node ids in the diagram, may be used by any later step in
+/// from, to, about, parent and frame. Each step is an ordinary action; the
+/// call stops at the first refusal and says what landed before it.
+fn page_draw_action(state: Arc<SamePageState>, schemas: &BTreeMap<&'static str, Value>) -> ActionDef {
+    let list = |key: &str| json!({"type":"array","items":schemas.get(key).cloned().unwrap_or(json!({"type":"object"}))});
+    let mut properties = serde_json::Map::new();
+    if schemas.contains_key("shape") {
+        properties.insert("shapes".into(), list("shape"));
+    }
+    properties.insert("cards".into(), list("card"));
+    properties.insert("nodes".into(), json!({"type":"array","items":schemas.get("card").cloned().unwrap_or(json!({"type":"object"})),"description":"The same as cards, under the atlas's name; placed after cards."}));
+    properties.insert("links".into(), list("link"));
+    if let Some(diagram) = schemas.get("diagram") {
+        properties.insert("diagram".into(), diagram.clone());
+    }
+    if schemas.contains_key("claim") {
+        properties.insert("claims".into(), list("claim"));
+    }
+    let schema = json!({"type":"object","properties":properties,"additionalProperties":false});
+    ActionDef::new(
+        "page_draw",
+        "Draw a whole picture in one call: shapes (as in sketch), then cards (as in card_place, each with an optional ref), then links (as in card_link), then a diagram (as in diagram_draw), then claims (as in claim_add). A ref on a shape or card, or a node id in the diagram, can be used by any later step in from, to, about, parent or frame. Steps run in that order as ordinary actions; the call stops at the first refusal and says which steps landed, so do not repeat those. The reply maps every ref to its id.",
+        schema,
+        move |args| {
+            let args = args.clone();
+            let state = state.clone();
+            SurfaceEffect::Mutate(Box::new(move |_| {
+                let actor = current_actor().ok_or("authenticated action actor is missing")?;
+                state.page_draw(&actor, &args).map(Some)
+            }))
+        },
+    )
+    .agent_only()
+    .alias("atlas_draw")
+}
+
+impl SamePageState {
+    fn page_draw(&self, actor: &SurfaceActor, args: &Value) -> Result<String, String> {
+        let mut names: BTreeMap<String, String> = BTreeMap::new();
+        let mut landed: Vec<String> = Vec::new();
+        let resolve = |value: &mut Value, names: &BTreeMap<String, String>, keys: &[&str]| {
+            for key in keys {
+                if let Some(id) = value[*key].as_str().and_then(|name| names.get(name)).cloned() {
+                    value[*key] = json!(id);
+                }
+            }
+        };
+        let run = |step: String, action: &str, mut call: Value, names: &BTreeMap<String, String>, landed: &mut Vec<String>| -> Result<Value, String> {
+            if let Some(object) = call.as_object_mut() {
+                object.remove("ref");
+            }
+            let reply = match self.invoke_as(actor, action, call) {
+                Ok(raw) => serde_json::from_str::<Value>(&raw).map_err(|e| e.to_string())?,
+                Err(raw) => match serde_json::from_str::<Value>(&raw) {
+                    // Applied with a page problem it caused: it landed.
+                    Ok(reply) if reply["operation_applied"] == true => reply,
+                    _ => {
+                        return Err(json!({"code":"PAGE_DRAW_STOPPED","refused_step":step,"error":raw,
+                            "landed":landed,"ids":names,
+                            "next":"The listed steps landed and are on the page. Fix the refused step and send only it and the steps after it."}).to_string())
+                    }
+                },
+            };
+            landed.push(step);
+            Ok(reply)
+        };
+        let mut readback = Vec::new();
+        if let Some(shapes) = args["shapes"].as_array().filter(|s| !s.is_empty()) {
+            let mut shapes = shapes.clone();
+            for shape in &mut shapes {
+                resolve(shape, &names, &["from", "to", "frame"]);
+            }
+            let reply = run("shapes".into(), "sketch", json!({"shapes":shapes}), &names, &mut landed)?;
+            for (key, id) in reply["ids"].as_object().into_iter().flatten() {
+                names.insert(key.clone(), id.as_str().unwrap_or_default().to_string());
+            }
+            readback.push(format!("Drew {} shape(s).", reply["ids"].as_object().map_or(0, |o| o.len())));
+        }
+        let cards: Vec<Value> = ["cards", "nodes"].iter().flat_map(|k| args[*k].as_array().cloned().unwrap_or_default()).collect();
+        for (i, card) in cards.iter().enumerate() {
+            let mut card = card.clone();
+            let name = card["ref"].as_str().map(str::to_string);
+            resolve(&mut card, &names, &["parent", "id"]);
+            let reply = run(format!("cards[{i}]"), "card_place", card, &names, &mut landed)?;
+            if let (Some(name), Some(id)) = (name, reply["ids"]["card"].as_str()) {
+                names.insert(name, id.to_string());
+            }
+        }
+        if let Some(n) = Some(cards.len()).filter(|n| *n > 0) {
+            readback.push(format!("Placed {n} card(s)."));
+        }
+        for (i, link) in args["links"].as_array().into_iter().flatten().enumerate() {
+            let mut link = link.clone();
+            resolve(&mut link, &names, &["from", "to"]);
+            run(format!("links[{i}]"), "card_link", link, &names, &mut landed)?;
+        }
+        if let Some(n) = args["links"].as_array().map(Vec::len).filter(|n| *n > 0) {
+            readback.push(format!("Linked {n} pair(s)."));
+        }
+        if let Some(diagram) = args.get("diagram").filter(|d| d.is_object()) {
+            let reply = run("diagram".into(), "diagram_draw", diagram.clone(), &names, &mut landed)?;
+            for (key, id) in reply["ids"].as_object().into_iter().flatten() {
+                names.entry(key.clone()).or_insert_with(|| id.as_str().unwrap_or_default().to_string());
+            }
+            readback.push("Drew the diagram.".into());
+        }
+        for (i, claim) in args["claims"].as_array().into_iter().flatten().enumerate() {
+            let mut claim = claim.clone();
+            resolve(&mut claim, &names, &["about", "id"]);
+            run(format!("claims[{i}]"), "claim_add", claim, &names, &mut landed)?;
+        }
+        if let Some(n) = args["claims"].as_array().map(Vec::len).filter(|n| *n > 0) {
+            readback.push(format!("Stated {n} claim(s)."));
+        }
+        let view = self.host.view();
+        readback.push(samepage_map::describe_measured(&view, &self.validation.measured(&view)));
+        let validation = self.validation.report(&view)?;
+        let touched: Vec<&String> = names.values().collect();
+        serde_json::to_string(&json!({"action":"page_draw","ids":names,"touched":touched,"landed":landed,"readback":readback,
+            "validation":validation_text(&validation),"revision":self.host.revision()}))
+            .map_err(|e| e.to_string())
+    }
+}
+
 /// A record in a few words: its kind, its label or text, and its id.
 fn record_words(view: &samepage_capability::View, r: &samepage_capability::Record) -> String {
     let words = ["label", "text", "title", "glyph"]
@@ -1607,7 +1756,6 @@ impl SurfaceState for SamePageState {
     }
     fn retired_action(&self, name: &str) -> Option<String> {
         Some(match name {
-            "atlas_draw" => "place each card with card_place, then link them with card_link; diagram_draw lays out a hierarchy or state machine in one call",
             "atlas_session" => "call page_read first; it reads the whole page",
             "await_atlas" => "await_input waits for every kind of change",
             "atlas_point" => "people place marks; agents point at a card with semantic_target_point",
@@ -1841,6 +1989,7 @@ impl SamePageSurface {
                 }))
             }).alias("await_room");wait.audience=ActionAudience::Agent;tools.push(wait);
         }
+        tools.push(page_draw_action(state.clone(), &declarations_schema(with_diagrams, with_review, with_sketch)));
         let observe_state = state.clone();
         let mut observe = ActionDef::new(
             "page_observe",
