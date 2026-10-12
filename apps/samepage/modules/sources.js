@@ -103,34 +103,50 @@ export async function activate({wasm, application}) {
     application.openPanel?.('sources');
     if (bindings.length) await load(bindings[0]); else { notice.textContent = 'No source linked. Browse project files.'; select.hidden = true; browse.open = true; }
   }
-  async function render({view}) {
+  // Chips are drawn from the last facts on every map render, before anything
+  // waits, so a re-rendered card never shows without its trust chip. Fresh
+  // facts are read from the host on the interval only.
+  let facts = null;
+  function decorate(view) {
+    if (!facts) return;
+    latest = envelope(wasm.project_with_facts(JSON.stringify(view), JSON.stringify(facts)));
+    for (const card of document.querySelectorAll('.map-card')) {
+      card.querySelectorAll('.source-tier,.source-view-open,.source-gate-reason').forEach(n => n.remove());
+      const tier = latest.cards[card.dataset.id];
+      if (!tier) continue;
+      const chip = el('span', tierWords(tier), `source-tier source-tier-${tier.tier}`);
+      chip.title = `Source trust: ${tierWords(tier)}`;
+      card.dataset.sourceTier = tier.tier; card.append(chip);
+      if (tier.gate) card.append(el('p', tier.gate.reason, 'source-gate-reason'));
+      if (tier.bindings.length) {
+        const open = el('button', 'View source', 'source-view-open'); open.type = 'button';
+        open.addEventListener('pointerdown', e => e.stopPropagation());
+        open.addEventListener('click', () => openViewer(card.dataset.id).then(() => application.resolved('sources', 'view')).catch(e => fail(e, 'view'))); card.append(open);
+      }
+    }
+  }
+  async function refreshFacts() {
     if (disposed || busy || !application.ready()) return;
     busy = true;
     try {
-      const data = await dispatch('sources_read', {});
-      if (data.revision !== view.revision) return;
-      latest = envelope(wasm.project_with_facts(JSON.stringify(view), JSON.stringify(data.facts)));
-      for (const card of document.querySelectorAll('.map-card')) {
-        card.querySelectorAll('.source-tier,.source-view-open,.source-gate-reason').forEach(n => n.remove());
-        const tier = latest.cards[card.dataset.id];
-        if (!tier) continue;
-        const chip = el('span', tierWords(tier), `source-tier source-tier-${tier.tier}`);
-        chip.title = `Source trust: ${tierWords(tier)}`;
-        card.dataset.sourceTier = tier.tier; card.append(chip);
-        if (tier.gate) card.append(el('p', tier.gate.reason, 'source-gate-reason'));
-        if (tier.bindings.length) {
-          const open = el('button', 'View source', 'source-view-open'); open.type = 'button';
-          open.addEventListener('pointerdown', e => e.stopPropagation());
-          open.addEventListener('click', () => openViewer(card.dataset.id).then(() => application.resolved('sources', 'view')).catch(e => fail(e, 'view'))); card.append(open);
-        }
-      }
+      facts = (await dispatch('sources_read', {})).facts;
+      decorate(application.view());
       application.resolved('sources', 'read');
     } catch (e) { fail(e); } finally { busy = false; }
+  }
+  function render({view}) {
+    if (disposed) return;
+    try { decorate(view); } catch (e) { fail(e); }
+    if (!facts) void refreshFacts();
   }
   // Opening the tab by itself keeps a viewer that is already showing.
   const open = e => { if (!e.detail?.id && document.querySelector('#sources .source-viewer')) return; openViewer(e.detail?.id || '').catch(error => fail(error, 'view')); };
   document.addEventListener('samepage:sources-open', open);
   const unregister = application.registerRenderer('sources', {render});
-  const timer = setInterval(() => void render({view:application.view()}), 3000);
-  return {dispose() { disposed = true; clearInterval(timer); unregister(); document.removeEventListener('samepage:sources-open', open); }};
+  // Whatever order renderers run in, a new map stage gets its chips before the next paint.
+  const mapMount = document.getElementById('map');
+  const stageWatch = new MutationObserver(() => { if (!disposed) { try { decorate(application.view()); } catch (e) { fail(e); } } });
+  if (mapMount) stageWatch.observe(mapMount, {childList: true});
+  const timer = setInterval(() => void refreshFacts(), 3000);
+  return {dispose() { disposed = true; clearInterval(timer); stageWatch.disconnect(); unregister(); document.removeEventListener('samepage:sources-open', open); }};
 }
