@@ -319,6 +319,12 @@ pub trait SurfaceState: Send + Sync + 'static {
         Vec::new()
     }
 
+    /// For an action name this surface no longer offers, what to use
+    /// instead. Read when an agent calls a name it cannot see.
+    fn retired_action(&self, _name: &str) -> Option<String> {
+        None
+    }
+
     /// Runtime-installed host activity service. Application state returns
     /// `None`; the wrapper installed by [`App::serve`] supplies the feed.
     /// Unrecorded diagnostic spans, without retaining any trace state.

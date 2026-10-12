@@ -1355,6 +1355,17 @@ impl SurfaceState for SamePageState {
     fn activity_targets(&self, _action: &str, args: &Value, result: &str) -> Vec<String> {
         activity_targets(args, result)
     }
+    fn retired_action(&self, name: &str) -> Option<String> {
+        Some(match name {
+            "atlas_draw" => "place each card with card_place, then link them with card_link; diagram_draw lays out a hierarchy or state machine in one call",
+            "atlas_session" => "call page_read first; it reads the whole page",
+            "await_atlas" => "await_input waits for every kind of change",
+            "atlas_point" => "people place marks; agents point at a card with semantic_target_point",
+            "atlas_diff" => "page_read and review_read report what changed since your last read",
+            _ if name.starts_with("atlas_segment") => "segmentation is not part of SamePage",
+            _ => return None,
+        }.into())
+    }
     fn backing(&self) -> StateBacking {
         StateBacking::Crdt
     }

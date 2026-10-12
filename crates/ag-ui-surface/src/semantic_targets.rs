@@ -1086,6 +1086,10 @@ impl SurfaceState for HostedState {
         self.inner.state().activity_targets(action, args, result)
     }
 
+    fn retired_action(&self, name: &str) -> Option<String> {
+        self.inner.state().retired_action(name)
+    }
+
     fn activity_dropped(&self) -> u64 { self.inner.state().activity_dropped() }
 
     fn activity_feed(&self) -> Option<&crate::ActivityFeed> {
