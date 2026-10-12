@@ -13,6 +13,8 @@ export function activate({wasm,application,mount}) {
   const envelope=raw=>{const r=JSON.parse(raw);if(r.abi!=='samepage.capability.v2'||r.error)throw Error(r.error?.message||'Cement ABI mismatch');return r.ok;};
   const button=(text,id,fn)=>{const b=el('button',text);b.type='button';b.id=id;b.addEventListener('click',()=>{b.disabled=true;Promise.resolve().then(fn).then(()=>application.resolved('cement',id)).catch(e=>fail(e,id)).finally(()=>{if(b.isConnected)b.disabled=false;});});return b;};
   const node=(view,id)=>view.records.find(r=>r.kind==='node'&&r.id===id);
+  // When a draft was written, from the host's created_at; drafts from before it was recorded have none.
+  const written=d=>{const t=Date.parse(d.created_at||'');return Number.isFinite(t)?new Date(t).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}):'';};
   // Whether the page still matches what the draft was written against, asked
   // of the verified cement WASM itself. With empty native facts the bundle
   // stops at its first check, so only a stale draft reports the page change.
@@ -52,8 +54,8 @@ export function activate({wasm,application,mount}) {
     try {
       const projected=envelope(wasm.project(JSON.stringify(view)));
       const drafts=projected.drafts.map(d=>({d,ready:readiness(view,d)}));
-      // Current drafts first; drafts the page has moved past are hidden until asked for.
-      drafts.sort((a,b)=>Number(b.ready[2].ok)-Number(a.ready[2].ok)||b.d.id.localeCompare(a.d.id));
+      // Current drafts first, newest first by the host's created_at; drafts the page has moved past are hidden until asked for.
+      drafts.sort((a,b)=>Number(b.ready[2].ok)-Number(a.ready[2].ok)||String(b.d.created_at||'').localeCompare(String(a.d.created_at||''))||b.d.id.localeCompare(a.d.id));
       const visible=drafts.filter(x=>x.ready[2].ok||showStale);
       const next=JSON.stringify([projected.mode,drafts.map(x=>[x.d.id,x.ready]),selected,showStale,Boolean(preview),Boolean(history),lastReceipt?.g8_status]);
       if(!force&&next===signature)return;
@@ -67,9 +69,10 @@ export function activate({wasm,application,mount}) {
       else if(!visible.length)strip.append(el('p','Every draft was written before the page last changed. Ask the agent to redraft.','cement-empty'));
       if(visible.length){
         const picker=el('select');picker.id='cement-draft';picker.setAttribute('aria-label','Decision draft');
-        for(const {d,ready} of visible){const o=el('option',`${d.input.title}${ready[2].ok?'':' (out of date)'}`);o.value=d.id;o.selected=d.id===selected;picker.append(o);}
+        for(const {d,ready} of visible){const o=el('option',`${d.input.title}${written(d)?` · ${written(d)}`:''}${ready[2].ok?'':' (out of date)'}`);o.value=d.id;o.selected=d.id===selected;picker.append(o);}
         picker.addEventListener('change',()=>{selected=picker.value;preview=null;void refresh(true);});strip.append(picker);
         const chosen=visible.find(x=>x.d.id===selected);
+        strip.append(el('p',written(chosen.d)?`Written ${written(chosen.d)} by ${String(chosen.d.created_by||'someone').replace(/-\d+$/,'')}`:`Written by ${String(chosen.d.created_by||'someone').replace(/-\d+$/,'')}; time not recorded`,'cement-written'));
         const list=el('ul',undefined,'cement-checklist');list.setAttribute('aria-label','Ready to publish');
         for(const item of chosen.ready){
           const li=el('li');li.dataset.ok=String(item.ok);li.append(el('span',item.ok?'✓':'○','cement-check'),el('span',item.text));
