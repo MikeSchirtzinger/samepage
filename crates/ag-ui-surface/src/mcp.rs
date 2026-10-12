@@ -243,14 +243,18 @@ async fn handle_with_surface(
                         PROTOCOL_VERSION
                     };
                     *rt.mcp_protocol_version.lock() = Some(version.to_string());
-                    Ok(json!({
+                    let mut result = json!({
                         "protocolVersion": version,
                         "capabilities": { "tools": { "listChanged": false } },
                         "serverInfo": {
                             "name": "ag-ui-surface",
                             "version": env!("CARGO_PKG_VERSION")
                         }
-                    }))
+                    });
+                    if let Some(guide) = surface.state().agent_guide() {
+                        result["instructions"] = json!(guide);
+                    }
+                    Ok(result)
                 }
                 None => Err((
                     -32602,

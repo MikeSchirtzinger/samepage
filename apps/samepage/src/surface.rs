@@ -1118,6 +1118,17 @@ impl SamePageState {
     }
 }
 
+/// What an attaching agent needs before its first call. Sent in the MCP
+/// `initialize` result and written into the session advert.
+pub const AGENT_GUIDE: &str = "SamePage is a page a person and agents edit together about this project: cards that make claims about its code, links, drawings, diagrams, the person's question marks, and decisions.
+1. Start with page_read. It returns the whole page as text: cards and their ids, claims and their standing, the person's marks, source tiers, lanes, decisions and page problems.
+2. Wait with await_input. It returns when someone else changes the page, asks on the board, selects something or writes in chat, and its first line says what changed and who did it. Call it again to keep waiting.
+3. Answer a person's question mark with mark_answer (mark ids are under MARKS), and state what you know with claim_add so they can accept or reject it. Chat goes through chat_read and chat_reply.
+4. Bind a card to code with card_place and a path such as api/src/main.rs; add lines such as 1-40 for part of a file. The card's tier then tracks that code.
+5. Draw with sketch in one call: frames and boxes first, then text, then arrows that bind to refs or card ids.
+6. Only people agree to cards, accept claims and publish decisions. Agents propose: claim_add, decision_draft, decision_cement_propose, and map_cement on agreed cards.
+7. A write that causes a page problem is still applied; repair the ids it names instead of repeating the write.";
+
 /// Key a reply's ids by the names the caller gave: a sketch shape by its
 /// `ref`, a diagram node or container by its `id`, a diagram edge by
 /// "from->to". A sketch's read-back is re-read from the committed page so it
@@ -1416,6 +1427,9 @@ impl SurfaceState for SamePageState {
     }
     fn activity_targets(&self, _action: &str, args: &Value, result: &str) -> Vec<String> {
         activity_targets(args, result)
+    }
+    fn agent_guide(&self) -> Option<String> {
+        Some(AGENT_GUIDE.into())
     }
     fn retired_action(&self, name: &str) -> Option<String> {
         Some(match name {

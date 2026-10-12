@@ -325,6 +325,13 @@ pub trait SurfaceState: Send + Sync + 'static {
         None
     }
 
+    /// Standing guidance for an agent that attaches over MCP: what to call
+    /// first, how to wait and how to answer. Sent as `instructions` in the
+    /// MCP `initialize` result so every client receives it without a file.
+    fn agent_guide(&self) -> Option<String> {
+        None
+    }
+
     /// Runtime-installed host activity service. Application state returns
     /// `None`; the wrapper installed by [`App::serve`] supplies the feed.
     /// Unrecorded diagnostic spans, without retaining any trace state.
