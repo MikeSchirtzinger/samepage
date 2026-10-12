@@ -231,6 +231,39 @@ function createKernel({ documentModule, manifest }) {
     if (!module) throw new Error(`${id} capability is unavailable`);
     return module;
   };
+  // The native commit runs every capability's cascade for deleted records in
+  // the same batch. The browser replica does not, so the shell asks each
+  // loaded capability for its cascade before applying. Without it a deleted
+  // pane leaves its layout and annotation records behind and the host
+  // refuses the whole edit as an orphan.
+  const deletedIn = (entries) => entries.flatMap(entry => (entry.plan?.ops || [])
+    .filter(op => op.op === "delete" && typeof op.target?.id === "string").map(op => op.target.id));
+  const withCascades = (batch) => {
+    const base = JSON.stringify(view());
+    const announced = new Set();
+    const extra = [];
+    let deleted = [...new Set(deletedIn(batch.entries))];
+    for (let round = 0; round < 8 && deleted.length; round++) {
+      deleted.forEach(id => announced.add(id));
+      const next = [];
+      for (const [id, module] of modules) {
+        if (typeof module.cascade !== "function") continue;
+        const plan = envelope(module.cascade(JSON.stringify(deleted), base), `${id}.cascade`);
+        const ops = (plan.ops || []).filter(op => !(op.op === "delete" && announced.has(op.target?.id)));
+        if (!ops.length) continue;
+        extra.push({capability: id, plan: {...plan, ops}});
+        next.push(...deletedIn([{plan: {ops}}]));
+      }
+      deleted = [...new Set(next)].filter(id => !announced.has(id));
+    }
+    return extra.length ? {...batch, entries: [...batch.entries, ...extra]} : batch;
+  };
+  const commit = (batch) => {
+    requireReady();
+    const result = JSON.parse(replica.apply_batch(JSON.stringify(withCascades(batch))));
+    flush(); void activateForCurrentView(); scheduleRender(); notify();
+    return result;
+  };
   const api = Object.freeze({
     view, revision: () => replica.revision(), ready: () => sync === "ready", status: state,
     registerCapability(id, module) {
@@ -253,18 +286,8 @@ function createKernel({ documentModule, manifest }) {
       await runtime?.activate(id);
       return envelope(moduleFor(id).plan(JSON.stringify({ action, args }), JSON.stringify(selectedView)), `${id}.plan`);
     },
-    apply(id, plan) {
-      requireReady();
-      const result = JSON.parse(replica.apply(id, JSON.stringify(plan)));
-      flush(); void activateForCurrentView(); scheduleRender(); notify();
-      return result;
-    },
-    applyBatch(batch) {
-      requireReady();
-      const result = JSON.parse(replica.apply_batch(JSON.stringify(batch)));
-      flush(); void activateForCurrentView(); scheduleRender(); notify();
-      return result;
-    },
+    apply(id, plan) { return commit({base_revision: replica.revision(), entries: [{capability: id, plan}]}); },
+    applyBatch(batch) { return commit(batch); },
     hasCapability: (id) => descriptors.some(d => d.id === id),
     activate: (id) => runtime?.activate(id),
     activateForKind: (kind) => runtime?.activateForKind(kind),
