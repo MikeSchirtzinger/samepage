@@ -44,6 +44,41 @@ fn action(
     d.input_schema = json!({"type":"object","required":required,"properties":props,"additionalProperties":false});
     d
 }
+/// The typed contract of `walkthrough_define.flow`, matching
+/// [`ExplanationFlowDefinition`].
+pub fn flow_schema() -> Json {
+    let id = json!({"type":"string","pattern":"^[A-Za-z0-9._:-]{1,160}$"});
+    let ids = json!({"type":"array","maxItems":32,"items":{"type":"string","minLength":1}});
+    let label = json!({"type":"string","minLength":1,"maxLength":MAX_LABEL});
+    let text = json!({"type":"string","minLength":1,"maxLength":MAX_TEXT});
+    let evidence = json!({"type":"object","additionalProperties":false,"required":["target_id","detail"],
+        "properties":{"target_id":{"type":"string","description":"A card, link, drawing or constraint id."},"detail":text}});
+    let visual = json!({"type":"object","additionalProperties":false,"required":["kind","target_id"],
+        "properties":{"kind":{"enum":EXPLANATION_ACTION_KINDS},"target_id":{"type":"string"},
+            "cue_span":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"integer","minimum":0},"description":"Character range [start, end] in the beat cue."}}});
+    let transition = json!({"type":"object","additionalProperties":false,"required":["id","label"],
+        "properties":{"id":id,"label":label,
+            "control":{"enum":["button"],"description":"Set only when the label is a complete answer a person can click; omit when they should answer in their own words."},
+            "next":{"type":["string","null"],"description":"The next beat id; omit or null to end."},
+            "target_ids":ids,"phrases":{"type":"array","maxItems":32,"items":label}}});
+    let advance = json!({"type":"object","additionalProperties":false,"required":["mode"],
+        "properties":{"mode":{"enum":EXPLANATION_ADVANCE_MODES},"prompt":{"type":"string","maxLength":MAX_TEXT},
+            "transitions":{"type":"array","maxItems":MAX_EXPLANATION_TRANSITIONS,"items":transition}}});
+    let beat = json!({"type":"object","additionalProperties":false,"required":["id","title","intent","cue","evidence","actions","advance"],
+        "properties":{"id":id,"title":label,"intent":text,"cue":text,
+            "evidence":{"type":"array","minItems":1,"maxItems":MAX_EXPLANATION_EVIDENCE,"items":evidence},
+            "actions":{"type":"array","minItems":1,"maxItems":MAX_EXPLANATION_ACTIONS,"items":visual},
+            "advance":advance}});
+    json!({"type":"object","additionalProperties":false,"required":["schema","id","title","goal","start","beats"],
+        "properties":{
+            "schema":{"const":EXPLANATION_FLOW_SCHEMA},
+            "id":id,"title":label,
+            "goal":{"type":"string","minLength":1,"maxLength":MAX_NOTE},
+            "about":{"type":"array","maxItems":64,"items":{"type":"string","minLength":1},"description":"Card ids this walkthrough is about."},
+            "scene_ids":{"type":"array","maxItems":512,"uniqueItems":true,"items":{"type":"string"},"description":"Drawings and cards that belong only to this walkthrough."},
+            "start":{"type":"string","description":"The first beat id."},
+            "beats":{"type":"array","minItems":1,"maxItems":MAX_EXPLANATION_BEATS,"items":beat}}})
+}
 pub fn descriptor() -> Descriptor {
     let mut d=Descriptor::new(ID,VERSION,Artifact::Wasm)
         .depends_on("map",samepage_map::VERSION,"Walkthrough evidence and scoped cards")
@@ -52,7 +87,7 @@ pub fn descriptor() -> Descriptor {
         .extends("node",&["exploration_id"],"Concurrent scoped card membership")
         .extends("shape",&["exploration_id"],"Concurrent scoped drawing membership")
         .reads("node").reads("edge").reads("shape").reads("constraint")
-        .action(action("walkthrough_define",Some("atlas_explanation_define"),Audience::Agent,Effect::Mutate,&["flow"],json!({"flow":{"type":"object"}}),"Define or replace a finite named walkthrough. Replacing retains object identity, scope and marks. replay-motion is preserved and explicitly unsupported."))
+        .action(action("walkthrough_define",Some("atlas_explanation_define"),Audience::Agent,Effect::Mutate,&["flow"],json!({"flow":flow_schema()}),"Define or replace a named walkthrough a person steps through. Each beat has a cue (what is said), evidence (which cards or drawings show it), visual actions (point, reveal or trace-path on a target) and an advance: continue, choice, agent or terminal, with transitions naming the next beat. Set about to the cards it explains and scene_ids to drawings that belong only to it. Replacing the same id keeps its identity and bumps its revision. Targets, reachability and cycles are checked before anything is stored. replay-motion is kept but not rendered."))
         .action(action("walkthrough_advance",Some("atlas_explanation_advance"),Audience::Both,Effect::Mutate,&["flow_id","expected_revision","transition_id"],json!({"flow_id":{"type":"string"},"expected_revision":{"type":"integer","minimum":1,"maximum":4294967295u64},"transition_id":{"type":"string"},"response":{"type":"string","maxLength":1200},"selected_target_ids":{"type":"array","maxItems":32,"items":{"type":"string"}}}),"Advance an exact transition from the observed cursor revision with utterance and selection evidence. Phrases are resolver hints, not hidden grading."))
         .action(action("walkthrough_control",Some("atlas_explanation_control"),Audience::Both,Effect::Mutate,&["flow_id","expected_revision","command"],json!({"flow_id":{"type":"string"},"expected_revision":{"type":"integer","minimum":1,"maximum":4294967295u64},"command":{"enum":["pause","resume","restart","stop"]}}),"Pause, resume, restart or stop one named walkthrough from its observed revision."))
         .action(action("walkthrough_read",None,Audience::Both,Effect::Query,&[],json!({"flow_id":{"type":"string"}}),"Read all named walkthroughs or one flow, its coherent cursor, evidence and named unsupported visual actions."))

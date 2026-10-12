@@ -33,32 +33,32 @@ pub fn descriptor() -> Descriptor {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-            "id": { "type": "string" },
-            "label": { "type": "string", "maxLength": MAX_LABEL },
-            "note": { "type": "string", "maxLength": MAX_NOTE },
+            "id": { "type": "string", "description": "Pass to update that card; omit to create one." },
+            "label": { "type": "string", "maxLength": MAX_LABEL, "description": "The card title. Required to create." },
+            "note": { "type": "string", "maxLength": MAX_NOTE, "description": "The card body, a sentence or two." },
             "tone": { "enum": TONES },
             "status": { "enum": STATUSES },
             "x": { "type": "number" }, "y": { "type": "number" },
             "w": { "type": "number" }, "h_pref": { "type": "number" },
             "w_min": { "type": "number" }, "h_min": { "type": "number" },
-            "parent": { "type": "string" },
-            "color": { "type": "string" },
+            "parent": { "type": "string", "description": "A container card id; this card sits inside it and read-backs nest it there." },
+            "color": { "enum": ["", "slate", "blue", "green", "amber", "red", "violet"], "description": "A category colour; an empty string clears it." },
             "emphasis": { "enum": EMPHASES },
             "size": { "enum": SIZES },
             "kind": { "enum": SHAPES },
-            "path": { "type": "string", "description": "Owned by the sources capability; refused here until the composite adapter exists." },
-            "lines": { "type": "string", "description": "Owned by the sources capability; refused here until the composite adapter exists." }
+            "path": { "type": "string", "description": "Repository-relative file this card stands for, such as api/src/main.rs. Needs the sources capability, which checks the file exists and tracks its content." },
+            "lines": { "type": "string", "description": "Line range inside path, such as 1-40. Required with path." }
         }
     });
     let mut place = ActionDecl::new(
         "card_place",
         Audience::Both,
         Effect::Mutate,
-        "Create a card (label required) or update one by id.",
+        "Create one card, or update one by id; only the fields you pass change, so a note can change without moving a card a person dragged. A card is a claim a person can agree with, dispute or question. With the sources capability, path and lines bind it to code and its tier tracks that code. Style is meaning you choose: color is a category, emphasis is importance, size is prominence, kind is the outline, parent is ownership. x and y are world units with y growing down; a card is 232 wide by default and grows to fit its note. Link cards with card_link; draw everything else with sketch.",
     )
     .alias("atlas_place");
     place.input_schema = place_schema;
-    let mut moving = ActionDecl::new("card_move", Audience::Both, Effect::Mutate, "Move a card.");
+    let mut moving = ActionDecl::new("card_move", Audience::Both, Effect::Mutate, "Move one card to x, y in world units, y growing down. Only its position changes.");
     moving.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id", "x", "y"],
         "properties": { "id": { "type": "string" }, "x": { "type": "number" }, "y": { "type": "number" } }
@@ -67,7 +67,7 @@ pub fn descriptor() -> Descriptor {
         "card_resize",
         Audience::Both,
         Effect::Mutate,
-        "Set a card's authored size: preferred width and height, and minimums.",
+        "Set a card's authored size in world units: preferred width w and height h_pref, and the minimums w_min and h_min. The rendered card still grows to fit its note.",
     );
     resize.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id"],
@@ -81,7 +81,7 @@ pub fn descriptor() -> Descriptor {
         "card_link",
         Audience::Both,
         Effect::Mutate,
-        "Link two cards.",
+        "Link two existing cards with an optional label of at most 140 characters, such as calls or emits. Links are part of the record and read back as from -> to with the label. A drawn arrow from sketch is for visual relations between drawings.",
     )
     .alias("atlas_link");
     link.input_schema = json!({
@@ -92,7 +92,7 @@ pub fn descriptor() -> Descriptor {
         "object_remove",
         Audience::Both,
         Effect::Mutate,
-        "Remove a card (with its links) or a link.",
+        "Remove one card or link by id. Removing a card also removes its links, claims and marks; cards inside it move to the top level. Drawings use shape_remove.",
     )
     .alias("atlas_remove");
     remove.input_schema = json!({
@@ -103,7 +103,7 @@ pub fn descriptor() -> Descriptor {
         "map_read",
         Audience::Both,
         Effect::Query,
-        "Describe the cards and links.",
+        "Read the cards and links: one line per card with its position, size, tone, status and who last changed it, then one line per link. page_read includes this section with every other capability.",
     );
     read.input_schema =
         json!({ "type": "object", "additionalProperties": false, "properties": {} });
@@ -112,7 +112,7 @@ pub fn descriptor() -> Descriptor {
         "constraint_add",
         Audience::Both,
         Effect::Mutate,
-        "Constrain cards: group, sequence, attaches, voids or labels.",
+        "Declare a structural relation between existing cards: group for membership, sequence for order along axis x or y, attaches for a pair that must stay related, voids for an excluded card, labels for text attached to one card. salience is fore or back. An invalid or ambiguous request stores nothing.",
     )
     .alias("atlas_constrain");
     constrain.input_schema = json!({
@@ -129,7 +129,7 @@ pub fn descriptor() -> Descriptor {
         "constraint_remove",
         Audience::Both,
         Effect::Mutate,
-        "Remove a constraint and its memberships.",
+        "Remove one constraint by id, with its memberships. The cards stay.",
     )
     .alias("atlas_unconstrain");
     unconstrain.input_schema = json!({
@@ -140,7 +140,7 @@ pub fn descriptor() -> Descriptor {
         "constraint_member_retarget",
         Audience::Both,
         Effect::Mutate,
-        "Point one membership at a different object.",
+        "Point one constraint membership (its id) at a different card (target).",
     );
     retarget.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id", "target"],

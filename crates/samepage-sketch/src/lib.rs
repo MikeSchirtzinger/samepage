@@ -134,11 +134,43 @@ fn decl(
     d.input_schema = schema;
     d
 }
+/// The typed contract of one `sketch` shape, matching [`ShapePatch`].
+pub fn shape_schema() -> JsonValue {
+    let mut fills = vec!["none"];
+    fills.extend_from_slice(rules::INKS);
+    json!({
+        "type":"object",
+        "additionalProperties":false,
+        "properties":{
+            "id":{"type":"string","description":"An existing shape id to revise; omit to draw a new shape."},
+            "ref":{"type":"string","description":"A name later shapes in this call use in from, to or frame."},
+            "form":{"enum":FORMS,"description":"Required for a new shape. rect, ellipse, diamond, text and frame are sized by x, y, w, h; ink, line and arrow follow points."},
+            "x":{"type":"number"},"y":{"type":"number"},
+            "w":{"type":"number","description":"Width, 8 to 8000. A text wraps at w."},
+            "h":{"type":"number","description":"Height, 8 to 8000. Text grows to fit."},
+            "points":{"type":"string","description":"Stroke points as \"x,y x,y ...\", at least two, for ink, line and arrow."},
+            "from":{"type":"string","description":"Where an arrow or line starts: a ref from this call, a shape id or a card id."},
+            "to":{"type":"string","description":"Where an arrow or line ends: a ref from this call, a shape id or a card id."},
+            "head":{"enum":["none","triangle","dot"]},
+            "ink":{"enum":rules::INKS,"description":"Stroke colour; one colour is one category."},
+            "fill":{"enum":fills},
+            "label":{"type":"string","maxLength":rules::MAX_LABEL,"description":"The words in or on the shape."},
+            "stroke_width":{"type":"number","minimum":0.5,"maximum":12,"description":"A heavy stroke is the main path."},
+            "stroke_style":{"enum":["solid","dashed","dotted"],"description":"dashed reads as tentative."},
+            "opacity":{"type":"number","minimum":0,"maximum":100,"description":"Low opacity reads as past or background."},
+            "roundness":{"enum":["round","sharp"]},
+            "font_size":{"type":"number","minimum":0,"maximum":120,"description":"Text size, 6 to 120; 0 or absent is the 13px caption size."},
+            "angle":{"type":"number","description":"Rotation of a sized shape in radians."},
+            "groups":{"type":"string","description":"Space-separated group names, at most 8."},
+            "frame":{"type":"string","description":"The frame this shape sits in: a ref from this call or a frame id. Frames do not nest."}
+        }
+    })
+}
 pub fn descriptor() -> Descriptor {
     use samepage_capability::Effect::{Mutate, Query};
     let empty = json!({"type":"object","properties":{},"additionalProperties":false});
     let mut d=Descriptor::new(ID,VERSION,Artifact::Wasm).depends_on("map",samepage_map::VERSION,"Drawings relate to cards; lift creates a card in one batch").owns("shape",KEYS,"Ordinary drawn shapes, ink, text, styles and bindings").reads("node").reads("constraint").reads("constraint-member")
- .action(decl("sketch",Some("atlas_sketch"),Mutate,json!({"type":"object","required":["shapes"],"properties":{"shapes":{"type":"array","minItems":1,"maxItems":2000,"items":{"type":"object"}}},"additionalProperties":false}),"Draw or revise shapes in paint order. A refused element stops the batch's successful prefix; the result names every skipped element. Arrows bind to cards or earlier shape refs."))
+ .action(decl("sketch",Some("atlas_sketch"),Mutate,json!({"type":"object","required":["shapes"],"properties":{"shapes":{"type":"array","minItems":1,"maxItems":2000,"items":shape_schema()}},"additionalProperties":false}),"Draw the picture in one call, in paint order: frames and boxes first, then text, then arrows. Give a shape a ref and a later shape in the same call can bind from or to to it, or sit in it as its frame; arrows also bind to card ids and stay attached when either end moves. A heading is a text with font_size 28 or 36 and a w wide enough for one line. A box's label is the words inside it; every label is at most 140 characters. Pass id to revise a shape; only the fields you pass change. Shapes before a refused one stay on the page and the reply names every skipped shape. The reply reads back what each shape means (ENCLOSES, CROSSES-OUT, SAYS NEAR). Cards (card_place) are claims about code; drawings are the picture around them."))
  .action(decl("sketch_import",Some("atlas_import"),Mutate,json!({"type":"object","required":["document"],"properties":{"document":{"type":"string","maxLength":4000000},"dx":{"type":"number"},"dy":{"type":"number"}},"additionalProperties":false}),"Import Excalidraw shapes, reconnect bindings and frames in one batch, and name unsupported elements."))
  .action(decl("sketch_export",None,Query,empty.clone(),"Export the drawn layer as an Excalidraw document. Captions, styles, groups and frames survive."))
  .action(decl("sketch_read",None,Query,empty,"Read drawings as ENCLOSES, CROSSES-OUT, SAYS and bound-to relations, without coordinates."))

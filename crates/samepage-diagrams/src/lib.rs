@@ -27,7 +27,7 @@ pub const NODE_KEYS: &[&str] = &[
 
 pub fn descriptor() -> Descriptor {
     let mut draw = ActionDecl::new("diagram_draw", Audience::Both, Effect::Mutate,
-        "Draw a typed hierarchy or state machine atomically. Source references are checked by the host before publication.").alias("atlas_diagram");
+        "Draw a hierarchy or a state machine in one atomic call; the host lays it out with its top-left at x, y in world units. nodes are [{id, label, color, group, size, initial, terminal}], where id is your own name that edges use; a state machine marks initial and terminal states. edges are [{from, to, label}] for a hierarchy and [{from, to, event, guard}] for a state machine. containers [{id, label, parent}] group hierarchy nodes. direction is right or down. clear: true replaces the page's cards and links; by default the diagram is added.").alias("atlas_diagram");
     draw.input_schema = json!({"type":"object", "required":["nodes"], "properties":{
         "kind":{"enum":["hierarchy","state_machine"]}, "nodes":{"type":"array","minItems":1,"maxItems":128,"items":{"type":"object"}},
         "edges":{"type":"array","maxItems":512,"items":{"type":"object"}},"containers":{"type":"array","maxItems":128,"items":{"type":"object"}},
@@ -37,7 +37,7 @@ pub fn descriptor() -> Descriptor {
         "diagram_read",
         Audience::Both,
         Effect::Query,
-        "Read diagram roles, transitions, hierarchy and problems.",
+        "Read each diagram as text: states with INITIAL and TERMINAL, transitions with their events, hierarchy, and layout problems.",
     );
     read.input_schema = json!({"type":"object","properties":{},"additionalProperties":false});
     Descriptor::new(ID,VERSION,Artifact::Wasm)
