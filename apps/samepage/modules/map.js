@@ -1,7 +1,8 @@
 // Minimal Map entry: projection and plans come from the verified Map WASM.
 // The shell owns the single document, authenticated socket and lifecycle.
-export function activate({ mount, wasm, application }) {
+export async function activate({ mount, wasm, application }) {
   if (!application || !wasm) throw new Error("Map needs the verified capability and shared document context");
+  const { speechIcon } = await import(new URL("/vocabulary.mjs", location.origin).href);
   application.registerCapability("map", wasm);
   const count = document.getElementById("map-count");
   let disposed = false;
@@ -65,6 +66,7 @@ export function activate({ mount, wasm, application }) {
     return true;
   }
   function select(id) {
+    if (id !== null || selectedLink) { selectedLink = null; mount.querySelectorAll(".map-link-end").forEach((node) => node.classList.remove("map-link-end")); mount.querySelectorAll(".map-link-selected").forEach((node) => node.classList.remove("map-link-selected")); }
     selectedId = id;
     mount.querySelectorAll(".map-card").forEach(node => node.classList.toggle("map-selected", node.dataset.id === id));
     const card = id ? [...mount.querySelectorAll(".map-card")].find(node => node.dataset.id === id) : null;
@@ -72,6 +74,78 @@ export function activate({ mount, wasm, application }) {
     const detail = id ? {id, label, count: 1, summary: label, kind: "node"} : null;
     window.samepageSelection = detail;
     document.dispatchEvent(new CustomEvent("map-selection-changed", {detail}));
+  }
+  const who = (name, participant) => participant && participant === globalThis.samepagePerson?.id ? "you" : (String(participant || "").startsWith("agent-") ? String(name || "agent").replace(/-\d+$/, "") : (name || "someone"));
+  let routed = [], selectedLink = null;
+  // Clip the centre-to-centre segment to each card's border.
+  function edgePoint(box, toward) {
+    const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    const dx = toward.x - cx, dy = toward.y - cy;
+    if (!dx && !dy) return {x: cx, y: cy};
+    const k = Math.min(dx ? (box.w / 2) / Math.abs(dx) : Infinity, dy ? (box.h / 2) / Math.abs(dy) : Infinity);
+    return {x: cx + dx * k, y: cy + dy * k};
+  }
+  function routeLinks(moving) {
+    const stage = mount.querySelector(".map-stage");
+    if (!stage) return;
+    const nodes = new Map([...stage.querySelectorAll(".map-card")].map((node) => [node.dataset.id, node]));
+    const boxOf = (id) => {
+      const node = nodes.get(id);
+      if (!node) return null;
+      const shift = moving?.id === id ? moving : {dx: 0, dy: 0};
+      return {x: node.offsetLeft + shift.dx, y: node.offsetTop + shift.dy, w: node.offsetWidth, h: node.offsetHeight};
+    };
+    for (const {link, line, hit, label} of routed) {
+      const a = boxOf(link.from), b = boxOf(link.to);
+      if (!a || !b) continue;
+      const start = edgePoint(a, {x: b.x + b.w / 2, y: b.y + b.h / 2});
+      const end = edgePoint(b, {x: a.x + a.w / 2, y: a.y + a.h / 2});
+      for (const element of [line, hit]) {
+        element.setAttribute("x1", String(start.x)); element.setAttribute("y1", String(start.y));
+        element.setAttribute("x2", String(end.x)); element.setAttribute("y2", String(end.y));
+      }
+      if (label) { label.setAttribute("x", String((start.x + end.x) / 2)); label.setAttribute("y", String((start.y + end.y) / 2 - 7)); }
+      line.classList.toggle("map-link-selected", selectedLink === link.id);
+    }
+  }
+  const resizeWatch = typeof ResizeObserver === "function" ? new ResizeObserver(() => requestAnimationFrame(() => routeLinks())) : null;
+  // Clicking a link shows its two ends and says which way it points.
+  function selectLink(link) {
+    select(null);
+    selectedLink = link?.id || null;
+    mount.querySelectorAll(".map-card").forEach((node) => node.classList.toggle("map-link-end", Boolean(link) && (node.dataset.id === link.from || node.dataset.id === link.to)));
+    routeLinks();
+    if (link) {
+      const name = (id) => [...mount.querySelectorAll(".map-card")].find((node) => node.dataset.id === id)?.querySelector("h2")?.textContent || id;
+      application.toast?.(`${name(link.from)} ${link.label || "links to"} ${name(link.to)}.`);
+    }
+  }
+  function emptyState() {
+    const box = document.createElement("section");
+    box.className = "map-empty"; box.setAttribute("aria-label", "Getting started");
+    const line = (tag, text) => { const node = document.createElement(tag); node.textContent = text; return node; };
+    const copyRow = (text, label) => {
+      const row = document.createElement("div"); row.className = "map-empty-copy";
+      const code = line("code", text);
+      const copy = document.createElement("button"); copy.type = "button"; copy.textContent = "Copy"; copy.setAttribute("aria-label", `Copy ${label}`);
+      copy.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(text); copy.textContent = "Copied"; application.toast?.(`Copied ${label}.`); }
+        catch { const range = document.createRange(); range.selectNodeContents(code); getSelection().removeAllRanges(); getSelection().addRange(range); application.toast?.(`Select and copy the ${label}.`); }
+      });
+      row.append(code, copy); return row;
+    };
+    const address = `${location.origin}/mcp`;
+    const prompt = "Read this project and place a card for each part that handles an order, linked in the order a request flows. Bind each card to its source file.";
+    const add = document.createElement("button"); add.type = "button"; add.textContent = "Add a card yourself";
+    add.addEventListener("click", () => document.getElementById("add-card-open")?.click());
+    box.append(
+      line("h2", "A shared map for you and your coding agent"),
+      line("p", "Cards, links and drawings here are shared live with every person and agent on this page. Nothing is on it yet."),
+      line("h3", "1. Connect your agent to this page over MCP"), copyRow(address, "MCP address"),
+      line("p", "If the host was started with an MCP token, give the agent that token as its bearer token."),
+      line("h3", "2. Ask it to map something"), copyRow(prompt, "starter prompt"),
+      line("h3", "3. Or start yourself"), add);
+    return box;
   }
   const onWheel = (event) => {
     if (event.target.closest?.(".map-constraints, .diagram-legend, .sketch-editor")) return;
@@ -152,10 +226,7 @@ export function activate({ mount, wasm, application }) {
         note.textContent = card.note;
         node.appendChild(note);
       }
-      const byline = document.createElement("div");
-      byline.className = "byline";
-      byline.textContent = `Created by ${card.created_by || "unknown"} · touched by ${card.touched_by || "unknown"}`;
-      node.appendChild(byline);
+      // The byline is an overlay shown on hover or selection; it takes no room.
       probe.appendChild(node);
       nodes.set(card.id, node);
     }
@@ -191,6 +262,7 @@ export function activate({ mount, wasm, application }) {
     const links = projection.links || [];
     const constraints = projection.constraints || [];
     const byId = new Map(cards.map((card) => [card.id, card]));
+    const recordById = new Map(view.records.filter((record) => record.kind === "node").map((record) => [record.id, record]));
     const local = measureLocalHeights(cards);
     const heightOf = (card) => local.get(card.id)?.height ?? Number(card.height || 100);
     const originX = 42 - Math.min(0, ...cards.map((card) => Number(card.x) || 0));
@@ -209,28 +281,35 @@ export function activate({ mount, wasm, application }) {
     svg.setAttribute("width", String(width));
     svg.setAttribute("height", String(height));
     svg.setAttribute("aria-hidden", "true");
+    // Links are routed from the rendered card boxes, border to border, with an
+    // arrowhead at the target. They follow a card while it is dragged.
+    const defs = document.createElementNS(svg.namespaceURI, "defs");
+    const marker = document.createElementNS(svg.namespaceURI, "marker");
+    for (const [key, value] of Object.entries({id: "map-arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "8", markerHeight: "8", orient: "auto-start-reverse", markerUnits: "userSpaceOnUse"})) marker.setAttribute(key, value);
+    const head = document.createElementNS(svg.namespaceURI, "path");
+    head.setAttribute("d", "M 0 0 L 10 5 L 0 10 z"); head.setAttribute("class", "map-link-head");
+    marker.append(head); defs.append(marker); svg.append(defs);
+    routed = [];
     for (const link of links) {
       if (link.transition) continue;
-      const from = byId.get(link.from);
-      const to = byId.get(link.to);
-      if (!from || !to) continue;
-      const x1 = originX + Number(from.x || 0) + Number(from.width || 232) / 2;
-      const y1 = originY + Number(from.y || 0) + heightOf(from) / 2;
-      const x2 = originX + Number(to.x || 0) + Number(to.width || 232) / 2;
-      const y2 = originY + Number(to.y || 0) + heightOf(to) / 2;
+      if (!byId.get(link.from) || !byId.get(link.to)) continue;
       const line = document.createElementNS(svg.namespaceURI, "line");
       line.classList.add("map-link");
       line.dataset.id = link.id;
-      for (const [key, value] of Object.entries({x1,y1,x2,y2})) line.setAttribute(key, String(value));
-      svg.appendChild(line);
+      line.setAttribute("marker-end", "url(#map-arrow)");
+      const hit = document.createElementNS(svg.namespaceURI, "line");
+      hit.classList.add("map-link-hit");
+      hit.dataset.id = link.id;
+      hit.addEventListener("click", (event) => { event.stopPropagation(); selectLink(link); });
+      svg.append(line, hit);
+      let label = null;
       if (link.label) {
-        const label = document.createElementNS(svg.namespaceURI, "text");
+        label = document.createElementNS(svg.namespaceURI, "text");
         label.classList.add("map-link-label");
-        label.setAttribute("x", String((x1+x2)/2));
-        label.setAttribute("y", String((y1+y2)/2 - 7));
         label.textContent = link.label;
         svg.appendChild(label);
       }
+      routed.push({link, line, hit, label});
     }
     stage.appendChild(svg);
     const fragment = document.createDocumentFragment();
@@ -254,10 +333,12 @@ export function activate({ mount, wasm, application }) {
         note.textContent = card.note;
         node.appendChild(note);
       }
+      const record = recordById.get(card.id)?.props || {};
       const byline = document.createElement("div");
       byline.className = "byline";
-      byline.textContent = `Created by ${card.created_by || "unknown"} · touched by ${card.touched_by || "unknown"}`;
+      byline.textContent = `Created by ${who(card.created_by, record.created_by_participant)} · last by ${who(card.touched_by, record.touched_by_participant)}`;
       node.appendChild(byline);
+      if ((card.other_keys || []).includes("state_order")) node.dataset.stateCard = "true";
       // Local-only geometry readout. Never written back to the document:
       // native `measured_known` stays false, and only this browser's own
       // render informs `height_source` here.
@@ -273,8 +354,9 @@ export function activate({ mount, wasm, application }) {
         const question = document.createElement("button");
         question.type = "button";
         question.className = "review-open";
-        question.textContent = "?";
-        question.setAttribute("aria-label", `Question ${card.label || "card"}`);
+        question.append(speechIcon());
+        question.title = "Discuss this card in Review";
+        question.setAttribute("aria-label", `Discuss ${card.label || "card"} in Review`);
         question.addEventListener("pointerdown", event => event.stopPropagation());
         question.addEventListener("click", async () => {
           try {
@@ -295,13 +377,16 @@ export function activate({ mount, wasm, application }) {
         const scale = camera.scale;
         node.setPointerCapture(event.pointerId);
         const moving = (move) => {
-          node.style.transform = `translate(${(move.clientX - startX) / scale}px, ${(move.clientY - startY) / scale}px)`;
+          const dx = (move.clientX - startX) / scale, dy = (move.clientY - startY) / scale;
+          node.style.transform = `translate(${dx}px, ${dy}px)`;
+          routeLinks({id: card.id, dx, dy});
         };
         const finish = async (up) => {
           node.removeEventListener("pointermove", moving);
           node.removeEventListener("pointerup", finish);
           node.removeEventListener("pointercancel", cancel);
           node.style.transform = "";
+          routeLinks();
           const dx = (up.clientX - startX) / scale;
           const dy = (up.clientY - startY) / scale;
           if (Math.abs(dx) + Math.abs(dy) < 3) { select(card.id); return; }
@@ -320,6 +405,7 @@ export function activate({ mount, wasm, application }) {
           node.removeEventListener("pointerup", finish);
           node.removeEventListener("pointercancel", cancel);
           node.style.transform = "";
+          routeLinks();
         };
         node.addEventListener("pointermove", moving);
         node.addEventListener("pointerup", finish);
@@ -328,15 +414,16 @@ export function activate({ mount, wasm, application }) {
       fragment.appendChild(node);
     }
     stage.appendChild(fragment);
-    if (cards.length === 0) {
-      const empty = document.createElement("p");
-      empty.textContent = "No cards yet. Add one here or ask an agent to place a card.";
-      empty.style.padding = "52px";
-      stage.appendChild(empty);
-    }
+    // First run: say what this is and how to bring an agent in. Shown only
+    // when the page holds nothing at all, so it never sits on a drawing.
+    const empty = cards.length === 0 && !view.records.some((record) => record.kind === "shape");
+    if (empty) mount.dataset.empty = "true"; else delete mount.dataset.empty;
     const panel = renderConstraints(constraints, byId, projection.constraint_state);
-    mount.replaceChildren(stage, ...(panel ? [panel] : []));
+    mount.replaceChildren(stage, ...(panel ? [panel] : []), ...(empty ? [emptyState()] : []));
     mount.dataset.scale = String(camera.scale);
+    routeLinks();
+    resizeWatch?.disconnect();
+    stage.querySelectorAll(".map-card").forEach((card) => resizeWatch?.observe(card));
     if (selectedId && !byId.has(selectedId)) select(null);
     // Frame everything once, after the other capabilities have drawn.
     if (!fitted && cards.length) setTimeout(() => { if (!fitted && fit()) fitted = true; }, 350);

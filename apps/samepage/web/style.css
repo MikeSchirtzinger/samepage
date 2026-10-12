@@ -163,7 +163,7 @@ body[data-panel="closed"] .panel-close, body[data-panel="closed"] .tab-body { di
 .map-card:active { cursor: grabbing; }
 .map-card h2 { font-size: 15px; margin: 0 0 7px; }
 .map-card p { margin: 0 0 9px; color: var(--soft); white-space: pre-wrap; }
-.map-card .byline { font-size: 12px; color: #a5c6cc; border-top: 1px solid var(--line-2); padding-top: 7px; }
+.map-card .byline { color: #a5c6cc; }
 .map-card[data-status="done"] { border-color: #8bcfa8; }
 .map-card[data-status="blocked"] { border-color: #e5a784; }
 .map-card-meta { font-size: 11px; color: #7fa0af; margin-top: 6px; }
@@ -172,7 +172,29 @@ body[data-panel="closed"] .panel-close, body[data-panel="closed"] .tab-body { di
 .map-card.map-container { background: #13232e66; border: 1px dashed #58788c; box-shadow: none; border-radius: 16px; }
 .map-card[data-status="agreed"] { border: 3px double var(--ok); }
 .map-card[data-status="disputed"] { border-color: #e5a784; }
-.map-empty { position: absolute; left: 52px; top: 52px; max-width: 520px; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; color: var(--soft); }
+.map-empty { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 48px)); padding: 20px 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; color: var(--soft); z-index: 4; user-select: text; }
+.map-empty h2 { margin: 0 0 6px; font-size: 17px; color: var(--ink); }
+.map-empty h3 { margin: 16px 0 6px; font-size: 13px; color: var(--ink); }
+.map-empty p { margin: 4px 0; font-size: 13px; }
+.map-empty-copy { display: flex; gap: 8px; align-items: flex-start; }
+.map-empty-copy code { flex: 1 1 auto; padding: 6px 8px; background: #0b151d; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Links: arrowheads at the target, a wider invisible hit line, selection. */
+.map-link-head { fill: #81a9b9; }
+.map-link-hit { stroke: transparent; stroke-width: 12; fill: none; pointer-events: stroke; cursor: pointer; }
+.map-link.map-link-selected { stroke: var(--focus); stroke-width: 3; }
+.map-card.map-link-end { outline: 2px dashed var(--focus); outline-offset: 3px; }
+
+/* Bylines show on hover or selection; developer meta only in debug mode. */
+.map-card .byline { display: none; position: absolute; left: 0; top: calc(100% + 16px); z-index: 7; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); white-space: nowrap; font-size: 11px; pointer-events: none; }
+.map-card:hover .byline, .map-card.map-selected .byline, .map-card:focus-within .byline { display: block; }
+.map-card-meta { display: none; }
+body[data-debug="true"] .map-card-meta { display: block; }
+
+/* States in a state machine carry only their name and role. */
+.map-card[data-state-card] .review-badge, .map-card[data-state-card] .source-tier, .map-card[data-state-card] .source-view-open, .map-card[data-state-card] .source-gate-reason, .diagram-container > .source-tier, .diagram-container > .review-badge { display: none; }
+.map-card[data-state-card] .review-open, .diagram-container > .review-open { opacity: 0; }
+.map-card[data-state-card]:hover .review-open, .map-card[data-state-card]:focus-within .review-open, .diagram-container:hover > .review-open { opacity: 1; }
 
 .map-constraints { position: absolute; top: 12px; right: 12px; width: 264px; max-height: calc(100% - 80px); overflow: auto; padding: 12px; background: #16232c; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; z-index: 5; }
 .map-constraints h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
