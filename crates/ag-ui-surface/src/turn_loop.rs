@@ -544,14 +544,8 @@ async fn dispatch_tool_with_runtime(
         targets,
         (!result.2 || result.3).then_some(result.0.as_str()),
     );
-    if !result.2 && !result.3 {
-        rt.activity.record_failure(
-            "action.failed",
-            Some(caller),
-            run_id.as_deref(),
-            &format!("{preferred}: {}", result.0),
-        );
-    }
+    // The action entry above already records the failure, its outcome and
+    // its reason; a second failure entry would show every refusal twice.
     result
 }
 
@@ -1601,5 +1595,13 @@ mod journal_tests {
         assert_eq!(event.actor.label, "reviewer-agent");
         assert_eq!(event.actor.participant_id.as_deref(), Some("agent-7"));
         assert_eq!(event.targets, vec!["card-1".to_string()]);
+        crate::with_actor(
+            crate::Actor { caller: Caller::Agent, label: None, participant_id: None, hue: None, responsible: None },
+            dispatch_tool(&rt, &surface, Caller::Agent, "write", &json!({"id": 7})),
+        )
+        .await;
+        let events = rt.activity.snapshot().events;
+        assert_eq!(events.len(), 2, "a refused write is journaled once: {events:?}");
+        assert_eq!(events[1].outcome, crate::ActivityOutcome::Failed);
     }
 }
