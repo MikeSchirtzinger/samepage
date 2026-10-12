@@ -38,15 +38,34 @@ pub(crate) fn input_action(
                 let read=tokio::task::spawn_blocking(move ||->Result<Option<String>,String>{
                     let _operation=check_state.durable_operation()?;
                     let view=check_state.host.view();let validation=check_state.validation.report(&view)?;
-                    if validation["status"]=="failed" { return Err(validation.to_string()); }
+                    // A page problem wakes each waiter once, when the set of
+                    // problems changes. The same problems never wake it again,
+                    // so one overlapping card cannot put every agent in a loop.
+                    let failed=validation["status"]=="failed";
+                    let signature=if failed {crate::surface::validation_signature(&validation)} else {String::new()};
+                    let new_problems=check_state.input.report_problems(&reader,signature);
                     let journal=check_state.host.journal();
                     let since=check_state.input.seen(&reader);
-                    if journal.recent.iter().any(|e|e.seq>since && e.actor.participant!=reader) {
+                    let changed=journal.recent.iter().any(|e|e.seq>since && e.actor.participant!=reader);
+                    if !new_problems && !changed { return Ok(None); }
+                    let mut text=String::new();
+                    if new_problems {
+                        text.push_str("woken by: new page problems\n");
+                        text.push_str(&crate::surface::validation_text(&validation));
+                        text.push_str("\nnext: repair the ids named above if they are yours, or ask in chat_reply. This wait will not wake again for these same problems.\n");
+                    }
+                    if changed {
                         use samepage_capability::Capability;
                         let readback=samepage_map::Map.plan(&Call{action:"map_read".into(),args:json!({})},&view).map_err(|e|e.to_string())?.readback;
-                        check_state.input.acknowledge(&reader,journal.seq);return Ok(Some(readback));
+                        check_state.input.acknowledge(&reader,journal.seq);
+                        if !text.is_empty() {text.push('\n');}
+                        text.push_str(&readback);
+                        if failed && !new_problems {
+                            text.push('\n');
+                            text.push_str(&crate::surface::validation_text(&validation));
+                        }
                     }
-                    Ok(None)
+                    Ok(Some(text))
                 }).await.map_err(|e|format!("input worker failed: {e}"))??;
                 if board.revision()!=starting_board {return board.read(&participant);}
                 if let Some(read)=read {return Ok(read);}

@@ -1043,8 +1043,30 @@ fn cement_text(projection: &Value, history: &Value) -> String {
     out
 }
 
+/// A stable name for a set of page problems: code and ids, or code and
+/// message when a browser error names no card. Measured numbers in messages
+/// change between reports and do not make a new problem.
+pub(crate) fn validation_signature(report: &Value) -> String {
+    let mut keys: Vec<String> = report["errors"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|error| {
+            let ids: Vec<_> = error["ids"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+            if ids.is_empty() {
+                format!("{}:{}", error["code"].as_str().unwrap_or_default(), error["message"].as_str().unwrap_or_default())
+            } else {
+                format!("{}:{}", error["code"].as_str().unwrap_or_default(), ids.join(","))
+            }
+        })
+        .collect();
+    keys.sort();
+    keys.dedup();
+    keys.join("\n")
+}
+
 /// Page validation as text: status and one line per problem with its ids.
-fn validation_text(report: &Value) -> String {
+pub(crate) fn validation_text(report: &Value) -> String {
     let status = report["status"].as_str().unwrap_or("pending");
     let empty = Vec::new();
     let errors = report["errors"].as_array().unwrap_or(&empty);

@@ -119,12 +119,58 @@ async fn unified_wait_wakes_for_browser_validation_errors() {
             &view,
         )
         .unwrap();
-    let error = tokio::time::timeout(Duration::from_secs(3), w)
+    let wake = tokio::time::timeout(Duration::from_secs(3), w)
         .await
         .unwrap()
         .unwrap()
-        .unwrap_err();
-    assert!(error.contains("board render exploded"));
+        .unwrap();
+    assert!(wake.contains("woken by: new page problems") && wake.contains("board render exploded"));
+}
+#[tokio::test]
+async fn the_same_page_problems_wake_a_waiter_once_then_it_keeps_waiting() {
+    let (s, b, _) = state();
+    let observe = |sequence: u64| {
+        let view = s.host.view();
+        s.validation
+            .observe(
+                "person",
+                crate::host::page_validation::Observation {
+                    stream: "proof".into(),
+                    revision: view.revision().into(),
+                    sequence,
+                    bounds: BTreeMap::new(),
+                    errors: vec![crate::host::page_validation::BrowserError {
+                        code: "renderer_failure".into(),
+                        message: "board render exploded".into(),
+                    }],
+                },
+                &view,
+            )
+            .unwrap();
+    };
+    observe(1);
+    let first = tokio::time::timeout(Duration::from_secs(3), waiter(s.clone(), b.clone()).await)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(first.contains("board render exploded"));
+    let second = waiter(s.clone(), b.clone()).await;
+    observe(2);
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(!second.is_finished(), "the same problem must not wake the waiter again");
+    s.invoke_as(
+        &actor(ag_ui_surface::Caller::Human),
+        "card_place",
+        json!({"label":"human card","x":450,"y":50}),
+    )
+    .unwrap();
+    let read = tokio::time::timeout(Duration::from_secs(3), second)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(read.contains("human card"), "a real change still wakes it: {read}");
 }
 #[test]
 fn board_is_not_a_document_kind_and_aliases_share_the_native_definition() {

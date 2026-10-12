@@ -381,6 +381,8 @@ fn unix_seconds_iso(secs: u64) -> String {
 pub struct InputSignals {
     pub changed: Notify,
     seen: Mutex<BTreeMap<String, u64>>,
+    /// The page problems each waiter was last told about.
+    reported: Mutex<BTreeMap<String, String>>,
     attention: Mutex<Option<Arc<ag_ui_surface::SemanticTargetService>>>,
 }
 impl InputSignals {
@@ -397,6 +399,15 @@ impl InputSignals {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .insert(participant.into(), seq);
+    }
+    /// Record the problems `participant` now knows about. True when they are
+    /// problems it has not been told: a non-empty set that differs from the
+    /// last one reported. An empty set clears the record silently.
+    pub fn report_problems(&self, participant: &str, signature: String) -> bool {
+        let mut reported = self.reported.lock().unwrap_or_else(|p| p.into_inner());
+        let new = !signature.is_empty() && reported.get(participant) != Some(&signature);
+        reported.insert(participant.into(), signature);
+        new
     }
     pub fn bind_attention(&self, service: Arc<ag_ui_surface::SemanticTargetService>) {
         *self.attention.lock().unwrap_or_else(|p| p.into_inner()) = Some(service);
