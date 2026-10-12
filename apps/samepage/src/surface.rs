@@ -713,9 +713,32 @@ impl SamePageState {
             }
             (self.emit_event)("samepage.capability-used", json!({"id":"cement"}));
         }
-        let validation = self.validation.report(&self.host.view())?;
-        if invoked.commit.is_some() && validation["status"] == "failed" {
-            return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":invoked.commit.as_ref().map(|c|c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),"revision":self.host.revision(),"validation":validation}).to_string());
+        let mut validation = self.validation.report(&self.host.view())?;
+        // A write fails validation only for problems that involve what it
+        // touched. Problems already on the page stay visible as warnings, so
+        // an unrelated write is not reported as failed and is not retried.
+        let mut warnings = Vec::new();
+        if let (Some(commit), true) = (&invoked.commit, validation["status"] == "failed") {
+            let applied: Vec<&String> = commit.created.iter().chain(&commit.modified).chain(&commit.deleted).collect();
+            let (caused, standing): (Vec<Value>, Vec<Value>) = validation["errors"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .partition(|error| {
+                    error["ids"].as_array().is_some_and(|ids| {
+                        ids.iter().filter_map(Value::as_str).any(|id| applied.iter().any(|a| a.as_str() == id))
+                    })
+                });
+            if !caused.is_empty() {
+                return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":applied,"revision":self.host.revision(),
+                    "errors":caused,"warnings":standing,
+                    "next":"The write was applied and is on the page. Repair the ids named in errors with card_move, card_resize or object_remove; do not repeat the write.",
+                    "validation":validation}).to_string());
+            }
+            warnings = standing;
+            validation["errors"] = json!([]);
+            validation["status"] = json!("passed_for_this_write");
         }
         let pane_read=if invoked.action=="panes_read" {
             Some(self.panes.as_ref().ok_or("panes is unavailable")?.read(&self.host.view(),&self.host.journal(),&actor.participant)?)
@@ -855,6 +878,10 @@ impl SamePageState {
             "touched": invoked.commit.as_ref().map(|c| c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),
             "revision": self.host.revision(),
         });
+        if !warnings.is_empty() {
+            reply["warnings"] = json!(warnings);
+            reply["next"] = json!("These page problems were there before this write and do not involve what it touched. Repair them only if they are yours.");
+        }
         // Absent sections are omitted rather than sent as null.
         if let Some(fields) = reply.as_object_mut() {
             fields.retain(|_, value| !value.is_null());

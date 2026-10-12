@@ -57,7 +57,18 @@ fn page_validation_returns_post_write_errors_with_applied_ids() {
         .unwrap()
         .contains(&json!(second)));
     assert!(error.contains(&first) && error.contains(&second));
+    assert_eq!(receipt["errors"].as_array().unwrap().len(), 1);
+    assert!(receipt["next"].as_str().unwrap().contains("do not repeat"));
     assert_eq!(s.host.view().records().count(), 2);
+    // A write that touches neither overlapping card succeeds and carries the
+    // standing overlap as a warning rather than failing.
+    let unrelated = s
+        .invoke_as(&agent(), "card_place", json!({"label":"far away","x":2000,"y":2000}))
+        .unwrap();
+    let reply: Value = serde_json::from_str(&unrelated).unwrap();
+    assert_eq!(reply["warnings"][0]["code"], "card_overlap");
+    assert!(reply["next"].as_str().unwrap().contains("before this write"));
+    assert_eq!(s.host.view().records().count(), 3);
     s.invoke_as(&agent(), "card_place", json!({"id":second,"x":400}))
         .unwrap();
     assert_eq!(
