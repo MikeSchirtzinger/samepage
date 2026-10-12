@@ -86,6 +86,15 @@ body[data-sync="ready"] .connection-status { color: var(--muted); }
 .rail-sep { width: 24px; height: 1px; background: var(--line); margin: 4px 0; }
 body[data-mode="explain"] .tool-rail .rail-button[data-sketch-tool]:not([data-sketch-tool="select"]) { opacity: .35; }
 
+/* Loading: nothing acts on the page until it is synced; slots are already in place. */
+@keyframes samepage-spin { to { transform: rotate(360deg); } }
+.spinner { display: inline-block; width: 12px; height: 12px; margin-right: 8px; border: 2px solid var(--line-2); border-top-color: var(--ink); border-radius: 50%; animation: samepage-spin .8s linear infinite; vertical-align: -2px; }
+.map-loading { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); z-index: 14; margin: 0; padding: 10px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; color: var(--soft); }
+body[data-sync="ready"] .map-loading { display: none; }
+body:not([data-sync="ready"]) .tool-rail, body:not([data-sync="ready"]) .map-region button, body:not([data-sync="ready"]) .map-region input, body:not([data-sync="ready"]) .side-panel .tab-body, body:not([data-sync="ready"]) .dock-segment, body:not([data-sync="ready"]) .mode-switch, body:not([data-sync="ready"]) #map { pointer-events: none; opacity: .55; }
+.tab[data-loading="true"]::after { content: ""; position: absolute; top: 3px; right: 1px; width: 7px; height: 7px; border: 2px solid var(--line-2); border-top-color: var(--ink); border-radius: 50%; animation: samepage-spin .8s linear infinite; }
+.tab-body[data-loading="true"]::before { content: "Loading…"; display: block; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+
 /* Map region */
 .map-region { grid-area: map; position: relative; overflow: clip; min-width: 0; min-height: 0; }
 #map { position: absolute; inset: 0; overflow: clip; user-select: none; -webkit-user-select: none; touch-action: none; background: radial-gradient(circle, #263845 1px, transparent 1px) 0 0 / 24px 24px, #101b24; }

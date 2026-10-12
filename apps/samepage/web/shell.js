@@ -391,8 +391,11 @@ async function openTab(tab, {activate = true} = {}) {
   for (const section of document.querySelectorAll(".tab-body[data-tab]")) section.hidden = section.dataset.tab !== tab;
   tabButton(tab).dataset.unread = "false";
   if (!activate) return;
+  const section = document.querySelector(`.tab-body[data-tab="${tab}"]`);
+  const pending = setTimeout(() => { tabButton(tab).dataset.loading = "true"; section.dataset.loading = "true"; }, 120);
   try { await tabActivation[tab]?.(); resolveProblem(tab, "load"); }
   catch (error) { reportProblem(tab, "load", `${tab} is unavailable: ${error.message}`); }
+  finally { clearTimeout(pending); delete tabButton(tab).dataset.loading; delete section.dataset.loading; }
   if (tab === "sources") document.dispatchEvent(new CustomEvent("samepage:sources-open", {detail: {}}));
   if (tab === "cement") document.dispatchEvent(new CustomEvent("samepage:cement-open"));
 }
