@@ -760,7 +760,7 @@ impl SamePageState {
                     "decision_draft" => {
                         let view = self.host.view();
                         let id = invoked.ids.get("draft").ok_or("decision draft id missing")?;
-                        json!({"mode":samepage_cement::mode(&view),"draft":samepage_cement::draft(&view, id).map_err(|e| e.to_string())?})
+                        json!({"mode":samepage_cement::mode(&view),"view":samepage_cement::view_mode(&view),"draft":samepage_cement::draft(&view, id).map_err(|e| e.to_string())?})
                     }
                     _ => samepage_cement::Cement
                         .project(&self.host.view())
@@ -1590,8 +1590,9 @@ fn activity_targets(args: &Value, result: &str) -> Vec<String> {
 /// Decisions as text: mode, drafts, cemented coverage and published records.
 fn cement_text(projection: &Value, history: &Value) -> String {
     let mut out = format!(
-        "CEMENT: mode {}.",
-        projection["mode"].as_str().unwrap_or("learning")
+        "CEMENT: posture {}, view {}.",
+        projection["posture"].as_str().unwrap_or("learning"),
+        projection["view"].as_str().unwrap_or("map")
     );
     let empty = Vec::new();
     let drafts = projection["drafts"].as_array().unwrap_or(&empty);

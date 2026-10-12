@@ -13,6 +13,10 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const ID: &str = "cement";
 pub const VERSION: &str = "0.1.0";
 pub const MODES: &[&str] = &["learning", "alignment", "explain", "map", "cement"];
+/// How the page is committing: still learning, or aligning on what it says.
+pub const POSTURES: &[&str] = &["learning", "alignment"];
+/// What the page shows: the walkthrough, the map with tiers, or cement.
+pub const VIEWS: &[&str] = &["explain", "map", "cement"];
 fn err(s: impl Into<String>) -> CapError {
     CapError::new("cement_invalid", s)
 }
@@ -42,7 +46,7 @@ pub fn descriptor() -> Descriptor {
             &["definition"],
             "Immutable agent decision drafts",
         )
-        .owns("cement-mode", &["value"], "Shared commitment posture");
+        .owns("cement-mode", &["value", "view"], "Shared commitment posture and view mode");
     for kind in [
         "node",
         "edge",
@@ -63,7 +67,7 @@ pub fn descriptor() -> Descriptor {
             Effect::Query,
             vec![],
             json!({}),
-            "Read the shared commitment mode (learning, alignment, explain, map or cement), the decision drafts and which cards are cemented. The mode is whatever a person or agent last set.",
+            "Read the shared posture (learning or alignment) and view mode (explain, map or cement), the decision drafts and which cards are cemented. Each is whatever a person or agent last set.",
         ),
         (
             "mode_set",
@@ -72,7 +76,7 @@ pub fn descriptor() -> Descriptor {
             Effect::Mutate,
             vec!["mode"],
             json!({"mode":{"enum":MODES}}),
-            "Set the shared commitment mode for everyone on the page: learning, alignment, explain, map or cement. Switching never deletes or changes a card.",
+            "Set, for everyone on the page, the posture (learning or alignment) or the view mode (explain, map or cement). The two are independent: choosing map keeps the posture. Switching never deletes or changes a card.",
         ),
         (
             "map_cement",
@@ -373,11 +377,26 @@ pub fn covers(v: &View, node: &Record) -> bool {
             c.ids.contains(&node.id) && content(v, &c.ids).is_ok_and(|h| h == c.content)
         })
 }
+/// The shared posture. A record written before view modes were separate may
+/// hold a view mode in `value`; it reads as learning.
 pub fn mode(v: &View) -> &str {
     v.records()
         .find(|r| r.kind == "cement-mode")
         .map(|r| string(r, "value"))
+        .filter(|m| POSTURES.contains(m))
         .unwrap_or("learning")
+}
+/// The shared view mode: `view`, else a legacy view mode left in `value`,
+/// else map.
+pub fn view_mode(v: &View) -> &str {
+    v.records()
+        .find(|r| r.kind == "cement-mode")
+        .and_then(|r| {
+            [string(r, "view"), string(r, "value")]
+                .into_iter()
+                .find(|m| VIEWS.contains(m))
+        })
+        .unwrap_or("map")
 }
 pub struct Cement;
 impl Capability for Cement {
@@ -386,7 +405,7 @@ impl Capability for Cement {
     }
     fn project(&self, v: &View) -> Result<Value, CapError> {
         Ok(
-            json!({"mode":mode(v),"drafts":v.records().filter(|r|r.kind==decision::KIND).map(|r|draft(v,&r.id)).collect::<Result<Vec<_>,_>>()?,"coverage":v.records().filter(|r|r.kind=="node"&&!string(r,"cemented").is_empty()).map(|n|json!({"id":n.id,"current":covers(v,n),"record":string(n,"cemented")})).collect::<Vec<_>>()}),
+            json!({"mode":mode(v),"posture":mode(v),"view":view_mode(v),"drafts":v.records().filter(|r|r.kind==decision::KIND).map(|r|draft(v,&r.id)).collect::<Result<Vec<_>,_>>()?,"coverage":v.records().filter(|r|r.kind=="node"&&!string(r,"cemented").is_empty()).map(|n|json!({"id":n.id,"current":covers(v,n),"record":string(n,"cemented")})).collect::<Vec<_>>()}),
         )
     }
     fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
@@ -456,7 +475,8 @@ impl Capability for Cement {
                 if !MODES.contains(&m) {
                     return Err(err("unsupported mode"));
                 }
-                let props = [("value".into(), m.into())].into();
+                let key = if VIEWS.contains(&m) { "view" } else { "value" };
+                let props = [(key.into(), m.into())].into();
                 ops.push(
                     if let Some(r) = v.records().find(|r| r.kind == "cement-mode") {
                         Op::Set {
@@ -471,7 +491,7 @@ impl Capability for Cement {
                         }
                     },
                 );
-                format!("Mode: {m}")
+                if VIEWS.contains(&m) { format!("View: {m}; posture stays {}.", mode(v)) } else { format!("Posture: {m}; view stays {}.", view_mode(v)) }
             }
             "decision_draft" => {
                 let input: DraftInput = serde_json::from_value(c.args["draft"].clone())
@@ -519,8 +539,9 @@ impl Capability for Cement {
             | "decision_preview"
             | "decision_list"
             | "decision_cement_propose" => format!(
-                "CEMENT: mode {}; native repository adapter supplies publication and gate facts.",
-                mode(v)
+                "CEMENT: posture {}, view {}; native repository adapter supplies publication and gate facts.",
+                mode(v),
+                view_mode(v)
             ),
             _ => return Err(CapError::new("unknown_action", &c.action)),
         };
@@ -534,8 +555,13 @@ impl Capability for Cement {
             }
             if r.kind == "cement-mode" {
                 modes += 1;
-                if !MODES.contains(&string(r, "value")) {
+                let value = string(r, "value");
+                if !value.is_empty() && !MODES.contains(&value) {
                     return Err(err("unsupported mode"));
+                }
+                let view = string(r, "view");
+                if !view.is_empty() && !VIEWS.contains(&view) {
+                    return Err(err("unsupported view mode"));
                 }
             }
         }
@@ -877,5 +903,27 @@ pub fn obligations_with_facts(view_json: &str, args_json: &str, facts_json: &str
     match result {
         Ok(v) => json!({"abi":samepage_capability::ABI,"ok":v}).to_string(),
         Err(e) => json!({"abi":samepage_capability::ABI,"error":e}).to_string(),
+    }
+}
+
+#[cfg(test)]
+mod mode_tests {
+    use super::*;
+
+    #[test]
+    fn view_mode_and_posture_are_independent() {
+        let aligned = View::new("r", [Record::new("m", "cement-mode").with("value", "alignment")]).unwrap();
+        let plan = Cement
+            .plan(&Call { action: "mode_set".into(), args: json!({"mode":"map"}) }, &aligned)
+            .unwrap();
+        assert!(matches!(&plan.ops[0], Op::Set { props, .. } if props.contains_key("view") && !props.contains_key("value")));
+        let both = View::new(
+            "r",
+            [Record::new("m", "cement-mode").with("value", "alignment").with("view", "map")],
+        )
+        .unwrap();
+        assert_eq!((mode(&both), view_mode(&both)), ("alignment", "map"));
+        let legacy = View::new("r", [Record::new("m", "cement-mode").with("value", "cement")]).unwrap();
+        assert_eq!((mode(&legacy), view_mode(&legacy)), ("learning", "cement"));
     }
 }
