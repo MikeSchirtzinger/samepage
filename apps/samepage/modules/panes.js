@@ -165,7 +165,8 @@ function resizeAxis(dir, startPos, startSize, delta, minimum, others, axis, free
   return { pos: value, size: pinned - value, guide: snapped.guide };
 }
 
-const MARKS = [
+// Replaced at activation by the page's shared vocabulary.
+let MARKS = [
   { id: "question", glyph: "?", title: "I don't follow this" },
   { id: "important", glyph: "!", title: "This matters" },
   { id: "agree", glyph: "✓", title: "Agreed" },
@@ -656,6 +657,7 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
   const sheet=document.createElement('link');sheet.rel='stylesheet';sheet.href='/capabilities/panes/style.css';document.head.append(sheet);
   await new Promise((resolve,reject)=>{sheet.onload=resolve;sheet.onerror=()=>reject(new Error('panes stylesheet unavailable'));});
   application.registerCapability('panes',wasm);
+  MARKS = (await import(new URL('/vocabulary.mjs', location.origin).href)).MARKS.map(mark => ({...mark}));
   const ctx={mount, whoAmI, semantic};
   let disposed=false;
   const ask=async event=>{const text=event.detail?.text || '';document.getElementById('pane-ask').textContent=text;try {const response=await fetch('/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:text,origin:'panes'})});if(!response.ok)throw new Error(`question refused (${response.status})`);}catch(error){showError({detail:{message:error.message}});}};

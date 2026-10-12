@@ -1,7 +1,8 @@
 // Native facts are data. The verified Sources WASM computes every trust tier
 // and the source viewer read-back; this module owns browser-local presentation.
-export function activate({wasm, application}) {
+export async function activate({wasm, application}) {
   if (!wasm || !application) throw new Error('Sources needs its verified WASM and shared document');
+  const { tierWords } = await import(new URL('/vocabulary.mjs', location.origin).href);
   application.registerCapability('sources', wasm);
   let disposed = false, latest = null, busy = false;
   const el = (tag, text, cls) => {
@@ -30,6 +31,9 @@ export function activate({wasm, application}) {
     panel.setAttribute('aria-label', `Code for ${node?.props.label || 'project'}`);
     const title = el('h2', node?.props.label || 'Project sources');
     const header = el('header'); header.append(title);
+    // The card's trust tier travels into the viewer, in words.
+    const tier = latest?.cards[id];
+    if (tier) { const chip = el('span', tierWords(tier), `source-tier source-tier-${tier.tier}`); chip.title = tier.gate?.reason || `Source tier: ${tier.tier}`; header.append(chip); }
     const context = el('p', 'Current working tree · read from the host. Viewing never edits the map.');
     const select = el('select'); select.setAttribute('aria-label', 'Source file');
     for (const b of bindings) { const o = el('option', `${b.path}:${b.lines}`); o.value = JSON.stringify(b); select.append(o); }
@@ -47,7 +51,14 @@ export function activate({wasm, application}) {
       const own = ++generation; notice.textContent = 'Reading source…'; notice.classList.remove('source-error');
       for (const button of [previous, whole, next]) button.disabled = true;
       try {
-        const excerpt = await dispatch('source_read', b);
+        let excerpt = await dispatch('source_read', b);
+        // Show the bound lines with eight lines of context on each side.
+        const bound = /^(\d+)(?:-(\d+))?$/.exec(String(b.lines || ''));
+        const focus = bound ? {from: Number(bound[1]), to: Number(bound[2] || bound[1])} : null;
+        if (focus && excerpt.total_lines) {
+          const from = Math.max(1, focus.from - 8), to = Math.min(excerpt.total_lines, focus.to + 8);
+          if (from < focus.from || to > focus.to) { try { excerpt = await dispatch('source_read', {...b, lines: `${from}-${to}`}); } catch { /* the bound range alone is still shown */ } }
+        }
         if (own !== generation || !panel.isConnected) return;
         const projection = envelope(wasm.viewer_readback(JSON.stringify(excerpt)));
         for (const path of excerpt.entry_points || []) {
@@ -55,15 +66,15 @@ export function activate({wasm, application}) {
           const option = el('option', `Entry point: ${path}`); option.value = JSON.stringify({path}); select.append(option); select.hidden = false;
         }
         current = excerpt;
-        location.textContent = `${projection.location} · ${excerpt.total_lines} lines`;
+        location.textContent = focus ? `${excerpt.path} · lines ${focus.from}–${focus.to} of ${excerpt.total_lines}, with context` : `${excerpt.path} · ${excerpt.total_lines} lines`;
         context.textContent = excerpt.revision ? `Git revision ${excerpt.revision} · read from the host.` : 'Current working tree · read from the host. Viewing never edits the map.';
         pre.replaceChildren();
         for (const line of projection.lines) {
           const row = el('span', undefined, 'source-line'); row.dataset.line = String(line.number);
-          row.classList.toggle('source-highlight', line.highlighted);
+          row.classList.toggle('source-highlight', focus ? line.number >= focus.from && line.number <= focus.to : line.highlighted);
           row.append(el('span', String(line.number), 'source-line-number'), el('code', line.text)); pre.append(row);
         }
-        notice.textContent = `${excerpt.truncated ? 'More lines available. ' : ''}Shown lines highlighted · read from the host just now.`;
+        notice.textContent = `${excerpt.truncated ? 'More lines available. ' : ''}${focus ? 'Bound lines highlighted' : 'Shown from the host'} · read just now.`;
         if (excerpt.entry_points_error) notice.textContent += ` Entry points unavailable: ${excerpt.entry_points_error}`;
         previous.disabled = whole.disabled = excerpt.first_line <= 1;
         next.disabled = excerpt.first_line + projection.lines.length - 1 >= excerpt.total_lines;
@@ -103,7 +114,8 @@ export function activate({wasm, application}) {
         card.querySelectorAll('.source-tier,.source-view-open,.source-gate-reason').forEach(n => n.remove());
         const tier = latest.cards[card.dataset.id];
         if (!tier) continue;
-        const chip = el('span', `${tier.symbol} ${tier.chip}`, `source-tier source-tier-${tier.tier}`);
+        const chip = el('span', tierWords(tier), `source-tier source-tier-${tier.tier}`);
+        chip.title = `Source trust: ${tierWords(tier)}`;
         card.dataset.sourceTier = tier.tier; card.append(chip);
         if (tier.gate) card.append(el('p', tier.gate.reason, 'source-gate-reason'));
         if (tier.bindings.length) {

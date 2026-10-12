@@ -13,15 +13,17 @@
 // repaints whenever either side writes, and a control you have to hover to find
 // is a control that vanishes as you reach for it.
 
-const MARKS = [
+// Replaced at activation by the page's shared vocabulary, so a glyph means
+// the same thing here as on panes and cards.
+let MARKS = [
   ["agree", "✓", "I agree"],
   ["question", "?", "Ask about this"],
-  ["disagree", "!", "I think this is wrong"],
-  ["important", "*", "This matters"],
+  ["disagree", "✗", "I think this is wrong"],
+  ["important", "!", "This matters"],
 ];
 
-const MARK_GLYPH = { agree: "✓", question: "?", disagree: "!", important: "*" };
-const MARK_WORDS = {
+let MARK_GLYPH = { agree: "✓", question: "?", disagree: "✗", important: "!" };
+let MARK_WORDS = {
   agree: "I agree",
   question: "Ask about this",
   disagree: "I think this is wrong",
@@ -39,6 +41,10 @@ const RELATION_WORDS = {
 export async function activate({ client, mount, action, wasm, application, whoAmI }) {
   // Verified entries are imported from blob URLs; resolve host assets explicitly.
   const { semanticTargetNamespace, attachSemanticTargetHost } = await import(new URL("/_agui/semantic-targets.js", location.origin).href);
+  const vocabulary = await import(new URL("/vocabulary.mjs", location.origin).href);
+  MARKS = MARKS.map(([value]) => [value, vocabulary.MARK_GLYPH[value], vocabulary.MARK_WORDS[value]]);
+  MARK_GLYPH = { ...vocabulary.MARK_GLYPH };
+  MARK_WORDS = { ...vocabulary.MARK_WORDS };
   if (!wasm?.project_board_for) throw new Error("board portable projection is unavailable");
   application.registerCapability("board",wasm);
   let seenAt=0;
