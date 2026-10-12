@@ -719,17 +719,30 @@ impl SamePageState {
         let pane_read=if invoked.action=="panes_read" {
             Some(self.panes.as_ref().ok_or("panes is unavailable")?.read(&self.host.view(),&self.host.journal(),&actor.participant)?)
         } else { None };
-        let mut source_result = if let Some(s) = &self.sources {
-            if matches!(
-                invoked.action.as_str(),
-                "source_read" | "source_list" | "sources_read"
-            ) {
-                Some(s.action(&invoked.action, &args, &self.host.view())?)
-            } else {
+        // Source facts are large. Only source actions return them; a write
+        // that touched cards gets those cards' tiers as one read-back line
+        // each, and review_read uses tiers internally.
+        let source_action = matches!(
+            invoked.action.as_str(),
+            "source_read" | "source_list" | "sources_read"
+        );
+        let touched_cards: Vec<String> = {
+            let view = self.host.view();
+            invoked
+                .commit
+                .as_ref()
+                .map(|c| c.created.iter().chain(&c.modified).cloned().collect::<Vec<_>>())
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|id| view.get(id).is_some_and(|r| r.kind == "node"))
+                .collect()
+        };
+        let mut source_result = match &self.sources {
+            Some(s) if source_action => Some(s.action(&invoked.action, &args, &self.host.view())?),
+            Some(s) if invoked.action == "review_read" || !touched_cards.is_empty() => {
                 Some(s.inspect(&self.host.view())?)
             }
-        } else {
-            None
+            _ => None,
         };
         if let (Some(cement), Some(source)) = (&self.cement, &mut source_result) {
             if source.get("facts").is_some() {
@@ -794,7 +807,17 @@ impl SamePageState {
             .as_ref()
             .and_then(|s| s["projection"]["readback"].as_str())
         {
-            readback.push(text.into());
+            if source_action {
+                readback.push(text.into());
+            } else {
+                let lines: Vec<_> = text
+                    .lines()
+                    .filter(|line| touched_cards.iter().any(|id| line.starts_with(&format!("[{id}]"))))
+                    .collect();
+                if !lines.is_empty() {
+                    readback.push(format!("SOURCES\n{}", lines.join("\n")));
+                }
+            }
         }
         if let Some(text) = lane_result
             .as_ref()
@@ -817,21 +840,25 @@ impl SamePageState {
         let walkthrough = if invoked.action.starts_with("walkthrough_") {
             Some(samepage_explain::read(&self.host.view(), if invoked.action == "walkthrough_read" && !flow_id.is_empty() { Some(&flow_id) } else { None }).map_err(|e| e.to_string())?)
         } else { None };
-        let result = serde_json::to_string(&json!({
+        let mut reply = json!({
             "walkthrough": walkthrough,
             "architecture": architecture,
             "action": invoked.action,
             "readback": readback,
             "review": report,
-            "sources": source_result,
+            "sources": if source_action { source_result } else { None },
             "lanes": lane_result,
             "cement": cement_result,
             "validation": validation,
             "ids": invoked.ids,
             "touched": invoked.commit.as_ref().map(|c| c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),
             "revision": self.host.revision(),
-        }))
-        .map_err(|error| error.to_string());
+        });
+        // Absent sections are omitted rather than sent as null.
+        if let Some(fields) = reply.as_object_mut() {
+            fields.retain(|_, value| !value.is_null());
+        }
+        let result = serde_json::to_string(&reply).map_err(|error| error.to_string());
         drop(_operation);
         if invoked.commit.is_some() && (matches!(invoked.action.as_str(), "walkthrough_define" | "walkthrough_advance") || (invoked.action == "walkthrough_control" && reenter)) {
             if let Err(error) = crate::host::explain::attend(&self.host.view(), &flow_id, surface_actor, self.input.attention().as_deref()) {
