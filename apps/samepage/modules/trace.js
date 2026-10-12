@@ -64,7 +64,19 @@ const el = (tag, className, text) => {
 };
 const duration = ms => ms < 1 ? `${(ms * 1000).toFixed(0)} µs` : ms < 1000 ? `${ms.toFixed(2)} ms` : `${(ms / 1000).toFixed(2)} s`;
 
-function installActivityDrawer(client, wasm) {
+// Who acted, in words: the participant's name and what kind of participant it
+// is, "you" for this person. An older host sends only "Agent" or "Human".
+const ACTOR_KIND = { agent: "agent", human: "person", host: "host" };
+function actorText(actor) {
+  const label = actor?.label || "unknown";
+  if (actor?.participantId && actor.participantId === globalThis.samepagePerson?.id) return "you";
+  const kind = ACTOR_KIND[actor?.kind];
+  // A label that only names the class ("Agent", "Human") needs no kind beside it.
+  return kind && ![kind, actor.kind].includes(label.toLowerCase()) ? `${label} (${kind})` : label;
+}
+
+function installActivityDrawer(client, wasm, application) {
+  const labelOf = (id) => application?.view?.(["node", "shape", "edge"]).records.find((record) => record.id === id)?.props?.label || id;
   const toggle = document.getElementById("activity-toggle");
   const drawer = el("section", "activity-drawer");
   drawer.id = "activity-drawer";
@@ -152,7 +164,7 @@ function installActivityDrawer(client, wasm) {
     if (active === "journal") {
       body.append(el("p", "activity-note", "Host-observed events, newest first. Human and agent actions retain their caller, outcome, and state revisions."));
       if (!events.length) body.append(el("p", "activity-note", error ? "No host evidence is available. Refresh to retry." : "No retained events yet. An empty journal does not establish inactivity."));
-      const matchingEvents = [...events].reverse().filter(e => (category.value === "all" || e.category === category.value) && matches(`${e.kind} ${e.actor.label} ${e.outcome}`));
+      const matchingEvents = [...events].reverse().filter(e => (category.value === "all" || e.category === category.value) && matches(`${e.kind} ${actorText(e.actor)} ${e.outcome}`));
       if (events.length && !matchingEvents.length) body.append(el("p", "activity-note", "No events match this filter."));
       for (const event of matchingEvents.slice(0, visibleEventCount)) {
         const row = el("article", "activity-event");
@@ -160,7 +172,7 @@ function installActivityDrawer(client, wasm) {
         row.dataset.sequence = event.sequence;
         const time = el("time", null, new Date(event.atMs).toLocaleTimeString([], { hour12: false }));
         time.dateTime = new Date(event.atMs).toISOString();
-        row.append(time, el("span", "activity-event-actor", event.actor.label), el("span", "activity-event-name", event.kind.replace(/^action\./, "")), el("span", "activity-event-outcome", event.outcome));
+        row.append(time, el("span", "activity-event-actor", actorText(event.actor)), el("span", "activity-event-name", event.kind.replace(/^action\./, "")), el("span", "activity-event-outcome", event.outcome));
         const details = el("details");
         details.open = expandedEvents.has(event.correlation.eventId);
         details.addEventListener("toggle", () => {
@@ -168,7 +180,9 @@ function installActivityDrawer(client, wasm) {
           if (details.open) expandedEvents.add(event.correlation.eventId);
           else expandedEvents.delete(event.correlation.eventId);
         });
-        details.append(el("summary", null, "Recorded fields"), el("pre", null, JSON.stringify(event, null, 2)));
+        details.append(el("summary", null, "Recorded fields"));
+        if (Array.isArray(event.targets) && event.targets.length) details.append(el("p", "activity-event-targets", `Acted on: ${event.targets.map(labelOf).join(", ")}`));
+        details.append(el("pre", null, JSON.stringify(event, null, 2)));
         if (event.timing) {
           const traceButton = el("button", "activity-open-trace", `${duration(event.timing.durationUs / 1000)} · View trace`);
           traceButton.type = "button";
@@ -352,7 +366,7 @@ export function activate({wasm, application, client}) {
     }
   };
   const style=document.createElement("style");style.textContent=STYLE;document.head.append(style);
-  installActivityDrawer(client,wasm);
+  installActivityDrawer(client,wasm,application);
 }
 const STYLE=`
 .activity-drawer {position:fixed;inset:120px 18px 20px;z-index:30;background:#f7f9fc;color:#253044;border:1px solid #8291a8;border-radius:12px;box-shadow:0 12px 60px #17233855;display:flex;flex-direction:column;padding:18px;}
