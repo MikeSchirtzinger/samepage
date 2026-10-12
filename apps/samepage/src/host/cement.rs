@@ -442,42 +442,12 @@ impl CementHost {
         let obligations = check["obligations"]
             .as_array()
             .ok_or("G8 gate response missing obligations")?;
-        let mut facts = BTreeMap::new();
-        for (id, (ids, current)) in nodes {
-            let rows: Vec<_> = ids
-                .iter()
-                .filter_map(|id| obligations.iter().find(|o| o["id"] == *id))
-                .collect();
-            let met = current
-                && !ids.is_empty()
-                && rows.len() == ids.len()
-                && rows.iter().all(|o| o["status"] == "passed");
-            let reason = if !current {
-                "Reviewed selection changed; old cement is history.".into()
-            } else if rows.len() != ids.len() {
-                format!(
-                    "Published obligation missing from real G8 result: {}",
-                    ids.join(", ")
-                )
-            } else {
-                rows.iter()
-                    .map(|r| {
-                        r["evidence"]["summary"]
-                            .as_str()
-                            .unwrap_or("obligation has no result")
-                    })
-                    .collect::<Vec<_>>()
-                    .join("; ")
-            };
-            facts.insert(
-                id,
-                GateFact {
-                    obligation_id: ids.join(","),
-                    met,
-                    reason,
-                },
-            );
-        }
+        let empty = Vec::new();
+        let failures = check["enforcement_failures"].as_array().unwrap_or(&empty);
+        let facts = nodes
+            .into_iter()
+            .map(|(id, (ids, current))| (id, gate_fact(&ids, current, obligations, failures)))
+            .collect();
         Ok((facts, check))
     }
     pub fn map_cement(
@@ -740,4 +710,153 @@ fn now() -> Result<String, String> {
     String::from_utf8(o.stdout)
         .map(|s| s.trim().into())
         .map_err(|e| e.to_string())
+}
+
+/// One card's gate from a real `g8 check --enforce` result.
+///
+/// Every obligation can pass its own check while the gate still fails: an
+/// unratified spec or an obligation without fresh attestation is an
+/// enforcement failure. Only the enforced gate decides "met".
+fn gate_fact(ids: &[String], current: bool, obligations: &[Value], failures: &[Value]) -> GateFact {
+    let rows: Vec<_> = ids
+        .iter()
+        .filter_map(|id| obligations.iter().find(|o| o["id"] == *id))
+        .collect();
+    let spec_wide: Vec<_> = failures
+        .iter()
+        .filter(|f| f["obligation_id"].as_str().is_none_or(str::is_empty))
+        .collect();
+    let blocked: Vec<_> = failures
+        .iter()
+        .filter(|f| {
+            f["obligation_id"]
+                .as_str()
+                .is_some_and(|o| ids.iter().any(|id| id == o))
+        })
+        .collect();
+    let summaries = |rows: &[&Value]| {
+        rows.iter()
+            .map(|r| {
+                r["evidence"]["summary"]
+                    .as_str()
+                    .unwrap_or("obligation has no result")
+            })
+            .collect::<Vec<_>>()
+            .join("; ")
+    };
+    let passed = !ids.is_empty()
+        && rows.len() == ids.len()
+        && rows.iter().all(|o| o["status"] == "passed");
+    let met = current && passed && blocked.is_empty() && spec_wide.is_empty();
+    let (blocker, reason) = if !current {
+        ("changed", "Reviewed selection changed; old cement is history.".to_string())
+    } else if rows.len() != ids.len() || ids.is_empty() {
+        (
+            "missing",
+            format!(
+                "Published obligation missing from real G8 result: {}",
+                ids.join(", ")
+            ),
+        )
+    } else if !passed {
+        let failed: Vec<_> = rows.iter().copied().filter(|o| o["status"] != "passed").collect();
+        ("failed", summaries(&failed))
+    } else if let Some(first) = spec_wide.first().or(blocked.first()) {
+        (
+            blocker_word(first["classification"].as_str().unwrap_or_default()),
+            spec_wide
+                .iter()
+                .chain(&blocked)
+                .map(|f| enforcement_reason(f))
+                .collect::<Vec<_>>()
+                .join("; "),
+        )
+    } else {
+        ("", summaries(&rows))
+    };
+    GateFact {
+        obligation_id: ids.join(","),
+        met,
+        reason,
+        blocker: blocker.into(),
+    }
+}
+
+/// The gate word a person sees for one `g8 check --enforce` failure.
+fn blocker_word(classification: &str) -> &'static str {
+    match classification {
+        "unratified_spec_change" | "unratified" => "unratified",
+        "insufficient_rigor" => "unattested",
+        _ => "blocked",
+    }
+}
+
+/// One enforcement failure in plain words, with the command a person runs.
+fn enforcement_reason(failure: &Value) -> String {
+    let classification = failure["classification"].as_str().unwrap_or_default();
+    let detail = failure["detail"].as_str().unwrap_or_default();
+    match (blocker_word(classification), failure["obligation_id"].as_str()) {
+        ("unratified", _) => format!(
+            "UNRATIFIED: {SPEC} changed after its last ratification; a person reviews it and runs `g8 ratify`"
+        ),
+        ("unattested", Some(id)) => format!(
+            "UNATTESTED: {id} passes its check but has no fresh attestation; a person reviews the evidence and runs `g8 attest {id} --files <evidence>`"
+        ),
+        (_, Some(id)) => format!("{}: {id}: {detail}", classification.to_uppercase()),
+        (_, None) => format!("{}: {detail}", classification.to_uppercase()),
+    }
+}
+
+#[cfg(test)]
+mod gate_tests {
+    use super::*;
+
+    fn passed(id: &str) -> Value {
+        json!({"id":id,"status":"passed","evidence":{"summary":"rg match found"}})
+    }
+
+    #[test]
+    fn a_passing_check_without_attestation_is_not_a_met_gate() {
+        let ids = vec!["ATLAS-CARD-a".to_string()];
+        let failures = [json!({"classification":"insufficient_rigor","obligation_id":"ATLAS-CARD-a",
+            "detail":"gate requires verified or fresh attested evidence"})];
+        let fact = gate_fact(&ids, true, &[passed("ATLAS-CARD-a")], &failures);
+        assert!(!fact.met);
+        assert_eq!(fact.blocker, "unattested");
+        assert!(fact.reason.starts_with("UNATTESTED: ATLAS-CARD-a"), "{}", fact.reason);
+        assert!(fact.reason.contains("g8 attest ATLAS-CARD-a"));
+    }
+
+    #[test]
+    fn an_unratified_spec_blocks_every_gate_and_names_ratify() {
+        let ids = vec!["ATLAS-CARD-a".to_string()];
+        let failures = [
+            json!({"classification":"unratified_spec_change","detail":"specs changed after ratification"}),
+            json!({"classification":"insufficient_rigor","obligation_id":"ATLAS-CARD-a","detail":"x"}),
+        ];
+        let fact = gate_fact(&ids, true, &[passed("ATLAS-CARD-a")], &failures);
+        assert!(!fact.met);
+        assert_eq!(fact.blocker, "unratified");
+        assert!(fact.reason.contains("UNRATIFIED") && fact.reason.contains("g8 ratify"));
+        assert!(fact.reason.contains("UNATTESTED"), "both reasons are listed: {}", fact.reason);
+    }
+
+    #[test]
+    fn a_failure_for_another_obligation_does_not_block_this_gate() {
+        let ids = vec!["ATLAS-CARD-a".to_string()];
+        let failures = [json!({"classification":"insufficient_rigor","obligation_id":"ATLAS-CARD-b","detail":"x"})];
+        let fact = gate_fact(&ids, true, &[passed("ATLAS-CARD-a")], &failures);
+        assert!(fact.met);
+        assert_eq!(fact.blocker, "");
+    }
+
+    #[test]
+    fn changed_missing_and_failed_obligations_are_unmet_with_their_reason() {
+        let ids = vec!["ATLAS-CARD-a".to_string()];
+        assert_eq!(gate_fact(&ids, false, &[passed("ATLAS-CARD-a")], &[]).blocker, "changed");
+        assert_eq!(gate_fact(&ids, true, &[], &[]).blocker, "missing");
+        let failed = json!({"id":"ATLAS-CARD-a","status":"failed","evidence":{"summary":"no match"}});
+        let fact = gate_fact(&ids, true, &[failed], &[]);
+        assert_eq!((fact.met, fact.blocker.as_str(), fact.reason.as_str()), (false, "failed", "no match"));
+    }
 }

@@ -416,12 +416,29 @@ fn tier_precedence_is_proposed_gate_unreadable_drifted_verified() {
             obligation_id: "GATE".into(),
             met: true,
             reason: "checked".into(),
+            blocker: String::new(),
         },
     );
     assert_eq!(
         samepage_sources::project(&v, &f).unwrap()["cards"]["n"]["tier"],
         "gate-met"
     );
+    f.gates.insert(
+        "n".into(),
+        samepage_sources::GateFact {
+            obligation_id: "GATE".into(),
+            met: false,
+            reason: "UNATTESTED: GATE passes its check but has no fresh attestation".into(),
+            blocker: "unattested".into(),
+        },
+    );
+    let projection = samepage_sources::project(&v, &f).unwrap();
+    assert_eq!(projection["cards"]["n"]["tier"], "gate-unmet");
+    assert_eq!(projection["cards"]["n"]["chip"], "GATE UNMET: UNATTESTED");
+    assert!(projection["readback"]
+        .as_str()
+        .unwrap()
+        .contains("GATE UNMET: UNATTESTED; 1 source binding(s) (UNATTESTED: GATE passes"));
     let v = View::new(
         "r",
         [
