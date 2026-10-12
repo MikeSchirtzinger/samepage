@@ -27,6 +27,7 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub const EVENT_NAME: &str = "surface.activity";
 const MAX_EVENTS: usize = 800;
 const MAX_DETAIL_CHARS: usize = 2_000;
+const MAX_TARGETS: usize = 32;
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 /// The normalized classes every operational view consumes.
@@ -83,7 +84,12 @@ pub enum ActivityActorKind {
 pub struct ActivityActor {
     pub id: String,
     pub kind: ActivityActorKind,
+    /// The participant's display name when it announced one, otherwise the
+    /// caller class ("Agent", "Human").
     pub label: String,
+    /// Host-minted participant id, when the caller is a known participant.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub participant_id: Option<String>,
 }
 
 impl ActivityActor {
@@ -93,23 +99,40 @@ impl ActivityActor {
                 id: "surface-human".to_string(),
                 kind: ActivityActorKind::Human,
                 label: "Human".to_string(),
+                participant_id: None,
             },
             Caller::Agent => Self {
                 id: "surface-agent".to_string(),
                 kind: ActivityActorKind::Agent,
                 label: "Agent".to_string(),
+                participant_id: None,
             },
             Caller::Companion => Self {
                 id: "companion-agent".to_string(),
                 kind: ActivityActorKind::Agent,
                 label: "Companion agent".to_string(),
+                participant_id: None,
             },
             Caller::Unknown => Self {
                 id: "unknown-caller".to_string(),
                 kind: ActivityActorKind::Unknown,
                 label: "Unknown caller".to_string(),
+                participant_id: None,
             },
         }
+    }
+
+    /// The caller class, named by the participant who made the request when
+    /// the transport identified one. The name is attribution only.
+    fn from_actor(caller: Caller, actor: Option<&crate::Actor>) -> Self {
+        let mut stamped = Self::from_caller(caller);
+        if let Some(actor) = actor.filter(|actor| actor.caller == caller) {
+            if let Some(label) = actor.label.as_deref().filter(|l| !l.trim().is_empty()) {
+                stamped.label = label.to_string();
+            }
+            stamped.participant_id = actor.participant_id.clone();
+        }
+        stamped
     }
 
     fn host() -> Self {
@@ -117,6 +140,7 @@ impl ActivityActor {
             id: "surface-host".to_string(),
             kind: ActivityActorKind::Host,
             label: "Host".to_string(),
+            participant_id: None,
         }
     }
 }
@@ -181,6 +205,9 @@ pub struct ActivityEvent {
     pub state_revision_before: Vec<ActivityStateRevision>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub state_revision_after: Vec<ActivityStateRevision>,
+    /// Records the action created, changed, removed or addressed.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub targets: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
 }
@@ -459,14 +486,31 @@ impl ActivityFeed {
         after: Vec<ActivityStateRevision>,
         detail: Option<&str>,
     ) {
-        self.append(
+        self.record_action_by(caller, None, name, outcome, run_id, (before, after), Vec::new(), detail);
+    }
+
+    /// An action stamped with the requesting participant and the records it
+    /// touched. The participant name is attribution, never authority.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn record_action_by(
+        &self,
+        caller: Caller,
+        actor: Option<&crate::Actor>,
+        name: &str,
+        outcome: ActivityOutcome,
+        run_id: Option<&str>,
+        (before, after): (Vec<ActivityStateRevision>, Vec<ActivityStateRevision>),
+        targets: Vec<String>,
+        detail: Option<&str>,
+    ) {
+        self.append_targeted(
             ActivityCategory::Action,
             format!("action.{name}"),
-            ActivityActor::from_caller(caller),
+            ActivityActor::from_actor(caller, actor),
             outcome,
             correlation(run_id, None, None),
-            before,
-            after,
+            (before, after),
+            targets,
             detail,
         );
     }
@@ -619,6 +663,22 @@ impl ActivityFeed {
         after: Vec<ActivityStateRevision>,
         detail: Option<&str>,
     ) {
+        self.append_targeted(category, kind, actor, outcome, correlation, (before, after), Vec::new(), detail);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn append_targeted(
+        &self,
+        category: ActivityCategory,
+        kind: String,
+        actor: ActivityActor,
+        outcome: ActivityOutcome,
+        correlation: ActivityCorrelation,
+        (before, after): (Vec<ActivityStateRevision>, Vec<ActivityStateRevision>),
+        mut targets: Vec<String>,
+        detail: Option<&str>,
+    ) {
+        targets.truncate(MAX_TARGETS);
         if !self.is_enabled() { self.dropped.fetch_add(1, Ordering::Relaxed); return; }
         let at_ms = match now_ms() {
             Ok(at_ms) => at_ms,
@@ -651,6 +711,7 @@ impl ActivityFeed {
                 outcome,
                 state_revision_before: before,
                 state_revision_after: after,
+                targets,
                 detail,
             };
             persisted.events.push(event.clone());
@@ -881,6 +942,10 @@ impl SurfaceState for HostedState {
 
     fn activity_state_revision(&self) -> Result<Vec<ActivityStateRevision>, String> {
         self.inner.state().activity_state_revision()
+    }
+
+    fn activity_targets(&self, action: &str, args: &JsonValue, result: &str) -> Vec<String> {
+        self.inner.state().activity_targets(action, args, result)
     }
 
     fn activity_dropped(&self) -> u64 { self.inner.state().activity_dropped() }

@@ -1082,6 +1082,10 @@ impl SurfaceState for HostedState {
         self.inner.state().activity_state_revision()
     }
 
+    fn activity_targets(&self, action: &str, args: &JsonValue, result: &str) -> Vec<String> {
+        self.inner.state().activity_targets(action, args, result)
+    }
+
     fn activity_dropped(&self) -> u64 { self.inner.state().activity_dropped() }
 
     fn activity_feed(&self) -> Option<&crate::ActivityFeed> {

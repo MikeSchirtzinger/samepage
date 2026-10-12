@@ -828,6 +828,7 @@ impl SamePageState {
             "cement": cement_result,
             "validation": validation,
             "ids": invoked.ids,
+            "touched": invoked.commit.as_ref().map(|c| c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),
             "revision": self.host.revision(),
         }))
         .map_err(|error| error.to_string());
@@ -972,6 +973,29 @@ impl SamePageState {
         }
         Ok(result)
     }
+}
+
+/// The records a journaled action touched: what its commit created, changed
+/// or removed, else the record ids its arguments named.
+fn activity_targets(args: &Value, result: &str) -> Vec<String> {
+    let mut found: Vec<&Value> = Vec::new();
+    let reply = serde_json::from_str::<Value>(result).unwrap_or(Value::Null);
+    for key in ["touched", "applied_ids"] {
+        found.extend(reply[key].as_array().into_iter().flatten());
+    }
+    if found.is_empty() {
+        for key in ["id", "about", "from", "to", "target", "card", "draft_id", "lane_id", "flow_id"] {
+            found.push(&args[key]);
+        }
+        found.extend(args["ids"].as_array().into_iter().flatten());
+    }
+    let mut out: Vec<String> = Vec::new();
+    for id in found.into_iter().filter_map(Value::as_str).filter(|id| !id.is_empty()) {
+        if !out.iter().any(|seen| seen == id) {
+            out.push(id.to_string());
+        }
+    }
+    out
 }
 
 /// Decisions as text: mode, drafts, cemented coverage and published records.
@@ -1140,6 +1164,12 @@ fn map_actor(actor: &SurfaceActor) -> Result<Actor, String> {
 
 impl SurfaceState for SamePageState {
     fn activity_dropped(&self) -> u64 { samepage_capability::activity::dropped() }
+    fn activity_state_revision(&self) -> Result<Vec<ag_ui_surface::ActivityStateRevision>, String> {
+        Ok(vec![ag_ui_surface::ActivityStateRevision::new("document", self.host.revision())])
+    }
+    fn activity_targets(&self, _action: &str, args: &Value, result: &str) -> Vec<String> {
+        activity_targets(args, result)
+    }
     fn backing(&self) -> StateBacking {
         StateBacking::Crdt
     }

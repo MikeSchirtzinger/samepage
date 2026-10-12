@@ -519,6 +519,12 @@ async fn dispatch_tool_with_runtime(
     if provider_cancellable && take_interrupt(interrupt) {
         result.3 = true;
     }
+    // Reads are not activity. A browser polling its capabilities, or an
+    // agent reading the page, would otherwise evict every change from the
+    // bounded journal and sign reads nobody asked for.
+    if result.1 {
+        return result;
+    }
     let outcome = if result.3 {
         crate::ActivityOutcome::Cancelled
     } else if result.2 {
@@ -526,13 +532,16 @@ async fn dispatch_tool_with_runtime(
     } else {
         crate::ActivityOutcome::Failed
     };
-    rt.activity.record_action(
+    let actor = crate::current_actor();
+    let targets = surface.state().activity_targets(preferred, args, &result.0);
+    rt.activity.record_action_by(
         caller,
+        actor.as_ref(),
         preferred,
         outcome,
         run_id.as_deref(),
-        before,
-        after,
+        (before, after),
+        targets,
         (!result.2 || result.3).then_some(result.0.as_str()),
     );
     if !result.2 && !result.3 {
@@ -1507,5 +1516,90 @@ mod parent_guard_tests {
             }
             std::thread::sleep(Duration::from_millis(20));
         }
+    }
+}
+
+#[cfg(test)]
+mod journal_tests {
+    use std::collections::VecDeque;
+    use std::sync::Arc;
+
+    use parking_lot::Mutex;
+    use serde_json::json;
+
+    use super::*;
+    use crate::auth::AuthStore;
+    use crate::turn_loop::openai::ByokConfig;
+    use crate::{ClientModule, StateBacking, StateSnapshot, SurfaceState, ToolDef};
+
+    struct TargetState;
+    impl SurfaceState for TargetState {
+        fn backing(&self) -> StateBacking {
+            StateBacking::Ephemeral
+        }
+        fn describe(&self) -> Result<String, String> {
+            Ok("test".into())
+        }
+        fn snapshot(&self) -> Result<StateSnapshot, String> {
+            Ok(StateSnapshot { backing: StateBacking::Ephemeral, body: json!({}), chrome: None })
+        }
+        fn activity_targets(&self, _action: &str, args: &JsonValue, _result: &str) -> Vec<String> {
+            args["id"].as_str().map(|id| vec![id.to_string()]).unwrap_or_default()
+        }
+    }
+    struct TargetSurface {
+        state: TargetState,
+        actions: Vec<ToolDef>,
+    }
+    impl Surface for TargetSurface {
+        fn state(&self) -> &dyn SurfaceState {
+            &self.state
+        }
+        fn tools(&self) -> &[ToolDef] {
+            &self.actions
+        }
+        fn client_modules(&self) -> Vec<ClientModule> {
+            Vec::new()
+        }
+    }
+
+    #[tokio::test]
+    async fn reads_are_not_journaled_and_writes_carry_the_participant_and_targets() {
+        let schema = json!({"type":"object","properties":{"id":{"type":"string"}}});
+        let actions = vec![
+            ToolDef::new("look", "Read.", schema.clone(), |_| Effect::Query(Box::new(|_| Ok("seen".into())))),
+            ToolDef::new("write", "Write.", schema, |_| Effect::Mutate(Box::new(|_| Ok(None)))),
+        ];
+        let (ws_tx, _) = tokio::sync::broadcast::channel(8);
+        let (sse_tx, _) = tokio::sync::broadcast::channel(8);
+        let auth = std::env::temp_dir().join(format!("ag-ui-journal-{}-{}.json", std::process::id(), MessageId::random()));
+        let (rt, _) = RuntimeState::new(
+            ws_tx, sse_tx, Arc::new(Mutex::new(VecDeque::new())), Vec::new(),
+            Arc::new(AuthStore::open(auth).expect("auth store")), "test".into(), ByokConfig::default(), false, 0,
+        );
+        rt.install_action_schemas(&actions).expect("schemas");
+        let surface = TargetSurface { state: TargetState, actions };
+        let actor = crate::Actor {
+            caller: Caller::Agent,
+            label: Some("reviewer-agent".into()),
+            participant_id: Some("agent-7".into()),
+            hue: None,
+            responsible: None,
+        };
+        crate::with_actor(actor, async {
+            for _ in 0..5 {
+                dispatch_tool(&rt, &surface, Caller::Agent, "look", &json!({"id":"card-1"})).await;
+            }
+            dispatch_tool(&rt, &surface, Caller::Agent, "write", &json!({"id":"card-1"})).await;
+        })
+        .await;
+        let events = rt.activity.snapshot().events;
+        assert_eq!(events.len(), 1, "only the write is journaled: {events:?}");
+        let event = &events[0];
+        assert_eq!(event.kind, "action.write");
+        assert_eq!(event.actor.id, "surface-agent");
+        assert_eq!(event.actor.label, "reviewer-agent");
+        assert_eq!(event.actor.participant_id.as_deref(), Some("agent-7"));
+        assert_eq!(event.targets, vec!["card-1".to_string()]);
     }
 }

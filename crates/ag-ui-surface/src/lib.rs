@@ -313,6 +313,12 @@ pub trait SurfaceState: Send + Sync + 'static {
         Ok(Vec::new())
     }
 
+    /// Record ids an accepted or refused action touched, for its journal
+    /// entry. `result` is the action's reply text. Empty means unknown.
+    fn activity_targets(&self, _action: &str, _args: &JsonValue, _result: &str) -> Vec<String> {
+        Vec::new()
+    }
+
     /// Runtime-installed host activity service. Application state returns
     /// `None`; the wrapper installed by [`App::serve`] supplies the feed.
     /// Unrecorded diagnostic spans, without retaining any trace state.
