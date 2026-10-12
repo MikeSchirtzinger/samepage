@@ -1977,6 +1977,7 @@ pub struct App {
     default_provider: Option<String>,
     auth: Option<Arc<auth::AuthStore>>,
     activity_path: Option<PathBuf>,
+    people_path: Option<PathBuf>,
     activity_enabled: bool,
     prompt: Option<turn_loop::Prompts>,
     final_response_only: bool,
@@ -2016,6 +2017,7 @@ impl App {
             default_provider: None,
             auth: None,
             activity_path: None,
+            people_path: None,
             activity_enabled: true,
             prompt: None,
             final_response_only: false,
@@ -2053,6 +2055,14 @@ impl App {
     /// application gets restart-safe telemetry rather than process memory.
     pub fn activity_store(mut self, path: impl Into<PathBuf>) -> Self {
         self.activity_path = Some(path.into());
+        self
+    }
+
+    /// Keep joined people (resume token, participant id and chosen name) in
+    /// `path`, so a person keeps their name across a host restart. Without
+    /// this call the registry lives in process memory.
+    pub fn people_store(mut self, path: impl Into<PathBuf>) -> Self {
+        self.people_path = Some(path.into());
         self
     }
 
@@ -2436,6 +2446,11 @@ impl App {
             activity,
         );
         rt.set_final_response_only(self.final_response_only);
+        if let Some(path) = &self.people_path {
+            rt.people
+                .persist_to(path)
+                .map_err(AppError::InvalidConfiguration)?;
+        }
         rt.activity.record_lifecycle(
             "runtime.started",
             ActivityOutcome::Started,

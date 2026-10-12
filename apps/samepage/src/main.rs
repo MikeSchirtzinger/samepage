@@ -92,6 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .auth(auth)
         .activity_enabled(with_trace)
         .activity_store(activity)
+        .people_store(state_dir.join("people.json"))
         .prompt("Work on the shared SamePage map. Read the live map before acting. Use the declared actions and report refusals clearly.")
         .protocol_pkg_dir(protocol)
         .static_dir(static_dir)
