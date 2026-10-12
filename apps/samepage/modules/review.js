@@ -7,6 +7,9 @@ export function activate({wasm, application}) {
   application.registerCapability('review', wasm);
   let selected = null, latest = null, disposed = false, questionDraft = '';
   const drafts = new Map();
+  // A card's standing in words. UNDER CHALLENGE stays readable for an older host.
+  const STANDING = {SETTLED:'Settled', 'NO CLAIMS':'No claims', UNREVIEWED:'Unreviewed', QUESTIONED:'Questioned', DISPUTED:'Disputed', 'UNDER CHALLENGE':'Under challenge'};
+  const standing = state => STANDING[state] || String(state || '').toLowerCase().replace(/^./, c => c.toUpperCase());
   // "you" is decided here by participant id, never by a name.
   const who = (name, participant) => participant && participant === globalThis.samepagePerson?.id ? 'you' : (String(participant || '').startsWith('agent-') ? String(name || 'agent').replace(/-\d+$/, '') : (name || 'someone'));
   const el = (tag, text, className) => {
@@ -58,7 +61,8 @@ export function activate({wasm, application}) {
     const picker = el('select'); picker.setAttribute('aria-label','Review card');
     for (const n of projection.nodes) { const option=el('option',n.label); option.value=n.id; option.selected=n.id===selected; picker.append(option); }
     picker.addEventListener('change',()=>{ selected=picker.value; questionDraft=''; renderPanel(latest||projection, true); });
-    fragment.append(picker,el('p',node.state,'review-standing'));
+    const standingLine = el('p',standing(node.state),'review-standing'); standingLine.dataset.state = node.state;
+    fragment.append(picker,standingLine);
     const form = el('form',undefined,'review-question-form');
     const label = el('label','Question about this card'); label.htmlFor='review-question';
     const input = el('textarea'); input.id='review-question'; input.rows=2; input.maxLength=1200; input.value=questionDraft;
@@ -89,7 +93,7 @@ export function activate({wasm, application}) {
     fragment.append(el('h3',`Claims (${claims.length})`));
     for (const claim of claims) {
       const article=el('article',undefined,'review-claim');article.dataset.id=claim.id;article.dataset.verdict=claim.verdict;
-      article.append(el('p',claim.text),el('small',`${claim.basis} · ${claim.state} · ${claim.verdict}`));
+      article.append(el('p',claim.text),el('small',`${claim.basis} · ${standing(claim.state)} · ${claim.verdict}`));
       if (claim.path) article.append(el('p',`${claim.path}:${claim.lines}${claim.revision?'@'+claim.revision:''}`,'review-source'));
       if (!claim.withdrawn) {
         const controls=el('div',undefined,'review-verdicts');
@@ -122,7 +126,7 @@ export function activate({wasm, application}) {
       const node=projection.nodes.find(n=>n.id===card.dataset.id);
       const marks=projection.marks.filter(m=>m.target===card.dataset.id);
       if (node) {
-        const badge=el('span',node.state==='SETTLED'?'Settled':node.state==='NO CLAIMS'?'No claims':'Under challenge','review-badge');badge.dataset.state=node.state;card.append(badge);
+        const badge=el('span',standing(node.state),'review-badge');badge.dataset.state=node.state;card.append(badge);
       }
       if (marks.length) {
         // One chip per card: open questions in amber, all answered in green.

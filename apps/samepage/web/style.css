@@ -237,7 +237,11 @@ body[data-debug="true"] .map-card-meta { display: block; }
 .map-card:has(.review-open) > h2 { padding-right: 23px; }
 .review-badge { position: absolute; left: 10px; bottom: -12px; font-size: 10px; border: 1px solid #ae8b56; border-radius: 12px; padding: 2px 7px; background: #423629; color: #ffe2b9; }
 .review-badge[data-state="SETTLED"] { border-color: #7fb496; background: #193c30; color: #b6ecd0; }
-.review-badge[data-state="NO CLAIMS"] { border-color: #728ca0; background: #20313c; color: var(--soft); }
+.review-badge[data-state="NO CLAIMS"], .review-badge[data-state="UNREVIEWED"] { border-color: #728ca0; background: #20313c; color: var(--soft); }
+.review-badge[data-state="QUESTIONED"] { border-color: #d6b678; background: #423629; color: #ffe2b9; }
+.review-badge[data-state="DISPUTED"] { border-color: #e87d85; background: #4a1d24; color: #ffd6d9; }
+.review-standing[data-state="DISPUTED"] { color: #ffb4a9; }
+.review-standing[data-state="QUESTIONED"] { color: var(--warn); }
 .review-mark-glyphs { position: absolute; top: -13px; right: 9px; border-radius: 12px; padding: 1px 7px; background: var(--warn); color: #34280e; font-weight: 700; font-size: 12px; }
 .review-mark-glyphs[data-state="answered"] { background: #193c30; color: #b6ecd0; border: 1px solid #7fb496; }
 .review-mark[data-state="open"] { border-left: 3px solid var(--warn); }
