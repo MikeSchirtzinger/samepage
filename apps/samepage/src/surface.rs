@@ -1424,6 +1424,36 @@ impl SamePageState {
     }
 }
 
+/// What the header says about the project: its name, how many files Git
+/// tracks and the languages they are written in, with the branch and
+/// revision. Measured from the project root with git; unavailable outside a
+/// Git repository root, and says so.
+fn project_summary(project: &Path) -> Value {
+    let facts = crate::host::review::project_facts(project);
+    let name = project
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    if facts["state"] != "measured" {
+        return json!({"name": name, "state": facts["state"], "reason": facts["reason"], "languages": [], "files": null});
+    }
+    let languages: Vec<Value> = facts["languages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|pair| json!({"name": pair[0], "files": pair[1]}))
+        .collect();
+    json!({
+        "name": name,
+        "state": "measured",
+        "files": facts["tracked_files"],
+        "languages": languages,
+        "branch": facts["branch"],
+        "revision": facts["revision"],
+        "boundary": facts["boundary"],
+    })
+}
+
 /// A record in a few words: its kind, its label or text, and its id.
 fn record_words(view: &samepage_capability::View, r: &samepage_capability::Record) -> String {
     let words = ["label", "text", "title", "glyph"]
@@ -1825,6 +1855,7 @@ pub struct SamePageSurface {
     tools: Vec<ActionDef>,
     artifacts: SelectedArtifacts,
     board: Option<Arc<crate::host::board::BoardHost>>,
+    project: PathBuf,
 }
 
 impl SamePageSurface {
@@ -2055,6 +2086,7 @@ impl SamePageSurface {
             tools,
             artifacts,
             board,
+            project: project.to_path_buf(),
         })
     }
 }
@@ -2069,6 +2101,15 @@ impl Surface for SamePageSurface {
 
     fn routes(&self)->Vec<ag_ui_surface::RouteDef> {
         let mut routes=Vec::new();
+        let project=self.project.clone();
+        routes.push(ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/surface/project",handler:Box::new(move |_|{
+            let project=project.clone();
+            Box::pin(async move {
+                let summary=tokio::task::spawn_blocking(move || project_summary(&project)).await
+                    .unwrap_or_else(|e| json!({"state":"unavailable","reason":e.to_string()}));
+                ag_ui_surface::RouteResponse::json(200,summary)
+            })
+        })});
         if self.state.panes.is_some(){
         let state=self.state.clone();
         routes.push(ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/panes/html",handler:Box::new(move |request:ag_ui_surface::RouteRequest|{

@@ -240,7 +240,7 @@ impl Verifier for ReviewHost {
     }
 }
 
-fn project_facts(root_path: &Path) -> Value {
+pub(crate) fn project_facts(root_path: &Path) -> Value {
     let run = |args: &[&str]| -> Result<String, String> {
         let output = std::process::Command::new("git")
             .args(args)
