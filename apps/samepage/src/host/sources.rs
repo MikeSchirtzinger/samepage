@@ -30,6 +30,26 @@ impl Repository {
     pub fn check(&self, relative: &str, lines: &str) -> Result<(), CapError> {
         self.read(relative, lines).map(|_| ())
     }
+    /// How many lines a readable project file has. The path passes the same
+    /// privacy and containment policy as [`Repository::read`].
+    pub fn line_count(&self, relative: &str) -> Result<usize, CapError> {
+        self.read(relative, "1")?;
+        let resolved = self.root.join(relative);
+        let file = fs::File::open(&resolved)
+            .map_err(|_| CapError::new("source_invalid", format!("{relative}: cannot read file")))?;
+        let mut count = 0;
+        let mut reader = BufReader::new(file.take(4 * 1024 * 1024));
+        let mut buffer = Vec::new();
+        while reader
+            .read_until(b'\n', &mut buffer)
+            .map_err(|_| CapError::new("source_invalid", format!("{relative}: cannot read file")))?
+            > 0
+        {
+            count += 1;
+            buffer.clear();
+        }
+        Ok(count)
+    }
     pub fn read(&self, relative: &str, lines: &str) -> Result<String, CapError> {
         let fail = |message: &str| {
             CapError::new("source_invalid", format!("{relative}:{lines}: {message}"))
@@ -125,7 +145,10 @@ impl Repository {
                 .read_until(b'\n', &mut buffer)
                 .map_err(|_| fail("cannot read file"))?;
             if read == 0 {
-                return Err(fail("line range is stale"));
+                return Err(fail(&format!(
+                    "the file has {} lines, so this range ends past it",
+                    line - 1
+                )));
             }
             if read > 96_000 || buffer.contains(&0) {
                 return Err(fail("oversized line or binary source"));

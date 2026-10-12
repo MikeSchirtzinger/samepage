@@ -648,11 +648,12 @@ impl SamePageState {
                 sources.facts(&self.host.view())?,
             )?;
             self.host.invoke_composed(&actor, action, &batch)
-        } else if self.sources.is_some() && matches!(action, "card_place" | "atlas_place") {
+        } else if let Some(sources) = self.sources.as_ref().filter(|_| matches!(action, "card_place" | "atlas_place")) {
+            let args = whole_file(&sources.repo, args.clone())?;
             let batch = samepage_sources::place_batch(
                 &samepage_capability::Call {
                     action: "card_place".into(),
-                    args: args.clone(),
+                    args,
                 },
                 &self.host.view(),
             )
@@ -1087,6 +1088,27 @@ impl SamePageState {
         }
         Ok(result)
     }
+}
+
+/// `path` without `lines` binds the whole file: the host reads its length
+/// and names the range, so the bound excerpt is exactly what the file holds.
+fn whole_file(repo: &crate::host::sources::Repository, mut args: Value) -> Result<Value, String> {
+    let path = args["path"].as_str().unwrap_or_default().to_string();
+    let lines = args["lines"].as_str().unwrap_or_default();
+    if path.is_empty() || !lines.is_empty() {
+        return Ok(args);
+    }
+    let count = repo.line_count(&path).map_err(|e| e.to_string())?;
+    if count == 0 {
+        return Err(format!("{path} is empty; bind a file with content"));
+    }
+    if count > 400 {
+        return Err(format!(
+            "{path} has {count} lines and one binding covers at most 400; pass lines, such as 1-400"
+        ));
+    }
+    args["lines"] = json!(format!("1-{count}"));
+    Ok(args)
 }
 
 /// The records a journaled action touched: what its commit created, changed

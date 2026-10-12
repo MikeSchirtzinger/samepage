@@ -47,7 +47,7 @@ pub fn descriptor() -> Descriptor {
             "size": { "enum": SIZES },
             "kind": { "enum": SHAPES },
             "path": { "type": "string", "description": "Repository-relative file this card stands for, such as api/src/main.rs. Needs the sources capability, which checks the file exists and tracks its content." },
-            "lines": { "type": "string", "description": "Line range inside path, such as 1-40. Required with path." }
+            "lines": { "type": "string", "description": "Line range inside path, such as 1-40. Omit it to bind the whole file, up to 400 lines." }
         }
     });
     let mut place = ActionDecl::new(

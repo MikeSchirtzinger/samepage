@@ -330,8 +330,11 @@ pub fn check_binding(record: &Record) -> Result<(), CapError> {
             return Err(invalid(format!("{key} must be text")));
         }
     }
-    if string(record, "path").is_empty() != string(record, "lines").is_empty() {
-        return Err(invalid("source references require both path and lines"));
+    if string(record, "path").is_empty() && !string(record, "lines").is_empty() {
+        return Err(invalid("lines needs a path"));
+    }
+    if !string(record, "path").is_empty() && string(record, "lines").is_empty() {
+        return Err(invalid(format!("{}: pass lines, such as 1-40", string(record, "path"))));
     }
     Ok(())
 }

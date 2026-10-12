@@ -239,12 +239,12 @@ fn a_stale_line_range_is_an_error_not_an_empty_excerpt() {
     let r = root();
     let repo = native::Repository::open(&r).unwrap();
     for range in ["9000-9100", "1-3"] {
-        assert!(repo
-            .read("a.rs", range)
-            .unwrap_err()
-            .to_string()
-            .contains("stale"));
+        let error = repo.read("a.rs", range).unwrap_err().to_string();
+        assert!(error.contains("lines, so this range ends past it"), "{error}");
     }
+    let lines = std::fs::read_to_string(r.join("a.rs")).unwrap().lines().count();
+    assert_eq!(repo.line_count("a.rs").unwrap(), lines);
+    assert!(repo.read("a.rs", "1-3").unwrap_err().to_string().contains(&format!("has {lines} lines")));
     std::fs::remove_dir_all(r).unwrap();
 }
 #[test]

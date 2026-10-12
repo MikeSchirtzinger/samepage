@@ -97,8 +97,11 @@ pub fn check_binding(r: &Record) -> Result<(), CapError> {
     }
     let p = string(r, "path");
     let l = string(r, "lines");
-    if p.is_empty() != l.is_empty() {
-        return Err(invalid("source references require both path and lines"));
+    if p.is_empty() && !l.is_empty() {
+        return Err(invalid("lines needs a path"));
+    }
+    if !p.is_empty() && l.is_empty() {
+        return Err(invalid(format!("{p}: pass lines, such as 1-40")));
     }
     if !p.is_empty() {
         if p.starts_with('/')

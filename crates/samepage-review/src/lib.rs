@@ -722,14 +722,16 @@ pub fn describe(view: &View) -> Result<String, CapError> {
         ));
         for claim in claims_of(view, &node.id) {
             out.push_str(&format!(
-                "  [{}] {} ({}, {}; source {}:{}{}){}\n",
+                "  [{}] {} ({}, {}{}){}\n",
                 claim.id,
                 string(claim, "text"),
                 string(claim, "basis"),
                 string(claim, "verdict"),
-                string(claim, "path"),
-                string(claim, "lines"),
-                if string(claim, "revision").is_empty() {
+                match (string(claim, "path"), string(claim, "lines")) {
+                    ("", _) => String::new(),
+                    (path, "") => format!("; source {path}"),
+                    (path, lines) => format!("; source {path}:{lines}"),
+                } + &if string(claim, "revision").is_empty() {
                     String::new()
                 } else {
                     format!("@{}", string(claim, "revision"))
