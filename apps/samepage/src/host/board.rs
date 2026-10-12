@@ -394,6 +394,14 @@ impl InputSignals {
             .copied()
             .unwrap_or(0)
     }
+    /// The participant's cursor, or `None` before its first read or wait.
+    pub fn seen_before(&self, participant: &str) -> Option<u64> {
+        self.seen
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .get(participant)
+            .copied()
+    }
     /// Begin a cursor at `seq` for a participant that has none yet.
     pub fn start(&self, participant: &str, seq: u64) {
         self.seen

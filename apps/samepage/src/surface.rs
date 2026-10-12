@@ -914,6 +914,14 @@ impl SamePageState {
     ) -> Result<String, String> {
         let view = self.host.view();
         let mut out = format!("PAGE revision {}\n", self.host.revision());
+        if let Some(since) = self.input.seen_before(&actor.participant) {
+            let (lines, _) = self.change_lines(&actor.participant, since);
+            out.push_str(&if lines.is_empty() {
+                "\nCHANGED SINCE YOUR LAST READ: nothing from anyone else.\n".to_string()
+            } else {
+                format!("\nCHANGED SINCE YOUR LAST READ\n- {}\n", lines.join("\n- "))
+            });
+        }
         let section = |out: &mut String, header: &str, body: &str| {
             let body = body.trim();
             if body.is_empty() {
@@ -1002,10 +1010,9 @@ impl SamePageState {
         Ok(out)
     }
 
-    /// What woke a waiter: one line per change another participant made
-    /// since `since`, then the read-back of each capability whose records
-    /// changed (cards and links, review, drawings, walkthroughs).
-    pub(crate) fn wake_text(&self, reader: &str, since: u64) -> Result<String, String> {
+    /// One line per change another participant made since `since`, newest
+    /// last and at most eight, plus the record kinds those changes touched.
+    pub(crate) fn change_lines(&self, reader: &str, since: u64) -> (Vec<String>, std::collections::BTreeSet<String>) {
         let view = self.host.view();
         let journal = self.host.journal();
         let entries: Vec<_> = journal
@@ -1036,27 +1043,37 @@ impl SamePageState {
             None => format!("removed [{id}]"),
         };
         let mut kinds = std::collections::BTreeSet::new();
-        let mut out = String::new();
+        let mut lines = Vec::new();
+        if entries.len() > 8 {
+            lines.push(format!("{} earlier changes, not listed", entries.len() - 8));
+        }
         for entry in entries.iter().rev().take(8).rev() {
             let ids: Vec<_> = entry.created.iter().chain(&entry.modified).chain(&entry.deleted).collect();
             for id in &ids {
-                if let Some(r) = view.get(id) {
-                    kinds.insert(r.kind.clone());
-                } else {
-                    kinds.insert("node".into());
-                }
+                kinds.insert(view.get(id).map_or_else(|| "node".to_string(), |r| r.kind.clone()));
             }
             let what: Vec<_> = ids.iter().take(3).map(|id| describe(id)).collect();
-            out.push_str(&format!(
-                "woken by: {} {}{} by {}\n",
+            lines.push(format!(
+                "{} {}{} by {}",
                 entry.action.as_deref().unwrap_or("edit"),
                 what.join(", "),
                 if ids.len() > 3 { format!(" and {} more", ids.len() - 3) } else { String::new() },
                 name(&entry.actor)
             ));
         }
-        if entries.len() > 8 {
-            out.push_str(&format!("({} earlier changes not listed)\n", entries.len() - 8));
+        (lines, kinds)
+    }
+
+    /// What woke a waiter: one line per change another participant made
+    /// since `since`, then the read-back of each capability whose records
+    /// changed (cards and links, review, drawings, walkthroughs).
+    pub(crate) fn wake_text(&self, reader: &str, since: u64) -> Result<String, String> {
+        let view = self.host.view();
+        let journal = self.host.journal();
+        let (lines, kinds) = self.change_lines(reader, since);
+        let mut out = String::new();
+        for line in &lines {
+            out.push_str(&format!("woken by: {line}\n"));
         }
         let touches = |set: &[&str]| kinds.iter().any(|k| set.contains(&k.as_str()));
         if touches(&["mark", "claim", "understanding-context"]) {

@@ -846,12 +846,23 @@ fn changes(before: &JsonValue, after: &JsonValue, _reader: &str) -> Vec<String> 
                     item["state"].as_str().unwrap_or(""),
                     item["verdict"].as_str().unwrap_or("")
                 ),
-                _ => format!(
-                    "\"{label}\" is now {} (it was {}); {}",
-                    item["status"].as_str().unwrap_or("open"),
-                    old.and_then(|r| r["status"].as_str()).unwrap_or("absent"),
-                    item["state"].as_str().unwrap_or("")
-                ),
+                _ => {
+                    let status = |r: &JsonValue| r["status"].as_str().filter(|s| !s.is_empty()).unwrap_or("open").to_string();
+                    let state = |r: &JsonValue| r["state"].as_str().unwrap_or("").to_string();
+                    match old {
+                        Some(old) if status(old) == status(item) => format!(
+                            "\"{label}\" is now {} (it was {})",
+                            state(item),
+                            state(old)
+                        ),
+                        _ => format!(
+                            "\"{label}\" is now {} (it was {}); {}",
+                            status(item),
+                            old.map(status).unwrap_or_else(|| "absent".into()),
+                            state(item)
+                        ),
+                    }
+                }
             };
             out.push(format!(
                 "{} {section} [{}]: {detail}",
