@@ -29,10 +29,10 @@ export function activate({wasm, application}) {
   function renderPanel(projection) {
     const nodes = new Map(projection.nodes.map(n => [n.id,n]));
     if (!selected || !nodes.has(selected)) selected = projection.claims.find(c => !c.withdrawn)?.about || projection.marks.find(m => nodes.has(m.target))?.target || projection.nodes[0]?.id || null;
-    panel.hidden = false;
+    // The shell owns whether the Review tab is open; rendering never opens it.
     const fragment = document.createDocumentFragment();
     const header = el('div', undefined, 'review-header');
-    header.append(el('h2','Review'), button('Close', () => { panel.hidden = true; }));
+    header.append(el('h2','Review'));
     fragment.append(header);
     if (!selected) { fragment.append(el('p','Select a card to ask a question.')); panel.replaceChildren(fragment); return; }
     const node = nodes.get(selected);
@@ -90,6 +90,7 @@ export function activate({wasm, application}) {
   async function render({view}) {
     if (disposed) return;
     const projection=await application.project('review',view);latest=projection;
+    document.dispatchEvent(new CustomEvent('samepage:shared-question',{detail:{question:projection.context?.current?.question||null}}));
     map.querySelectorAll('.review-badge, .review-mark-glyphs').forEach(n=>n.remove());
     for (const card of map.querySelectorAll('.map-card')) {
       const node=projection.nodes.find(n=>n.id===card.dataset.id);

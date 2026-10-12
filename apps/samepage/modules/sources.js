@@ -27,14 +27,12 @@ export function activate({wasm, application}) {
     const view = application.view();
     const node = view.records.find(r => r.id === id);
     const bindings = latest?.cards[id]?.bindings || [];
-    document.getElementById('source-viewer')?.close();
-    const origin = document.activeElement;
-    const panel = el('dialog', undefined, 'source-viewer'); panel.id = 'source-viewer';
+    // The viewer lives in the Sources tab beside the map, never over it.
+    const mount = document.getElementById('sources');
+    const panel = el('section', undefined, 'source-viewer'); panel.id = 'source-viewer';
     panel.setAttribute('aria-label', `Code for ${node?.props.label || 'project'}`);
     const title = el('h2', node?.props.label || 'Project sources');
-    const close = el('button', 'Close'); close.type = 'button'; close.className = 'source-close';
-    close.addEventListener('click', () => panel.close());
-    const header = el('header'); header.append(title, close);
+    const header = el('header'); header.append(title);
     const context = el('p', 'Current working tree · read from the host. Viewing never edits the map.');
     const select = el('select'); select.setAttribute('aria-label', 'Source file');
     for (const b of bindings) { const o = el('option', `${b.path}:${b.lines}`); o.value = JSON.stringify(b); select.append(o); }
@@ -53,7 +51,7 @@ export function activate({wasm, application}) {
       for (const button of [previous, whole, next]) button.disabled = true;
       try {
         const excerpt = await dispatch('source_read', b);
-        if (own !== generation || !panel.open) return;
+        if (own !== generation || !panel.isConnected) return;
         const projection = envelope(wasm.viewer_readback(JSON.stringify(excerpt)));
         for (const path of excerpt.entry_points || []) {
           if ([...select.options].some(o => JSON.parse(o.value).path === path)) continue;
@@ -93,8 +91,8 @@ export function activate({wasm, application}) {
     whole.addEventListener('click', () => load({path:current.path, revision:current.revision}));
     next.addEventListener('click', () => { const end = current.first_line + current.text.split('\n').filter((_,i,a)=>i<a.length-1||a[i] !== '').length-1; return load({path:current.path, revision:current.revision, lines:`${end+1}-${Math.min(current.total_lines,end+200)}`}); });
     browse.addEventListener('toggle', () => { if (browse.open) void list(); });
-    panel.addEventListener('close', () => { generation++; panel.remove(); if (origin?.isConnected) origin.focus(); }, {once:true});
-    document.body.append(panel); panel.showModal(); close.focus();
+    mount.replaceChildren(panel);
+    application.openPanel?.('sources');
     if (bindings.length) await load(bindings[0]); else { notice.textContent = 'No source linked. Browse project files.'; select.hidden = true; browse.open = true; }
   }
   async function render({view}) {
@@ -119,7 +117,8 @@ export function activate({wasm, application}) {
       }
     } catch (e) { fail(e); } finally { busy = false; }
   }
-  const open = e => openViewer(e.detail?.id || '').catch(fail);
+  // Opening the tab by itself keeps a viewer that is already showing.
+  const open = e => { if (!e.detail?.id && document.querySelector('#sources .source-viewer')) return; openViewer(e.detail?.id || '').catch(fail); };
   document.addEventListener('samepage:sources-open', open);
   const unregister = application.registerRenderer('sources', {render});
   const timer = setInterval(() => void render({view:application.view()}), 3000);

@@ -6,43 +6,91 @@
   <title>SamePage</title>
   <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-  <header class="topbar">
-    <div><strong>SamePage</strong><span class="subhead">Shared map</span></div>
-    <div id="connection-status" role="status">Loading document…</div>
-  </header>
-  <div id="error-banner" class="error-banner" role="alert" hidden></div>
-  <main>
-    <section class="toolbar" aria-label="Map controls">
-      <form id="add-card"><label for="new-card-label">New card</label><input id="new-card-label" name="label" maxlength="140" required><button type="submit">Add card</button></form>
-      <button id="architecture-open" type="button">Compare architecture</button>
-      <button id="activity-toggle" type="button" aria-expanded="false">Activity</button>
-      <span id="trace-health" role="status"></span>
-      <span id="map-count" aria-live="polite">Loading map…</span>
-    </section>
-    <div id="trace" aria-label="Trace capability status"></div>
-    <div id="architecture" aria-label="Architecture proposals" hidden></div>
-    <button id="board-open" type="button">Board</button>
-    <div id="sketch" aria-label="Drawing tools"></div>
-    <section class="toolbar" aria-label="Pane controls"><button id="open-panes" type="button">Panes</button><form id="person-name"><label for="person-display-name">Your name</label><input id="person-display-name" maxlength="120" required><button type="submit">Use name</button></form><span id="pane-ask" role="status"></span></section>
-    <div id="panes" aria-label="Shared panes" hidden></div>
-    <div id="diagrams" aria-label="Diagram capability status"></div>
-    <div id="sources" aria-label="Source capability status"></div>
-    <section id="cement" aria-label="Reviewed decisions"></section>
-  <section id="lanes" aria-label="Found in source"></section>
-    <section id="explain" aria-label="Walkthroughs" hidden></section>
-    <div class="surface-layout">
-      <div id="map" aria-label="Shared cards and links"></div>
-      <aside id="review" aria-label="Review" hidden></aside>
-      <aside id="board" aria-label="Board" hidden></aside>
+<body data-panel="closed" data-mode="map" data-sync="connecting">
+  <header class="app-header">
+    <div class="brand"><strong>SamePage</strong><span class="subhead">Shared map</span></div>
+    <div id="mode-switch" class="mode-switch" role="group" aria-label="Mode" hidden></div>
+    <p id="shared-question" class="shared-question" hidden></p>
+    <form id="name-prompt" class="name-prompt" hidden>
+      <label for="name-prompt-input">What should others call you?</label>
+      <input id="name-prompt-input" maxlength="120" autocomplete="nickname" required>
+      <button type="submit">Save</button>
+      <button type="button" id="name-prompt-skip" class="quiet">Not now</button>
+    </form>
+    <div id="presence" class="presence" aria-label="Who is here" role="status"></div>
+    <button id="inbox-toggle" class="inbox-toggle" type="button" aria-expanded="false" aria-controls="inbox" title="Questions, answers and board items waiting for you">Inbox <span id="inbox-count" class="inbox-count">0</span></button>
+    <span id="connection-status" class="connection-status" role="status">Loading document…</span>
+    <div class="overflow">
+      <button id="overflow-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="overflow-menu" title="More">More</button>
+      <div id="overflow-menu" class="overflow-menu" hidden>
+        <button id="architecture-open" type="button">Compare architecture</button>
+        <button id="activity-toggle" type="button" aria-expanded="false">Activity</button>
+        <button id="rename-open" type="button">Change your name</button>
+        <div id="drawing-io" class="drawing-io" aria-label="Import and export drawings"></div>
+        <label class="debug-toggle"><input id="debug-toggle" type="checkbox"> Show developer details</label>
+      </div>
     </div>
-  </main>
-  <aside id="legend" aria-label="Page legend">
-    <h2>Legend</h2>
-    <p>Visual keys from loaded capabilities. Glyphs and words distinguish colours.</p>
-    <label><input id="legend-all" type="checkbox"> Show all keys of loaded capabilities</label>
-    <div id="legend-content"></div>
+  </header>
+  <div id="error-banner" class="sync-banner" role="alert" hidden></div>
+  <section id="inbox" class="inbox" aria-label="Inbox" hidden></section>
+
+  <nav id="tool-rail" class="tool-rail" aria-label="Tools">
+    <button id="add-card-open" type="button" class="rail-button" title="Add a card (C)" aria-expanded="false" aria-controls="add-card"><span aria-hidden="true">+</span><span class="sr-only">Add a card</span></button>
+  </nav>
+
+  <section id="map-region" class="map-region" aria-label="Map">
+    <div id="map" aria-label="Shared cards and links"></div>
+    <div id="sketch" class="selection-bar" aria-label="Selected drawing"></div>
+    <form id="add-card" class="add-card" hidden><label for="new-card-label">New card</label><input id="new-card-label" name="label" maxlength="140" required><button type="submit">Add card</button></form>
+    <div class="map-corner" aria-label="View">
+      <button id="legend-toggle" type="button" aria-expanded="false" aria-controls="legend">Legend</button>
+      <button id="zoom-out" type="button" title="Zoom out (-)" aria-label="Zoom out">−</button>
+      <span id="zoom-level" class="zoom-level" aria-live="polite">100%</span>
+      <button id="zoom-in" type="button" title="Zoom in (+)" aria-label="Zoom in">+</button>
+      <button id="zoom-fit" type="button" title="Fit everything (F)">Fit</button>
+    </div>
+    <aside id="legend" class="legend-popover" aria-label="Page legend" hidden>
+      <header><h2>Legend</h2><button id="legend-close" type="button" class="quiet" aria-label="Close legend">×</button></header>
+      <p>Keys from loaded capabilities. Glyphs and words carry the meaning, not colour alone.</p>
+      <label><input id="legend-all" type="checkbox"> Show keys not on the map</label>
+      <div id="legend-content"></div>
+    </aside>
+    <div id="diagrams" aria-label="Diagram capability status" hidden></div>
+    <div id="architecture" aria-label="Architecture proposals" hidden></div>
+    <div id="trace" aria-label="Trace capability status"></div>
+  </section>
+
+  <aside id="side-panel" class="side-panel" aria-label="Panels">
+    <div class="tab-strip" role="tablist" aria-label="Panels">
+      <button class="tab" role="tab" type="button" data-tab="review" aria-selected="false" hidden>Review</button>
+      <button class="tab" role="tab" type="button" data-tab="board" aria-selected="false" hidden>Board</button>
+      <button class="tab" role="tab" type="button" data-tab="sources" aria-selected="false" hidden>Sources</button>
+      <button class="tab" role="tab" type="button" data-tab="panes" aria-selected="false" hidden>Panes</button>
+      <button class="tab" role="tab" type="button" data-tab="cement" aria-selected="false" hidden>Cement</button>
+      <button id="panel-close" class="panel-close" type="button" aria-label="Close panel" title="Close panel">×</button>
+    </div>
+    <section class="tab-body" role="tabpanel" data-tab="review" hidden><div class="problems" data-capability="review"></div><div id="review" aria-label="Review"></div></section>
+    <section class="tab-body" role="tabpanel" data-tab="board" hidden><div class="problems" data-capability="board"></div><div id="board" aria-label="Board"></div></section>
+    <section class="tab-body" role="tabpanel" data-tab="sources" hidden><div class="problems" data-capability="sources"></div><div id="sources" aria-label="Sources"></div></section>
+    <section class="tab-body" role="tabpanel" data-tab="panes" hidden><div class="problems" data-capability="panes"></div><p id="pane-ask" class="pane-ask" role="status"></p><div id="panes" aria-label="Shared panes"></div></section>
+    <section class="tab-body" role="tabpanel" data-tab="cement" hidden><div class="problems" data-capability="cement"></div><section id="cement" aria-label="Reviewed decisions"></section></section>
   </aside>
+
+  <footer id="dock" class="dock" aria-label="Status">
+    <div class="dock-bar">
+      <button id="lanes-open" class="dock-segment" type="button" data-drawer="lanes" aria-expanded="false" hidden>Found in source</button>
+      <button id="explain-open" class="dock-segment" type="button" data-drawer="explain" aria-expanded="false" hidden>Walkthrough</button>
+      <button id="cement-summary" class="dock-segment" type="button" hidden>Cement</button>
+      <div id="dock-problems" class="dock-problems"></div>
+      <p id="toast" class="toast" role="status" aria-live="polite"></p>
+      <span id="map-count" class="map-count" aria-live="polite">Loading map…</span>
+    </div>
+    <div id="dock-drawer" class="dock-drawer" hidden>
+      <header class="dock-drawer-head"><strong id="dock-drawer-title"></strong><button id="dock-drawer-close" type="button" class="quiet" aria-label="Close drawer">×</button></header>
+      <section class="drawer-body" data-drawer="lanes" hidden><div class="problems" data-capability="lanes"></div><section id="lanes" aria-label="Found in source"></section></section>
+      <section class="drawer-body" data-drawer="explain" hidden><div class="problems" data-capability="explain"></div><section id="explain" aria-label="Walkthroughs" hidden></section></section>
+    </div>
+  </footer>
   <script type="module" src="/shell.js"></script>
 </body>
 </html>

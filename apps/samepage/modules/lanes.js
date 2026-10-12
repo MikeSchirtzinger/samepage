@@ -15,7 +15,7 @@ export function activate({wasm, application, mount}) {
       const data=(await dispatch('lanes_read',{})).lanes;
       if(data.revision!==view.revision)return;
       const projection=envelope(wasm.project_with_facts(JSON.stringify(view),JSON.stringify(data.facts)));
-      const strip=el('details',undefined,'lanes-strip');strip.open=opened;
+      const strip=el('details',undefined,'lanes-strip');strip.open=true;
       strip.append(el('summary',`Found in source · ${projection.unresolved_count} unresolved · ${projection.lanes.length} findings`));
       strip.addEventListener('toggle',()=>{opened=strip.open;});
       const description=el('p','Static source patterns, not observed running processes. Extraction may miss or misclassify code. A vanished source remains unresolved until reviewed.');
@@ -50,10 +50,10 @@ export function activate({wasm, application, mount}) {
       if(page>0)pagination.append(button('Previous findings',()=>{page=Math.max(0,page-20);return render({view:application.view()});}));
       if(page+20<all.length)pagination.append(button('More findings',()=>{page+=20;return render({view:application.view()});}));
       strip.append(description,controls,findings,pagination);mount.replaceChildren(strip);
-      const opener=document.querySelector('#lanes-open');if(opener)opener.textContent=`Lanes · ${projection.unresolved_count} unresolved`;
+      const opener=document.querySelector('#lanes-open');if(opener){opener.textContent=`Found in source · ${projection.unresolved_count} unresolved`;opener.dataset.attention=String(projection.unresolved_count>0);}
     } catch(e){fail(e);} finally{busy=false;}
   }
-  const open=()=>{opened=false;void render({view:application.view()});};
+  const open=()=>{opened=true;void render({view:application.view()});};
   document.addEventListener('samepage:lanes-open',open);
   const unregister=application.registerRenderer('lanes',{render});
   const timer=setInterval(()=>void render({view:application.view()}),5000);

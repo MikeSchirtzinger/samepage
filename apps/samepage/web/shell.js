@@ -14,9 +14,66 @@ const errorNode = document.getElementById("error-banner");
 const client = new AgUiClient();
 let kernel;
 
-function showError(message) {
-  errorNode.textContent = message;
+// The red bar is for losing the shared document only: connection loss, a
+// failed sync, a save that failed or is pending. Everything else is a problem
+// owned by one capability and shown inside that capability's tab or above the
+// dock, keyed by action so the action's next success clears it.
+function showSyncLoss(message) {
+  const text = document.createElement("p"); text.textContent = message;
+  const dismiss = document.createElement("button"); dismiss.type = "button"; dismiss.className = "quiet";
+  dismiss.textContent = "Dismiss"; dismiss.addEventListener("click", () => { errorNode.hidden = true; });
+  errorNode.replaceChildren(text, dismiss);
+  errorNode.dataset.message = message;
   errorNode.hidden = false;
+}
+function clearSyncLoss() { errorNode.hidden = true; errorNode.replaceChildren(); delete errorNode.dataset.message; }
+
+const problems = new Map();
+const problemKey = (capability, action) => `${capability}\u0000${action}`;
+function renderProblems() {
+  const slots = new Map([...document.querySelectorAll(".problems[data-capability]")].map(node => [node.dataset.capability, node]));
+  const lists = new Map([...slots.keys()].map(id => [id, []]));
+  const dock = [];
+  for (const entry of problems.values()) (lists.get(entry.capability) || dock).push(entry);
+  const item = (entry) => {
+    const box = document.createElement("div"); box.className = "problem"; box.setAttribute("role", "alert");
+    box.dataset.capability = entry.capability; box.dataset.action = entry.action;
+    const text = document.createElement("p"); text.textContent = entry.message;
+    const close = document.createElement("button"); close.type = "button"; close.textContent = "×";
+    close.setAttribute("aria-label", "Dismiss"); close.title = "Dismiss";
+    close.addEventListener("click", () => resolveProblem(entry.capability, entry.action));
+    box.append(text, close); return box;
+  };
+  for (const [id, node] of slots) node.replaceChildren(...lists.get(id).map(item));
+  document.getElementById("dock-problems")?.replaceChildren(...dock.slice(-3).map(item));
+  for (const tab of document.querySelectorAll(".tab[data-tab]")) tab.dataset.problem = String((lists.get(tab.dataset.tab) || []).length > 0);
+}
+function reportProblem(capability, action, error) {
+  const message = String(error?.message ?? error ?? "failed");
+  problems.set(problemKey(capability, action), {capability, action, message, at: Date.now()});
+  renderProblems();
+}
+function resolveProblem(capability, action) {
+  let changed = false;
+  for (const [key, entry] of problems) {
+    if (entry.capability === capability && (action === undefined || entry.action === action)) { problems.delete(key); changed = true; }
+  }
+  if (changed) renderProblems();
+}
+function resolveAction(action) {
+  let changed = false;
+  for (const [key, entry] of problems) if (entry.action === action) { problems.delete(key); changed = true; }
+  if (changed) renderProblems();
+}
+let toastTimer = 0;
+function toast(message, tone = "info") {
+  const node = document.getElementById("toast");
+  if (!node) return;
+  node.textContent = String(message || "").split("\n")[0].slice(0, 200);
+  node.dataset.tone = tone;
+  node.title = String(message || "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { if (node.dataset.tone !== "error") node.textContent = ""; }, 12000);
 }
 
 function setStatus(message) { statusNode.textContent = message; }
@@ -79,7 +136,7 @@ function createKernel({ documentModule, manifest }) {
     try {
       await client.action('page_observe', {...report, sequence:++observationSequence});
       if (observationGeneration === connectGeneration && observationError) {
-        if (errorNode.textContent === observationError) errorNode.hidden = true;
+        resolveProblem("map", "validate");
         observationError = null;
       }
     }
@@ -90,7 +147,7 @@ function createKernel({ documentModule, manifest }) {
       lastObservation = '';
       if (!String(error.message).includes('stale revision')) {
         observationError = `Page validation unavailable: ${error.message}`;
-        showError(observationError);
+        reportProblem("map", "validate", observationError);
       }
     } finally { observing = false; }
   };
@@ -115,8 +172,8 @@ function createKernel({ documentModule, manifest }) {
     try {
       for (const [id, renderer] of renderers) {
         if (snapshot.revision !== replica.revision()) break;
-        try { await renderer.render(snapshot); }
-        catch (error) { errors.push({code:"renderer_failure",message:`${id}: ${error.message}`}); showError(`${id} renderer failed: ${error.message}`); }
+        try { await renderer.render(snapshot); resolveProblem(id, "render"); }
+        catch (error) { errors.push({code:"renderer_failure",message:`${id}: ${error.message}`}); reportProblem(id, "render", `${id} could not draw: ${error.message}`); }
       }
       if (snapshot.revision === replica.revision()) {
         renderedRevision = snapshot.revision;
@@ -138,8 +195,8 @@ function createKernel({ documentModule, manifest }) {
     if (!renderQueued) { renderQueued = true; requestAnimationFrame(() => void render()); }
   };
   const activateForCurrentView = async () => {
-    try { await runtime?.activateForView(view()); }
-    catch (error) { showError(`Capability unavailable: ${error.message}`); console.error("[samepage] capability activation failed:", error); }
+    try { await runtime?.activateForView(view()); resolveProblem("page", "load"); }
+    catch (error) { reportProblem("page", "load", `Capability unavailable: ${error.message}`); console.error("[samepage] capability activation failed:", error); }
   };
   const sendFrames = (frames) => {
     if (socket?.readyState !== WebSocket.OPEN) return;
@@ -170,19 +227,18 @@ function createKernel({ documentModule, manifest }) {
           // Clear only a fault carried into this reconnect. An SSE fault that
           // arrived between the two hello frames belongs to the new host.
           persistenceState = finishPersistenceHandshake(persistenceState, persistenceAtStart);
-          if (refusal) {
-            showError(`Edit refused: ${refusal}${refusal.endsWith("…") ? "" : "."} Unsent edits from that document were discarded. This document is now synced.`);
-          } else if (persistencePresentation(persistenceState).banner) {
-            showError(persistencePresentation(persistenceState).banner);
-          } else {
-            errorNode.hidden = true;
-          }
+          // A refused edit stays with the capability that refused it; the
+          // document itself is synced again, so the red bar goes.
+          refusal = null;
+          if (persistencePresentation(persistenceState).banner) showSyncLoss(persistencePresentation(persistenceState).banner);
+          else clearSyncLoss();
+          document.body.dataset.sync = "ready";
           notify();
           await activateForCurrentView();
           scheduleRender();
         }
       } catch (error) {
-        showError(`Document sync failed: ${error.message}`);
+        showSyncLoss(`Document sync failed: ${error.message}. Reconnecting.`);
         ws.close();
       }
     };
@@ -192,12 +248,17 @@ function createKernel({ documentModule, manifest }) {
       const rejected = event.code === 4409;
       const wireReason = event.reason || "host refused the edit";
       const reason = wireReason.trimEnd() + (new TextEncoder().encode(wireReason).byteLength >= 120 ? "…" : "");
+      document.body.dataset.sync = "reconnecting";
       if (rejected) {
         refusal = reason;
         replica.mark_refused(reason);
-        showError(`Edit refused: ${reason}${reason.endsWith("…") ? "" : "."} Unsent edits from this document were discarded. Reconnecting with a fresh document.`);
+        const owner = /capability "([a-z0-9_-]+)"/i.exec(reason)?.[1] || "page";
+        const refused = `Edit refused: ${reason}${reason.endsWith("…") ? "" : "."} Your unsent edits were discarded.`;
+        reportProblem(owner, "edit", refused);
+        toast(refused, "error");
+        showSyncLoss("Reconnecting with a fresh copy of the page after a refused edit…");
       } else {
-        showError("Connection lost. Unconfirmed edits may be lost while a fresh document reconnects.");
+        showSyncLoss("Connection lost. Unconfirmed edits may be lost while a fresh document reconnects.");
       }
       sync = rejected ? "refused; reconnecting" : "disconnected; reconnecting";
       notify();
@@ -215,7 +276,7 @@ function createKernel({ documentModule, manifest }) {
           rememberMe(person);
           if (generation === connectGeneration) connect();
         } catch (error) {
-          showError(`Document reconnect is waiting for identity: ${error.message}`);
+          showSyncLoss(`Document reconnect is waiting for identity: ${error.message}`);
           if (generation === connectGeneration) setTimeout(() => connect(), 1500);
         }
       }, 900);
@@ -260,8 +321,10 @@ function createKernel({ documentModule, manifest }) {
   };
   const commit = (batch) => {
     requireReady();
-    const result = JSON.parse(replica.apply_batch(JSON.stringify(withCascades(batch))));
+    const full = withCascades(batch);
+    const result = JSON.parse(replica.apply_batch(JSON.stringify(full)));
     flush(); void activateForCurrentView(); scheduleRender(); notify();
+    for (const entry of full.entries) resolveProblem(entry.capability, "edit");
     return result;
   };
   const api = Object.freeze({
@@ -294,16 +357,323 @@ function createKernel({ documentModule, manifest }) {
     activateForView: (selectedView = view()) => runtime?.activateForView(selectedView),
     activateForTool: (tool) => runtime?.activateForTool(tool),
     activateForRoute: (route) => runtime?.activateForRoute(route),
-    dispatch: (name, args) => client.action(name, args),
+    // An action's next success clears the problem it left behind.
+    dispatch: async (name, args) => { const result = await client.action(name, args); resolveAction(name); return result; },
+    problem: (capability, action, error) => reportProblem(capability, action, error),
+    resolved: (capability, action) => resolveProblem(capability, action),
+    toast: (message, tone) => toast(message, tone),
+    openPanel: (tab) => document.dispatchEvent(new CustomEvent("samepage:panel-open", {detail: {tab}})),
     attachRuntime(value) { if (runtime) throw new Error("kernel runtime already attached"); runtime = value; notify(); legend.refresh(); },
     connect,
-    setPersistenceFailure(message) { persistenceState = persistenceFailed(persistenceState, message); showError(persistencePresentation(persistenceState).banner); notify(); },
-    setPersistencePending(message) { persistenceState = persistencePending(persistenceState, message); showError(persistencePresentation(persistenceState).banner); notify(); },
-    setPersistenceResolved() { persistenceState = persistenceResolved(persistenceState); if (!persistenceState.failure && !refusal) errorNode.hidden = true; notify(); },
+    setPersistenceFailure(message) { persistenceState = persistenceFailed(persistenceState, message); showSyncLoss(persistencePresentation(persistenceState).banner); notify(); },
+    setPersistencePending(message) { persistenceState = persistencePending(persistenceState, message); showSyncLoss(persistencePresentation(persistenceState).banner); notify(); },
+    setPersistenceResolved() { persistenceState = persistenceResolved(persistenceState); if (!persistenceState.failure && sync === "ready") clearSyncLoss(); notify(); },
     // Read-only diagnostics for real cross-peer verification.
     diagnostics: () => ({ renderedRevision, observationStream, clientId: replica.client_id(), revision: replica.revision(), status: state(), view: view() }),
   });
   return api;
+}
+
+// ---- Shell controller: panel tabs, dock drawer, header, rail. Capabilities
+// render inside these mounts; only the person's own action opens a panel.
+const body = document.body;
+const remember = (key, value) => { try { if (value === undefined) return localStorage.getItem(key); if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch { return null; } };
+const tabActivation = {
+  review: () => kernel.activate("review"),
+  board: () => kernel.activate("board"),
+  sources: () => kernel.activateForRoute("sources"),
+  panes: () => kernel.activateForRoute("panes"),
+  cement: () => kernel.activateForRoute("cement"),
+};
+function tabButton(tab) { return document.querySelector(`.tab[data-tab="${tab}"]`); }
+async function openTab(tab, {activate = true} = {}) {
+  if (!tabButton(tab) || tabButton(tab).hidden) return;
+  body.dataset.panel = "open"; body.dataset.tab = tab;
+  for (const button of document.querySelectorAll(".tab[data-tab]")) button.setAttribute("aria-selected", String(button.dataset.tab === tab));
+  for (const section of document.querySelectorAll(".tab-body[data-tab]")) section.hidden = section.dataset.tab !== tab;
+  tabButton(tab).dataset.unread = "false";
+  if (!activate) return;
+  try { await tabActivation[tab]?.(); resolveProblem(tab, "load"); }
+  catch (error) { reportProblem(tab, "load", `${tab} is unavailable: ${error.message}`); }
+  if (tab === "sources") document.dispatchEvent(new CustomEvent("samepage:sources-open", {detail: {}}));
+  if (tab === "cement") document.dispatchEvent(new CustomEvent("samepage:cement-open"));
+}
+function closePanel() {
+  body.dataset.panel = "closed"; delete body.dataset.tab;
+  for (const button of document.querySelectorAll(".tab[data-tab]")) button.setAttribute("aria-selected", "false");
+  for (const section of document.querySelectorAll(".tab-body[data-tab]")) section.hidden = true;
+}
+function markUnread(tab) { const button = tabButton(tab); if (button && body.dataset.tab !== tab) button.dataset.unread = "true"; }
+
+const drawerTitles = {lanes: "Found in source", explain: "Walkthrough"};
+function openDrawer(name) {
+  const drawer = document.getElementById("dock-drawer");
+  drawer.hidden = false; drawer.dataset.drawer = name;
+  document.getElementById("dock-drawer-title").textContent = drawerTitles[name] || name;
+  for (const section of drawer.querySelectorAll(".drawer-body")) section.hidden = section.dataset.drawer !== name;
+  for (const segment of document.querySelectorAll(".dock-segment[data-drawer]")) segment.setAttribute("aria-expanded", String(segment.dataset.drawer === name));
+}
+function closeDrawer() {
+  document.getElementById("dock-drawer").hidden = true;
+  for (const segment of document.querySelectorAll(".dock-segment[data-drawer]")) segment.setAttribute("aria-expanded", "false");
+}
+function toggleDrawer(name) {
+  const drawer = document.getElementById("dock-drawer");
+  if (!drawer.hidden && drawer.dataset.drawer === name) closeDrawer(); else openDrawer(name);
+}
+
+function wireChrome() {
+  for (const button of document.querySelectorAll(".tab[data-tab]")) {
+    button.hidden = !kernel.hasCapability(button.dataset.tab);
+    button.addEventListener("click", () => {
+      if (body.dataset.panel === "open" && body.dataset.tab === button.dataset.tab) closePanel();
+      else void openTab(button.dataset.tab);
+    });
+  }
+  document.getElementById("panel-close").addEventListener("click", closePanel);
+  document.addEventListener("samepage:panel-open", event => void openTab(event.detail?.tab));
+  document.addEventListener("samepage:review-open", () => void openTab("review", {activate: false}));
+  document.addEventListener("samepage:toast", event => toast(event.detail?.text, event.detail?.tone));
+  document.getElementById("dock-drawer-close").addEventListener("click", closeDrawer);
+
+  // Overflow menu, legend popover, add-card popover: open on click, close on
+  // Escape or a click elsewhere.
+  const popovers = [
+    ["overflow-toggle", "overflow-menu"],
+    ["legend-toggle", "legend"],
+    ["add-card-open", "add-card"],
+  ];
+  const setPopover = (toggleId, panelId, open) => {
+    const panel = document.getElementById(panelId), toggle = document.getElementById(toggleId);
+    if (!panel || !toggle) return;
+    panel.hidden = !open; toggle.setAttribute("aria-expanded", String(open));
+    if (open && panelId === "add-card") document.getElementById("new-card-label").focus();
+    if (open && panelId === "legend") document.dispatchEvent(new CustomEvent("samepage:legend-open"));
+  };
+  for (const [toggleId, panelId] of popovers) {
+    document.getElementById(toggleId)?.addEventListener("click", event => {
+      event.stopPropagation();
+      setPopover(toggleId, panelId, document.getElementById(panelId).hidden);
+    });
+  }
+  document.getElementById("legend-close").addEventListener("click", () => setPopover("legend-toggle", "legend", false));
+  document.addEventListener("pointerdown", event => {
+    for (const [toggleId, panelId] of popovers) {
+      const panel = document.getElementById(panelId);
+      if (panel.hidden || panel.contains(event.target) || document.getElementById(toggleId).contains(event.target)) continue;
+      if (panelId === "legend") continue; // the legend stays until closed; it is read beside the map
+      setPopover(toggleId, panelId, false);
+    }
+    const inbox = document.getElementById("inbox");
+    if (!inbox.hidden && !inbox.contains(event.target) && !document.getElementById("inbox-toggle").contains(event.target)) {
+      inbox.hidden = true; document.getElementById("inbox-toggle").setAttribute("aria-expanded", "false");
+    }
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    for (const [toggleId, panelId] of popovers) if (!document.getElementById(panelId).hidden) setPopover(toggleId, panelId, false);
+    document.getElementById("inbox").hidden = true;
+  });
+  document.getElementById("overflow-menu").addEventListener("click", event => {
+    if (event.target.closest("button:not(#drawing-io button)")) setPopover("overflow-toggle", "overflow-menu", false);
+  });
+  const debug = document.getElementById("debug-toggle");
+  debug.checked = remember("samepage.debug") === "1";
+  body.dataset.debug = String(debug.checked);
+  debug.addEventListener("change", () => { body.dataset.debug = String(debug.checked); remember("samepage.debug", debug.checked ? "1" : null); });
+}
+
+// The shared mode lives in the cement capability's record. The switch shows
+// it; only the person's own click opens the Cement tab or the walkthrough.
+function currentMode() {
+  const record = kernel.view().records.find(r => r.kind === "cement-mode");
+  return record?.props?.value || "learning";
+}
+const viewMode = (mode) => mode === "explain" ? "explain" : mode === "cement" ? "cement" : "map";
+function wireModes() {
+  if (!kernel.hasCapability("cement")) return;
+  const host = document.getElementById("mode-switch");
+  const modes = [["explain", "Explain"], ["map", "Map"], ["cement", "Cement"]].filter(([id]) => id !== "explain" || kernel.hasCapability("explain"));
+  for (const [id, label] of modes) {
+    const button = document.createElement("button"); button.type = "button"; button.dataset.mode = id; button.textContent = label;
+    button.addEventListener("click", async () => {
+      const shared = currentMode();
+      try {
+        if (viewMode(shared) !== id) {
+          button.disabled = true;
+          await kernel.dispatch("mode_set", {mode: id});
+        }
+        if (id === "cement") { await openTab("cement"); openLanes(); }
+        if (id === "explain" && !document.getElementById("explain-open").hidden) openDrawer("explain");
+        if (id === "map") closeDrawer();
+      } catch (error) { reportProblem("cement", "mode_set", `Mode not changed: ${error.message}`); }
+      finally { button.disabled = false; }
+    });
+    host.append(button);
+  }
+  host.hidden = false;
+  const reflect = () => {
+    const mode = viewMode(currentMode());
+    body.dataset.mode = mode;
+    for (const button of host.querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+    const summary = document.getElementById("cement-summary");
+    summary.hidden = mode !== "cement";
+  };
+  kernel.subscribe(reflect);
+  document.getElementById("cement-summary").addEventListener("click", () => void openTab("cement"));
+}
+
+async function openLanes() {
+  try { await kernel.activateForRoute("lanes"); openDrawer("lanes"); document.dispatchEvent(new CustomEvent("samepage:lanes-open")); resolveProblem("lanes", "load"); }
+  catch (error) { reportProblem("lanes", "load", `Found in source is unavailable: ${error.message}`); }
+}
+
+function wireDock() {
+  const lanes = document.getElementById("lanes-open");
+  if (kernel.hasCapability("lanes")) {
+    lanes.hidden = false;
+    lanes.addEventListener("click", () => {
+      const drawer = document.getElementById("dock-drawer");
+      if (!drawer.hidden && drawer.dataset.drawer === "lanes") closeDrawer(); else void openLanes();
+    });
+  }
+  const explain = document.getElementById("explain");
+  const explainOpen = document.getElementById("explain-open");
+  explainOpen.addEventListener("click", () => toggleDrawer("explain"));
+  const follow = () => {
+    explainOpen.hidden = explain.hidden;
+    if (!explain.hidden) {
+      const title = explain.querySelector("#explain-flow")?.selectedOptions?.[0]?.textContent;
+      const status = explain.dataset.status;
+      explainOpen.textContent = `Walkthrough${title ? `: ${title}` : ""}${status ? ` · ${status}` : ""}`;
+      explainOpen.dataset.attention = String(status === "active" && document.getElementById("dock-drawer").hidden);
+    } else if (document.getElementById("dock-drawer").dataset.drawer === "explain") closeDrawer();
+  };
+  new MutationObserver(follow).observe(explain, {attributes: true, attributeFilter: ["hidden", "data-status"]});
+  follow();
+}
+
+// Presence in the header: "you", other people by name, and one chip per
+// agent client however many sessions it opened.
+function wirePresence(person) {
+  const tray = document.getElementById("presence");
+  let latest = null;
+  const base = (label) => String(label || "").replace(/-\d+$/, "");
+  const render = () => {
+    const entries = latest?.participants || [];
+    const chips = [];
+    const me = {kind: "human", label: "you", active: true, me: true, count: 1};
+    chips.push(me);
+    const groups = new Map();
+    for (const entry of entries) {
+      const participant = entry.participant || {};
+      if (participant.id === person.id) continue;
+      const kind = participant.kind === "agent" ? "agent" : "human";
+      const label = kind === "agent" ? base(participant.label) || "agent" : participant.label || "someone";
+      const key = `${kind}:${label}`;
+      const group = groups.get(key) || {kind, label, active: false, count: 0};
+      group.active ||= Boolean(entry.active); group.count += 1; groups.set(key, group);
+    }
+    chips.push(...[...groups.values()].sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label)));
+    tray.replaceChildren(...chips.map(chip => {
+      const node = document.createElement("span"); node.className = "presence-chip";
+      node.dataset.kind = chip.kind; node.dataset.active = String(chip.active); node.dataset.me = String(Boolean(chip.me));
+      node.textContent = chip.kind === "agent" ? `${chip.label} · agent` : chip.label;
+      node.title = chip.me ? `You are ${person.name || "someone"}` : chip.kind === "agent" ? `${chip.label}: ${chip.count} connection${chip.count === 1 ? "" : "s"}` : chip.label;
+      return node;
+    }));
+  };
+  client.on("surface.semantic-targets", (event) => { latest = event.value || event.detail || latest; render(); });
+  const announce = () => fetch("/semantic-targets/presence", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({participantId: person.id, participantLabel: person.name || "someone"})})
+    .then(response => response.ok ? response.json() : null).then(value => { if (value?.snapshot) { latest = value.snapshot; render(); } }).catch(() => {});
+  render();
+  void fetch("/semantic-targets").then(response => response.ok ? response.json() : null).then(value => { if (value?.snapshot) { latest = value.snapshot; render(); } }).catch(() => {});
+  void announce();
+  setInterval(announce, 20000);
+  return {rename(name) { person.name = name; void announce(); render(); }};
+}
+
+// A first visit asks for a name inline. Saving never reloads the page.
+function wireNamePrompt(person, presence) {
+  const form = document.getElementById("name-prompt");
+  const input = document.getElementById("name-prompt-input");
+  const defaultName = /^someone(-\d+)?$/i.test(person.name || "someone");
+  const show = () => { form.hidden = false; input.value = defaultName ? "" : (person.name || ""); input.focus(); };
+  if (defaultName && remember("samepage.name-skipped") !== "1") form.hidden = false;
+  document.getElementById("rename-open").addEventListener("click", show);
+  document.getElementById("name-prompt-skip").addEventListener("click", () => { form.hidden = true; remember("samepage.name-skipped", "1"); });
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    try {
+      const response = await fetch("/surface/me", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({name: input.value.trim()})});
+      if (!response.ok) throw new Error(`the name was refused (${response.status})`);
+      const updated = await response.json();
+      rememberMe(updated);
+      presence.rename(updated.name);
+      form.hidden = true;
+      toast(updated.name === input.value.trim() ? `Others now see you as ${updated.name}.` : `That name is taken here; others see you as ${updated.name}.`);
+      document.dispatchEvent(new CustomEvent("samepage:identity", {detail: updated}));
+    } catch (error) { reportProblem("page", "name", error); }
+  });
+}
+
+const railTools = [["select", "Select", "V", "↖"], ["rectangle", "Rectangle", "R", "▭"], ["ellipse", "Ellipse", "O", "◯"], ["arrow", "Arrow", "A", "→"], ["pen", "Pen", "P", "✎"], ["text", "Text", "T", "T"]];
+function wireRail() {
+  const rail = document.getElementById("tool-rail");
+  if (kernel.hasCapability("sketch")) {
+    const separator = document.createElement("span"); separator.className = "rail-sep"; separator.setAttribute("aria-hidden", "true");
+    rail.prepend(separator);
+    for (const [tool, label, key, glyph] of [...railTools].reverse()) {
+      const button = document.createElement("button");
+      button.type = "button"; button.className = "rail-button"; button.dataset.sketchTool = tool; button.dataset.key = key;
+      button.title = `${label} (${key})`; button.setAttribute("aria-label", label); button.setAttribute("aria-pressed", String(tool === "select"));
+      const icon = document.createElement("span"); icon.textContent = glyph; icon.setAttribute("aria-hidden", "true");
+      const hint = document.createElement("kbd"); hint.textContent = key;
+      button.append(icon, hint);
+      button.addEventListener("click", async () => {
+        try {
+          await kernel.activateForTool(`sketch-${tool}`);
+          document.dispatchEvent(new CustomEvent("samepage:sketch-tool", {detail: {tool}}));
+          resolveProblem("sketch", "load");
+        } catch (error) { reportProblem("sketch", "load", `Drawing tools are unavailable: ${error.message}`); }
+      });
+      rail.prepend(button);
+    }
+  }
+  document.addEventListener("keydown", event => {
+    if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+    if (event.target.closest?.("input, textarea, select, [contenteditable=''], [contenteditable='true'], dialog")) return;
+    const key = event.key.toUpperCase();
+    const button = rail.querySelector(`[data-key="${key}"]`) || (key === "C" ? document.getElementById("add-card-open") : null);
+    if (!button) return;
+    event.preventDefault();
+    button.click();
+  });
+}
+
+function wireActivity() {
+  const health = async () => {
+    const drawer = document.getElementById("activity-drawer");
+    if (!drawer || drawer.hidden) return;
+    const response = await fetch("/extensions");
+    if (!response.ok) return;
+    const activity = (await response.json()).activity;
+    let line = document.getElementById("trace-health");
+    if (!line) { line = document.createElement("span"); line.id = "trace-health"; line.setAttribute("role", "status"); drawer.querySelector("header")?.append(line); }
+    line.textContent = `${(activity?.dropped || 0) + (globalThis.__samepageTraceDropped || 0)} events not recorded`;
+  };
+  setInterval(() => void health().catch(() => {}), 2000);
+  document.getElementById("activity-toggle")?.addEventListener("click", async () => {
+    try {
+      if (!kernel.hasCapability("trace")) throw new Error("activity recording was not selected for this page");
+      const loaded = document.getElementById("activity-drawer");
+      const open = loaded?.hidden ?? true;
+      await kernel.activateForRoute("activity");
+      if (loaded) document.dispatchEvent(new CustomEvent("samepage:trace-open", {detail: {open}}));
+      void health();
+      resolveProblem("trace", "load");
+    } catch (error) { reportProblem("trace", "load", `Activity is unavailable: ${error.message}`); }
+  });
 }
 
 try {
@@ -314,130 +684,66 @@ try {
     return kernel;
   } });
   kernel.attachRuntime(runtime);
+  globalThis.samepagePerson = person;
   client.on("samepage.capability-used",async ({value})=>{
     try {
       if (value?.tool) await kernel.activateForTool(value.tool);
       else if (kernel.hasCapability(value?.id)) await kernel.activate(value.id);
-    } catch(error){showError(`${value?.id || "capability"} is unavailable: ${error.message}`);}
+    } catch(error){ reportProblem(value?.id || "page", "load", `${value?.id || "A capability"} is unavailable: ${error.message}`); }
   });
   client.on("samepage.persistence-error", ({value}) => kernel.setPersistenceFailure(value?.error || "save failed"));
   client.on("samepage.persistence-wait", ({value}) => kernel.setPersistencePending(value?.message || "save is still pending"));
   client.on("samepage.persistence-resolved", () => kernel.setPersistenceResolved());
-  const boardMount=document.getElementById("board");
-  const openBoard=async () => {
-    boardMount.hidden=false;
-    try {
-      if (!kernel.hasCapability("board")) throw new Error("board capability is unavailable in this composition");
-      await kernel.activate("board");
-    } catch (error) {
-      boardMount.dataset.extensionState="failed";
-      boardMount.textContent=`board is unavailable: ${error.message}`;
-    }
+  // The shared question in the header: the review scope question when one is
+  // set, otherwise the board's subject.
+  const question = {review: null, board: null};
+  const showQuestion = () => {
+    const node = document.getElementById("shared-question");
+    const text = question.review || question.board;
+    node.hidden = !text;
+    const label = document.createElement("strong"); label.textContent = "Q";
+    node.replaceChildren(label, document.createTextNode(text || ""));
+    node.title = text || "";
   };
-  document.getElementById("board-open").addEventListener("click",()=>void openBoard());
+  document.addEventListener("samepage:shared-question", event => { question.review = event.detail?.question || null; showQuestion(); });
+  void fetch("/board/state").then(response => response.ok ? response.json() : null).then(value => { question.board = value?.board?.subject || null; showQuestion(); }).catch(() => {});
+  // A board change marks its tab; it never opens the panel by itself.
   client.on("board.changed",({value})=>{
-    if ((value?.board?.entries?.length || value?.board?.subject || value?.revision > 0) && kernel.hasCapability("board")) void openBoard();
+    question.board = value?.board?.subject || null; showQuestion();
+    if (value?.board?.entries?.length || value?.board?.subject) markUnread("board");
   });
+  wireChrome();
+  wireRail();
+  const presence = wirePresence(person);
+  wireNamePrompt(person, presence);
   await client.connect();
   kernel.connect();
-  if (kernel.hasCapability('lanes')) {
-    const button = document.createElement('button'); button.type = 'button'; button.id = 'lanes-open'; button.textContent = 'Lanes · scan source';
-    button.addEventListener('click', async () => {
-      try { await kernel.activateForRoute('lanes'); document.dispatchEvent(new CustomEvent('samepage:lanes-open')); }
-      catch(error) { showError(`Lanes unavailable: ${error.message}`); }
-    });
-    document.querySelector('.toolbar').append(button);
-  }
-  if (kernel.hasCapability('cement')) {
-    const button = document.createElement('button'); button.type = 'button'; button.id = 'cement-open'; button.textContent = 'Cement';
-    button.addEventListener('click', async () => {
-      try { await kernel.activateForRoute('cement'); document.dispatchEvent(new CustomEvent('samepage:cement-open')); }
-      catch(error) { showError(`Cement unavailable: ${error.message}`); }
-    });
-    document.querySelector('.toolbar').append(button);
-  }
-  if (kernel.hasCapability('sources')) {
-    const button = document.createElement('button'); button.type = 'button'; button.id = 'sources-open'; button.textContent = 'Sources';
-    button.addEventListener('click', async () => {
-      try { await kernel.activateForRoute('sources'); document.dispatchEvent(new CustomEvent('samepage:sources-open')); }
-      catch (error) { showError(`Sources unavailable: ${error.message}`); }
-    });
-    document.querySelector('.toolbar').append(button);
-  }
+  wireModes();
+  wireDock();
+  wireActivity();
   document.getElementById("add-card").addEventListener("submit", async (event) => {
     event.preventDefault();
     const input = document.getElementById("new-card-label");
-    try { await kernel.dispatch("card_place", {label:input.value.trim()}); input.value = ""; }
-    catch (error) { showError(`Card was not added: ${error.message}`); }
+    try {
+      await kernel.dispatch("card_place", {label:input.value.trim()});
+      toast(`Added card "${input.value.trim()}".`);
+      input.value = "";
+      document.getElementById("add-card").hidden = true;
+      document.getElementById("add-card-open").setAttribute("aria-expanded", "false");
+    } catch (error) { reportProblem("map", "card_place", `Card was not added: ${error.message}`); }
   });
   document.getElementById("architecture-open")?.addEventListener("click", async () => {
     try {
       if (!kernel.hasCapability("architecture")) throw new Error("architecture capability is unavailable");
       await kernel.activateForTool("architecture_read");
       document.dispatchEvent(new CustomEvent("samepage:architecture-open"));
-    } catch (error) { showError(`Architecture unavailable: ${error.message}`); }
-  });
-  if (kernel.hasCapability("sketch")) {
-    const rail = document.getElementById("sketch");
-    for (const [tool, label] of [["select","Select"],["rectangle","Rectangle"],["ellipse","Ellipse"],["arrow","Arrow"],["pen","Pen"],["text","Text"]]) {
-      const button = document.createElement("button");
-      button.type = "button"; button.dataset.sketchTool = tool; button.textContent = label;
-      button.addEventListener("click", async () => {
-        try {
-          await kernel.activateForTool(`sketch-${tool}`);
-          document.dispatchEvent(new CustomEvent("samepage:sketch-tool", {detail: {tool}}));
-        } catch (error) { showError(`Sketch unavailable: ${error.message}`); }
-      });
-      rail.append(button);
-    }
-  }
-  const traceHealth = document.getElementById("trace-health");
-  async function updateTraceHealth() {
-    const response=await fetch("/extensions");
-    if (!response.ok) return;
-    const health=(await response.json()).activity;
-    traceHealth.textContent=`${kernel.hasCapability("trace") ? "trace" : "trace unavailable"} · ${(health?.dropped || 0)+(globalThis.__samepageTraceDropped || 0)} unrecorded`;
-  }
-  void updateTraceHealth(); setInterval(()=>void updateTraceHealth(),2000);
-  document.getElementById("activity-toggle")?.addEventListener("click", async () => {
-    try {
-      if (!kernel.hasCapability("trace")) {
-        await updateTraceHealth();
-        let unavailable=document.getElementById("trace-unavailable");
-        if (!unavailable) {
-          unavailable=document.createElement("section");unavailable.id="trace-unavailable";
-          unavailable.setAttribute("role","status");
-          unavailable.style.cssText="padding:18px;margin:18px;border:1px solid #728ca0;border-radius:8px";
-          document.getElementById("trace").append(unavailable);
-        }
-        unavailable.textContent=traceHealth.textContent+". Activity recording was not selected.";
-        return;
-      }
-      const loaded = document.getElementById("activity-drawer");
-      const open = loaded?.hidden ?? true;
-      await kernel.activateForRoute("activity");
-      if (loaded) document.dispatchEvent(new CustomEvent("samepage:trace-open", {detail:{open}}));
-    } catch(error) { traceHealth.textContent=`trace unavailable: ${error.message}`;showError(`trace unavailable: ${error.message}`); }
-  });
-  document.getElementById('open-panes').addEventListener('click',async()=>{
-    const mount=document.getElementById('panes');mount.hidden=false;
-    try {if(!kernel.hasCapability('panes'))throw new Error('panes is unavailable');await kernel.activateForRoute('panes');}
-    catch(error){mount.textContent=error.message.includes('panes')?error.message:`panes is unavailable: ${error.message}`;showError(mount.textContent);}
-  });
-  document.getElementById('person-display-name').value=person.name || '';
-  document.getElementById('person-name').addEventListener('submit',async event=>{
-    event.preventDefault();
-    try {
-      const response=await fetch('/surface/me',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:document.getElementById('person-display-name').value.trim()})});
-      if(!response.ok)throw new Error(`identity update refused (${response.status})`);
-      rememberMe(await response.json());
-      location.reload();
-    }catch(error){showError(error.message);}
+      resolveProblem("architecture", "load");
+    } catch (error) { reportProblem("architecture", "load", `Architecture unavailable: ${error.message}`); }
   });
   // Exposes observations without a second document or mutation channel.
   globalThis.samepageReadback = () => kernel.diagnostics();
 } catch (error) {
   setStatus("Unavailable");
-  showError(`SamePage could not start: ${error.message}`);
+  showSyncLoss(`SamePage could not start: ${error.message}`);
   console.error(error);
 }

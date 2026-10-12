@@ -63,7 +63,10 @@ export function createLegend({mount, read, decode}) {
     }
     return box;
   }
+  // Rendered only while the popover is open; it re-reads the map when opened.
+  document.addEventListener('samepage:legend-open',schedule);
   function render() {
+    if(mount.hidden)return;
     const {modules,states,view,failed=[]}=read();
     const fragment=document.createDocumentFragment();
     const style=el('style');style.textContent=[...document.styleSheets].map(sheet=>{try{return [...sheet.cssRules].map(rule=>rule.cssText).join('\n');}catch{return '';}}).join('\n')+` :host{display:block;color:#eaf0f5;font:12px/1.4 system-ui}h3{margin:15px 0 6px;font-size:13px;text-transform:capitalize}ul{padding:0;margin:0;list-style:none}.legend-key{display:grid;grid-template-columns:84px 1fr;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid #345066}.legend-swatch{display:flex;align-items:center;min-height:36px;overflow:hidden}.legend-swatch svg{overflow:visible}.legend-swatch>[data-sample="absent"]{position:static!important;display:inline-block!important;min-height:0!important;width:auto!important;padding:3px 6px!important;margin:0!important;font-size:10px!important;box-shadow:none!important}.legend-label{overflow-wrap:anywhere}.legend-symbol{display:block;font-size:10px;color:#a9bcca}.legend-absent{color:#a9bcca;font-size:10px}p{color:#a9bcca}`;fragment.append(style);
