@@ -269,6 +269,7 @@ body[data-debug="true"] .map-card-meta { display: block; }
 .sketch-caption { width: fit-content; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.25; }
 .sketch-frame-caption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: move; }
 .sketch-grip { pointer-events: all; cursor: nwse-resize; }
+.sketch-end-grip { cursor: crosshair; }
 .map-card.sketch-lifted-card { outline: 2px solid var(--focus); outline-offset: 3px; }
 .sketch-byline { fill: #b7c5dc; font: 12px system-ui; pointer-events: none; }
 .sketch-preview { pointer-events: none; }
