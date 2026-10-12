@@ -83,7 +83,8 @@ export function activate({wasm, application}) {
       const article=el('article',undefined,'review-mark'); article.dataset.id=mark.id;
       article.dataset.state = mark.answer ? 'answered' : 'open';
       article.append(el('p',`${mark.glyph} ${mark.text || 'Question about this card'}`), el('small',`Asked by ${who(mark.created_by, mark.created_by_participant)}${mark.answer ? '' : ' · awaiting an answer'}`));
-      if (mark.answer) { const answered = el('div', undefined, 'review-answer'); answered.append(el('p', mark.answer), el('small', `Answered by ${who(mark.touched_by, mark.touched_by_participant)}`)); article.append(answered); }
+      // Same words as the agent read-back: "Answer by <name>: <text>", "you" for this person.
+      if (mark.answer) { const answered = el('p', undefined, 'review-answer'); answered.append(el('strong', `Answer by ${who(mark.touched_by, mark.touched_by_participant)}:`), document.createTextNode(` ${mark.answer}`)); article.append(answered); }
       const answerForm=el('form');const answer=el('input');answer.dataset.answerFor=mark.id;answer.setAttribute('aria-label','Answer this mark');answer.placeholder='Answer in place';answer.maxLength=1200;answer.value=drafts.get(mark.id)||'';
       answer.addEventListener('input',()=>drafts.set(mark.id,answer.value));
       const save=el('button','Answer');save.type='submit';answerForm.append(answer,save);
