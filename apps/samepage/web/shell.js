@@ -576,8 +576,9 @@ function wirePresence(person) {
     tray.replaceChildren(...chips.map(chip => {
       const node = document.createElement("span"); node.className = "presence-chip";
       node.dataset.kind = chip.kind; node.dataset.active = String(chip.active); node.dataset.me = String(Boolean(chip.me));
-      node.textContent = chip.kind === "agent" ? `${chip.label} · agent` : chip.label;
-      node.title = chip.me ? `You are ${person.name || "someone"}` : chip.kind === "agent" ? `${chip.label}: ${chip.count} connection${chip.count === 1 ? "" : "s"}` : chip.label;
+      // Agents have a dashed chip; the tooltip says how many connections it holds.
+      node.textContent = chip.label;
+      node.title = chip.me ? `You are ${person.name || "someone"}` : chip.kind === "agent" ? `Agent ${chip.label}: ${chip.count} connection${chip.count === 1 ? "" : "s"}` : `${chip.label} is here`;
       return node;
     }));
   };

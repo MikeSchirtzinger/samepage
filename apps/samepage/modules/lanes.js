@@ -4,6 +4,7 @@ export function activate({wasm, application, mount}) {
   application.registerCapability('lanes', wasm);
   let disposed=false, busy=false, opened=false, selected='', group='', page=0;
   const expanded=new Set();
+const who=(name,participant)=>participant&&participant===globalThis.samepagePerson?.id?'you':String(participant||'').startsWith('agent-')?String(name||'agent').replace(/-\d+$/,''):(name||'someone');
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
   const fail=(e,action='read')=>application.problem('lanes',action,action==='read'?`Found in source could not be read: ${e.message}`:`Lane claim refused: ${e.message}`);
   const dispatch=async(name,args)=>JSON.parse((await application.dispatch(name,args)).result);
@@ -36,7 +37,7 @@ export function activate({wasm, application, mount}) {
         const item=el('details',undefined,'lane-finding');item.dataset.laneId=lane.lane_id;item.dataset.state=lane.removal?'removal':lane.matched_node_id?'claimed':'unresolved';item.open=expanded.has(lane.lane_id);
         item.append(el('summary',`${lane.matched_node_id?'✓ Claimed':lane.removal?.tier==='gate-met'?'✓ Removal met':'? Unresolved'} · ${lane.label} · ${lane.evidence.path}:${lane.evidence.line}${lane.removal?' · '+lane.removal.chip:''}`),el('p',lane.detail),el('pre',lane.evidence.snippet,'lane-evidence'));
         const binding=view.records.find(r=>r.kind==='binding'&&r.props.lane_id===lane.lane_id);
-        if(binding)item.append(el('p',`Claimed by ${binding.props.touched_by||binding.props.created_by||'unknown'} for ${nodes.find(n=>n.id===binding.props.node)?.props.label||binding.props.node}`,'lane-byline'));
+        if(binding)item.append(el('p',`Claimed by ${who(binding.props.touched_by||binding.props.created_by,binding.props.touched_by_participant||binding.props.created_by_participant)} for ${nodes.find(n=>n.id===binding.props.node)?.props.label||binding.props.node}`,'lane-byline'));
         const excerpt=el('pre','', 'lane-excerpt');item.append(excerpt);
         item.addEventListener('toggle',async()=>{if(item.open){expanded.add(lane.lane_id);try{const r=await dispatch('source_read',{path:lane.evidence.path,lines:String(lane.evidence.line)});excerpt.textContent=r.sources.text;}catch(e){excerpt.textContent=`Source unavailable: ${e.message}`;}}else expanded.delete(lane.lane_id);});
         if(lane.removal)item.append(el('p',lane.removal.reason||`${lane.removal.chip}: ${lane.removal.obligation_id}`));

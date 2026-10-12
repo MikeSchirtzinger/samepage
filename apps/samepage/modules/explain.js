@@ -7,6 +7,7 @@ export function activate({wasm, application, mount}) {
   let disposed=false, selectedFlow=null, projection=null, panelSignature='', busy=false;
   let selectedIds=[], responseDraft='', transitionDraft='', scoped=false;
   const effects=new Map();
+const who=(name,participant)=>participant&&participant===globalThis.samepagePerson?.id?'you':String(participant||'').startsWith('agent-')?String(name||'agent').replace(/-\d+$/,''):(name||'someone');
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
   const failure=e=>application.problem('explain','walkthrough',`Walkthrough refused: ${e.message}`);
   const button=(label,fn,cls)=>{const b=el('button',label,cls);b.type='button';b.addEventListener('click',()=>Promise.resolve().then(fn).catch(failure));return b;};
@@ -87,7 +88,8 @@ export function activate({wasm, application, mount}) {
     }
     fragment.append(el('p',`Selected evidence: ${selectedIds.map(id=>application.view().records.find(r=>r.id===id)?.props.label||id).join(', ')||'none — select a card or drawing'}`,'explain-selection'));
     if(f.definition.scene_ids.length){const scope=button(scoped?'Finish drawing in exploration':'Draw in this exploration',()=>{scoped=!scoped;if(scoped)map.dataset.explorationId=f.definition.id;else delete map.dataset.explorationId;panelSignature='';void render({view:application.view()}).catch(failure);});scope.setAttribute('aria-pressed',String(scoped));fragment.append(scope);}
-    fragment.append(el('small',`Created by ${f.created_by||'unknown'} · last by ${f.state.touched_by||'unknown'}`,'explain-byline'));
+    const own=application.view().records.find(r=>r.id===f.object_id)?.props||{};
+    fragment.append(el('small',`Created by ${who(f.created_by,own.created_by_participant)} · last by ${who(f.state.touched_by,own.touched_by_participant)}`,'explain-byline'));
     mount.replaceChildren(fragment);mount.hidden=false;mount.dataset.flow=f.definition.id;mount.dataset.beat=f.state.current_beat;mount.dataset.revision=String(f.state.revision);mount.dataset.status=f.state.status;
     mount.querySelectorAll('button,select').forEach(n=>n.disabled=busy||!application.ready());
     if(activeInput){const n=document.getElementById(activeInput);n?.focus({preventScroll:true});if(typeof selectionStart==='number'&&n?.setSelectionRange)n.setSelectionRange(selectionStart,selectionStart);}

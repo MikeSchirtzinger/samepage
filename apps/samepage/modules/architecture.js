@@ -88,7 +88,9 @@ export function activate({wasm, application}) {
     } else notice.textContent = `Draft by ${comparison.proposal.created_by}. Each change creates a retained revision.`;
     if (comparison) {
       const verdicts = el('div', 'architecture-verdicts');
-      verdicts.append(el('span', null, `Verdict: ${comparison.proposal.verdict}${comparison.proposal.decided_by ? ' by '+comparison.proposal.decided_by : ''}`));
+      const own = application.view().records.find(r => r.id === comparison.proposal.id)?.props || {};
+      const decider = comparison.proposal.decided_by ? (own.touched_by_participant && own.touched_by_participant === globalThis.samepagePerson?.id ? 'you' : comparison.proposal.decided_by) : '';
+      verdicts.append(el('span', null, `Verdict: ${comparison.proposal.verdict}${decider ? ' by ' + decider : ''}`));
       for (const [label, verdict] of [['Accept proposal', 'accepted'], ['Reject proposal', 'rejected']]) {
         const b = button(label, async () => {
           try { await application.dispatch('architecture_decide', {id:selected, verdict}); }
