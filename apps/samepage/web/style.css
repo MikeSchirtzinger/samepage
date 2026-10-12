@@ -110,7 +110,8 @@ body { margin: 0; }
 .sketch-result { max-height:72px; overflow:auto; white-space:pre-wrap; width:100%; margin:0; font-size:11px; }
 .sketch-result:empty { display:none; }
 .sketch-layer { position:absolute; top:0; left:0; pointer-events:none; overflow:visible; z-index:2; }
-.sketch-caption { width:100%; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.25; }
+.sketch-caption { width:fit-content; max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.25; }
+.sketch-frame-caption { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:move; }
 .sketch-grip { pointer-events:all; cursor:nwse-resize; }
 .map-card.sketch-lifted-card { outline:2px solid #6ea8ff; outline-offset:3px; }
 .sketch-byline { fill:#b7c5dc; font:12px system-ui; pointer-events:none; }
