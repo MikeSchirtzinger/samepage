@@ -800,7 +800,14 @@ pub fn describe(view: &View) -> Result<String, CapError> {
             string(mark, "created_by")
         ));
         if !string(mark, "answer").is_empty() {
-            out.push_str(&format!("  Answer: {}\n", string(mark, "answer")));
+            // The mark's last writer: the answerer, unless someone edited
+            // the mark after answering it.
+            let by = string(mark, "touched_by");
+            out.push_str(&format!(
+                "  Answer by {}: {}\n",
+                if by.is_empty() { "someone" } else { by },
+                string(mark, "answer")
+            ));
         }
         for id in string(mark, "context_ids").split(',') {
             if let Some(entry) = ctx.entries.iter().find(|e| e.id == id) {
