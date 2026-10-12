@@ -486,9 +486,15 @@ function wireChrome() {
 
 // The shared mode lives in the cement capability's record. The switch shows
 // it; only the person's own click opens the Cement tab or the walkthrough.
+// The view mode (explain, map, cement) is the record's "view"; its "value" is
+// the cement posture. A record written before the split held the view mode in
+// "value", so that is read when it names a view mode.
+const VIEW_MODES = ["explain", "map", "cement"];
 function currentMode() {
-  const record = kernel.view().records.find(r => r.kind === "cement-mode");
-  return record?.props?.value || "learning";
+  const props = kernel.view(["cement-mode"]).records.find(r => r.kind === "cement-mode")?.props || {};
+  if (VIEW_MODES.includes(props.view)) return props.view;
+  if (VIEW_MODES.includes(props.value)) return props.value;
+  return "map";
 }
 const viewMode = (mode) => mode === "explain" ? "explain" : mode === "cement" ? "cement" : "map";
 function wireModes() {
