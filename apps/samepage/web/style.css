@@ -42,7 +42,9 @@ input, select, textarea { color: #eef7fc; background: #101b24; border: 1px solid
 .shared-question { flex: 1 1 0; min-width: 0; margin: 0; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .shared-question strong { color: var(--muted); font-weight: 600; margin-right: 6px; }
 .app-header .spacer { flex: 1 1 auto; }
-.name-prompt { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; font-size: 13px; white-space: nowrap; }
+.name-prompt { position: relative; display: flex; align-items: center; gap: 6px; flex: 0 0 auto; font-size: 13px; white-space: nowrap; }
+.name-prompt-error { position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; width: max-content; max-width: 380px; padding: 6px 9px; white-space: normal; background: var(--danger-bg); border: 1px solid var(--danger-line); border-radius: 6px; color: var(--danger-ink); font-size: 12px; }
+.name-prompt input[aria-invalid="true"] { border-color: var(--danger-line); }
 .name-prompt input { width: 140px; padding: 4px 7px; }
 .name-prompt button { padding: 4px 9px; }
 .presence { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; max-width: 34vw; min-width: 0; overflow: hidden; }

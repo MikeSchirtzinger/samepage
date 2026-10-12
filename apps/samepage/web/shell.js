@@ -599,6 +599,8 @@ function wirePresence(person) {
 function wireNamePrompt(person, presence) {
   const form = document.getElementById("name-prompt");
   const input = document.getElementById("name-prompt-input");
+  const taken = document.getElementById("name-prompt-error");
+  input.addEventListener("input", () => { taken.hidden = true; input.removeAttribute("aria-invalid"); });
   const defaultName = /^someone(-\d+)?$/i.test(person.name || "someone");
   const show = () => { form.hidden = false; input.value = defaultName ? "" : (person.name || ""); input.focus(); };
   if (defaultName && remember("samepage.name-skipped") !== "1") form.hidden = false;
@@ -608,12 +610,21 @@ function wireNamePrompt(person, presence) {
     event.preventDefault();
     try {
       const response = await fetch("/surface/me", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({name: input.value.trim()})});
+      // A name someone else already uses is refused; say why beside the field and keep it open.
+      if (response.status === 409) {
+        const body = await response.json().catch(() => ({}));
+        taken.textContent = body.message || `"${input.value.trim()}" is already used on this page; choose another name.`;
+        taken.hidden = false; input.setAttribute("aria-invalid", "true"); input.focus(); input.select();
+        return;
+      }
       if (!response.ok) throw new Error(`the name was refused (${response.status})`);
       const updated = await response.json();
+      taken.hidden = true; input.removeAttribute("aria-invalid");
       rememberMe(updated);
+      Object.assign(person, updated);
       presence.rename(updated.name);
       form.hidden = true;
-      toast(updated.name === input.value.trim() ? `Others now see you as ${updated.name}.` : `That name is taken here; others see you as ${updated.name}.`);
+      toast(`Others now see you as ${updated.name}.`);
       document.dispatchEvent(new CustomEvent("samepage:identity", {detail: updated}));
     } catch (error) { reportProblem("page", "name", error); }
   });
@@ -747,6 +758,9 @@ try {
     return kernel;
   } });
   kernel.attachRuntime(runtime);
+  // "you" is decided by participant id, as the host reports it for this browser.
+  const confirmed = await fetch("/surface/me", {credentials: "same-origin"}).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (confirmed?.joined && confirmed.id) Object.assign(person, confirmed);
   globalThis.samepagePerson = person;
   client.on("samepage.capability-used",async ({value})=>{
     try {
