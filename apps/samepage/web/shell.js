@@ -691,6 +691,28 @@ function wireInbox(person) {
   void refreshBoard();
 }
 
+// The project this page maps, measured by the host from the project root:
+// "orders · 7 files · Rust", or the name and why it could not be measured.
+async function wireProject() {
+  const node = document.getElementById("project");
+  try {
+    const response = await fetch("/surface/project");
+    if (!response.ok) return;
+    const project = await response.json();
+    if (!project?.name) return;
+    if (project.state === "unavailable" || project.files === null || project.files === undefined) {
+      node.textContent = `${project.name} · ${String(project.reason || "not measured").replace(/\.$/, "")}`;
+      node.title = project.reason ? `${project.name}: ${project.reason}` : `${project.name} could not be measured`;
+      node.dataset.state = "unavailable";
+      return;
+    }
+    const languages = (project.languages || []).slice(0, 2).map((language) => language.name).filter(Boolean);
+    node.textContent = [project.name, `${project.files} file${project.files === 1 ? "" : "s"}`, ...languages].join(" · ");
+    node.title = [project.branch && `branch ${project.branch}`, project.revision && `at ${project.revision}`, project.boundary].filter(Boolean).join(" · ");
+    node.dataset.state = "measured";
+  } catch { /* the header keeps "Shared map" */ }
+}
+
 const railTools = [["select", "Select", "V", "↖"], ["rectangle", "Rectangle", "R", "▭"], ["ellipse", "Ellipse", "O", "◯"], ["arrow", "Arrow", "A", "→"], ["pen", "Pen", "P", "✎"], ["text", "Text", "T", "T"]];
 function wireRail() {
   const rail = document.getElementById("tool-rail");
@@ -798,6 +820,7 @@ try {
   wireModes();
   wireDock();
   wireInbox(person);
+  void wireProject();
   wireActivity();
   document.getElementById("add-card").addEventListener("submit", async (event) => {
     event.preventDefault();

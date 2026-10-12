@@ -34,7 +34,8 @@ input, select, textarea { color: #eef7fc; background: #101b24; border: 1px solid
 .app-header { grid-area: header; display: flex; align-items: center; gap: 14px; padding: 0 12px; min-width: 0; background: var(--surface); border-bottom: 1px solid var(--line); position: relative; z-index: 30; }
 .brand { display: flex; align-items: baseline; gap: 10px; flex: 0 0 auto; }
 .brand strong { font-size: 15px; letter-spacing: .02em; }
-.subhead { color: var(--muted); font-size: 13px; }
+.subhead { color: var(--muted); font-size: 13px; max-width: 28vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subhead[data-state="unavailable"] { color: var(--warn); }
 .mode-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; flex: 0 0 auto; }
 .mode-switch button { border: 0; border-radius: 0; background: transparent; color: var(--muted); padding: 5px 12px; }
 .mode-switch button + button { border-left: 1px solid var(--line); }
