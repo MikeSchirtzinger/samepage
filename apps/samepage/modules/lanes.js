@@ -5,10 +5,10 @@ export function activate({wasm, application, mount}) {
   let disposed=false, busy=false, opened=false, selected='', group='', page=0;
   const expanded=new Set();
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
-  const fail=e=>{const n=document.querySelector('#error-banner');n.textContent=`Lanes unavailable: ${e.message}`;n.hidden=false;};
+  const fail=(e,action='read')=>application.problem('lanes',action,action==='read'?`Found in source could not be read: ${e.message}`:`Lane claim refused: ${e.message}`);
   const dispatch=async(name,args)=>JSON.parse((await application.dispatch(name,args)).result);
   const envelope=raw=>{const r=JSON.parse(raw);if(r.abi!=='samepage.capability.v2'||r.error)throw Error(r.error?.message||'Lanes ABI mismatch');return r.ok;};
-  const button=(label,action)=>{const n=el('button',label);n.type='button';n.addEventListener('click',()=>Promise.resolve().then(action).catch(fail));return n;};
+  const button=(label,action,key='read')=>{const n=el('button',label);n.type='button';n.addEventListener('click',()=>Promise.resolve().then(action).then(()=>application.resolved('lanes',key)).catch(e=>fail(e,key)));return n;};
   async function render({view}) {
     if(disposed||busy||!application.ready())return;busy=true;
     try {
@@ -42,7 +42,7 @@ export function activate({wasm, application, mount}) {
         item.addEventListener('toggle',async()=>{if(item.open){expanded.add(lane.lane_id);try{const r=await dispatch('source_read',{path:lane.evidence.path,lines:String(lane.evidence.line)});excerpt.textContent=r.sources.text;}catch(e){excerpt.textContent=`Source unavailable: ${e.message}`;}}else expanded.delete(lane.lane_id);});
         if(lane.removal)item.append(el('p',lane.removal.reason||`${lane.removal.chip}: ${lane.removal.obligation_id}`));
         if(!lane.removal || lane.evidence.sha256) {
-          const claim=button('Claim with selected card',async()=>{if(!selected)throw Error('Select a real Map card');await dispatch('lane_claim',{lane_id:lane.lane_id,node_id:selected,scan_sha256:lane.evidence.sha256});await render({view:application.view()});});claim.className='lane-claim';item.append(claim);
+          const claim=button('Claim with selected card',async()=>{if(!selected)throw Error('Select a real Map card');await dispatch('lane_claim',{lane_id:lane.lane_id,node_id:selected,scan_sha256:lane.evidence.sha256});await render({view:application.view()});},'lane_claim');claim.className='lane-claim';item.append(claim);
         }
         findings.append(item);
       }
@@ -50,6 +50,7 @@ export function activate({wasm, application, mount}) {
       if(page>0)pagination.append(button('Previous findings',()=>{page=Math.max(0,page-20);return render({view:application.view()});}));
       if(page+20<all.length)pagination.append(button('More findings',()=>{page+=20;return render({view:application.view()});}));
       strip.append(description,controls,findings,pagination);mount.replaceChildren(strip);
+      application.resolved('lanes','read');
       const opener=document.querySelector('#lanes-open');if(opener){opener.textContent=`Found in source · ${projection.unresolved_count} unresolved`;opener.dataset.attention=String(projection.unresolved_count>0);}
     } catch(e){fail(e);} finally{busy=false;}
   }

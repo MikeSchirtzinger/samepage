@@ -15,10 +15,7 @@ export function activate({wasm, application}) {
     if (value.abi !== 'samepage.capability.v2' || value.error) throw new Error(value.error?.message || 'Sources ABI mismatch');
     return value.ok;
   };
-  const fail = e => {
-    const n = document.getElementById('error-banner');
-    n.textContent = `Sources unavailable: ${e.message}`; n.hidden = false;
-  };
+  const fail = (e, action = 'read') => application.problem('sources', action, action === 'read' ? `Source facts could not be read: ${e.message}` : `Source could not be shown: ${e.message}`);
   const dispatch = async (name, args) => {
     const response = await application.dispatch(name, args);
     return JSON.parse(response.result).sources;
@@ -112,13 +109,14 @@ export function activate({wasm, application}) {
         if (tier.bindings.length) {
           const open = el('button', 'View source', 'source-view-open'); open.type = 'button';
           open.addEventListener('pointerdown', e => e.stopPropagation());
-          open.addEventListener('click', () => openViewer(card.dataset.id).catch(fail)); card.append(open);
+          open.addEventListener('click', () => openViewer(card.dataset.id).then(() => application.resolved('sources', 'view')).catch(e => fail(e, 'view'))); card.append(open);
         }
       }
+      application.resolved('sources', 'read');
     } catch (e) { fail(e); } finally { busy = false; }
   }
   // Opening the tab by itself keeps a viewer that is already showing.
-  const open = e => { if (!e.detail?.id && document.querySelector('#sources .source-viewer')) return; openViewer(e.detail?.id || '').catch(fail); };
+  const open = e => { if (!e.detail?.id && document.querySelector('#sources .source-viewer')) return; openViewer(e.detail?.id || '').catch(error => fail(error, 'view')); };
   document.addEventListener('samepage:sources-open', open);
   const unregister = application.registerRenderer('sources', {render});
   const timer = setInterval(() => void render({view:application.view()}), 3000);

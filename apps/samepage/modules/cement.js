@@ -4,10 +4,12 @@ export function activate({wasm,application,mount}) {
   application.registerCapability('cement',wasm);
   let disposed=false,busy=false,selected='',preview=null,history=null,lastReceipt=null;
   const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
-  const fail=e=>{const banner=document.querySelector('#error-banner');banner.textContent=`Cement unavailable: ${e.message}`;banner.hidden=false;};
+  // Problems stay in the Cement tab, keyed by the control that failed, and
+  // that control's next success clears them.
+  const fail=(e,action='read')=>application.problem('cement',action,action==='read'?`Cement could not read the page: ${e.message}`:`Cement refused: ${e.message}`);
   const dispatch=async(name,args)=>JSON.parse((await application.dispatch(name,args)).result);
   const envelope=raw=>{const r=JSON.parse(raw);if(r.abi!=='samepage.capability.v2'||r.error)throw Error(r.error?.message||'Cement ABI mismatch');return r.ok;};
-  const button=(text,id,fn)=>{const b=el('button',text);b.type='button';b.id=id;b.addEventListener('click',()=>{b.disabled=true;Promise.resolve().then(fn).catch(fail).finally(()=>{if(b.isConnected)b.disabled=false;});});return b;};
+  const button=(text,id,fn)=>{const b=el('button',text);b.type='button';b.id=id;b.addEventListener('click',()=>{b.disabled=true;Promise.resolve().then(fn).then(()=>application.resolved('cement',id)).catch(e=>fail(e,id)).finally(()=>{if(b.isConnected)b.disabled=false;});});return b;};
   async function render({view}) {
     if(disposed||busy||!application.ready())return;busy=true;
     try {
@@ -33,6 +35,7 @@ export function activate({wasm,application,mount}) {
       mount.replaceChildren(strip);
 
 
+      application.resolved('cement','read');
     }catch(e){fail(e);}finally{busy=false;}
   }
   async function refresh(){await render({view:application.view()});}

@@ -8,7 +8,7 @@ export function activate({wasm, application, mount}) {
   let selectedIds=[], responseDraft='', transitionDraft='', scoped=false;
   const effects=new Map();
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
-  const failure=e=>{const b=document.getElementById('error-banner');b.textContent=`explain refused: ${e.message}`;b.hidden=false;};
+  const failure=e=>application.problem('explain','walkthrough',`Walkthrough refused: ${e.message}`);
   const button=(label,fn,cls)=>{const b=el('button',label,cls);b.type='button';b.addEventListener('click',()=>Promise.resolve().then(fn).catch(failure));return b;};
   const decode=raw=>{const r=JSON.parse(raw);if(r.error)throw Error(`${r.error.code}: ${r.error.message}`);return r.ok;};
   const target=id=>map.querySelector(`[data-id="${CSS.escape(id)}"]`);
@@ -16,7 +16,7 @@ export function activate({wasm, application, mount}) {
   async function dispatch(name,args) {
     if(busy)throw Error('wait for the current walkthrough action');
     busy=true;mount.querySelectorAll('button,select').forEach(n=>n.disabled=true);
-    try {return await application.dispatch(name,args);}
+    try {const result=await application.dispatch(name,args);application.resolved('explain','walkthrough');return result;}
     finally {busy=false;panelSignature='';void render({view:application.view()}).catch(failure);}
   }
   const advance=(f,t,response,ids)=>dispatch('walkthrough_advance',{flow_id:f.definition.id,expected_revision:f.state.revision,transition_id:t.id,response,selected_target_ids:ids});

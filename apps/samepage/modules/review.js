@@ -13,13 +13,10 @@ export function activate({wasm, application}) {
     if (className) node.className = className;
     return node;
   };
-  const showError = error => {
-    const banner = document.getElementById('error-banner');
-    banner.textContent = `Review refused: ${error.message}`; banner.hidden = false;
-  };
+  // A refusal stays in the Review tab until the same action succeeds.
   const dispatch = async (action, args) => {
     try { return await application.dispatch(action, args); }
-    catch (error) { showError(error); throw error; }
+    catch (error) { application.problem('review', action, `Review refused: ${error.message}`); throw error; }
   };
   const button = (text, action) => {
     const b = el('button', text); b.type = 'button';

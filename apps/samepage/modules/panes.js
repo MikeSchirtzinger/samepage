@@ -660,7 +660,7 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
   let disposed=false;
   const ask=async event=>{const text=event.detail?.text || '';document.getElementById('pane-ask').textContent=text;try {const response=await fetch('/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:text,origin:'panes'})});if(!response.ok)throw new Error(`question refused (${response.status})`);}catch(error){showError({detail:{message:error.message}});}};
   document.addEventListener('panes:ask',ask);
-  const showError=event=>{const banner=document.getElementById('error-banner');banner.textContent=`panes: ${event.detail.message}`;banner.hidden=false;};
+  const showError=event=>application.problem('panes',event.detail.action||'ask',`Panes refused: ${event.detail.message}`);
   document.addEventListener('panes:error',showError);
 
   const root = el("div", "room");
@@ -1000,13 +1000,13 @@ export async function activate({wasm, application, mount, semantic, whoAmI}) {
       while(Date.now()<stop) {
         if(application.status().refusal)throw new Error(application.status().refusal);
         const response=await application.dispatch('panes_present',{});
-        if(JSON.parse(response.result).projection.revision===application.revision())return;
+        if(JSON.parse(response.result).projection.revision===application.revision()){application.resolved('panes',name);return;}
         await new Promise(resolve=>setTimeout(resolve,25));
       }
       throw new Error('the host did not confirm the pane gesture');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
-      document.dispatchEvent(new CustomEvent("panes:error", { detail: { message } }));
+      document.dispatchEvent(new CustomEvent("panes:error", { detail: { message, action: name } }));
       throw cause;
     }
   }

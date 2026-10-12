@@ -165,9 +165,7 @@ export function activate({ mount, wasm, application }) {
             await application.activateForTool("mark_add");
             document.dispatchEvent(new CustomEvent("samepage:review-open", {detail: {id:card.id}}));
           } catch (error) {
-            const alert = document.getElementById("error-banner");
-            alert.textContent = `Review unavailable: ${error.message}`;
-            alert.hidden = false;
+            application.problem?.("review", "load", `Review is unavailable: ${error.message}`);
           }
         });
         node.appendChild(question);
@@ -194,10 +192,9 @@ export function activate({ mount, wasm, application }) {
               id: card.id, x: Number(card.x || 0) + dx, y: Number(card.y || 0) + dy,
             });
             await application.applyBatch(planned);
+            application.resolved?.("map", "card_move");
           } catch (error) {
-            const alert = document.getElementById("error-banner");
-            alert.textContent = `Card move refused: ${error.message}`;
-            alert.hidden = false;
+            application.problem?.("map", "card_move", `Card move refused: ${error.message}`);
           }
         };
         const cancel = () => {
