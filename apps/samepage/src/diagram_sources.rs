@@ -121,7 +121,10 @@ impl DiagramSources {
                 .read_until(b'\n', &mut buffer)
                 .map_err(|_| fail("cannot read file"))?;
             if read == 0 {
-                return Err(fail("line range is stale"));
+                return Err(fail(&format!(
+                    "the file has {} lines, so this range ends past it",
+                    line - 1
+                )));
             }
             if read > 96_000 || buffer.contains(&0) {
                 return Err(fail("oversized line or binary source"));

@@ -95,6 +95,32 @@ async fn unified_wait_wakes_for_other_document_commits_but_not_own_writes() {
         .unwrap()
         .unwrap();
     assert!(read.contains("human card"));
+    assert!(
+        read.contains("woken by: card_place node \"human card\"") && read.contains("by a person"),
+        "the wake names what changed and who changed it: {read}"
+    );
+}
+#[tokio::test]
+async fn a_first_wait_waits_for_new_changes_instead_of_returning_history() {
+    let (s, b, _) = state();
+    s.invoke_as(
+        &actor(ag_ui_surface::Caller::Human),
+        "card_place",
+        json!({"label":"old card","x":450,"y":50}),
+    )
+    .unwrap();
+    let w = waiter(s.clone(), b).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(!w.is_finished(), "history before the first wait must not wake it");
+    s.invoke_as(
+        &actor(ag_ui_surface::Caller::Human),
+        "card_place",
+        json!({"label":"new card","x":450,"y":300}),
+    )
+    .unwrap();
+    let read = tokio::time::timeout(Duration::from_secs(3), w).await.unwrap().unwrap().unwrap();
+    assert!(read.contains("woken by: card_place node \"new card\""), "{read}");
+    assert!(!read.contains("woken by: card_place node \"old card\""), "{read}");
 }
 #[tokio::test]
 async fn unified_wait_wakes_for_browser_validation_errors() {
@@ -119,12 +145,58 @@ async fn unified_wait_wakes_for_browser_validation_errors() {
             &view,
         )
         .unwrap();
-    let error = tokio::time::timeout(Duration::from_secs(3), w)
+    let wake = tokio::time::timeout(Duration::from_secs(3), w)
         .await
         .unwrap()
         .unwrap()
-        .unwrap_err();
-    assert!(error.contains("board render exploded"));
+        .unwrap();
+    assert!(wake.contains("woken by: new page problems") && wake.contains("board render exploded"));
+}
+#[tokio::test]
+async fn the_same_page_problems_wake_a_waiter_once_then_it_keeps_waiting() {
+    let (s, b, _) = state();
+    let observe = |sequence: u64| {
+        let view = s.host.view();
+        s.validation
+            .observe(
+                "person",
+                crate::host::page_validation::Observation {
+                    stream: "proof".into(),
+                    revision: view.revision().into(),
+                    sequence,
+                    bounds: BTreeMap::new(),
+                    errors: vec![crate::host::page_validation::BrowserError {
+                        code: "renderer_failure".into(),
+                        message: "board render exploded".into(),
+                    }],
+                },
+                &view,
+            )
+            .unwrap();
+    };
+    observe(1);
+    let first = tokio::time::timeout(Duration::from_secs(3), waiter(s.clone(), b.clone()).await)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(first.contains("board render exploded"));
+    let second = waiter(s.clone(), b.clone()).await;
+    observe(2);
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(!second.is_finished(), "the same problem must not wake the waiter again");
+    s.invoke_as(
+        &actor(ag_ui_surface::Caller::Human),
+        "card_place",
+        json!({"label":"human card","x":450,"y":50}),
+    )
+    .unwrap();
+    let read = tokio::time::timeout(Duration::from_secs(3), second)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(read.contains("human card"), "a real change still wakes it: {read}");
 }
 #[test]
 fn board_is_not_a_document_kind_and_aliases_share_the_native_definition() {
@@ -213,4 +285,32 @@ async fn a_board_write_before_the_wait_future_is_polled_is_not_lost() {
         .unwrap()
         .unwrap();
     assert!(read.contains("Already arrived before polling."));
+}
+#[test]
+fn an_agent_removes_a_persons_card_only_with_confirm_owner_and_hears_the_cascade() {
+    let (s, _, _) = state();
+    let mut person = SurfaceActor::anonymous(ag_ui_surface::Caller::Human);
+    person.participant_id = Some("person-dana".into());
+    person.label = Some("Dana".into());
+    let agent = actor(ag_ui_surface::Caller::Agent);
+    let placed: Value = serde_json::from_str(
+        &s.invoke_as(&person, "card_place", json!({"label":"Human card","x":0,"y":0})).unwrap(),
+    )
+    .unwrap();
+    let card = placed["ids"]["card"].as_str().unwrap().to_string();
+    let other: Value = serde_json::from_str(
+        &s.invoke_as(&agent, "card_place", json!({"label":"Agent card","x":400,"y":0})).unwrap(),
+    )
+    .unwrap();
+    s.invoke_as(&agent, "card_link", json!({"from":other["ids"]["card"],"to":card,"label":"feeds"}))
+        .unwrap();
+    let refused = s.invoke_as(&agent, "object_remove", json!({"id":card})).unwrap_err();
+    assert!(refused.contains("made by Dana") && refused.contains("confirm_owner"), "{refused}");
+    assert!(s.host.view().get(&card).is_some());
+    let removed = s
+        .invoke_as(&agent, "object_remove", json!({"id":card,"confirm_owner":true}))
+        .unwrap();
+    assert!(removed.contains("REMOVED card \\\"Human card\\\""), "{removed}");
+    assert!(removed.contains("link \\\"feeds\\\""), "{removed}");
+    assert!(s.host.view().get(&card).is_none());
 }

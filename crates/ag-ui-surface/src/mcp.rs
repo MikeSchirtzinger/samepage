@@ -243,14 +243,18 @@ async fn handle_with_surface(
                         PROTOCOL_VERSION
                     };
                     *rt.mcp_protocol_version.lock() = Some(version.to_string());
-                    Ok(json!({
+                    let mut result = json!({
                         "protocolVersion": version,
                         "capabilities": { "tools": { "listChanged": false } },
                         "serverInfo": {
                             "name": "ag-ui-surface",
                             "version": env!("CARGO_PKG_VERSION")
                         }
-                    }))
+                    });
+                    if let Some(guide) = surface.state().agent_guide() {
+                        result["instructions"] = json!(guide);
+                    }
+                    Ok(result)
                 }
                 None => Err((
                     -32602,
@@ -289,7 +293,7 @@ async fn call_tool(
         .unwrap_or_else(|| json!({}));
 
     let Some(schema) = catalog.get(name) else {
-        return tool_error(format!("action {name:?} is not visible to this agent"));
+        return tool_error(unavailable(surface, name));
     };
 
     // Re-check the executable definition, not just the serialized catalog.
@@ -327,6 +331,25 @@ async fn call_tool(
         }
     }
     json!({ "content": content, "isError": !ok })
+}
+
+/// Why an agent cannot call `name`, and what to do instead. Three different
+/// situations used to share one sentence: an action meant for people, an
+/// action this surface retired, and a name that never existed.
+pub(crate) fn unavailable(surface: &dyn Surface, name: &str) -> String {
+    if surface
+        .tools()
+        .iter()
+        .any(|tool| (tool.name == name || tool.aliases.iter().any(|a| a == name)) && !tool.audience.agent())
+    {
+        return format!(
+            "action {name:?} is for the people on this page, not for agents. Ask them in chat_reply, or say what you know in a tool you can call."
+        );
+    }
+    if let Some(instead) = surface.state().retired_action(name) {
+        return format!("action {name:?} is not offered here: {instead}");
+    }
+    format!("there is no action named {name:?}; tools/list names every action you can call")
 }
 
 fn tool_error(message: String) -> Value {
@@ -934,6 +957,12 @@ mod tests {
                 panic!("request must reply")
             };
             assert_eq!(reply["result"]["isError"], true, "{name}");
+            let text = reply["result"]["content"][0]["text"].as_str().unwrap_or_default();
+            match name {
+                "human_reset" => assert!(text.contains("is for the people on this page"), "{text}"),
+                "missing" => assert!(text.contains("there is no action named"), "{text}"),
+                _ => {}
+            }
         }
     }
 

@@ -83,21 +83,72 @@ fn action(
     a.input_schema = json!({"type":"object","required":required,"properties":props,"additionalProperties":false});
     a
 }
+/// The typed contract of a pane view: one node and, through `children`, a
+/// tree of them. Recursion is stated in words; each node's `kind` is typed.
+pub fn view_schema() -> serde_json::Value {
+    let kinds = [
+        "stack", "row", "deck", "heading", "text", "code", "list", "kv", "table", "badge",
+        "divider", "button", "field", "link", "image", "source", "options", "embed", "html",
+        "diagram",
+    ];
+    let tone = json!({"enum":["neutral","muted","strong","accent","good","warn","bad"]});
+    let child = json!({"type":"object","required":["kind"],"properties":{"kind":{"enum":kinds}},"description":"A nested view node, same shape as view."});
+    json!({
+        "type":"object",
+        "required":["kind"],
+        "description":"One view node chosen by kind. Containers: stack (vertical) and row (horizontal) take children; deck shows one child at a time with optional titles. Content: heading {text, level 1-3}, text {text, tone}, code {text, lang}, list {items, ordered}, kv {items: [{label, value}]}, table {columns, rows}, badge {text, tone}, divider. Interaction: button {label, ask, tone} sends ask to you as if the person typed it, with any field values in the pane; field {key, label, placeholder, multiline}; link {label, url}. Host-resolved: source {path, from, to} is re-read from the file on every read; options {filter} lists what the workspace can run. Escape hatches: embed {url, height}, html {html, height} in an isolated sandbox. diagram {nodes: [{id, label, tone}], edges: [{from, to, label, arrow}], direction right or down, caption} is laid out by the host.",
+        "properties":{
+            "kind":{"enum":kinds},
+            "children":{"type":"array","minItems":1,"items":child},
+            "gap":{"type":"integer","minimum":0,"maximum":255},
+            "wrap":{"type":"boolean"},
+            "titles":{"type":"array","items":{"type":"string"}},
+            "text":{"type":"string"},
+            "level":{"type":"integer","minimum":1,"maximum":3},
+            "tone":tone,
+            "lang":{"type":"string"},
+            "items":{"type":"array"},
+            "ordered":{"type":"boolean"},
+            "columns":{"type":"array","items":{"type":"string"}},
+            "rows":{"type":"array","items":{"type":"array","items":{"type":"string"}}},
+            "label":{"type":"string"},
+            "ask":{"type":"string"},
+            "key":{"type":"string"},
+            "placeholder":{"type":"string"},
+            "multiline":{"type":"boolean"},
+            "url":{"type":"string"},
+            "src":{"type":"string"},
+            "alt":{"type":"string"},
+            "path":{"type":"string"},
+            "from":{"type":"integer","minimum":1},
+            "to":{"type":"integer","minimum":1},
+            "filter":{"type":"string"},
+            "height":{"type":"integer","minimum":0},
+            "html":{"type":"string"},
+            "nodes":{"type":"array","items":{"type":"object","required":["id"]}},
+            "edges":{"type":"array","items":{"type":"object","required":["from","to"]}},
+            "direction":{"type":"string","description":"right (the default) or down."},
+            "caption":{"type":"string"}
+        }
+    })
+}
 pub fn descriptor() -> Descriptor {
-    let adjustment = json!({"id":{"type":"string"},"place":{"type":"string"},"size":{"type":"string"},"pinned":{"type":"boolean"}});
+    let place = json!({"type":"string","description":"start, end, or a relation to another pane: \"right of: <pane id>\", \"left of: <id>\", \"below: <id>\", \"above: <id>\", \"near: <id>\"."});
+    let size = json!({"type":"string","description":"small, medium, wide, tall or large."});
+    let adjustment = json!({"id":{"type":"string"},"place":place.clone(),"size":size.clone(),"pinned":{"type":"boolean"}});
     let mut d=Descriptor::new(ID,VERSION,Artifact::Wasm)
  .owns("pane", &["pane_id","title","tree","historical"], "Typed content and its independent host byline")
  .owns("pane-layout", &["pane","spot","stack","pinned","method","historical"], "Shared geometry, distinct from content authorship")
  .owns("pane-annotation", &["pane","slot","value","historical"], "Independent human mark, note and pointed path bylines")
  .owns("panes-settings", &["intent","theme"], "Document intent and appearance")
  .owns("panes-history", &["original","migrated"], "Immutable legacy document, including every historical field and log")
- .action(action("panes_read",Some("read_room"),Audience::Agent,Effect::Query,&[],json!({}),"Read panes and changes by relation, without geometry. Read before writing."))
+ .action(action("panes_read",Some("read_room"),Audience::Agent,Effect::Query,&[],json!({}),"Read every pane: title, author, content summary, where each sits relative to the others, a person's marks and notes, and what changed since your last read. Read before writing; pass its revision to pane_put."))
  .action(action("panes_present",None,Audience::Human,Effect::Query,&[],json!({}),"Resolve native source and workspace facts for the human renderer."))
  .action(action("panes_await",Some("await_room"),Audience::Agent,Effect::Query,&[],json!({"seconds":{"type":"integer","minimum":0,"maximum":60}}),"Wait for unread pane changes from other participants."))
- .action(action("pane_put",Some("room_put_pane"),Audience::Both,Effect::Mutate,&["expected_revision","id"],json!({"expected_revision":{"type":"string"},"id":{"type":"string"},"title":{"type":"string"},"view":{"type":"object"},"place":{"type":"string"},"size":{"type":"string"},"pinned":{"type":"boolean"}}),"Create or rewrite a pane; agents use relations and named sizes. Human geometry and raise require server authority."))
- .action(action("pane_remove",Some("room_remove_pane"),Audience::Both,Effect::Mutate,&["expected_revision","id"],json!({"expected_revision":{"type":"string"},"id":{"type":"string"}}),"Remove an unpinned pane and its associated records."))
- .action(action("panes_arrange",Some("room_arrange"),Audience::Both,Effect::Mutate,&["expected_revision","panes"],json!({"expected_revision":{"type":"string"},"panes":{"type":"array","minItems":1,"maxItems":24,"items":{"type":"object","required":["id"],"properties":adjustment,"additionalProperties":false}}}),"Arrange panes by relation and named size; human pointer geometry uses pane_put."))
- .action(action("panes_configure",Some("room_configure"),Audience::Both,Effect::Mutate,&["expected_revision"],json!({"expected_revision":{"type":"string"},"intent":{"type":"string"},"theme":{"type":"object"}}),"Set intent and a validated appearance from fixed tokens."))
+ .action(action("pane_put",Some("room_put_pane"),Audience::Both,Effect::Mutate,&["expected_revision","id"],json!({"expected_revision":{"type":"string","description":"The revision from your last panes_read or page_read."},"id":{"type":"string","description":"A short pane slug such as status; reusing one rewrites that pane."},"title":{"type":"string"},"view":view_schema(),"place":place.clone(),"size":size.clone(),"pinned":{"type":"boolean"}}),"Create or rewrite one pane: a titled panel whose view is a tree of typed nodes (text, lists, tables, code, a source excerpt, buttons that send you a request, a diagram), never raw markup outside an html node. Agents place panes by relation (place) and named size; a person drags the exact geometry. Read panes_read first and pass its revision."))
+ .action(action("pane_remove",Some("room_remove_pane"),Audience::Both,Effect::Mutate,&["expected_revision","id"],json!({"expected_revision":{"type":"string"},"id":{"type":"string"}}),"Remove one unpinned pane with its layout and annotations. A pinned pane must be unpinned first."))
+ .action(action("panes_arrange",Some("room_arrange"),Audience::Both,Effect::Mutate,&["expected_revision","panes"],json!({"expected_revision":{"type":"string"},"panes":{"type":"array","minItems":1,"maxItems":24,"items":{"type":"object","required":["id"],"properties":adjustment,"additionalProperties":false}}}),"Move or resize several panes at once by relation and named size, in order; later entries can refer to panes placed earlier. Pinning keeps a pane where a person put it."))
+ .action(action("panes_configure",Some("room_configure"),Audience::Both,Effect::Mutate,&["expected_revision"],json!({"expected_revision":{"type":"string"},"intent":{"type":"string","description":"What these panes are for, in a sentence; read back to every participant."},"theme":{"type":"object","additionalProperties":false,"properties":{"accent":{"type":"string","pattern":"^#[0-9A-Fa-f]{6}$","description":"Accent colour as #rrggbb."},"surface":{"enum":["ink","slate","warm","paper"]},"density":{"enum":["compact","cozy","roomy"]},"radius":{"type":"integer","minimum":0,"maximum":24},"scale":{"type":"number","minimum":0.8,"maximum":1.4,"description":"Text scale."}}}}),"Set what the panes are for (intent) and their appearance from fixed tokens: accent colour, surface, density, corner radius and text scale. Only the fields you pass change."))
  .action(action("pane_annotate",Some("room_annotate_pane"),Audience::Human,Effect::Mutate,&["expected_revision","id"],json!({"expected_revision":{"type":"string"},"id":{"type":"string"},"mark":{"enum":["none","question","important","agree","disagree"]},"note":{"type":"string"},"pointed":{"type":"string"},"pointed_path":{"type":"array"}}),"Place a human mark, note or pointed referent, preserving separate bylines."))
  .action(action("panes_import",None,Audience::Both,Effect::Mutate,&["expected_revision","document"],json!({"expected_revision":{"type":"string"},"document":{"type":"object"}}),"Import the contents of a legacy room JSON copy once; historical authors remain historical."))
  .trigger(Trigger::kind("pane")).trigger(Trigger::route("panes"));

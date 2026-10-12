@@ -2,7 +2,7 @@ mod diagram_sources;
 mod host;
 mod surface;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use ag_ui_surface::auth::AuthStore;
@@ -83,6 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("SAMEPAGE_PROJECT_ROOT is required")?;
     let source_root = project_root.clone();
     let panes_focus = manifest.panes.is_some();
+    advertise(&project_root, &addr)?;
     App::new()
         .hitl(ag_ui_surface::Hitl { focus: panes_focus, ..Default::default() })
         .try_surface(move |transport| surface::SamePageSurface::open(document, manifest, transport, &source_root))?
@@ -91,6 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .auth(auth)
         .activity_enabled(with_trace)
         .activity_store(activity)
+        .people_store(state_dir.join("people.json"))
         .prompt("Work on the shared SamePage map. Read the live map before acting. Use the declared actions and report refusals clearly.")
         .protocol_pkg_dir(protocol)
         .static_dir(static_dir)
@@ -98,5 +100,61 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .agent_cwd(project_root)
         .serve(&addr)
         .await?;
+    Ok(())
+}
+
+/// Tell agents working in the project that this host is running: write
+/// `.samepage/sessions/<pid>.json` naming the URL, the MCP endpoint, the first
+/// tool to call and the wait tool. The advert is removed when the host stops,
+/// and adverts this app left behind for stopped hosts are removed at start.
+fn advertise(project: &Path, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let sessions = project.join(".samepage").join("sessions");
+    std::fs::create_dir_all(&sessions)?;
+    if let Ok(entries) = std::fs::read_dir(&sessions) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(text) = std::fs::read_to_string(&path) else { continue };
+            let Ok(advert) = serde_json::from_str::<serde_json::Value>(&text) else { continue };
+            if advert["kind"] != "samepage-host" {
+                continue;
+            }
+            let pid = advert["pid"].as_u64().unwrap_or(0);
+            let alive = std::process::Command::new("kill")
+                .args(["-0", &pid.to_string()])
+                .stderr(std::process::Stdio::null())
+                .status()
+                .is_ok_and(|status| status.success());
+            if !alive {
+                let _ = std::fs::remove_file(&path);
+            }
+        }
+    }
+    let path = sessions.join(format!("{}.json", std::process::id()));
+    let advert = serde_json::json!({
+        "schema_version": 1,
+        "kind": "samepage-host",
+        "pid": std::process::id(),
+        "repository": project.display().to_string(),
+        "url": format!("http://{addr}"),
+        "mcp": format!("http://{addr}/mcp"),
+        "mcp_token": "the AGUI_MCP_TOKEN this host was started with, when one was set",
+        "entry_tool": "page_read",
+        "wait_tool": "await_input",
+        "instructions": surface::AGENT_GUIDE,
+    });
+    std::fs::write(&path, serde_json::to_vec_pretty(&advert)?)?;
+    tokio::spawn(async move {
+        let mut terminate =
+            match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+                Ok(signal) => signal,
+                Err(_) => return,
+            };
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {},
+            _ = terminate.recv() => {},
+        }
+        let _ = std::fs::remove_file(&path);
+        std::process::exit(0);
+    });
     Ok(())
 }

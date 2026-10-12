@@ -142,7 +142,13 @@ impl ReviewHost {
             .take(end - start + 1)
             .collect();
         if selected.len() != end - start + 1 {
-            return Err(CapError::new("source_invalid", "line range is stale"));
+            return Err(CapError::new(
+                "source_invalid",
+                format!(
+                    "{path} has {} lines at {revision}, so {lines} ends past it",
+                    text.split_inclusive('\n').count()
+                ),
+            ));
         }
         let excerpt = selected.join("");
         if excerpt.chars().count() > 24000 {
@@ -234,7 +240,7 @@ impl Verifier for ReviewHost {
     }
 }
 
-fn project_facts(root_path: &Path) -> Value {
+pub(crate) fn project_facts(root_path: &Path) -> Value {
     let run = |args: &[&str]| -> Result<String, String> {
         let output = std::process::Command::new("git")
             .args(args)

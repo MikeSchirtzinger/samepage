@@ -56,7 +56,7 @@ pub fn declarations() -> Vec<ActionDecl> {
  action("board_read",Agent,Query,&[],empty.clone(),"Read the board first: assertions, bylines, human marks, stale sign-offs, and changes since this participant last read."),
  action("board_revision",Agent,Query,&[],empty.clone(),"Inspect the current board revision without consuming the read cursor."),
  action("await_board",Agent,Query,&[],wait.clone(),"Wait for board changes or runtime chat, then read the board. Default 60 seconds, maximum 600."),
- action("await_input",Agent,Query,&[],wait,"Wait for board, document, semantic attention, browser validation errors or runtime chat. Native composition; read the lane that changed."),
+ action("await_input",Agent,Query,&[],wait,"Wait for the next thing another participant does: a card, mark, claim or drawing change, a board question, what a person selects, chat in the conversation panel, or a new set of page problems. Returns what changed; for chat, call chat_read then chat_reply. Page problems wake you once per new set and never block the wait. Default 60 seconds, at most 600; call again to keep waiting."),
  action("board_assert",Agent,Mutate,&["assertions"],json!({"assertions":{"type":"array","minItems":1,"items":assertion_schema()}}),"Write assertions in order. Relations can use earlier ids. A semantic refusal publishes the successful prefix and names what landed. Rewriting keeps human marks but makes old sign-off stale."),
  action("board_retract",Agent,Mutate,&["id"],id.clone(),"Retract an assertion and its dangling dependents."),
  action("board_subject",Agent,Mutate,&["subject"],json!({"subject":{"type":"string","minLength":1,"maxLength":4000}}),"Name the board's subject."),

@@ -14,7 +14,7 @@
 //! contribute a [`Surface`] plus static client assets.
 
 use parking_lot::Mutex;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -311,6 +311,25 @@ pub trait SurfaceState: Send + Sync + 'static {
     /// explicit "this state exposes no revision", never a fabricated counter.
     fn activity_state_revision(&self) -> Result<Vec<ActivityStateRevision>, String> {
         Ok(Vec::new())
+    }
+
+    /// Record ids an accepted or refused action touched, for its journal
+    /// entry. `result` is the action's reply text. Empty means unknown.
+    fn activity_targets(&self, _action: &str, _args: &JsonValue, _result: &str) -> Vec<String> {
+        Vec::new()
+    }
+
+    /// For an action name this surface no longer offers, what to use
+    /// instead. Read when an agent calls a name it cannot see.
+    fn retired_action(&self, _name: &str) -> Option<String> {
+        None
+    }
+
+    /// Standing guidance for an agent that attaches over MCP: what to call
+    /// first, how to wait and how to answer. Sent as `instructions` in the
+    /// MCP `initialize` result so every client receives it without a file.
+    fn agent_guide(&self) -> Option<String> {
+        None
     }
 
     /// Runtime-installed host activity service. Application state returns
@@ -1958,6 +1977,7 @@ pub struct App {
     default_provider: Option<String>,
     auth: Option<Arc<auth::AuthStore>>,
     activity_path: Option<PathBuf>,
+    people_path: Option<PathBuf>,
     activity_enabled: bool,
     prompt: Option<turn_loop::Prompts>,
     final_response_only: bool,
@@ -1997,6 +2017,7 @@ impl App {
             default_provider: None,
             auth: None,
             activity_path: None,
+            people_path: None,
             activity_enabled: true,
             prompt: None,
             final_response_only: false,
@@ -2034,6 +2055,14 @@ impl App {
     /// application gets restart-safe telemetry rather than process memory.
     pub fn activity_store(mut self, path: impl Into<PathBuf>) -> Self {
         self.activity_path = Some(path.into());
+        self
+    }
+
+    /// Keep joined people (resume token, participant id and chosen name) in
+    /// `path`, so a person keeps their name across a host restart. Without
+    /// this call the registry lives in process memory.
+    pub fn people_store(mut self, path: impl Into<PathBuf>) -> Self {
+        self.people_path = Some(path.into());
         self
     }
 
@@ -2417,6 +2446,11 @@ impl App {
             activity,
         );
         rt.set_final_response_only(self.final_response_only);
+        if let Some(path) = &self.people_path {
+            rt.people
+                .persist_to(path)
+                .map_err(AppError::InvalidConfiguration)?;
+        }
         rt.activity.record_lifecycle(
             "runtime.started",
             ActivityOutcome::Started,
@@ -3707,9 +3741,9 @@ async fn mcp_post_handler(
 ///
 /// The participant id is minted **here**, never taken from the client: a
 /// caller that could choose its own id could take over one already present.
-/// The label is only a display name, and it is disambiguated against everyone
-/// already in the room so that two clients both calling themselves `claude`
-/// cannot collapse into one byline.
+/// The label is only a display name. A client attaching again under the same
+/// name keeps the identity it had, so a reconnect is not a new byline; a new
+/// name is disambiguated against everyone already in the room.
 fn attach_mcp_agent(st: &RouterState, identity: mcp::ClientIdentity) -> AttachedAgent {
     let session = uuid::Uuid::new_v4().simple().to_string();
     // Roster and presence ids are public. They must reveal no session
@@ -3736,7 +3770,24 @@ fn attach_mcp_agent(st: &RouterState, identity: mcp::ClientIdentity) -> Attached
         })
         .unwrap_or_default();
     let mut attached_agents = st.rt.mcp_agents.lock();
-    let label = unique_participant_label(&proposed, &presence_labels, &attached_agents);
+    // A client that attaches again under the same name is the same agent
+    // coming back, not a new one: it keeps its participant id and label, so
+    // its bylines, presence and cursors stay one identity across reconnects
+    // instead of collecting suffixes. Two agents that want separate bylines
+    // attach under different names.
+    let returning = attached_agents
+        .values()
+        .find(|agent| {
+            agent.client_name == identity.name
+                && (agent.label == proposed || agent.label.starts_with(&format!("{proposed}-")))
+        })
+        .map(|agent| (agent.participant_id.clone(), agent.label.clone()));
+    let (participant_id, label) = returning.unwrap_or_else(|| {
+        (
+            participant_id,
+            unique_participant_label(&proposed, &presence_labels, &attached_agents),
+        )
+    });
     let agent = AttachedAgent {
         session: session.clone(),
         participant_id: participant_id.clone(),
@@ -3893,6 +3944,24 @@ async fn join_handler(
         .filter(|name| !name.is_empty())
         .map(str::to_string);
 
+    // A chosen name someone else already has is refused, not quietly
+    // changed to "Ana-2": the person would otherwise not know their name.
+    if let Some(name) = &proposed {
+        let mine = person_from(&st, &headers).map(|person| person.name);
+        if mine.as_deref() != Some(name.as_str()) && names_in_use(&st).iter().any(|taken| taken == name) {
+            return (
+                StatusCode::CONFLICT,
+                Json(json!({
+                    "ok": false,
+                    "joined": mine.is_some(),
+                    "error": "name_taken",
+                    "name": name,
+                    "message": format!("{name:?} is already used on this page by someone else; choose another name."),
+                })),
+            )
+                .into_response();
+        }
+    }
     if let Some(person) = person_from(&st, &headers) {
         let Some(proposed) = proposed else {
             present_person(&st, &person);
@@ -4023,18 +4092,32 @@ pub(crate) fn detach_quiet_agents(rt: &runtime_state::RuntimeState) -> Vec<Strin
 /// `agentseat attached, ready` for nine minutes while nobody was reading.
 fn attached_agents_json(rt: &runtime_state::RuntimeState) -> JsonValue {
     detach_quiet_agents(rt);
-    let mut agents: Vec<JsonValue> = rt
-        .mcp_agents
-        .lock()
-        .values()
-        .map(|agent| {
-            let quiet = agent.quiet_for();
+    // One entry per participant: an agent's reconnects share its identity,
+    // and it is listening if any of its sessions is.
+    let mut by_participant: BTreeMap<String, (String, bool, Option<std::time::Duration>, usize)> =
+        BTreeMap::new();
+    for agent in rt.mcp_agents.lock().values() {
+        let quiet = agent.quiet_for();
+        let entry = by_participant
+            .entry(agent.participant_id.clone())
+            .or_insert_with(|| (agent.label.clone(), false, quiet, 0));
+        entry.1 |= agent.listening();
+        entry.2 = match (entry.2, quiet) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            _ => None,
+        };
+        entry.3 += 1;
+    }
+    let mut agents: Vec<JsonValue> = by_participant
+        .into_iter()
+        .map(|(id, (label, listening, quiet, sessions))| {
             json!({
-                "id": agent.participant_id,
-                "label": agent.label,
-                "listening": agent.listening(),
+                "id": id,
+                "label": label,
+                "listening": listening,
                 "quiet": quiet.is_some_and(|quiet| quiet >= AGENT_QUIET_AFTER),
                 "quietForMs": quiet.map(|quiet| quiet.as_millis() as u64),
+                "sessions": sessions,
             })
         })
         .collect();
@@ -6063,6 +6146,46 @@ mod tests {
             .lock()
             .insert(agent.session.clone(), agent.clone());
         agent
+    }
+
+    #[tokio::test]
+    async fn an_agent_that_reconnects_under_its_name_keeps_one_identity() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        let identity = |name: &str| mcp::ClientIdentity {
+            name: name.to_string(),
+            title: None,
+            version: None,
+        };
+        let first = attach_mcp_agent(&rs, identity("reviewer"));
+        let again = attach_mcp_agent(&rs, identity("reviewer"));
+        let other = attach_mcp_agent(&rs, identity("writer"));
+        assert_eq!(first.participant_id, again.participant_id);
+        assert_eq!(first.label, "reviewer");
+        assert_eq!(again.label, "reviewer", "a reconnect is not reviewer-2");
+        assert_ne!(first.session, again.session, "each connection keeps its own credential");
+        assert_ne!(other.participant_id, first.participant_id);
+        let roster = attached_agents_json(&rs.rt).to_string();
+        assert_eq!(roster.matches(&first.participant_id).count(), 1, "{roster}");
+    }
+
+    #[tokio::test]
+    async fn a_name_someone_else_holds_is_refused_not_suffixed() {
+        let state = test_router_state(websocket_surface_with_human_route());
+        let named = |name: &str| Some(Json(json!({ "name": name })));
+        let first = join_handler(State(state.clone()), HeaderMap::new(), named("Ana"))
+            .await
+            .into_response();
+        assert_eq!(first.status(), StatusCode::OK);
+        let second = join_handler(State(state.clone()), HeaderMap::new(), named("Ana"))
+            .await
+            .into_response();
+        assert_eq!(second.status(), StatusCode::CONFLICT);
+        assert_eq!(state.rt.people.everyone().len(), 1);
+        assert_eq!(state.rt.people.everyone()[0].name, "Ana");
     }
 
     #[tokio::test]

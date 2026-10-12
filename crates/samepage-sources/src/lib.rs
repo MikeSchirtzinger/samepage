@@ -51,6 +51,10 @@ pub struct GateFact {
     pub obligation_id: String,
     pub met: bool,
     pub reason: String,
+    /// Why an unmet gate is unmet: `unratified`, `unattested`, `failed`,
+    /// `changed`, `missing` or `blocked`. Empty when the gate is met.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub blocker: String,
 }
 pub fn binding_key(node: &str, b: &Binding) -> String {
     format!("{node}\u{1}{}\u{1}{}", b.path, b.lines)
@@ -93,8 +97,11 @@ pub fn check_binding(r: &Record) -> Result<(), CapError> {
     }
     let p = string(r, "path");
     let l = string(r, "lines");
-    if p.is_empty() != l.is_empty() {
-        return Err(invalid("source references require both path and lines"));
+    if p.is_empty() && !l.is_empty() {
+        return Err(invalid("lines needs a path"));
+    }
+    if !p.is_empty() && l.is_empty() {
+        return Err(invalid(format!("{p}: pass lines, such as 1-40")));
     }
     if !p.is_empty() {
         if p.starts_with('/')
@@ -391,7 +398,11 @@ pub fn project(view: &View, facts: &Facts) -> Result<Value, CapError> {
             ),
             "drifted" => "DRIFTED".into(),
             "gate-met" => "GATE MET".into(),
-            "gate-unmet" => "GATE UNMET".into(),
+            "gate-unmet" => match gate.map(|g| g.blocker.as_str()) {
+                Some("unratified") => "GATE UNMET: UNRATIFIED".into(),
+                Some("unattested") => "GATE UNMET: UNATTESTED".into(),
+                _ => "GATE UNMET".into(),
+            },
             "proposed" => "PROPOSED".into(),
             _ => "CLAIMED".into(),
         };
@@ -403,10 +414,18 @@ pub fn project(view: &View, facts: &Facts) -> Result<Value, CapError> {
             _ => "?",
         };
         readback.push_str(&format!(
-            "[{}] {:?}: {chip}; {} source binding(s)\n",
+            "[{}] {:?}: {chip}; {}{}\n",
             n.id,
             string(n, "label"),
-            bindings.len()
+            match bindings.as_slice() {
+                [] => "no source".to_string(),
+                [one] => format!("source {}:{}", one.path, one.lines),
+                [first, rest @ ..] => format!("source {}:{} and {} more", first.path, first.lines, rest.len()),
+            },
+            match gate {
+                Some(g) if tier == "gate-unmet" && !g.reason.is_empty() => format!(" ({})", g.reason),
+                _ => String::new(),
+            }
         ));
         cards.insert(n.id.clone(),json!({"tier":tier,"chip":chip,"symbol":symbol,"sha256_prefix":prefix,"struck":struck,"bindings":bindings,"gate":gate}));
     }

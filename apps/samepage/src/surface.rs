@@ -623,6 +623,30 @@ impl SamePageState {
         if actor.caller==Caller::Agent && (action=="pane_put" || action=="room_put_pane") && (args.get("spot").is_some() || args.get("raise").is_some()) {
             return Err("the agent cannot send a rectangle or raise; use relations and named sizes".into());
         }
+        // Removing another person's work is a deliberate act: an agent must
+        // say so with confirm_owner, and every reply names what went with it.
+        let removal = matches!(action, "object_remove" | "atlas_remove" | "shape_remove");
+        let before_removal = removal.then(|| self.host.view());
+        let mut args = args;
+        if removal {
+            let confirmed = args.as_object_mut().and_then(|o| o.remove("confirm_owner")) == Some(json!(true));
+            let view = before_removal.as_ref().ok_or("removal view missing")?;
+            if let Some(record) = args["id"].as_str().and_then(|id| view.get(id)) {
+                let owner = record.props.get("created_by_participant").and_then(Scalar::as_str).unwrap_or_default();
+                if actor.caller == Caller::Agent && owner.starts_with("person-") && !confirmed {
+                    return Err(format!(
+                        "{} was made by {}. Removing a person's work needs confirm_owner: true; ask them first in chat_reply.",
+                        record_words(view, record),
+                        record.props.get("created_by").and_then(Scalar::as_str).filter(|s| !s.is_empty()).unwrap_or("a person")
+                    ));
+                }
+            }
+        }
+        if matches!(action, "decision_draft" | "atlas_decision_draft") {
+            if let Some(cement) = &self.cement {
+                cement.check_evidence(&args)?;
+            }
+        }
         let mut cement_result = None;
         let mut publication = None;
         let invoked = if matches!(action, "decision_cement" | "atlas_cement_decision") {
@@ -648,11 +672,12 @@ impl SamePageState {
                 sources.facts(&self.host.view())?,
             )?;
             self.host.invoke_composed(&actor, action, &batch)
-        } else if self.sources.is_some() && matches!(action, "card_place" | "atlas_place") {
+        } else if let Some(sources) = self.sources.as_ref().filter(|_| matches!(action, "card_place" | "atlas_place")) {
+            let args = whole_file(&sources.repo, args.clone())?;
             let batch = samepage_sources::place_batch(
                 &samepage_capability::Call {
                     action: "card_place".into(),
-                    args: args.clone(),
+                    args,
                 },
                 &self.host.view(),
             )
@@ -664,6 +689,33 @@ impl SamePageState {
         .map_err(|e| e.to_string())?;
         if let Some(pending) = publication {
             pending.accept();
+        }
+        let mut invoked = caller_names(invoked, &args, &self.host.view())?;
+        if let (Some(before), Some(commit)) = (&before_removal, &invoked.commit) {
+            let after = self.host.view();
+            let removed: Vec<_> = commit
+                .deleted
+                .iter()
+                .filter_map(|id| before.get(id))
+                .map(|r| format!(
+                    "{} made by {}",
+                    record_words(before, r),
+                    r.props.get("created_by").and_then(Scalar::as_str).filter(|s| !s.is_empty()).unwrap_or("someone")
+                ))
+                .collect();
+            if !removed.is_empty() {
+                invoked.readback.push(format!("REMOVED {}", removed.join("; ")));
+            }
+            let moved: Vec<_> = commit
+                .modified
+                .iter()
+                .filter_map(|id| after.get(id))
+                .filter(|r| r.kind == "node")
+                .map(|r| record_words(&after, r))
+                .collect();
+            if !moved.is_empty() {
+                invoked.readback.push(format!("MOVED TO THE TOP LEVEL {}", moved.join("; ")));
+            }
         }
         let flow_id = args["flow_id"].as_str().or_else(|| args["flow"]["id"].as_str()).unwrap_or("").to_string();
         let reenter = args["command"] == "restart";
@@ -705,6 +757,11 @@ impl SamePageState {
                         self.lanes.as_ref().ok_or("lanes unavailable")?,
                         self.sources.as_ref().ok_or("sources unavailable")?,
                     )?,
+                    "decision_draft" => {
+                        let view = self.host.view();
+                        let id = invoked.ids.get("draft").ok_or("decision draft id missing")?;
+                        json!({"mode":samepage_cement::mode(&view),"view":samepage_cement::view_mode(&view),"draft":samepage_cement::draft(&view, id).map_err(|e| e.to_string())?})
+                    }
                     _ => samepage_cement::Cement
                         .project(&self.host.view())
                         .map_err(|e| e.to_string())?,
@@ -712,24 +769,60 @@ impl SamePageState {
             }
             (self.emit_event)("samepage.capability-used", json!({"id":"cement"}));
         }
-        let validation = self.validation.report(&self.host.view())?;
-        if invoked.commit.is_some() && validation["status"] == "failed" {
-            return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":invoked.commit.as_ref().map(|c|c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),"revision":self.host.revision(),"validation":validation}).to_string());
+        let mut validation = self.validation.report(&self.host.view())?;
+        // A write fails validation only for problems that involve what it
+        // touched. Problems already on the page stay visible as warnings, so
+        // an unrelated write is not reported as failed and is not retried.
+        let mut warnings = Vec::new();
+        if let (Some(commit), true) = (&invoked.commit, validation["status"] == "failed") {
+            let applied: Vec<&String> = commit.created.iter().chain(&commit.modified).chain(&commit.deleted).collect();
+            let (caused, standing): (Vec<Value>, Vec<Value>) = validation["errors"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .partition(|error| {
+                    error["ids"].as_array().is_some_and(|ids| {
+                        ids.iter().filter_map(Value::as_str).any(|id| applied.iter().any(|a| a.as_str() == id))
+                    })
+                });
+            if !caused.is_empty() {
+                return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":applied,"revision":self.host.revision(),
+                    "errors":caused,"warnings":standing,
+                    "next":"The write was applied and is on the page. Repair the ids named in errors with card_move, card_resize or object_remove; do not repeat the write.",
+                    "validation":validation}).to_string());
+            }
+            warnings = standing;
+            validation["errors"] = json!([]);
+            validation["status"] = json!("passed_for_this_write");
         }
         let pane_read=if invoked.action=="panes_read" {
             Some(self.panes.as_ref().ok_or("panes is unavailable")?.read(&self.host.view(),&self.host.journal(),&actor.participant)?)
         } else { None };
-        let mut source_result = if let Some(s) = &self.sources {
-            if matches!(
-                invoked.action.as_str(),
-                "source_read" | "source_list" | "sources_read"
-            ) {
-                Some(s.action(&invoked.action, &args, &self.host.view())?)
-            } else {
+        // Source facts are large. Only source actions return them; a write
+        // that touched cards gets those cards' tiers as one read-back line
+        // each, and review_read uses tiers internally.
+        let source_action = matches!(
+            invoked.action.as_str(),
+            "source_read" | "source_list" | "sources_read"
+        );
+        let touched_cards: Vec<String> = {
+            let view = self.host.view();
+            invoked
+                .commit
+                .as_ref()
+                .map(|c| c.created.iter().chain(&c.modified).cloned().collect::<Vec<_>>())
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|id| view.get(id).is_some_and(|r| r.kind == "node"))
+                .collect()
+        };
+        let mut source_result = match &self.sources {
+            Some(s) if source_action => Some(s.action(&invoked.action, &args, &self.host.view())?),
+            Some(s) if invoked.action == "review_read" || !touched_cards.is_empty() => {
                 Some(s.inspect(&self.host.view())?)
             }
-        } else {
-            None
+            _ => None,
         };
         if let (Some(cement), Some(source)) = (&self.cement, &mut source_result) {
             if source.get("facts").is_some() {
@@ -752,26 +845,7 @@ impl SamePageState {
         let lane_result = if matches!(invoked.action.as_str(), "lane_claim" | "lanes_read") {
             let lanes = self.lanes.as_ref().ok_or("lanes unavailable")?;
             let source = self.sources.as_ref().ok_or("sources unavailable")?;
-            let mut result = lanes.inspect(&self.host.view(), source.facts(&self.host.view())?)?;
-            if let Some(cement) = self.cement.as_ref().filter(|_| {
-                result["facts"]["registry"]["removals"].as_object().is_some_and(|r| {
-                    r.values().any(|removal| removal["obligation_id"].as_str().is_some_and(|id| !id.is_empty()))
-                })
-            }) {
-                let check = cement.check()?;
-                result["facts"]["clean"] = json!(check["obligations"]
-                    .as_array()
-                    .map(Vec::as_slice)
-                    .unwrap_or(&[])
-                    .iter()
-                    .filter(|o| o["status"] == "passed")
-                    .map(|o| o["id"].clone())
-                    .collect::<Vec<_>>());
-                let facts =
-                    serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
-                result["projection"] = samepage_lanes::reconcile(&self.host.view(), &facts);
-            }
-
+            let result = self.lanes_inspect(lanes, source, &self.host.view())?;
             (self.emit_event)("samepage.capability-used", json!({"id":"lanes"}));
             Some(result)
         } else {
@@ -804,6 +878,15 @@ impl SamePageState {
             .map(|s| vec![s.to_string()])
             .or_else(||pane_read.map(|text|vec![text]))
             .unwrap_or(invoked.readback);
+        if invoked.action == "map_read" {
+            let view = self.host.view();
+            readback = vec![samepage_map::describe_measured(&view, &self.validation.measured(&view))];
+        }
+        if matches!(invoked.action.as_str(), "lanes_read" | "sources_read" | "source_read" | "source_list") {
+            // These capabilities read through the host; their own plan only
+            // says so. The host's read, added below, is the answer.
+            readback.clear();
+        }
         let architecture = if invoked.action == "architecture_read" {
             Some(samepage_architecture::inspect(&self.host.view()).map_err(|e| e.to_string())?)
         } else {
@@ -813,9 +896,30 @@ impl SamePageState {
             .as_ref()
             .and_then(|s| s["projection"]["readback"].as_str())
         {
-            readback.push(text.into());
+            if source_action {
+                readback.push(text.into());
+            } else {
+                let lines: Vec<_> = text
+                    .lines()
+                    .filter(|line| touched_cards.iter().any(|id| line.starts_with(&format!("[{id}]"))))
+                    .collect();
+                if !lines.is_empty() {
+                    readback.push(format!("SOURCES\n{}", lines.join("\n")));
+                }
+            }
         }
-        if let Some(text) = lane_result
+        if invoked.action == "lane_claim" {
+            if let Some(result) = &lane_result {
+                let card = args["node_id"].as_str().or(args["card_id"].as_str()).unwrap_or_default();
+                let lanes = result["projection"]["lanes"].as_array().map(Vec::as_slice).unwrap_or(&[]);
+                let vouched = lanes.iter().filter(|l| l["matched_node_id"] == card).count();
+                let label = self.host.view().get(card).and_then(|r| samepage_map::prop_str(r, "label").map(str::to_string)).unwrap_or_default();
+                readback.push(format!(
+                    "{label:?} now vouches for {vouched} lane(s); {} lane(s) remain unresolved.",
+                    result["projection"]["unresolved_count"].as_u64().unwrap_or(0)
+                ));
+            }
+        } else if let Some(text) = lane_result
             .as_ref()
             .and_then(|r| r["projection"]["readback"].as_str())
         {
@@ -836,20 +940,29 @@ impl SamePageState {
         let walkthrough = if invoked.action.starts_with("walkthrough_") {
             Some(samepage_explain::read(&self.host.view(), if invoked.action == "walkthrough_read" && !flow_id.is_empty() { Some(&flow_id) } else { None }).map_err(|e| e.to_string())?)
         } else { None };
-        let result = serde_json::to_string(&json!({
+        let mut reply = json!({
             "walkthrough": walkthrough,
             "architecture": architecture,
             "action": invoked.action,
             "readback": readback,
             "review": report,
-            "sources": source_result,
-            "lanes": lane_result,
+            "sources": if source_action { source_result } else { None },
+            "lanes": if invoked.action == "lane_claim" { None } else { lane_result },
             "cement": cement_result,
             "validation": validation,
             "ids": invoked.ids,
+            "touched": invoked.commit.as_ref().map(|c| c.created.iter().chain(&c.modified).chain(&c.deleted).collect::<Vec<_>>()),
             "revision": self.host.revision(),
-        }))
-        .map_err(|error| error.to_string());
+        });
+        if !warnings.is_empty() {
+            reply["warnings"] = json!(warnings);
+            reply["next"] = json!("These page problems were there before this write and do not involve what it touched. Repair them only if they are yours.");
+        }
+        // Absent sections are omitted rather than sent as null.
+        if let Some(fields) = reply.as_object_mut() {
+            fields.retain(|_, value| !value.is_null());
+        }
+        let result = serde_json::to_string(&reply).map_err(|error| error.to_string());
         drop(_operation);
         if invoked.commit.is_some() && (matches!(invoked.action.as_str(), "walkthrough_define" | "walkthrough_advance") || (invoked.action == "walkthrough_control" && reenter)) {
             if let Err(error) = crate::host::explain::attend(&self.host.view(), &flow_id, surface_actor, self.input.attention().as_deref()) {
@@ -864,6 +977,710 @@ impl SamePageState {
         }
         result
     }
+}
+
+impl SamePageState {
+    /// The page as one plain-text read-back. Structured facts stay behind each
+    /// capability's own read tool so this reply stays small as a page grows.
+    fn page_text(
+        &self,
+        actor: &Actor,
+        trace: Option<&crate::host::trace::TraceHost>,
+    ) -> Result<String, String> {
+        let view = self.host.view();
+        let mut out = format!("PAGE revision {}\n", self.host.revision());
+        if let Some(since) = self.input.seen_before(&actor.participant) {
+            let (lines, _) = self.change_lines(&actor.participant, since);
+            out.push_str(&if lines.is_empty() {
+                "\nCHANGED SINCE YOUR LAST READ: nothing from anyone else.\n".to_string()
+            } else {
+                format!("\nCHANGED SINCE YOUR LAST READ\n- {}\n", lines.join("\n- "))
+            });
+        }
+        let section = |out: &mut String, header: &str, body: &str| {
+            let body = body.trim();
+            if body.is_empty() {
+                return;
+            }
+            out.push('\n');
+            if !body.starts_with(header) {
+                out.push_str(header);
+                out.push('\n');
+            }
+            out.push_str(body);
+            out.push('\n');
+        };
+        let measured = self.validation.measured(&view);
+        section(&mut out, "MAP", &samepage_map::describe_measured(&view, &measured));
+        for (id, action, header) in [
+            ("diagrams", "diagram_read", "DIAGRAMS"),
+            ("architecture", "architecture_read", "ARCHITECTURE"),
+            ("sketch", "sketch_read", "SKETCH"),
+        ] {
+            if id == "sketch" && !measured.is_empty() && self.host.composition().descriptor(id).is_some() {
+                section(&mut out, header, &sketch_measured(&view, &measured)?);
+                continue;
+            }
+            if self.host.composition().descriptor(id).is_some() {
+                let result = self
+                    .host
+                    .invoke(actor, action, json!({}))
+                    .map_err(|e| e.to_string())?;
+                section(&mut out, header, &result.readback.join("\n"));
+            }
+        }
+        if let Some(review) = &self.review {
+            let report = review.read(&view, &actor.participant)?;
+            section(&mut out, "REVIEW", report["readback"].as_str().unwrap_or_default());
+        }
+        if let Some(panes) = &self.panes {
+            if view.records().any(|r| r.kind == "pane") {
+                let text = panes.read(&view, &self.host.journal(), &actor.participant)?;
+                section(&mut out, "PANES", &text);
+            }
+        }
+        if let Some(sources) = &self.sources {
+            let mut result = sources.action("sources_read", &json!({}), &view)?;
+            if let Some(cement) = &self.cement {
+                let (gates, _) = cement.gates(&view)?;
+                result["facts"]["gates"] = serde_json::to_value(gates).map_err(|e| e.to_string())?;
+                let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
+                result["projection"] = samepage_sources::project(&view, &facts).map_err(|e| e.to_string())?;
+            }
+            section(&mut out, "SOURCES", result["projection"]["readback"].as_str().unwrap_or_default());
+            if let Some(lanes) = &self.lanes {
+                let result = self.lanes_inspect(lanes, sources, &view)?;
+                section(&mut out, "LANES", result["projection"]["readback"].as_str().unwrap_or_default());
+            }
+        }
+        if let Some(cement) = &self.cement {
+            let projection = samepage_cement::Cement.project(&view).map_err(|e| e.to_string())?;
+            section(&mut out, "CEMENT", &cement_text(&projection, &cement.history()?));
+        }
+        if self.host.composition().descriptor("explain").is_some() {
+            let result = samepage_explain::read(&view, None).map_err(|e| e.to_string())?;
+            if result["flows"].as_array().is_some_and(|f| !f.is_empty()) {
+                section(&mut out, "EXPLANATION FLOWS", result["readback"].as_str().unwrap_or_default());
+            }
+        }
+        let board = self.board.lock().map_err(|_| "board binding lock poisoned")?.clone();
+        if let Some(board) = board {
+            if board.revision() == 0 {
+                section(&mut out, "BOARD", "BOARD: empty. board_read lists its vocabulary.");
+            } else {
+                section(&mut out, "BOARD", &board.read(&actor.participant)?);
+            }
+        }
+        if let Some(trace) = trace {
+            let result: Value = serde_json::from_str(&trace.invoke("trace_read", json!({}))?)
+                .map_err(|e| e.to_string())?;
+            let ok = &result["ok"];
+            section(
+                &mut out,
+                "TRACE",
+                &format!(
+                    "TRACE: {} spans held, {} dropped; trace_read returns them.",
+                    ok["records"].as_array().map_or(0, Vec::len),
+                    ok["dropped"].as_u64().unwrap_or(0)
+                ),
+            );
+        }
+        let crossings = frame_crossings(&view, &measured);
+        if !crossings.is_empty() {
+            section(&mut out, "LAYOUT", &format!("LAYOUT: cards crossing a frame's edge\n- {}", crossings.join("\n- ")));
+        }
+        section(&mut out, "VALIDATION", &validation_text(&self.validation.report(&view)?));
+        self.input.acknowledge(&actor.participant, self.host.journal().seq);
+        Ok(out)
+    }
+
+    /// One line per change another participant made since `since`, newest
+    /// last and at most eight, plus the record kinds those changes touched.
+    pub(crate) fn change_lines(&self, reader: &str, since: u64) -> (Vec<String>, std::collections::BTreeSet<String>) {
+        let view = self.host.view();
+        let journal = self.host.journal();
+        let entries: Vec<_> = journal
+            .recent
+            .iter()
+            .filter(|e| e.seq > since && e.actor.participant != reader)
+            .collect();
+        let name = |actor: &samepage_doc::Actor| {
+            actor.label.clone().filter(|l| !l.trim().is_empty()).unwrap_or_else(|| {
+                if actor.caller == Caller::Human { "a person".into() } else { "an agent".into() }
+            })
+        };
+        let describe = |id: &String| match view.get(id) {
+            Some(r) => {
+                let words = ["label", "text", "title"]
+                    .iter()
+                    .find_map(|k| r.props.get(*k).and_then(Scalar::as_str).filter(|s| !s.is_empty()))
+                    .unwrap_or("");
+                let about = ["about", "target"]
+                    .iter()
+                    .find_map(|k| r.props.get(*k).and_then(Scalar::as_str))
+                    .and_then(|t| view.get(t))
+                    .and_then(|t| t.props.get("label").and_then(Scalar::as_str))
+                    .map(|l| format!(" on {l:?}"))
+                    .unwrap_or_default();
+                format!("{} {:?}{about} [{id}]", r.kind, words.chars().take(80).collect::<String>())
+            }
+            None => format!("removed [{id}]"),
+        };
+        let mut kinds = std::collections::BTreeSet::new();
+        let mut lines = Vec::new();
+        if entries.len() > 8 {
+            lines.push(format!("{} earlier changes, not listed", entries.len() - 8));
+        }
+        for entry in entries.iter().rev().take(8).rev() {
+            let ids: Vec<_> = entry.created.iter().chain(&entry.modified).chain(&entry.deleted).collect();
+            for id in &ids {
+                kinds.insert(view.get(id).map_or_else(|| "node".to_string(), |r| r.kind.clone()));
+            }
+            let what: Vec<_> = ids.iter().take(3).map(|id| describe(id)).collect();
+            lines.push(format!(
+                "{} {}{} by {}",
+                entry.action.as_deref().unwrap_or("edit"),
+                what.join(", "),
+                if ids.len() > 3 { format!(" and {} more", ids.len() - 3) } else { String::new() },
+                name(&entry.actor)
+            ));
+        }
+        (lines, kinds)
+    }
+
+    /// What woke a waiter: one line per change another participant made
+    /// since `since`, then the read-back of each capability whose records
+    /// changed (cards and links, review, drawings, walkthroughs).
+    pub(crate) fn wake_text(&self, reader: &str, since: u64) -> Result<String, String> {
+        let view = self.host.view();
+        let journal = self.host.journal();
+        let (lines, kinds) = self.change_lines(reader, since);
+        let mut out = String::new();
+        for line in &lines {
+            out.push_str(&format!("woken by: {line}\n"));
+        }
+        let touches = |set: &[&str]| kinds.iter().any(|k| set.contains(&k.as_str()));
+        if touches(&["mark", "claim", "understanding-context"]) {
+            if let Some(review) = &self.review {
+                let report = review.read(&view, reader)?;
+                out.push('\n');
+                out.push_str(report["readback"].as_str().unwrap_or_default());
+            }
+        }
+        if touches(&["shape"]) && self.host.composition().descriptor("sketch").is_some() {
+            let read = samepage_sketch::Sketch
+                .plan(&samepage_capability::Call { action: "sketch_read".into(), args: json!({}) }, &view)
+                .map_err(|e| e.to_string())?;
+            out.push('\n');
+            out.push_str(&read.readback);
+        }
+        if touches(&["explanation-flow"]) && self.host.composition().descriptor("explain").is_some() {
+            let read = samepage_explain::read(&view, None).map_err(|e| e.to_string())?;
+            out.push('\n');
+            out.push_str(read["readback"].as_str().unwrap_or_default());
+        }
+        if touches(&["node", "edge", "constraint", "constraint-member", "binding"]) || out.lines().all(|l| l.starts_with("woken by") || l.starts_with('(')) {
+            out.push('\n');
+            out.push_str(&samepage_map::describe_measured(&view, &self.validation.measured(&view)));
+        }
+        self.input.acknowledge(reader, journal.seq);
+        Ok(out)
+    }
+
+    /// Lane facts reconciled with cement removals, shared by every lane read.
+    fn lanes_inspect(
+        &self,
+        lanes: &crate::host::lanes::LanesHost,
+        sources: &crate::host::sources::SourcesHost,
+        view: &samepage_capability::View,
+    ) -> Result<Value, String> {
+        let mut result = lanes.inspect(view, sources.facts(view)?)?;
+        if let Some(cement) = self.cement.as_ref().filter(|_| {
+            result["facts"]["registry"]["removals"].as_object().is_some_and(|r| {
+                r.values().any(|removal| removal["obligation_id"].as_str().is_some_and(|id| !id.is_empty()))
+            })
+        }) {
+            let check = cement.check()?;
+            result["facts"]["clean"] = json!(check["obligations"]
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or(&[])
+                .iter()
+                .filter(|o| o["status"] == "passed")
+                .map(|o| o["id"].clone())
+                .collect::<Vec<_>>());
+            let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
+            result["projection"] = samepage_lanes::reconcile(view, &facts);
+        }
+        Ok(result)
+    }
+}
+
+/// What an attaching agent needs before its first call. Sent in the MCP
+/// `initialize` result and written into the session advert.
+pub const AGENT_GUIDE: &str = "SamePage is a page a person and agents edit together about this project: cards that make claims about its code, links, drawings, diagrams, the person's question marks, and decisions.
+1. Start with page_read. It returns the whole page as text: cards and their ids, claims and their standing, the person's marks, source tiers, lanes, decisions and page problems.
+2. Wait with await_input. It returns when someone else changes the page, asks on the board, selects something or writes in chat, and its first line says what changed and who did it. Call it again to keep waiting.
+3. Answer a person's question mark with mark_answer (mark ids are under MARKS), and state what you know with claim_add so they can accept or reject it. Chat goes through chat_read and chat_reply.
+4. Bind a card to code with card_place and a path such as api/src/main.rs; add lines such as 1-40 for part of a file. The card's tier then tracks that code.
+5. Draw a whole picture with page_draw: shapes, cards, links, a diagram and claims in one call, with refs across them. sketch draws shapes alone: frames and boxes first, then text, then arrows.
+6. Only people agree to cards, accept claims and publish decisions. Agents propose: claim_add, decision_draft, decision_cement_propose, and map_cement on agreed cards.
+7. A write that causes a page problem is still applied; repair the ids it names instead of repeating the write.";
+
+/// The sketch read-back with browser-measured card boxes, so ENCLOSES and
+/// NEAR describe the cards as people see them rather than estimated heights.
+fn sketch_measured(
+    view: &samepage_capability::View,
+    measured: &BTreeMap<String, [f64; 4]>,
+) -> Result<String, String> {
+    let view_json = serde_json::to_string(view).map_err(|e| e.to_string())?;
+    let bounds_json = serde_json::to_string(measured).map_err(|e| e.to_string())?;
+    let result: Value = serde_json::from_str(&samepage_sketch::project_with_bounds(&view_json, &bounds_json))
+        .map_err(|e| e.to_string())?;
+    result["ok"]["readback"]
+        .as_str()
+        .map(str::to_string)
+        .ok_or_else(|| format!("sketch read-back failed: {}", result["error"]))
+}
+
+/// Cards that overlap a drawn frame without sitting inside it, with how far
+/// they stick out, using measured boxes when a browser reported them.
+fn frame_crossings(view: &samepage_capability::View, measured: &BTreeMap<String, [f64; 4]>) -> Vec<String> {
+    let num = |r: &samepage_capability::Record, k: &str| r.props.get(k).and_then(Scalar::as_f64).unwrap_or(0.0);
+    let cards = samepage_map::card_boxes(view, measured);
+    let mut out = Vec::new();
+    for frame in view.records().filter(|r| r.kind == "shape" && r.props.get("form").and_then(Scalar::as_str) == Some("frame")) {
+        let (fl, ft) = (num(frame, "x"), num(frame, "y"));
+        let (fr, fb) = (fl + num(frame, "w"), ft + num(frame, "h"));
+        let name = frame.props.get("label").and_then(Scalar::as_str).unwrap_or("");
+        for (id, label, [l, t, r, b]) in &cards {
+            let overlaps = *l < fr && *r > fl && *t < fb && *b > ft;
+            let inside = *l >= fl && *r <= fr && *t >= ft && *b <= fb;
+            if !overlaps || inside {
+                continue;
+            }
+            let sides: Vec<String> = [
+                (fl - l, "left of its left edge"),
+                (r - fr, "right of its right edge"),
+                (ft - t, "above its top"),
+                (b - fb, "below its bottom"),
+            ]
+            .into_iter()
+            .filter(|(by, _)| *by >= 1.0)
+            .map(|(by, side)| format!("{}px {side}", by.round()))
+            .collect();
+            out.push(format!("card {label:?} [{id}] sticks out of frame {name:?}: {}", sides.join(", ")));
+        }
+    }
+    out
+}
+
+/// The argument schemas page_draw reuses, taken from the selected
+/// capabilities' own declarations so the two never drift.
+fn declarations_schema(with_diagrams: bool, with_review: bool, with_sketch: bool) -> BTreeMap<&'static str, Value> {
+    let find = |actions: Vec<samepage_capability::ActionDecl>, name: &str| {
+        actions.into_iter().find(|a| a.name == name).map(|a| a.input_schema).unwrap_or(Value::Null)
+    };
+    let mut out = BTreeMap::new();
+    let mut card = find(samepage_map::descriptor().actions, "card_place");
+    card["properties"]["ref"] = json!({"type":"string","description":"Your name for this card; later steps use it in from, to and about."});
+    out.insert("card", card);
+    out.insert("link", find(samepage_map::descriptor().actions, "card_link"));
+    if with_sketch {
+        out.insert("shape", samepage_sketch::shape_schema());
+    }
+    if with_diagrams {
+        out.insert("diagram", find(samepage_diagrams::descriptor().actions, "diagram_draw"));
+    }
+    if with_review {
+        out.insert("claim", find(samepage_review::descriptor().actions, "claim_add"));
+    }
+    out
+}
+
+/// One call that draws a whole picture: shapes, then cards, then links, then
+/// a diagram, then claims, in that order. Names given as `ref` on shapes and
+/// cards, and node ids in the diagram, may be used by any later step in
+/// from, to, about, parent and frame. Each step is an ordinary action; the
+/// call stops at the first refusal and says what landed before it.
+fn page_draw_action(state: Arc<SamePageState>, schemas: &BTreeMap<&'static str, Value>) -> ActionDef {
+    let list = |key: &str| json!({"type":"array","items":schemas.get(key).cloned().unwrap_or(json!({"type":"object"}))});
+    let mut properties = serde_json::Map::new();
+    if schemas.contains_key("shape") {
+        properties.insert("shapes".into(), list("shape"));
+    }
+    properties.insert("cards".into(), list("card"));
+    properties.insert("nodes".into(), json!({"type":"array","items":schemas.get("card").cloned().unwrap_or(json!({"type":"object"})),"description":"The same as cards, under the atlas's name; placed after cards."}));
+    properties.insert("links".into(), list("link"));
+    if let Some(diagram) = schemas.get("diagram") {
+        properties.insert("diagram".into(), diagram.clone());
+    }
+    if schemas.contains_key("claim") {
+        properties.insert("claims".into(), list("claim"));
+    }
+    let schema = json!({"type":"object","properties":properties,"additionalProperties":false});
+    ActionDef::new(
+        "page_draw",
+        "Draw a whole picture in one call: shapes (as in sketch), then cards (as in card_place, each with an optional ref), then links (as in card_link), then a diagram (as in diagram_draw), then claims (as in claim_add). A ref on a shape or card, or a node id in the diagram, can be used by any later step in from, to, about, parent or frame. Steps run in that order as ordinary actions; the call stops at the first refusal and says which steps landed, so do not repeat those. The reply maps every ref to its id.",
+        schema,
+        move |args| {
+            let args = args.clone();
+            let state = state.clone();
+            SurfaceEffect::Mutate(Box::new(move |_| {
+                let actor = current_actor().ok_or("authenticated action actor is missing")?;
+                state.page_draw(&actor, &args).map(Some)
+            }))
+        },
+    )
+    .agent_only()
+    .alias("atlas_draw")
+}
+
+impl SamePageState {
+    fn page_draw(&self, actor: &SurfaceActor, args: &Value) -> Result<String, String> {
+        let mut names: BTreeMap<String, String> = BTreeMap::new();
+        let mut landed: Vec<String> = Vec::new();
+        let resolve = |value: &mut Value, names: &BTreeMap<String, String>, keys: &[&str]| {
+            for key in keys {
+                if let Some(id) = value[*key].as_str().and_then(|name| names.get(name)).cloned() {
+                    value[*key] = json!(id);
+                }
+            }
+        };
+        let run = |step: String, action: &str, mut call: Value, names: &BTreeMap<String, String>, landed: &mut Vec<String>| -> Result<Value, String> {
+            if let Some(object) = call.as_object_mut() {
+                object.remove("ref");
+            }
+            let reply = match self.invoke_as(actor, action, call) {
+                Ok(raw) => serde_json::from_str::<Value>(&raw).map_err(|e| e.to_string())?,
+                Err(raw) => match serde_json::from_str::<Value>(&raw) {
+                    // Applied with a page problem it caused: it landed.
+                    Ok(reply) if reply["operation_applied"] == true => reply,
+                    _ => {
+                        return Err(json!({"code":"PAGE_DRAW_STOPPED","refused_step":step,"error":raw,
+                            "landed":landed,"ids":names,
+                            "next":"The listed steps landed and are on the page. Fix the refused step and send only it and the steps after it."}).to_string())
+                    }
+                },
+            };
+            landed.push(step);
+            Ok(reply)
+        };
+        let mut readback = Vec::new();
+        if let Some(shapes) = args["shapes"].as_array().filter(|s| !s.is_empty()) {
+            let mut shapes = shapes.clone();
+            for shape in &mut shapes {
+                resolve(shape, &names, &["from", "to", "frame"]);
+            }
+            let reply = run("shapes".into(), "sketch", json!({"shapes":shapes}), &names, &mut landed)?;
+            for (key, id) in reply["ids"].as_object().into_iter().flatten() {
+                names.insert(key.clone(), id.as_str().unwrap_or_default().to_string());
+            }
+            readback.push(format!("Drew {} shape(s).", reply["ids"].as_object().map_or(0, |o| o.len())));
+        }
+        let cards: Vec<Value> = ["cards", "nodes"].iter().flat_map(|k| args[*k].as_array().cloned().unwrap_or_default()).collect();
+        for (i, card) in cards.iter().enumerate() {
+            let mut card = card.clone();
+            let name = card["ref"].as_str().map(str::to_string);
+            resolve(&mut card, &names, &["parent", "id"]);
+            let reply = run(format!("cards[{i}]"), "card_place", card, &names, &mut landed)?;
+            if let (Some(name), Some(id)) = (name, reply["ids"]["card"].as_str()) {
+                names.insert(name, id.to_string());
+            }
+        }
+        if let Some(n) = Some(cards.len()).filter(|n| *n > 0) {
+            readback.push(format!("Placed {n} card(s)."));
+        }
+        for (i, link) in args["links"].as_array().into_iter().flatten().enumerate() {
+            let mut link = link.clone();
+            resolve(&mut link, &names, &["from", "to"]);
+            run(format!("links[{i}]"), "card_link", link, &names, &mut landed)?;
+        }
+        if let Some(n) = args["links"].as_array().map(Vec::len).filter(|n| *n > 0) {
+            readback.push(format!("Linked {n} pair(s)."));
+        }
+        if let Some(diagram) = args.get("diagram").filter(|d| d.is_object()) {
+            let reply = run("diagram".into(), "diagram_draw", diagram.clone(), &names, &mut landed)?;
+            for (key, id) in reply["ids"].as_object().into_iter().flatten() {
+                names.entry(key.clone()).or_insert_with(|| id.as_str().unwrap_or_default().to_string());
+            }
+            readback.push("Drew the diagram.".into());
+        }
+        for (i, claim) in args["claims"].as_array().into_iter().flatten().enumerate() {
+            let mut claim = claim.clone();
+            resolve(&mut claim, &names, &["about", "id"]);
+            run(format!("claims[{i}]"), "claim_add", claim, &names, &mut landed)?;
+        }
+        if let Some(n) = args["claims"].as_array().map(Vec::len).filter(|n| *n > 0) {
+            readback.push(format!("Stated {n} claim(s)."));
+        }
+        let view = self.host.view();
+        readback.push(samepage_map::describe_measured(&view, &self.validation.measured(&view)));
+        let validation = self.validation.report(&view)?;
+        let touched: Vec<&String> = names.values().collect();
+        serde_json::to_string(&json!({"action":"page_draw","ids":names,"touched":touched,"landed":landed,"readback":readback,
+            "validation":validation_text(&validation),"revision":self.host.revision()}))
+            .map_err(|e| e.to_string())
+    }
+}
+
+/// What the header says about the project: its name, how many files Git
+/// tracks and the languages they are written in, with the branch and
+/// revision. Measured from the project root with git; unavailable outside a
+/// Git repository root, and says so.
+fn project_summary(project: &Path) -> Value {
+    let facts = crate::host::review::project_facts(project);
+    let name = project
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    if facts["state"] != "measured" {
+        return json!({"name": name, "state": facts["state"], "reason": facts["reason"], "languages": [], "files": null});
+    }
+    let languages: Vec<Value> = facts["languages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|pair| json!({"name": pair[0], "files": pair[1]}))
+        .collect();
+    json!({
+        "name": name,
+        "state": "measured",
+        "files": facts["tracked_files"],
+        "languages": languages,
+        "branch": facts["branch"],
+        "revision": facts["revision"],
+        "boundary": facts["boundary"],
+    })
+}
+
+/// A record in a few words: its kind, its label or text, and its id.
+fn record_words(view: &samepage_capability::View, r: &samepage_capability::Record) -> String {
+    let words = ["label", "text", "title", "glyph"]
+        .iter()
+        .find_map(|k| r.props.get(*k).and_then(Scalar::as_str).filter(|s| !s.is_empty()))
+        .unwrap_or("");
+    let kind = match r.kind.as_str() {
+        "node" => "card",
+        "edge" => "link",
+        other => other,
+    };
+    let ends = if r.kind == "edge" {
+        let end = |k: &str| {
+            r.props
+                .get(k)
+                .and_then(Scalar::as_str)
+                .and_then(|id| view.get(id))
+                .and_then(|n| n.props.get("label").and_then(Scalar::as_str))
+                .unwrap_or("?")
+                .to_string()
+        };
+        format!(" from {:?} to {:?}", end("from"), end("to"))
+    } else {
+        String::new()
+    };
+    format!("{kind} {words:?}{ends} [{}]", r.id)
+}
+
+/// Key a reply's ids by the names the caller gave: a sketch shape by its
+/// `ref`, a diagram node or container by its `id`, a diagram edge by
+/// "from->to". A sketch's read-back is re-read from the committed page so it
+/// names real ids and bylines instead of pending placeholders.
+fn caller_names(
+    mut invoked: samepage_doc::host::Invoked,
+    args: &Value,
+    view: &samepage_capability::View,
+) -> Result<samepage_doc::host::Invoked, String> {
+    let mut rename = |from: String, to: Option<&str>| {
+        if let Some(to) = to.filter(|t| !t.is_empty()) {
+            if !invoked.ids.contains_key(to) {
+                if let Some(id) = invoked.ids.remove(&from) {
+                    invoked.ids.insert(to.to_string(), id);
+                }
+            }
+        }
+    };
+    match invoked.action.as_str() {
+        "sketch" => {
+            for (i, shape) in args["shapes"].as_array().into_iter().flatten().enumerate() {
+                rename(format!("shape-{i}"), shape["ref"].as_str());
+            }
+        }
+        "diagram_draw" => {
+            let nodes: Vec<&str> = args["nodes"].as_array().into_iter().flatten().map(|n| n["id"].as_str().unwrap_or_default()).collect();
+            for (i, node) in nodes.iter().enumerate() {
+                rename(format!("node-{i}"), Some(node));
+            }
+            let containers = args["containers"].as_array().map(Vec::len).unwrap_or(0);
+            for (i, container) in args["containers"].as_array().into_iter().flatten().enumerate() {
+                rename(format!("container-{i}"), container["id"].as_str());
+            }
+            if containers == 0 {
+                rename("container-0".into(), Some("diagram"));
+            }
+            for (i, edge) in args["edges"].as_array().into_iter().flatten().enumerate() {
+                let name = format!("{}->{}", edge["from"].as_str().unwrap_or_default(), edge["to"].as_str().unwrap_or_default());
+                rename(format!("edge-{i}"), Some(&name));
+            }
+        }
+        _ => {}
+    }
+    if invoked.action == "sketch" && invoked.commit.is_some() {
+        let plan: Value = invoked
+            .readback
+            .first()
+            .and_then(|raw| serde_json::from_str(raw).ok())
+            .unwrap_or(Value::Null);
+        let reading = samepage_sketch::Sketch
+            .plan(&samepage_capability::Call { action: "sketch_read".into(), args: json!({}) }, view)
+            .map_err(|e| e.to_string())?
+            .readback;
+        let mut readback = vec![format!("Drew {} shape(s).", plan["drawn"].as_u64().unwrap_or(0))];
+        readback.extend(plan["skipped"].as_array().into_iter().flatten().filter_map(Value::as_str).map(|s| format!("SKIPPED {s}")));
+        readback.push(reading);
+        invoked.readback = readback;
+    }
+    Ok(invoked)
+}
+
+/// `path` without `lines` binds the whole file: the host reads its length
+/// and names the range, so the bound excerpt is exactly what the file holds.
+fn whole_file(repo: &crate::host::sources::Repository, mut args: Value) -> Result<Value, String> {
+    let path = args["path"].as_str().unwrap_or_default().to_string();
+    let lines = args["lines"].as_str().unwrap_or_default();
+    if path.is_empty() || !lines.is_empty() {
+        return Ok(args);
+    }
+    let count = repo.line_count(&path).map_err(|e| e.to_string())?;
+    if count == 0 {
+        return Err(format!("{path} is empty; bind a file with content"));
+    }
+    if count > 400 {
+        return Err(format!(
+            "{path} has {count} lines and one binding covers at most 400; pass lines, such as 1-400"
+        ));
+    }
+    args["lines"] = json!(format!("1-{count}"));
+    Ok(args)
+}
+
+/// The records a journaled action touched: what its commit created, changed
+/// or removed, else the record ids its arguments named.
+fn activity_targets(args: &Value, result: &str) -> Vec<String> {
+    let mut found: Vec<&Value> = Vec::new();
+    let reply = serde_json::from_str::<Value>(result).unwrap_or(Value::Null);
+    for key in ["touched", "applied_ids"] {
+        found.extend(reply[key].as_array().into_iter().flatten());
+    }
+    if found.is_empty() {
+        for key in ["id", "about", "from", "to", "target", "card", "draft_id", "lane_id", "flow_id"] {
+            found.push(&args[key]);
+        }
+        found.extend(args["ids"].as_array().into_iter().flatten());
+    }
+    let mut out: Vec<String> = Vec::new();
+    for id in found.into_iter().filter_map(Value::as_str).filter(|id| !id.is_empty()) {
+        if !out.iter().any(|seen| seen == id) {
+            out.push(id.to_string());
+        }
+    }
+    out
+}
+
+/// Decisions as text: mode, drafts, cemented coverage and published records.
+fn cement_text(projection: &Value, history: &Value) -> String {
+    let mut out = format!(
+        "CEMENT: posture {}, view {}.",
+        projection["posture"].as_str().unwrap_or("learning"),
+        projection["view"].as_str().unwrap_or("map")
+    );
+    let empty = Vec::new();
+    let drafts = projection["drafts"].as_array().unwrap_or(&empty);
+    if drafts.is_empty() {
+        out.push_str(" No decision drafts.");
+    }
+    for draft in drafts {
+        let ids: Vec<_> = draft["input"]["ids"]
+            .as_array()
+            .unwrap_or(&empty)
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        out.push_str(&format!(
+            "\n- draft [{}] {:?} for [{}] by {}{}",
+            draft["id"].as_str().unwrap_or_default(),
+            draft["input"]["title"].as_str().unwrap_or_default(),
+            ids.join(", "),
+            draft["created_by"].as_str().filter(|s| !s.is_empty()).unwrap_or("someone"),
+            draft["created_at"].as_str().filter(|s| !s.is_empty()).map(|t| format!(" at {t}")).unwrap_or_default()
+        ));
+    }
+    for covered in projection["coverage"].as_array().unwrap_or(&empty) {
+        out.push_str(&format!(
+            "\n- cemented [{}] {}",
+            covered["id"].as_str().unwrap_or_default(),
+            if covered["current"] == true { "current" } else { "STALE: the card changed after cement" }
+        ));
+    }
+    for entry in history.as_array().unwrap_or(&empty) {
+        let entry = &entry["entry"];
+        out.push_str(&format!(
+            "\n- decision {:?} ({}) at {}",
+            entry["title"].as_str().unwrap_or_default(),
+            entry["status"].as_str().unwrap_or_default(),
+            entry["path"].as_str().unwrap_or_default()
+        ));
+    }
+    out
+}
+
+/// A stable name for a set of page problems: code and ids, or code and
+/// message when a browser error names no card. Measured numbers in messages
+/// change between reports and do not make a new problem.
+pub(crate) fn validation_signature(report: &Value) -> String {
+    let mut keys: Vec<String> = report["errors"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|error| {
+            let ids: Vec<_> = error["ids"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+            if ids.is_empty() {
+                format!("{}:{}", error["code"].as_str().unwrap_or_default(), error["message"].as_str().unwrap_or_default())
+            } else {
+                format!("{}:{}", error["code"].as_str().unwrap_or_default(), ids.join(","))
+            }
+        })
+        .collect();
+    keys.sort();
+    keys.dedup();
+    keys.join("\n")
+}
+
+/// Page validation as text: status and one line per problem with its ids.
+pub(crate) fn validation_text(report: &Value) -> String {
+    let status = report["status"].as_str().unwrap_or("pending");
+    let empty = Vec::new();
+    let errors = report["errors"].as_array().unwrap_or(&empty);
+    let mut out = match status {
+        "pending" => "VALIDATION: pending; no open browser has measured this revision yet.".to_string(),
+        "failed" => format!("VALIDATION: failed, {} problem(s).", errors.len()),
+        other => format!("VALIDATION: {other}."),
+    };
+    for error in errors {
+        let ids: Vec<_> = error["ids"]
+            .as_array()
+            .unwrap_or(&empty)
+            .iter()
+            .filter_map(Value::as_str)
+            .collect();
+        out.push_str(&format!(
+            "\n- {}: {}{}",
+            error["code"].as_str().unwrap_or("error"),
+            error["message"].as_str().unwrap_or_default(),
+            if ids.is_empty() { String::new() } else { format!(" [{}]", ids.join(", ")) }
+        ));
+    }
+    out
 }
 
 fn run_persistence_worker<Save, Publish, Fault, Resolved>(
@@ -960,6 +1777,25 @@ fn map_actor(actor: &SurfaceActor) -> Result<Actor, String> {
 
 impl SurfaceState for SamePageState {
     fn activity_dropped(&self) -> u64 { samepage_capability::activity::dropped() }
+    fn activity_state_revision(&self) -> Result<Vec<ag_ui_surface::ActivityStateRevision>, String> {
+        Ok(vec![ag_ui_surface::ActivityStateRevision::new("document", self.host.revision())])
+    }
+    fn activity_targets(&self, _action: &str, args: &Value, result: &str) -> Vec<String> {
+        activity_targets(args, result)
+    }
+    fn agent_guide(&self) -> Option<String> {
+        Some(AGENT_GUIDE.into())
+    }
+    fn retired_action(&self, name: &str) -> Option<String> {
+        Some(match name {
+            "atlas_session" => "call page_read first; it reads the whole page",
+            "await_atlas" => "await_input waits for every kind of change",
+            "atlas_point" => "people place marks; agents point at a card with semantic_target_point",
+            "atlas_diff" => "page_read and review_read report what changed since your last read",
+            _ if name.starts_with("atlas_segment") => "segmentation is not part of SamePage",
+            _ => return None,
+        }.into())
+    }
     fn backing(&self) -> StateBacking {
         StateBacking::Crdt
     }
@@ -1020,6 +1856,7 @@ pub struct SamePageSurface {
     tools: Vec<ActionDef>,
     artifacts: SelectedArtifacts,
     board: Option<Arc<crate::host::board::BoardHost>>,
+    project: PathBuf,
 }
 
 impl SamePageSurface {
@@ -1130,7 +1967,7 @@ impl SamePageSurface {
         tools.push(
             ActionDef::new(
                 "page_read",
-                "Read the shared page across every selected capability, including board and trace.",
+                "Start here. Read the whole shared page as plain text: cards with notes, colours and bound files, links, diagrams, drawings, claims and marks, source tiers, lanes, decisions, walkthroughs, the board and page problems. One section per capability; each section's own read tool (map_read, review_read, sketch_read, sources_read, lanes_read, board_read, trace_read) returns its structured form.",
                 json!({"type":"object","properties":{},"additionalProperties":false}),
                 move |_| {
                     let state = page_state.clone();
@@ -1138,84 +1975,7 @@ impl SamePageSurface {
                     SurfaceEffect::Query(Box::new(move |_| {
                         let _operation = state.durable_operation()?;
                         let actor = map_actor(&current_actor().ok_or("authenticated reader missing")?)?;
-                        let mut sections = serde_json::Map::new();
-                        let mut readback = vec![format!("DOC\nRevision: {}", state.host.revision())];
-                        sections.insert("doc".into(), json!({"revision":state.host.revision()}));
-                        for (id, action) in [
-                            ("map", "map_read"),
-                            ("diagrams", "diagram_read"),
-                            ("review", "review_read"),
-                            ("architecture", "architecture_read"),
-                            ("sketch", "sketch_read"),
-                        ] {
-                            if state.host.composition().descriptor(id).is_some() {
-                                let result = state.host.invoke(&actor, action, json!({}))
-                                    .map_err(|e| e.to_string())?;
-                                readback.push(format!("{}\n{}", id.to_uppercase(), result.readback.join("\n")));
-                                sections.insert(id.into(), json!(result.readback));
-                            }
-                        }
-                        let view = state.host.view();
-                        if let Some(panes) = &state.panes {
-                            let result = panes.read(&view, &state.host.journal(), &actor.participant)?;
-                            readback.push(format!("PANES\n{result}"));
-                            sections.insert("panes".into(), json!(result));
-                        }
-                        if let Some(sources) = &state.sources {
-                            let mut result = sources.action("sources_read", &json!({}), &view)?;
-                            if let Some(cement) = &state.cement {
-                                let (gates, check) = cement.gates(&view)?;
-                                result["facts"]["gates"] = serde_json::to_value(gates).map_err(|e| e.to_string())?;
-                                let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
-                                result["projection"] = samepage_sources::project(&view, &facts).map_err(|e| e.to_string())?;
-                                result["g8_check"] = check;
-                            }
-                            readback.push(format!("SOURCES\n{}", result["projection"]["readback"].as_str().unwrap_or_default()));
-                            sections.insert("sources".into(), result);
-                            if let Some(lanes) = &state.lanes {
-                                let mut result = lanes.inspect(&view, sources.facts(&view)?)?;
-                                if let Some(cement) = state.cement.as_ref().filter(|_| {
-                                    result["facts"]["registry"]["removals"].as_object().is_some_and(|r| {
-                                        r.values().any(|removal| removal["obligation_id"].as_str().is_some_and(|id| !id.is_empty()))
-                                    })
-                                }) {
-                                    let check = cement.check()?;
-                                    result["facts"]["clean"] = json!(check["obligations"].as_array().map(Vec::as_slice).unwrap_or(&[])
-                                        .iter().filter(|o| o["status"] == "passed").map(|o| o["id"].clone()).collect::<Vec<_>>());
-                                    let facts = serde_json::from_value(result["facts"].clone()).map_err(|e| e.to_string())?;
-                                    result["projection"] = samepage_lanes::reconcile(&view, &facts);
-                                }
-                                readback.push(format!("LANES\n{}", result["projection"]["readback"].as_str().unwrap_or_default()));
-                                sections.insert("lanes".into(), result);
-                            }
-                        }
-                        if let Some(cement) = &state.cement {
-                            let projection = samepage_cement::Cement.project(&view).map_err(|e| e.to_string())?;
-                            let result = json!({"projection":projection,"history":cement.history()?});
-                            readback.push(format!("CEMENT\n{result}"));
-                            sections.insert("cement".into(), result);
-                        }
-                        if state.host.composition().descriptor("explain").is_some() {
-                            let result = samepage_explain::read(&view, None).map_err(|e| e.to_string())?;
-                            readback.push(format!("EXPLAIN\n{result}"));
-                            sections.insert("explain".into(), result);
-                        }
-                        let board = state.board.lock().map_err(|_| "board binding lock poisoned")?.clone();
-                        if let Some(board) = board {
-                            let result = board.read(&actor.participant)?;
-                            readback.push(format!("BOARD\n{result}"));
-                            sections.insert("board".into(), json!(result));
-                        }
-                        if let Some(trace) = trace {
-                            let result: Value = serde_json::from_str(&trace.invoke("trace_read", json!({}))?)
-                                .map_err(|e| e.to_string())?;
-                            readback.push(format!("TRACE\n{}", result["ok"]));
-                            sections.insert("trace".into(), result["ok"].clone());
-                        }
-                        state.input.acknowledge(&actor.participant, state.host.journal().seq);
-                        Ok(json!({"action":"page_read","revision":state.host.revision(),
-                            "sections":sections,"readback":readback,
-                            "validation":state.validation.report(&state.host.view())?}).to_string())
+                        state.page_text(&actor, trace.as_deref())
                     }))
                 },
             )
@@ -1262,6 +2022,7 @@ impl SamePageSurface {
                 }))
             }).alias("await_room");wait.audience=ActionAudience::Agent;tools.push(wait);
         }
+        tools.push(page_draw_action(state.clone(), &declarations_schema(with_diagrams, with_review, with_sketch)));
         let observe_state = state.clone();
         let mut observe = ActionDef::new(
             "page_observe",
@@ -1326,6 +2087,7 @@ impl SamePageSurface {
             tools,
             artifacts,
             board,
+            project: project.to_path_buf(),
         })
     }
 }
@@ -1340,6 +2102,15 @@ impl Surface for SamePageSurface {
 
     fn routes(&self)->Vec<ag_ui_surface::RouteDef> {
         let mut routes=Vec::new();
+        let project=self.project.clone();
+        routes.push(ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/surface/project",handler:Box::new(move |_|{
+            let project=project.clone();
+            Box::pin(async move {
+                let summary=tokio::task::spawn_blocking(move || project_summary(&project)).await
+                    .unwrap_or_else(|e| json!({"state":"unavailable","reason":e.to_string()}));
+                ag_ui_surface::RouteResponse::json(200,summary)
+            })
+        })});
         if self.state.panes.is_some(){
         let state=self.state.clone();
         routes.push(ag_ui_surface::RouteDef{method:ag_ui_surface::HttpMethod::Get,path:"/panes/html",handler:Box::new(move |request:ag_ui_surface::RouteRequest|{
@@ -2264,3 +3035,31 @@ mod architecture_tests;
 #[cfg(test)]
 #[path = "board_tests.rs"]
 mod board_tests;
+
+#[cfg(test)]
+mod caller_name_tests {
+    use super::*;
+
+    #[test]
+    fn reply_ids_use_the_callers_refs_and_node_ids() {
+        let view = samepage_capability::View::new("r", []).unwrap();
+        let ids = |pairs: &[(&str, &str)]| pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let invoked = samepage_doc::host::Invoked {
+            action: "diagram_draw".into(),
+            readback: vec![],
+            ids: ids(&[("node-0", "a1"), ("node-1", "a2"), ("container-0", "a3"), ("edge-0", "a4")]),
+            commit: None,
+        };
+        let args = json!({"kind":"state_machine","nodes":[{"id":"received"},{"id":"validated"}],"edges":[{"from":"received","to":"validated"}]});
+        let named = caller_names(invoked, &args, &view).unwrap();
+        assert_eq!(named.ids, ids(&[("received", "a1"), ("validated", "a2"), ("diagram", "a3"), ("received->validated", "a4")]));
+        let invoked = samepage_doc::host::Invoked {
+            action: "sketch".into(),
+            readback: vec![],
+            ids: ids(&[("shape-0", "s1"), ("shape-1", "s2")]),
+            commit: None,
+        };
+        let named = caller_names(invoked, &json!({"shapes":[{"ref":"svc"},{"form":"text"}]}), &view).unwrap();
+        assert_eq!(named.ids, ids(&[("svc", "s1"), ("shape-1", "s2")]));
+    }
+}

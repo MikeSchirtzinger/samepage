@@ -252,17 +252,24 @@ pub fn bounds(iterations: u32, samples: u32) -> Result<(), CapError> {
 }
 pub fn descriptor() -> Descriptor {
     let mut d = Descriptor::new(ID, VERSION, Artifact::Wasm).trigger(Trigger::route("activity"));
-    for (name, effect) in [
-        ("trace_read", Effect::Query),
-        ("trace_clear", Effect::Mutate),
-        ("trace_benchmark", Effect::Mutate),
+    for (name, effect, description) in [
+        (
+            "trace_read",
+            Effect::Query,
+            "Read the diagnostic spans this host holds in memory, such as each capability's plan time, oldest first, at most 256 with older ones dropped. Spans are timing, not history: the activity journal records who changed what.",
+        ),
+        (
+            "trace_clear",
+            Effect::Mutate,
+            "Empty the in-memory span ring. The document and the activity journal are untouched.",
+        ),
+        (
+            "trace_benchmark",
+            Effect::Mutate,
+            "Measure what recording a span costs: record iterations spans in each of samples runs and report the timings. The benchmark spans enter the ring.",
+        ),
     ] {
-        let mut a = ActionDecl::new(
-            name,
-            Audience::Both,
-            effect,
-            "Read, clear or benchmark optional process-local spans; document history is separate.",
-        );
+        let mut a = ActionDecl::new(name, Audience::Both, effect, description);
         a.input_schema = if name == "trace_benchmark" {
             json!({"type":"object","required":["iterations","samples"],"properties":{"iterations":{"type":"integer","minimum":1,"maximum":10000},"samples":{"type":"integer","minimum":1,"maximum":30}},"additionalProperties":false})
         } else {

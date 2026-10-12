@@ -158,6 +158,22 @@ impl PageValidation {
         report["generation"] = json!(state.generation);
         Ok(report)
     }
+    /// Card boxes a browser measured for the current revision, from the
+    /// freshest observation. Empty when no open browser has measured it.
+    pub fn measured(&self, view: &View) -> BTreeMap<String, [f64; 4]> {
+        let Ok(state) = self.state.lock() else {
+            return BTreeMap::new();
+        };
+        state
+            .peers
+            .values()
+            .filter(|p| {
+                p.observation.revision == view.revision() && p.at.elapsed() < Duration::from_secs(15)
+            })
+            .max_by_key(|p| p.at)
+            .map(|p| p.observation.bounds.clone())
+            .unwrap_or_default()
+    }
     pub async fn wait_since(&self, generation: u64, seconds: u64) {
         let notified = self.changed.notified();
         tokio::pin!(notified);

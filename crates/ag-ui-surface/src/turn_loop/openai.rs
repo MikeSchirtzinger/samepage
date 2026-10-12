@@ -579,7 +579,7 @@ async fn run_turn(
                             Err(error) => (error, false, false, false),
                         },
                         None => (
-                            format!("action {:?} is not visible to this agent", tc.name),
+                            crate::mcp::unavailable(surface.as_ref(), &tc.name),
                             false,
                             false,
                             false,

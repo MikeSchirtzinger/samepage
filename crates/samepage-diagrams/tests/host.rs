@@ -494,3 +494,25 @@ fn portable_routes_follow_local_measured_bounds_without_mutating_the_view() {
     .unwrap();
     assert!(invalid.get("error").is_some());
 }
+#[test]
+fn states_are_as_wide_as_their_names_and_one_line_tall() {
+    let host = host();
+    let ids = draw(&host, json!({"kind":"state_machine","title":"Order lifecycle","nodes":[
+        {"id":"received","label":"Received","initial":true},{"id":"validated","label":"Validated"},
+        {"id":"receipted","label":"Receipted","terminal":true},{"id":"rejected","label":"Rejected","terminal":true},
+        {"id":"long","label":"Awaiting manual fraud review by a person"}],
+        "edges":[{"from":"received","to":"validated","event":"validate"},{"from":"validated","to":"receipted","event":"emit_receipt"},
+        {"from":"received","to":"rejected","event":"reject"},{"from":"validated","to":"long","event":"flag"}]}));
+    let view = host.view();
+    let num = |id: &str, key: &str| samepage_map::prop_num(view.get(&ids[id]).unwrap(), key).unwrap();
+    for (state, label) in [("node-0", "Received"), ("node-1", "Validated"), ("node-2", "Receipted"), ("node-3", "Rejected")] {
+        let w = num(state, "w");
+        assert!(w >= label.len() as f64 * 9.0 + 57.0 && w <= 160.0, "{state} {w}");
+        assert!(num(state, "h_pref") <= 60.0, "{state}");
+    }
+    let long = num("node-4", "w");
+    assert!(long <= 232.0 && long >= "manual".len() as f64 * 7.5, "a long name wraps at card width: {long}");
+    assert!(num("container-0", "w") < 984.0 && num("container-0", "h_pref") < 946.0);
+    let (w, _) = samepage_diagrams::state_size("Supercalifragilisticexpialidocious", "", 1.0);
+    assert!(w > 232.0, "a word longer than the card width is never broken: {w}");
+}

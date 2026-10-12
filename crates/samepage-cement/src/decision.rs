@@ -88,6 +88,10 @@ pub struct Draft {
     pub context_ids: Vec<String>,
     pub content: String,
     pub created_by: String,
+    /// When the host committed the draft, RFC 3339 UTC; empty for drafts
+    /// recorded before the host stamped creation times.
+    #[serde(default)]
+    pub created_at: String,
 }
 
 fn relative_file(path: &str) -> bool {

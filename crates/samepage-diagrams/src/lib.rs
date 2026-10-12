@@ -27,7 +27,7 @@ pub const NODE_KEYS: &[&str] = &[
 
 pub fn descriptor() -> Descriptor {
     let mut draw = ActionDecl::new("diagram_draw", Audience::Both, Effect::Mutate,
-        "Draw a typed hierarchy or state machine atomically. Source references are checked by the host before publication.").alias("atlas_diagram");
+        "Draw a hierarchy or a state machine in one atomic call; the host lays it out with its top-left at x, y in world units. nodes are [{id, label, color, group, size, initial, terminal}], where id is your own name that edges use; a state machine marks initial and terminal states. edges are [{from, to, label}] for a hierarchy and [{from, to, event, guard}] for a state machine. containers [{id, label, parent}] group hierarchy nodes. direction is right or down. clear: true replaces the page's cards and links; by default the diagram is added.").alias("atlas_diagram");
     draw.input_schema = json!({"type":"object", "required":["nodes"], "properties":{
         "kind":{"enum":["hierarchy","state_machine"]}, "nodes":{"type":"array","minItems":1,"maxItems":128,"items":{"type":"object"}},
         "edges":{"type":"array","maxItems":512,"items":{"type":"object"}},"containers":{"type":"array","maxItems":128,"items":{"type":"object"}},
@@ -37,7 +37,7 @@ pub fn descriptor() -> Descriptor {
         "diagram_read",
         Audience::Both,
         Effect::Query,
-        "Read diagram roles, transitions, hierarchy and problems.",
+        "Read each diagram as text: states with INITIAL and TERMINAL, transitions with their events, hierarchy, and layout problems.",
     );
     read.input_schema = json!({"type":"object","properties":{},"additionalProperties":false});
     Descriptor::new(ID,VERSION,Artifact::Wasm)
@@ -77,6 +77,27 @@ fn entry(id: &str, ops: Vec<Op>, readback: String) -> BatchEntry {
         plan: Plan { ops, readback },
     }
 }
+/// A state is as wide as its name on one line, never narrower than its
+/// longest word or the map's minimum, and wraps only past the normal card
+/// width; it is one title line tall (about 56 to 60 px) unless it carries a
+/// note. A card title renders in 15 px bold, about 9 px per character.
+/// Around it sit 28 px of card padding, up to 6 px of a terminal state's
+/// double border, 23 px the title keeps clear for the mark button, and a
+/// 9 px margin: 66 px in all.
+pub fn state_size(label: &str, note: &str, scale: f64) -> (f64, f64) {
+    const PER_CHAR: f64 = 9.0;
+    const PADDING: f64 = 66.0;
+    let chars = |text: &str| text.chars().count() as f64;
+    let whole = chars(label) * PER_CHAR + PADDING;
+    let longest = label.split_whitespace().map(chars).fold(0.0, f64::max) * PER_CHAR + PADDING;
+    let width = whole
+        .min(232.0)
+        .max(longest)
+        .clamp(samepage_map::rules::MIN_W, samepage_map::rules::MAX_W);
+    let height = samepage_map::estimated_height(label, note, width).max(56.0);
+    ((width * scale).min(samepage_map::rules::MAX_W), (height * scale).min(samepage_map::rules::MAX_H))
+}
+
 fn create(reference: &str, label: &str, rect: PackedRect) -> Op {
     Op::Create {
         reference: reference.into(),
@@ -330,8 +351,11 @@ pub fn check_binding(record: &Record) -> Result<(), CapError> {
             return Err(invalid(format!("{key} must be text")));
         }
     }
-    if string(record, "path").is_empty() != string(record, "lines").is_empty() {
-        return Err(invalid("source references require both path and lines"));
+    if string(record, "path").is_empty() && !string(record, "lines").is_empty() {
+        return Err(invalid("lines needs a path"));
+    }
+    if !string(record, "path").is_empty() && string(record, "lines").is_empty() {
+        return Err(invalid(format!("{}: pass lines, such as 1-40", string(record, "path"))));
     }
     Ok(())
 }
@@ -397,8 +421,12 @@ fn draw(args: &JsonValue, view: &View) -> Result<Batch, CapError> {
             layout::NodeSize::Primary => 1.35,
             layout::NodeSize::Hero => 1.8,
         };
-        let width = 232.0 * scale;
-        let height = samepage_map::estimated_height(&node.label, &note, width).max(150.0) * scale;
+        let (width, height) = if spec.kind == DiagramKind::StateMachine {
+            state_size(&node.label, &note, scale)
+        } else {
+            let width = 232.0 * scale;
+            (width, samepage_map::estimated_height(&node.label, &note, width).max(150.0) * scale)
+        };
         sizes.push((width, height));
         style.insert("note".into(), note.into());
         style.insert(

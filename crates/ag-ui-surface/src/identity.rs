@@ -93,7 +93,7 @@ impl Principal {
 
 /// One person in the room: a stable identity, the name to show for them, and
 /// the colour that tells two same-named people apart.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Person {
     /// Host-minted and stable for as long as this person is in the room. This
@@ -117,11 +117,52 @@ pub struct Person {
 #[derive(Default)]
 pub struct People {
     by_token: Mutex<HashMap<String, Person>>,
+    /// Where the registry survives a restart, when the application gave one.
+    path: Mutex<Option<std::path::PathBuf>>,
 }
 
 impl People {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Keep the registry in `path`, so a person's resume token and chosen
+    /// name survive a host restart. People already in the file are loaded.
+    /// The file holds resume tokens and is written owner-only, like the auth
+    /// store beside it.
+    pub fn persist_to(&self, path: impl Into<std::path::PathBuf>) -> Result<(), String> {
+        let path = path.into();
+        if path.exists() {
+            let text = std::fs::read_to_string(&path)
+                .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+            let stored: HashMap<String, Person> = serde_json::from_str(&text)
+                .map_err(|e| format!("invalid {}: {e}", path.display()))?;
+            self.by_token.lock().extend(stored);
+        }
+        *self.path.lock() = Some(path);
+        self.save()
+    }
+
+    fn save(&self) -> Result<(), String> {
+        let Some(path) = self.path.lock().clone() else {
+            return Ok(());
+        };
+        let text = serde_json::to_vec_pretty(&*self.by_token.lock()).map_err(|e| e.to_string())?;
+        let temp = path.with_extension("tmp");
+        std::fs::write(&temp, text).map_err(|e| format!("cannot write {}: {e}", temp.display()))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o600))
+                .map_err(|e| e.to_string())?;
+        }
+        std::fs::rename(&temp, &path).map_err(|e| format!("cannot write {}: {e}", path.display()))
+    }
+
+    fn saved(&self) {
+        if let Err(error) = self.save() {
+            tracing::error!(%error, "joined-person registry was not saved");
+        }
     }
 
     /// Resolve a presented resume token to the person who holds it.
@@ -158,6 +199,8 @@ impl People {
             hue,
         };
         people.insert(token.clone(), person.clone());
+        drop(people);
+        self.saved();
         (person, token)
     }
 
@@ -183,6 +226,8 @@ impl People {
         let name = crate::unique_label(proposed, &names);
         let person = people.get_mut(token)?;
         person.name = name.clone();
+        drop(people);
+        self.saved();
         Some(name)
     }
 }
@@ -273,6 +318,20 @@ mod tests {
             Some(person.participant_id)
         );
         assert_eq!(people.resolve("not-a-real-token"), None);
+    }
+
+    #[test]
+    fn a_persisted_registry_keeps_a_chosen_name_across_a_restart() {
+        let path = std::env::temp_dir().join(format!("people-{}-{}.json", std::process::id(), uuid::Uuid::new_v4().simple()));
+        let before = People::new();
+        before.persist_to(&path).unwrap();
+        let (person, token) = before.admit(Principal::Local { id: "a".into() }, "someone", &[]);
+        before.rename(&token, "Dana", &[]).unwrap();
+        let after = People::new();
+        after.persist_to(&path).unwrap();
+        let back = after.resolve(&token).expect("the resume token still resolves");
+        assert_eq!((back.participant_id, back.name.as_str()), (person.participant_id, "Dana"));
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]

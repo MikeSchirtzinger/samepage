@@ -92,12 +92,12 @@ pub fn descriptor() -> Descriptor {
         .owns(context::KIND, &["definition"], "Append-only conversation context history")
         .reads("node").reads("edge").reads("constraint")
         .action(action("mark_add", Some("atlas_point"), Audience::Human, Effect::Mutate, &["target","glyph"], json!({"target":{"type":"string"},"glyph":{"enum":["?","!","*"]},"text":{"type":"string"}}), "Place a human question, objection or emphasis on a card or claim."))
-        .action(action("mark_answer", Some("atlas_answer"), Audience::Both, Effect::Mutate, &["id","answer"], json!({"id":{"type":"string"},"answer":{"type":"string"}}), "Answer a mark in place, preserving its question and author."))
-        .action(action("claim_add", Some("atlas_claim"), Audience::Agent, Effect::Mutate, &["text","basis"], json!({"id":{"type":"string"},"about":{"type":"string"},"text":{"type":"string"},"basis":{"enum":["verified","inferred","assumed","unknown"]},"path":{"type":"string"},"lines":{"type":"string"},"revision":{"type":"string"}}), "State or revise a claim about a card. Revising accepted words reopens the claim."))
+        .action(action("mark_answer", Some("atlas_answer"), Audience::Both, Effect::Mutate, &["id","answer"], json!({"id":{"type":"string"},"answer":{"type":"string"}}), "Answer a person's question mark in place: the question and its author stay, and your answer is printed beside it. Mark ids are in review_read and page_read under MARKS. To answer with a claim a person can accept, use claim_add as well."))
+        .action(action("claim_add", Some("atlas_claim"), Audience::Agent, Effect::Mutate, &["text","basis"], json!({"id":{"type":"string"},"about":{"type":"string"},"text":{"type":"string"},"basis":{"enum":["verified","inferred","assumed","unknown"]},"path":{"type":"string"},"lines":{"type":"string"},"revision":{"type":"string"}}), "State one thing you understand about a card (about), with how you know it (basis), so a person can accept or reject it in place. verified needs path and lines that the host checks, optionally pinned to a full commit in revision; inferred may cite a path; assumed and unknown carry no source. Pass id to restate a claim; restating an accepted claim reopens it. You never set a verdict."))
         .action(action("claim_withdraw", Some("atlas_withdraw_claim"), Audience::Agent, Effect::Mutate, &["id"], json!({"id":{"type":"string"}}), "Withdraw a claim while retaining its history."))
         .action(action("claim_verdict", None, Audience::Human, Effect::Mutate, &["id","verdict"], json!({"id":{"type":"string"},"verdict":{"enum":["open","accepted","rejected"]}}), "Give the human verdict on an agent claim."))
-        .action(action("review_read", Some("atlas_review"), Audience::Both, Effect::Query, &[], json!({}), "Read marks, claim standing, conversation context and changes since your last read."))
-        .action(action("context_set", Some("atlas_context_set"), Audience::Both, Effect::Mutate, &["question","altitude"], json!({"question":{"type":"string"},"altitude":{"enum":["purpose","system","component","implementation"]},"subjects":{"type":"array","items":{"type":"string"}},"assumptions":{"type":"string"},"replaces":{"type":"array","items":{"type":"string"}}}), "Set the shared question and scope, explicitly replacing all observed heads."))
+        .action(action("review_read", Some("atlas_review"), Audience::Both, Effect::Query, &[], json!({}), "Read every card's claims and their standing, the people's marks with any answers, the shared question, and what changed since your last read."))
+        .action(action("context_set", Some("atlas_context_set"), Audience::Both, Effect::Mutate, &["question","altitude"], json!({"question":{"type":"string"},"altitude":{"enum":["purpose","system","component","implementation"]},"subjects":{"type":"array","items":{"type":"string"}},"assumptions":{"type":"string"},"replaces":{"type":"array","items":{"type":"string"}}}), "Set the shared question this page is answering, its altitude (purpose, system, component or implementation), the subject card ids and assumptions. Pass every current context id (the bracketed id under CONVERSATION CONTEXT in review_read) as replaces. This records your proposed scope, never a person's agreement."))
         .trigger(Trigger::kind("mark")).trigger(Trigger::kind("claim")).trigger(Trigger::kind(context::KIND));
     for action in &descriptor.actions {
         descriptor.triggers.push(Trigger::tool(&action.name));
@@ -411,10 +411,24 @@ impl Capability for Review {
             ),
             (
                 "state",
-                "UNDER CHALLENGE",
-                "Open or rejected claim",
+                "UNREVIEWED",
+                "A claim waits for a person's verdict",
                 "review-badge",
-                "UNDER CHALLENGE",
+                "UNREVIEWED",
+            ),
+            (
+                "state",
+                "QUESTIONED",
+                "A person's question or objection is unanswered",
+                "review-badge",
+                "QUESTIONED",
+            ),
+            (
+                "state",
+                "DISPUTED",
+                "A person rejected a claim",
+                "review-badge",
+                "DISPUTED",
             ),
             (
                 "state",
@@ -527,7 +541,7 @@ fn authority(c: &Change<'_>) -> Result<(), CapError> {
                     .collect();
                 if !unsettled.is_empty() {
                     return Err(invalid(format!(
-                        "card {id} is under challenge: {}",
+                        "card {id} cannot be agreed while these claims are unreviewed or disputed: {}",
                         unsettled.join(", ")
                     )));
                 }
@@ -665,15 +679,32 @@ pub fn claims_of<'a>(view: &'a View, node: &str) -> Vec<&'a Record> {
         .filter(|r| r.kind == "claim" && string(r, "about") == node)
         .collect()
 }
+/// An unanswered question or objection on `target`.
+fn questioned(view: &View, target: &str) -> bool {
+    view.records().any(|m| {
+        m.kind == "mark"
+            && string(m, "target") == target
+            && matches!(string(m, "glyph"), "?" | "!")
+            && string(m, "answer").trim().is_empty()
+    })
+}
+/// One card's standing, most urgent first: DISPUTED when a person rejected
+/// a live claim, QUESTIONED when a person's question or objection on the
+/// card or one of its claims is unanswered, NO CLAIMS, UNREVIEWED when a
+/// claim waits for a verdict, SETTLED when every live claim is accepted.
 pub fn standing(view: &View, node: &str) -> &'static str {
     let claims: Vec<_> = claims_of(view, node)
         .into_iter()
         .filter(|r| !flag(r, "withdrawn"))
         .collect();
-    if claims.is_empty() {
+    if claims.iter().any(|r| string(r, "verdict") == "rejected") {
+        "DISPUTED"
+    } else if questioned(view, node) || claims.iter().any(|c| questioned(view, &c.id)) {
+        "QUESTIONED"
+    } else if claims.is_empty() {
         "NO CLAIMS"
     } else if claims.iter().any(|r| string(r, "verdict") != "accepted") {
-        "UNDER CHALLENGE"
+        "UNREVIEWED"
     } else {
         "SETTLED"
     }
@@ -699,10 +730,14 @@ pub fn projection(view: &View) -> Result<JsonValue, CapError> {
             let mut v = object(r);
             v["state"] = json!(if flag(r, "withdrawn") {
                 "WITHDRAWN"
+            } else if string(r, "verdict") == "rejected" {
+                "DISPUTED"
+            } else if questioned(view, &r.id) {
+                "QUESTIONED"
             } else if string(r, "verdict") == "accepted" {
                 "SETTLED"
             } else {
-                "UNDER CHALLENGE"
+                "UNREVIEWED"
             });
             v
         })
@@ -722,14 +757,16 @@ pub fn describe(view: &View) -> Result<String, CapError> {
         ));
         for claim in claims_of(view, &node.id) {
             out.push_str(&format!(
-                "  [{}] {} ({}, {}; source {}:{}{}){}\n",
+                "  [{}] {} ({}, {}{}){}\n",
                 claim.id,
                 string(claim, "text"),
                 string(claim, "basis"),
                 string(claim, "verdict"),
-                string(claim, "path"),
-                string(claim, "lines"),
-                if string(claim, "revision").is_empty() {
+                match (string(claim, "path"), string(claim, "lines")) {
+                    ("", _) => String::new(),
+                    (path, "") => format!("; source {path}"),
+                    (path, lines) => format!("; source {path}:{lines}"),
+                } + &if string(claim, "revision").is_empty() {
                     String::new()
                 } else {
                     format!("@{}", string(claim, "revision"))
@@ -763,7 +800,14 @@ pub fn describe(view: &View) -> Result<String, CapError> {
             string(mark, "created_by")
         ));
         if !string(mark, "answer").is_empty() {
-            out.push_str(&format!("  Answer: {}\n", string(mark, "answer")));
+            // The mark's last writer: the answerer, unless someone edited
+            // the mark after answering it.
+            let by = string(mark, "touched_by");
+            out.push_str(&format!(
+                "  Answer by {}: {}\n",
+                if by.is_empty() { "someone" } else { by },
+                string(mark, "answer")
+            ));
         }
         for id in string(mark, "context_ids").split(',') {
             if let Some(entry) = ctx.entries.iter().find(|e| e.id == id) {
@@ -809,12 +853,23 @@ fn changes(before: &JsonValue, after: &JsonValue, _reader: &str) -> Vec<String> 
                     item["state"].as_str().unwrap_or(""),
                     item["verdict"].as_str().unwrap_or("")
                 ),
-                _ => format!(
-                    "\"{label}\" is now {} (it was {}); {}",
-                    item["status"].as_str().unwrap_or("open"),
-                    old.and_then(|r| r["status"].as_str()).unwrap_or("absent"),
-                    item["state"].as_str().unwrap_or("")
-                ),
+                _ => {
+                    let status = |r: &JsonValue| r["status"].as_str().filter(|s| !s.is_empty()).unwrap_or("open").to_string();
+                    let state = |r: &JsonValue| r["state"].as_str().unwrap_or("").to_string();
+                    match old {
+                        Some(old) if status(old) == status(item) => format!(
+                            "\"{label}\" is now {} (it was {})",
+                            state(item),
+                            state(old)
+                        ),
+                        _ => format!(
+                            "\"{label}\" is now {} (it was {}); {}",
+                            status(item),
+                            old.map(status).unwrap_or_else(|| "absent".into()),
+                            state(item)
+                        ),
+                    }
+                }
             };
             out.push(format!(
                 "{} {section} [{}]: {detail}",

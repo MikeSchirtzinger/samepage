@@ -1,8 +1,6 @@
 //! The composed native wait; no wait logic goes into board.wasm.
 use super::board::BoardHost;
 use ag_ui_surface::{ActionDef, Effect};
-use samepage_capability::Call;
-use serde_json::json;
 use std::{sync::Arc, time::Duration};
 pub(crate) fn input_action(
     state: Arc<crate::surface::SamePageState>,
@@ -19,6 +17,9 @@ pub(crate) fn input_action(
         let seconds=args["seconds"].as_u64().unwrap_or(60);
         let board=board.clone();let state=state.clone();
         let starting_board=board.revision();
+        // A participant's first wait starts from now, not from the page's
+        // whole history; page_read is how it learns what is already there.
+        state.input.start(&participant,state.host.journal().seq);
         let attention=state.input.attention();
         let starting_attention=attention.as_ref().map(|s|s.human_attention_revision()).unwrap_or(0);
         Effect::AsyncQuery(Box::pin(async move {
@@ -38,15 +39,33 @@ pub(crate) fn input_action(
                 let read=tokio::task::spawn_blocking(move ||->Result<Option<String>,String>{
                     let _operation=check_state.durable_operation()?;
                     let view=check_state.host.view();let validation=check_state.validation.report(&view)?;
-                    if validation["status"]=="failed" { return Err(validation.to_string()); }
+                    // A page problem wakes each waiter once, when the set of
+                    // problems changes. The same problems never wake it again,
+                    // so one overlapping card cannot put every agent in a loop.
+                    let failed=validation["status"]=="failed";
+                    let signature=if failed {crate::surface::validation_signature(&validation)} else {String::new()};
+                    let new_problems=check_state.input.report_problems(&reader,signature);
                     let journal=check_state.host.journal();
                     let since=check_state.input.seen(&reader);
-                    if journal.recent.iter().any(|e|e.seq>since && e.actor.participant!=reader) {
-                        use samepage_capability::Capability;
-                        let readback=samepage_map::Map.plan(&Call{action:"map_read".into(),args:json!({})},&view).map_err(|e|e.to_string())?.readback;
-                        check_state.input.acknowledge(&reader,journal.seq);return Ok(Some(readback));
+                    let changed=journal.recent.iter().any(|e|e.seq>since && e.actor.participant!=reader);
+                    if !new_problems && !changed { return Ok(None); }
+                    let mut text=String::new();
+                    if new_problems {
+                        text.push_str("woken by: new page problems\n");
+                        text.push_str(&crate::surface::validation_text(&validation));
+                        text.push_str("\nnext: repair the ids named above if they are yours, or ask in chat_reply. This wait will not wake again for these same problems.\n");
                     }
-                    Ok(None)
+                    if changed {
+                        drop(view);
+                        let readback=check_state.wake_text(&reader,since)?;
+                        if !text.is_empty() {text.push('\n');}
+                        text.push_str(&readback);
+                        if failed && !new_problems {
+                            text.push('\n');
+                            text.push_str(&crate::surface::validation_text(&validation));
+                        }
+                    }
+                    Ok(Some(text))
                 }).await.map_err(|e|format!("input worker failed: {e}"))??;
                 if board.revision()!=starting_board {return board.read(&participant);}
                 if let Some(read)=read {return Ok(read);}

@@ -239,12 +239,12 @@ fn a_stale_line_range_is_an_error_not_an_empty_excerpt() {
     let r = root();
     let repo = native::Repository::open(&r).unwrap();
     for range in ["9000-9100", "1-3"] {
-        assert!(repo
-            .read("a.rs", range)
-            .unwrap_err()
-            .to_string()
-            .contains("stale"));
+        let error = repo.read("a.rs", range).unwrap_err().to_string();
+        assert!(error.contains("lines, so this range ends past it"), "{error}");
     }
+    let lines = std::fs::read_to_string(r.join("a.rs")).unwrap().lines().count();
+    assert_eq!(repo.line_count("a.rs").unwrap(), lines);
+    assert!(repo.read("a.rs", "1-3").unwrap_err().to_string().contains(&format!("has {lines} lines")));
     std::fs::remove_dir_all(r).unwrap();
 }
 #[test]
@@ -416,12 +416,31 @@ fn tier_precedence_is_proposed_gate_unreadable_drifted_verified() {
             obligation_id: "GATE".into(),
             met: true,
             reason: "checked".into(),
+            blocker: String::new(),
         },
     );
     assert_eq!(
         samepage_sources::project(&v, &f).unwrap()["cards"]["n"]["tier"],
         "gate-met"
     );
+    f.gates.insert(
+        "n".into(),
+        samepage_sources::GateFact {
+            obligation_id: "GATE".into(),
+            met: false,
+            reason: "UNATTESTED: GATE passes its check but has no fresh attestation".into(),
+            blocker: "unattested".into(),
+        },
+    );
+    let projection = samepage_sources::project(&v, &f).unwrap();
+    assert_eq!(projection["cards"]["n"]["tier"], "gate-unmet");
+    assert_eq!(projection["cards"]["n"]["chip"], "GATE UNMET: UNATTESTED");
+    assert!(projection["readback"]
+        .as_str()
+        .unwrap()
+        .contains("GATE UNMET: UNATTESTED; source a.rs:1 (UNATTESTED: GATE passes"),
+        "{}",
+        projection["readback"]);
     let v = View::new(
         "r",
         [

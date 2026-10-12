@@ -72,6 +72,7 @@ pub const AUTHORSHIP_KEYS: &[&str] = &[
     "touched_by",
     "created_by_participant",
     "touched_by_participant",
+    "created_at",
 ];
 
 /// Keys beginning with this prefix are reserved for the kernel.

@@ -33,32 +33,32 @@ pub fn descriptor() -> Descriptor {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-            "id": { "type": "string" },
-            "label": { "type": "string", "maxLength": MAX_LABEL },
-            "note": { "type": "string", "maxLength": MAX_NOTE },
+            "id": { "type": "string", "description": "Pass to update that card; omit to create one." },
+            "label": { "type": "string", "maxLength": MAX_LABEL, "description": "The card title. Required to create." },
+            "note": { "type": "string", "maxLength": MAX_NOTE, "description": "The card body, a sentence or two." },
             "tone": { "enum": TONES },
             "status": { "enum": STATUSES },
             "x": { "type": "number" }, "y": { "type": "number" },
             "w": { "type": "number" }, "h_pref": { "type": "number" },
             "w_min": { "type": "number" }, "h_min": { "type": "number" },
-            "parent": { "type": "string" },
-            "color": { "type": "string" },
+            "parent": { "type": "string", "description": "A container card id; this card sits inside it and read-backs nest it there." },
+            "color": { "enum": ["", "slate", "blue", "green", "amber", "red", "violet"], "description": "A category colour; an empty string clears it." },
             "emphasis": { "enum": EMPHASES },
             "size": { "enum": SIZES },
             "kind": { "enum": SHAPES },
-            "path": { "type": "string", "description": "Owned by the sources capability; refused here until the composite adapter exists." },
-            "lines": { "type": "string", "description": "Owned by the sources capability; refused here until the composite adapter exists." }
+            "path": { "type": "string", "description": "Repository-relative file this card stands for, such as api/src/main.rs. Needs the sources capability, which checks the file exists and tracks its content." },
+            "lines": { "type": "string", "description": "Line range inside path, such as 1-40. Omit it to bind the whole file, up to 400 lines." }
         }
     });
     let mut place = ActionDecl::new(
         "card_place",
         Audience::Both,
         Effect::Mutate,
-        "Create a card (label required) or update one by id.",
+        "Create one card, or update one by id; only the fields you pass change, so a note can change without moving a card a person dragged. A card is a claim a person can agree with, dispute or question. With the sources capability, path and lines bind it to code and its tier tracks that code. Style is meaning you choose: color is a category, emphasis is importance, size is prominence, kind is the outline, parent is ownership. x and y are world units with y growing down; a card is 232 wide by default and grows to fit its note. Link cards with card_link; draw everything else with sketch.",
     )
     .alias("atlas_place");
     place.input_schema = place_schema;
-    let mut moving = ActionDecl::new("card_move", Audience::Both, Effect::Mutate, "Move a card.");
+    let mut moving = ActionDecl::new("card_move", Audience::Both, Effect::Mutate, "Move one card to x, y in world units, y growing down. Only its position changes.");
     moving.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id", "x", "y"],
         "properties": { "id": { "type": "string" }, "x": { "type": "number" }, "y": { "type": "number" } }
@@ -67,7 +67,7 @@ pub fn descriptor() -> Descriptor {
         "card_resize",
         Audience::Both,
         Effect::Mutate,
-        "Set a card's authored size: preferred width and height, and minimums.",
+        "Set a card's authored size in world units: preferred width w and height h_pref, and the minimums w_min and h_min. The rendered card still grows to fit its note.",
     );
     resize.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id"],
@@ -81,7 +81,7 @@ pub fn descriptor() -> Descriptor {
         "card_link",
         Audience::Both,
         Effect::Mutate,
-        "Link two cards.",
+        "Link two existing cards with an optional label of at most 140 characters, such as calls or emits. Links are part of the record and read back as from -> to with the label. A drawn arrow from sketch is for visual relations between drawings.",
     )
     .alias("atlas_link");
     link.input_schema = json!({
@@ -92,18 +92,21 @@ pub fn descriptor() -> Descriptor {
         "object_remove",
         Audience::Both,
         Effect::Mutate,
-        "Remove a card (with its links) or a link.",
+        "Remove one card or link by id. Removing a card also removes its links, claims and marks; cards inside it move to the top level; the reply names each removed record and who made it. A card a person made needs confirm_owner: true. Drawings use shape_remove.",
     )
     .alias("atlas_remove");
     remove.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id"],
-        "properties": { "id": { "type": "string" } }
+        "properties": {
+            "id": { "type": "string" },
+            "confirm_owner": { "type": "boolean", "description": "Required, as true, for an agent to remove a card or link a person made. Ask them first." }
+        }
     });
     let mut read = ActionDecl::new(
         "map_read",
         Audience::Both,
         Effect::Query,
-        "Describe the cards and links.",
+        "Read the cards and links: one line per card with its position, size, tone, status and who last changed it, then one line per link. page_read includes this section with every other capability.",
     );
     read.input_schema =
         json!({ "type": "object", "additionalProperties": false, "properties": {} });
@@ -112,7 +115,7 @@ pub fn descriptor() -> Descriptor {
         "constraint_add",
         Audience::Both,
         Effect::Mutate,
-        "Constrain cards: group, sequence, attaches, voids or labels.",
+        "Declare a structural relation between existing cards: group for membership, sequence for order along axis x or y, attaches for a pair that must stay related, voids for an excluded card, labels for text attached to one card. salience is fore or back. An invalid or ambiguous request stores nothing.",
     )
     .alias("atlas_constrain");
     constrain.input_schema = json!({
@@ -129,7 +132,7 @@ pub fn descriptor() -> Descriptor {
         "constraint_remove",
         Audience::Both,
         Effect::Mutate,
-        "Remove a constraint and its memberships.",
+        "Remove one constraint by id, with its memberships. The cards stay.",
     )
     .alias("atlas_unconstrain");
     unconstrain.input_schema = json!({
@@ -140,7 +143,7 @@ pub fn descriptor() -> Descriptor {
         "constraint_member_retarget",
         Audience::Both,
         Effect::Mutate,
-        "Point one membership at a different object.",
+        "Point one constraint membership (its id) at a different card (target).",
     );
     retarget.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id", "target"],
@@ -553,7 +556,12 @@ fn place(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapErro
     }
     let parent = optional_string(args, "parent")?.map(|p| p.trim().to_string());
     if let Some(parent) = &parent {
-        check_parent(existing.as_deref().unwrap_or(""), parent, view)?;
+        check_parent(existing.as_deref().unwrap_or(""), parent, view).map_err(|mut e| {
+            if let Some(label) = args.get("label").and_then(JsonValue::as_str) {
+                e.message = e.message.replace("the new card", &format!("{label:?}"));
+            }
+            e
+        })?;
         props.push((K_PARENT, parent.clone().into()));
     }
 
@@ -924,8 +932,16 @@ fn remove(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapErr
         return Err(err(
             "not_map_object",
             format!(
-                "{id} is a {:?}, not a card or link; its own capability removes it",
-                record.kind
+                "{id} is a {}, not a card or link; {}",
+                record.kind,
+                match record.kind.as_str() {
+                    "shape" => "remove a drawing with shape_remove",
+                    "claim" => "withdraw a claim with claim_withdraw",
+                    "mark" => "a person's mark stays until they remove it; answer it with mark_answer",
+                    "pane" => "remove a pane with pane_remove",
+                    "constraint" => "remove a constraint with constraint_remove",
+                    _ => "the capability that made it removes it",
+                }
             ),
         ));
     }
@@ -1222,41 +1238,132 @@ fn projection(view: &View) -> JsonValue {
     })
 }
 
+/// Each card's box `[left, top, right, bottom]` with its label: the
+/// browser-measured box when one is given, otherwise the authored or
+/// estimated size.
+pub fn card_boxes(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> Vec<(String, String, [f64; 4])> {
+    projection(view)["cards"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|card| {
+            let id = card["id"].as_str().unwrap_or_default().to_string();
+            let label = card["label"].as_str().unwrap_or_default().to_string();
+            let bounds = measured.get(&id).copied().unwrap_or_else(|| {
+                let x = card["x"].as_f64().unwrap_or(0.0);
+                let y = card["y"].as_f64().unwrap_or(0.0);
+                [x, y, x + card["width"].as_f64().unwrap_or(DEFAULT_WIDTH), y + card["height"].as_f64().unwrap_or(0.0)]
+            });
+            (id, label, bounds)
+        })
+        .collect()
+}
+
 fn describe(view: &View) -> String {
+    describe_measured(view, &BTreeMap::new())
+}
+
+/// The map as text: one line per card, nested under its container, with the
+/// words, style and size an agent wrote, whole-pixel geometry, and links by
+/// card name. `measured` holds browser-measured card boxes `[left, top,
+/// right, bottom]`; a measured card reports its real height.
+pub fn describe_measured(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> String {
     let projected = projection(view);
     let cards = projected["cards"].as_array().cloned().unwrap_or_default();
     let links = projected["links"].as_array().cloned().unwrap_or_default();
+    let label_of = |id: &str| {
+        cards
+            .iter()
+            .find(|c| c["id"] == id)
+            .and_then(|c| c["label"].as_str())
+            .unwrap_or(id)
+            .to_string()
+    };
+    let ids: BTreeSet<&str> = cards.iter().filter_map(|c| c["id"].as_str()).collect();
     let mut out = format!("MAP: {} cards, {} links.", cards.len(), links.len());
-    for card in &cards {
-        out.push_str(&format!(
-            "\n- [{}] {:?} at ({}, {}) {}x{} ({}), {} / {}{}{}",
-            card["id"].as_str().unwrap_or_default(),
+    fn line(card: &JsonValue, measured: &BTreeMap<String, [f64; 4]>, depth: usize) -> String {
+        let id = card["id"].as_str().unwrap_or_default();
+        let number = |v: &JsonValue| v.as_f64().unwrap_or(0.0).round() as i64;
+        let (w, h, source) = match measured.get(id) {
+            Some([l, t, r, b]) => ((r - l).round() as i64, (b - t).round() as i64, "measured"),
+            None => (
+                number(&card["width"]),
+                number(&card["height"]),
+                card["height_source"].as_str().unwrap_or("estimated"),
+            ),
+        };
+        let mut style = Vec::new();
+        for (key, default) in [("color", ""), ("emphasis", "normal"), ("size", "normal"), ("shape", "rect")] {
+            let value = card[key].as_str().unwrap_or_default();
+            if value != default && !value.is_empty() {
+                style.push(if key == "shape" { format!("kind {value}") } else { format!("{key} {value}") });
+            }
+        }
+        let note = card["note"].as_str().unwrap_or_default();
+        let note = if note.is_empty() {
+            String::new()
+        } else if note.chars().count() > 120 {
+            format!(", note {:?}", format!("{}...", note.chars().take(117).collect::<String>()))
+        } else {
+            format!(", note {note:?}")
+        };
+        format!(
+            "\n{}- [{id}] {:?} at ({}, {}) {w}x{h} ({source}), {} / {}{}{note}{}",
+            "  ".repeat(depth),
             card["label"].as_str().unwrap_or_default(),
-            card["x"],
-            card["y"],
-            card["width"],
-            card["height"],
-            card["height_source"].as_str().unwrap_or_default(),
+            number(&card["x"]),
+            number(&card["y"]),
             card["tone"].as_str().unwrap_or_default(),
             card["status"].as_str().unwrap_or_default(),
-            match card["parent"].as_str() {
-                Some(p) if !p.is_empty() => format!(", inside {p}"),
-                _ => String::new(),
-            },
+            if style.is_empty() { String::new() } else { format!(", {}", style.join(", ")) },
             match card["touched_by"].as_str() {
                 Some(t) if !t.is_empty() => format!(", last by {t}"),
                 _ => String::new(),
             },
-        ));
+        )
+    }
+    // Top-level cards first, each followed by what it contains.
+    let mut visited = BTreeSet::new();
+    let mut stack: Vec<(String, usize)> = cards
+        .iter()
+        .filter(|c| {
+            let parent = c["parent"].as_str().unwrap_or_default();
+            parent.is_empty() || !ids.contains(parent)
+        })
+        .filter_map(|c| c["id"].as_str().map(|id| (id.to_string(), 0)))
+        .rev()
+        .collect();
+    while let Some((id, depth)) = stack.pop() {
+        if !visited.insert(id.clone()) {
+            continue;
+        }
+        if let Some(card) = cards.iter().find(|c| c["id"] == id.as_str()) {
+            out.push_str(&line(card, measured, depth));
+        }
+        let children: Vec<_> = cards
+            .iter()
+            .filter(|c| c["parent"] == id.as_str())
+            .filter_map(|c| c["id"].as_str().map(str::to_string))
+            .collect();
+        for child in children.into_iter().rev() {
+            stack.push((child, depth + 1));
+        }
+    }
+    for card in &cards {
+        if let Some(id) = card["id"].as_str().filter(|id| !visited.contains(*id)) {
+            out.push_str(&line(card, measured, 0));
+            visited.insert(id.to_string());
+        }
     }
     for link in &links {
         out.push_str(&format!(
-            "\n- link [{}] {} -> {}{}",
+            "\n- link [{}] {:?} -> {:?}{}",
             link["id"].as_str().unwrap_or_default(),
-            link["from"].as_str().unwrap_or_default(),
-            link["to"].as_str().unwrap_or_default(),
-            match link["label"].as_str() {
-                Some(l) if !l.is_empty() => format!(" {l:?}"),
+            label_of(link["from"].as_str().unwrap_or_default()),
+            label_of(link["to"].as_str().unwrap_or_default()),
+            match (link["label"].as_str(), link["id"].as_str().and_then(|id| view.get(id)).and_then(|r| prop_str(r, "event"))) {
+                (Some(l), _) if !l.is_empty() => format!(": {l}"),
+                (_, Some(event)) if !event.is_empty() => format!(": on {event}"),
                 _ => String::new(),
             },
         ));

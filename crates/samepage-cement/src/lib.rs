@@ -13,6 +13,10 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const ID: &str = "cement";
 pub const VERSION: &str = "0.1.0";
 pub const MODES: &[&str] = &["learning", "alignment", "explain", "map", "cement"];
+/// How the page is committing: still learning, or aligning on what it says.
+pub const POSTURES: &[&str] = &["learning", "alignment"];
+/// What the page shows: the walkthrough, the map with tiers, or cement.
+pub const VIEWS: &[&str] = &["explain", "map", "cement"];
 fn err(s: impl Into<String>) -> CapError {
     CapError::new("cement_invalid", s)
 }
@@ -42,7 +46,7 @@ pub fn descriptor() -> Descriptor {
             &["definition"],
             "Immutable agent decision drafts",
         )
-        .owns("cement-mode", &["value"], "Shared commitment posture");
+        .owns("cement-mode", &["value", "view"], "Shared commitment posture and view mode");
     for kind in [
         "node",
         "edge",
@@ -53,7 +57,9 @@ pub fn descriptor() -> Descriptor {
     ] {
         d = d.reads(kind);
     }
-    for (name, alias, audience, effect, required, properties) in [
+    let ids = json!({"type":"array","minItems":1,"items":{"type":"string"},"description":"Card ids, as page_read prints them."});
+    let draft_id = json!({"type":"string","description":"The draft id from decision_draft (its reply's ids.draft)."});
+    for (name, alias, audience, effect, required, properties, description) in [
         (
             "mode_read",
             "atlas_map_mode_get",
@@ -61,6 +67,7 @@ pub fn descriptor() -> Descriptor {
             Effect::Query,
             vec![],
             json!({}),
+            "Read the shared posture (learning or alignment) and view mode (explain, map or cement), the decision drafts and which cards are cemented. Each is whatever a person or agent last set.",
         ),
         (
             "mode_set",
@@ -69,6 +76,7 @@ pub fn descriptor() -> Descriptor {
             Effect::Mutate,
             vec!["mode"],
             json!({"mode":{"enum":MODES}}),
+            "Set, for everyone on the page, the posture (learning or alignment) or the view mode (explain, map or cement). The two are independent: choosing map keeps the posture. Switching never deletes or changes a card.",
         ),
         (
             "map_cement",
@@ -76,7 +84,8 @@ pub fn descriptor() -> Descriptor {
             Audience::Agent,
             Effect::Query,
             vec![],
-            json!({"ids":{"type":"array","items":{"type":"string"}}}),
+            json!({"ids":ids.clone()}),
+            "Export agreed cards to G8 obligations in specs/obligations-v0.1.json at the project root, one obligation per card. Pass ids to cement the agreed subset. Each card must be agreed by a person, its claims accepted and its question marks answered; the refusal lists every reason. New obligations start unratified and unattested, so each card reads GATE UNMET until a person runs g8 ratify and g8 attest.",
         ),
         (
             "lane_remove",
@@ -84,7 +93,8 @@ pub fn descriptor() -> Descriptor {
             Audience::Both,
             Effect::Query,
             vec!["lane_id"],
-            json!({"lane_id":{"type":"string"},"reason":{"type":"string"}}),
+            json!({"lane_id":{"type":"string","description":"A lane id from lanes_read."},"reason":{"type":"string","description":"Why this code should not exist; stored as the obligation's note."}}),
+            "Write a G8 removal obligation for a lane the source scan found, instead of claiming it: the code at that lane must stop existing. The lane reads REMOVE unmet until the code is deleted and g8 confirms it.",
         ),
         (
             "decision_draft",
@@ -92,7 +102,8 @@ pub fn descriptor() -> Descriptor {
             Audience::Agent,
             Effect::Mutate,
             vec!["draft"],
-            json!({"draft":{"type":"object"}}),
+            json!({"draft":draft_schema()}),
+            "Record an immutable decision draft for a person to review. Set the shared question with context_set first. draft.ids are the cards it covers. checks are explicit G8 structural checks (rust_enum_shape or cargo_metadata_no_dep) with the files a person reviews as evidence; they constrain structure, not behaviour, so list what they leave unchecked in not_enforced. Next, decision_cement_propose with the reply's ids.draft. Only a person publishes a decision.",
         ),
         (
             "decision_preview",
@@ -100,7 +111,8 @@ pub fn descriptor() -> Descriptor {
             Audience::Human,
             Effect::Query,
             vec!["ids", "draft_id"],
-            json!({"ids":{"type":"array","items":{"type":"string"}},"draft_id":{"type":"string"}}),
+            json!({"ids":ids.clone(),"draft_id":draft_id.clone()}),
+            "Preview the decision record and checks a draft would publish, with the review token publication needs. Writes nothing.",
         ),
         (
             "decision_list",
@@ -109,6 +121,7 @@ pub fn descriptor() -> Descriptor {
             Effect::Query,
             vec![],
             json!({}),
+            "Read the published decision records under docs/decisions.",
         ),
         (
             "decision_cement_propose",
@@ -116,7 +129,8 @@ pub fn descriptor() -> Descriptor {
             Audience::Agent,
             Effect::Query,
             vec!["ids", "draft_id"],
-            json!({"ids":{"type":"array","items":{"type":"string"}},"draft_id":{"type":"string"}}),
+            json!({"ids":ids.clone(),"draft_id":draft_id.clone()}),
+            "Check whether a decision draft could be published, without writing. Pass the draft id and the same card ids. The reply lists every blocking reason at once: cards not agreed, claims not accepted, unanswered marks, cards or context changed since the draft, unreadable evidence files. Only a person can publish.",
         ),
         (
             "decision_cement",
@@ -124,16 +138,11 @@ pub fn descriptor() -> Descriptor {
             Audience::Human,
             Effect::Mutate,
             vec!["ids", "draft_id", "review_token"],
-            json!({"ids":{"type":"array","items":{"type":"string"}},"draft_id":{"type":"string"},"review_token":{"type":"string"}}),
+            json!({"ids":ids.clone(),"draft_id":draft_id.clone(),"review_token":{"type":"string"}}),
+            "Publish a reviewed decision: write its record and obligations and stamp the covered cards. Only a person can, with the review token from the preview.",
         ),
     ] {
-        let mut a = ActionDecl::new(
-            name,
-            audience,
-            effect,
-            "Read, review or publish explicit shared intent.",
-        )
-        .alias(alias);
+        let mut a = ActionDecl::new(name, audience, effect, description).alias(alias);
         a.input_schema = json!({"type":"object","required":required,"properties":properties,"additionalProperties":false});
         d = d
             .action(a)
@@ -143,6 +152,73 @@ pub fn descriptor() -> Descriptor {
     d.trigger(Trigger::kind(decision::KIND))
         .trigger(Trigger::property("node", "cemented"))
         .trigger(Trigger::route("cement"))
+}
+/// The typed argument contract of `decision_draft`, matching [`DraftInput`].
+fn draft_schema() -> Value {
+    let text = |what: &str| json!({"type":"string","minLength":1,"maxLength":8000,"description":what});
+    let strings = |min: u64| json!({"type":"array","minItems":min,"items":{"type":"string","minLength":1}});
+    let enum_args = json!({
+        "type":"object","additionalProperties":false,"required":["file","enum_name","expected_variants"],
+        "properties":{
+            "file":{"type":"string","description":"Repository-relative Rust file, also listed in evidence_files."},
+            "enum_name":{"type":"string","minLength":1},
+            "expected_variants":strings(1),
+            "expected_serde_rename_all":{"type":["string","null"]}
+        }
+    });
+    let denied = json!({
+        "type":"object","additionalProperties":false,"required":["kind","value"],
+        "properties":{"kind":{"const":"exact"},"value":{"type":"string","minLength":1}}
+    });
+    let build_config = json!({"anyOf":[
+        {"const":"default"},
+        {"type":"object","additionalProperties":false,"required":["features"],"properties":{"features":strings(0)}}
+    ]});
+    let dependency_args = json!({
+        "type":"object","additionalProperties":false,"required":["denied","scope_crates","build_config"],
+        "properties":{
+            "denied":{"type":"array","minItems":1,"items":denied},
+            "scope_crates":{"type":"array","minItems":1,"items":{"type":"string"},"description":"Package names the rule applies to."},
+            "build_config":build_config
+        }
+    });
+    let check = json!({
+        "type":"object","additionalProperties":false,"required":["backend","args"],
+        "properties":{"backend":{"enum":["rust_enum_shape","cargo_metadata_no_dep"]},"args":{"type":"object"}},
+        "allOf":[
+            {"if":{"properties":{"backend":{"const":"rust_enum_shape"}}},"then":{"properties":{"args":enum_args}}},
+            {"if":{"properties":{"backend":{"const":"cargo_metadata_no_dep"}}},"then":{"properties":{"args":dependency_args}}}
+        ]
+    });
+    let item = json!({
+        "type":"object","additionalProperties":false,"required":["id","requirement","check","evidence_files"],
+        "properties":{
+            "id":{"type":"string","pattern":"^[A-Z0-9-]+$","description":"A distinct uppercase id such as NO-REQWEST-1."},
+            "requirement":{"type":"string","minLength":1,"description":"The requirement in words."},
+            "check":check,
+            "evidence_files":{"type":"array","minItems":1,"maxItems":32,"uniqueItems":true,"items":{"type":"string"},"description":"Repository-relative files a person reviews; g8 invalidates the attestation when they change."}
+        }
+    });
+    let alternative = json!({
+        "type":"object","additionalProperties":false,"required":["option","reason_not_chosen"],
+        "properties":{"option":{"type":"string","minLength":1},"reason_not_chosen":{"type":"string","minLength":1}}
+    });
+    json!({
+        "type":"object",
+        "additionalProperties":false,
+        "required":["ids","title","decision","rationale","alternatives","tradeoffs","consequences","checks"],
+        "properties":{
+            "ids":{"type":"array","minItems":1,"maxItems":32,"items":{"type":"string"},"description":"The card ids this decision covers."},
+            "title":text("A short title for the decision record."),
+            "decision":text("What was decided, in one or two sentences."),
+            "rationale":text("Why this approach."),
+            "alternatives":{"type":"array","minItems":1,"maxItems":20,"items":alternative},
+            "tradeoffs":text("What this costs."),
+            "consequences":text("What follows from it."),
+            "checks":{"type":"array","minItems":1,"maxItems":32,"items":item},
+            "not_enforced":{"type":"array","maxItems":64,"items":{"type":"string"},"description":"Requirements these checks do not enforce."}
+        }
+    })
 }
 pub fn content(v: &View, ids: &[String]) -> Result<String, CapError> {
     let selected: BTreeSet<_> = ids.iter().collect();
@@ -265,6 +341,7 @@ pub fn draft(v: &View, id: &str) -> Result<Draft, CapError> {
     d.input.validate().map_err(err)?;
     d.id = id.into();
     d.created_by = string(r, "created_by").into();
+    d.created_at = string(r, "created_at").into();
     Ok(d)
 }
 pub fn reviewed(v: &View, id: &str, ids: &[String]) -> Result<Draft, CapError> {
@@ -300,11 +377,26 @@ pub fn covers(v: &View, node: &Record) -> bool {
             c.ids.contains(&node.id) && content(v, &c.ids).is_ok_and(|h| h == c.content)
         })
 }
+/// The shared posture. A record written before view modes were separate may
+/// hold a view mode in `value`; it reads as learning.
 pub fn mode(v: &View) -> &str {
     v.records()
         .find(|r| r.kind == "cement-mode")
         .map(|r| string(r, "value"))
+        .filter(|m| POSTURES.contains(m))
         .unwrap_or("learning")
+}
+/// The shared view mode: `view`, else a legacy view mode left in `value`,
+/// else map.
+pub fn view_mode(v: &View) -> &str {
+    v.records()
+        .find(|r| r.kind == "cement-mode")
+        .and_then(|r| {
+            [string(r, "view"), string(r, "value")]
+                .into_iter()
+                .find(|m| VIEWS.contains(m))
+        })
+        .unwrap_or("map")
 }
 pub struct Cement;
 impl Capability for Cement {
@@ -313,7 +405,7 @@ impl Capability for Cement {
     }
     fn project(&self, v: &View) -> Result<Value, CapError> {
         Ok(
-            json!({"mode":mode(v),"drafts":v.records().filter(|r|r.kind==decision::KIND).map(|r|draft(v,&r.id)).collect::<Result<Vec<_>,_>>()?,"coverage":v.records().filter(|r|r.kind=="node"&&!string(r,"cemented").is_empty()).map(|n|json!({"id":n.id,"current":covers(v,n),"record":string(n,"cemented")})).collect::<Vec<_>>()}),
+            json!({"mode":mode(v),"posture":mode(v),"view":view_mode(v),"drafts":v.records().filter(|r|r.kind==decision::KIND).map(|r|draft(v,&r.id)).collect::<Result<Vec<_>,_>>()?,"coverage":v.records().filter(|r|r.kind=="node"&&!string(r,"cemented").is_empty()).map(|n|json!({"id":n.id,"current":covers(v,n),"record":string(n,"cemented")})).collect::<Vec<_>>()}),
         )
     }
     fn legend(&self, _view: &View) -> Result<Vec<LegendEntry>, CapError> {
@@ -383,7 +475,8 @@ impl Capability for Cement {
                 if !MODES.contains(&m) {
                     return Err(err("unsupported mode"));
                 }
-                let props = [("value".into(), m.into())].into();
+                let key = if VIEWS.contains(&m) { "view" } else { "value" };
+                let props = [(key.into(), m.into())].into();
                 ops.push(
                     if let Some(r) = v.records().find(|r| r.kind == "cement-mode") {
                         Op::Set {
@@ -398,7 +491,7 @@ impl Capability for Cement {
                         }
                     },
                 );
-                format!("Mode: {m}")
+                if VIEWS.contains(&m) { format!("View: {m}; posture stays {}.", mode(v)) } else { format!("Posture: {m}; view stays {}.", view_mode(v)) }
             }
             "decision_draft" => {
                 let input: DraftInput = serde_json::from_value(c.args["draft"].clone())
@@ -419,6 +512,7 @@ impl Capability for Cement {
                     input,
                     context_ids: ctx.heads,
                     created_by: String::new(),
+                    created_at: String::new(),
                 };
                 ops.push(Op::Create {
                     reference: "draft".into(),
@@ -445,8 +539,9 @@ impl Capability for Cement {
             | "decision_preview"
             | "decision_list"
             | "decision_cement_propose" => format!(
-                "CEMENT: mode {}; native repository adapter supplies publication and gate facts.",
-                mode(v)
+                "CEMENT: posture {}, view {}; native repository adapter supplies publication and gate facts.",
+                mode(v),
+                view_mode(v)
             ),
             _ => return Err(CapError::new("unknown_action", &c.action)),
         };
@@ -460,8 +555,13 @@ impl Capability for Cement {
             }
             if r.kind == "cement-mode" {
                 modes += 1;
-                if !MODES.contains(&string(r, "value")) {
+                let value = string(r, "value");
+                if !value.is_empty() && !MODES.contains(&value) {
                     return Err(err("unsupported mode"));
+                }
+                let view = string(r, "view");
+                if !view.is_empty() && !VIEWS.contains(&view) {
+                    return Err(err("unsupported view mode"));
                 }
             }
         }
@@ -803,5 +903,27 @@ pub fn obligations_with_facts(view_json: &str, args_json: &str, facts_json: &str
     match result {
         Ok(v) => json!({"abi":samepage_capability::ABI,"ok":v}).to_string(),
         Err(e) => json!({"abi":samepage_capability::ABI,"error":e}).to_string(),
+    }
+}
+
+#[cfg(test)]
+mod mode_tests {
+    use super::*;
+
+    #[test]
+    fn view_mode_and_posture_are_independent() {
+        let aligned = View::new("r", [Record::new("m", "cement-mode").with("value", "alignment")]).unwrap();
+        let plan = Cement
+            .plan(&Call { action: "mode_set".into(), args: json!({"mode":"map"}) }, &aligned)
+            .unwrap();
+        assert!(matches!(&plan.ops[0], Op::Set { props, .. } if props.contains_key("view") && !props.contains_key("value")));
+        let both = View::new(
+            "r",
+            [Record::new("m", "cement-mode").with("value", "alignment").with("view", "map")],
+        )
+        .unwrap();
+        assert_eq!((mode(&both), view_mode(&both)), ("alignment", "map"));
+        let legacy = View::new("r", [Record::new("m", "cement-mode").with("value", "cement")]).unwrap();
+        assert_eq!((mode(&legacy), view_mode(&legacy)), ("learning", "cement"));
     }
 }
