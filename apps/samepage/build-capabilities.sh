@@ -31,7 +31,7 @@ command -v python3 >/dev/null
 command -v node >/dev/null
 
 staging="$(mktemp -d "${out%/}/.stage.XXXXXX")"
-trap 'rm -rf "$staging"' EXIT
+trap 'status=$?; rm -rf "$staging"; exit $status' EXIT
 seen='|'
 found_doc=0
 integrated_sources=0
@@ -88,7 +88,7 @@ PY
   mkdir -p "$staging/$id"
   extra_features=()
   if [[ "$id" == diagrams && "$integrated_sources" == 1 ]]; then extra_features=(--features integrated-sources); fi
-  wasm-pack build "$root/$crate" --release --target web --out-dir "$staging/$id" --no-typescript -- --locked "${extra_features[@]}"
+  wasm-pack build "$root/$crate" --release --target web --out-dir "$staging/$id" --no-typescript -- --locked ${extra_features[@]+"${extra_features[@]}"}
   shopt -s nullglob
   glues=("$staging/$id/"*_bg.wasm)
   scripts=("$staging/$id/"*.js)
