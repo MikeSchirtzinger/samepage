@@ -286,3 +286,31 @@ async fn a_board_write_before_the_wait_future_is_polled_is_not_lost() {
         .unwrap();
     assert!(read.contains("Already arrived before polling."));
 }
+#[test]
+fn an_agent_removes_a_persons_card_only_with_confirm_owner_and_hears_the_cascade() {
+    let (s, _, _) = state();
+    let mut person = SurfaceActor::anonymous(ag_ui_surface::Caller::Human);
+    person.participant_id = Some("person-dana".into());
+    person.label = Some("Dana".into());
+    let agent = actor(ag_ui_surface::Caller::Agent);
+    let placed: Value = serde_json::from_str(
+        &s.invoke_as(&person, "card_place", json!({"label":"Human card","x":0,"y":0})).unwrap(),
+    )
+    .unwrap();
+    let card = placed["ids"]["card"].as_str().unwrap().to_string();
+    let other: Value = serde_json::from_str(
+        &s.invoke_as(&agent, "card_place", json!({"label":"Agent card","x":400,"y":0})).unwrap(),
+    )
+    .unwrap();
+    s.invoke_as(&agent, "card_link", json!({"from":other["ids"]["card"],"to":card,"label":"feeds"}))
+        .unwrap();
+    let refused = s.invoke_as(&agent, "object_remove", json!({"id":card})).unwrap_err();
+    assert!(refused.contains("made by Dana") && refused.contains("confirm_owner"), "{refused}");
+    assert!(s.host.view().get(&card).is_some());
+    let removed = s
+        .invoke_as(&agent, "object_remove", json!({"id":card,"confirm_owner":true}))
+        .unwrap();
+    assert!(removed.contains("REMOVED card \\\"Human card\\\""), "{removed}");
+    assert!(removed.contains("link \\\"feeds\\\""), "{removed}");
+    assert!(s.host.view().get(&card).is_none());
+}

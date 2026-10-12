@@ -623,6 +623,25 @@ impl SamePageState {
         if actor.caller==Caller::Agent && (action=="pane_put" || action=="room_put_pane") && (args.get("spot").is_some() || args.get("raise").is_some()) {
             return Err("the agent cannot send a rectangle or raise; use relations and named sizes".into());
         }
+        // Removing another person's work is a deliberate act: an agent must
+        // say so with confirm_owner, and every reply names what went with it.
+        let removal = matches!(action, "object_remove" | "atlas_remove" | "shape_remove");
+        let before_removal = removal.then(|| self.host.view());
+        let mut args = args;
+        if removal {
+            let confirmed = args.as_object_mut().and_then(|o| o.remove("confirm_owner")) == Some(json!(true));
+            let view = before_removal.as_ref().ok_or("removal view missing")?;
+            if let Some(record) = args["id"].as_str().and_then(|id| view.get(id)) {
+                let owner = record.props.get("created_by_participant").and_then(Scalar::as_str).unwrap_or_default();
+                if actor.caller == Caller::Agent && owner.starts_with("person-") && !confirmed {
+                    return Err(format!(
+                        "{} was made by {}. Removing a person's work needs confirm_owner: true; ask them first in chat_reply.",
+                        record_words(view, record),
+                        record.props.get("created_by").and_then(Scalar::as_str).filter(|s| !s.is_empty()).unwrap_or("a person")
+                    ));
+                }
+            }
+        }
         let mut cement_result = None;
         let mut publication = None;
         let invoked = if matches!(action, "decision_cement" | "atlas_cement_decision") {
@@ -666,7 +685,33 @@ impl SamePageState {
         if let Some(pending) = publication {
             pending.accept();
         }
-        let invoked = caller_names(invoked, &args, &self.host.view())?;
+        let mut invoked = caller_names(invoked, &args, &self.host.view())?;
+        if let (Some(before), Some(commit)) = (&before_removal, &invoked.commit) {
+            let after = self.host.view();
+            let removed: Vec<_> = commit
+                .deleted
+                .iter()
+                .filter_map(|id| before.get(id))
+                .map(|r| format!(
+                    "{} made by {}",
+                    record_words(before, r),
+                    r.props.get("created_by").and_then(Scalar::as_str).filter(|s| !s.is_empty()).unwrap_or("someone")
+                ))
+                .collect();
+            if !removed.is_empty() {
+                invoked.readback.push(format!("REMOVED {}", removed.join("; ")));
+            }
+            let moved: Vec<_> = commit
+                .modified
+                .iter()
+                .filter_map(|id| after.get(id))
+                .filter(|r| r.kind == "node")
+                .map(|r| record_words(&after, r))
+                .collect();
+            if !moved.is_empty() {
+                invoked.readback.push(format!("MOVED TO THE TOP LEVEL {}", moved.join("; ")));
+            }
+        }
         let flow_id = args["flow_id"].as_str().or_else(|| args["flow"]["id"].as_str()).unwrap_or("").to_string();
         let reenter = args["command"] == "restart";
         if invoked.commit.is_some() {
@@ -1145,6 +1190,34 @@ pub const AGENT_GUIDE: &str = "SamePage is a page a person and agents edit toget
 5. Draw with sketch in one call: frames and boxes first, then text, then arrows that bind to refs or card ids.
 6. Only people agree to cards, accept claims and publish decisions. Agents propose: claim_add, decision_draft, decision_cement_propose, and map_cement on agreed cards.
 7. A write that causes a page problem is still applied; repair the ids it names instead of repeating the write.";
+
+/// A record in a few words: its kind, its label or text, and its id.
+fn record_words(view: &samepage_capability::View, r: &samepage_capability::Record) -> String {
+    let words = ["label", "text", "title", "glyph"]
+        .iter()
+        .find_map(|k| r.props.get(*k).and_then(Scalar::as_str).filter(|s| !s.is_empty()))
+        .unwrap_or("");
+    let kind = match r.kind.as_str() {
+        "node" => "card",
+        "edge" => "link",
+        other => other,
+    };
+    let ends = if r.kind == "edge" {
+        let end = |k: &str| {
+            r.props
+                .get(k)
+                .and_then(Scalar::as_str)
+                .and_then(|id| view.get(id))
+                .and_then(|n| n.props.get("label").and_then(Scalar::as_str))
+                .unwrap_or("?")
+                .to_string()
+        };
+        format!(" from {:?} to {:?}", end("from"), end("to"))
+    } else {
+        String::new()
+    };
+    format!("{kind} {words:?}{ends} [{}]", r.id)
+}
 
 /// Key a reply's ids by the names the caller gave: a sketch shape by its
 /// `ref`, a diagram node or container by its `id`, a diagram edge by

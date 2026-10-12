@@ -92,12 +92,15 @@ pub fn descriptor() -> Descriptor {
         "object_remove",
         Audience::Both,
         Effect::Mutate,
-        "Remove one card or link by id. Removing a card also removes its links, claims and marks; cards inside it move to the top level. Drawings use shape_remove.",
+        "Remove one card or link by id. Removing a card also removes its links, claims and marks; cards inside it move to the top level; the reply names each removed record and who made it. A card a person made needs confirm_owner: true. Drawings use shape_remove.",
     )
     .alias("atlas_remove");
     remove.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id"],
-        "properties": { "id": { "type": "string" } }
+        "properties": {
+            "id": { "type": "string" },
+            "confirm_owner": { "type": "boolean", "description": "Required, as true, for an agent to remove a card or link a person made. Ask them first." }
+        }
     });
     let mut read = ActionDecl::new(
         "map_read",

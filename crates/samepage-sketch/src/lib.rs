@@ -175,7 +175,7 @@ pub fn descriptor() -> Descriptor {
  .action(decl("sketch_export",None,Query,empty.clone(),"Export the drawn layer as an Excalidraw document. Captions, styles, groups and frames survive."))
  .action(decl("sketch_read",None,Query,empty,"Read drawings as ENCLOSES, CROSSES-OUT, SAYS and bound-to relations, without coordinates."))
  .action(decl("shape_lift",None,Mutate,json!({"type":"object","required":["id"],"properties":{"id":{"type":"string"}},"additionalProperties":false}),"Lift labeled drawn matter or a region holding exactly one text into a card. References and marks follow in the same commit."))
- .action(decl("shape_remove",None,Mutate,json!({"type":"object","required":["id"],"properties":{"id":{"type":"string"}},"additionalProperties":false}),"Remove a drawing; its owners detach bindings and cascade marks in one commit."))
+ .action(decl("shape_remove",None,Mutate,json!({"type":"object","required":["id"],"properties":{"id":{"type":"string"},"confirm_owner":{"type":"boolean","description":"Required, as true, for an agent to remove a drawing a person made. Ask them first."}},"additionalProperties":false}),"Remove one drawing; arrows bound to it detach and marks on it go with it in one commit. The reply names each removed record and who made it. A drawing a person made needs confirm_owner: true."))
  .trigger(Trigger::kind("shape"));
     for action in &d.actions {
         d.triggers.push(Trigger::tool(&action.name));
