@@ -556,7 +556,12 @@ fn place(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapErro
     }
     let parent = optional_string(args, "parent")?.map(|p| p.trim().to_string());
     if let Some(parent) = &parent {
-        check_parent(existing.as_deref().unwrap_or(""), parent, view)?;
+        check_parent(existing.as_deref().unwrap_or(""), parent, view).map_err(|mut e| {
+            if let Some(label) = args.get("label").and_then(JsonValue::as_str) {
+                e.message = e.message.replace("the new card", &format!("{label:?}"));
+            }
+            e
+        })?;
         props.push((K_PARENT, parent.clone().into()));
     }
 
@@ -927,8 +932,16 @@ fn remove(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapErr
         return Err(err(
             "not_map_object",
             format!(
-                "{id} is a {:?}, not a card or link; its own capability removes it",
-                record.kind
+                "{id} is a {}, not a card or link; {}",
+                record.kind,
+                match record.kind.as_str() {
+                    "shape" => "remove a drawing with shape_remove",
+                    "claim" => "withdraw a claim with claim_withdraw",
+                    "mark" => "a person's mark stays until they remove it; answer it with mark_answer",
+                    "pane" => "remove a pane with pane_remove",
+                    "constraint" => "remove a constraint with constraint_remove",
+                    _ => "the capability that made it removes it",
+                }
             ),
         ));
     }

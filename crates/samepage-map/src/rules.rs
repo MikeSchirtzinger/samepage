@@ -376,7 +376,14 @@ pub fn check_parent(id: &str, parent: &str, view: &View) -> Result<(), CapError>
     if !matches!(view.get(parent), Some(record) if record.kind == NODE) {
         return Err(err(
             "not_found",
-            format!("no card {parent:?} to put {id} inside"),
+            format!(
+                "no card {parent:?} to put {} inside",
+                view.get(id)
+                    .and_then(|r| r.props.get(K_LABEL).and_then(Scalar::as_str))
+                    .filter(|l| !l.is_empty())
+                    .map(|l| format!("{l:?}"))
+                    .unwrap_or_else(|| if id.is_empty() { "the new card".into() } else { id.to_string() })
+            ),
         ));
     }
     // Walk up from the new parent: reaching `id` is a cycle; the chain above

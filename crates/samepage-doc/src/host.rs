@@ -138,9 +138,9 @@ pub enum FrameRefusal {
     },
     #[error("{0}")]
     Audit(AuditError),
-    #[error("capability {capability:?} refused the change: {error}")]
+    #[error("{capability} refused: {error}")]
     Validate { capability: String, error: CapError },
-    #[error("the verifier for {capability:?} refused the change: {error}")]
+    #[error("{capability} refused: {error}")]
     Verify { capability: String, error: CapError },
     #[error("the quarantine for this actor is full ({updates} updates, {bytes} bytes)")]
     QuarantineFull { updates: usize, bytes: usize },
@@ -156,11 +156,11 @@ pub enum FrameRefusal {
 pub enum CommitError {
     #[error("plan: {0}")]
     Plan(#[from] PlanError),
-    #[error("capability {capability:?} failed: {error}")]
+    #[error("{capability} refused: {error}")]
     Capability { capability: String, error: CapError },
-    #[error("capability {capability:?} refused the change: {error}")]
+    #[error("{capability} refused: {error}")]
     Validate { capability: String, error: CapError },
-    #[error("the verifier for {capability:?} refused the change: {error}")]
+    #[error("{capability} refused: {error}")]
     Verify { capability: String, error: CapError },
     #[error("deletes kept cascading after {MAX_CASCADE_ROUNDS} rounds")]
     RunawayCascade,
@@ -179,7 +179,7 @@ pub enum InvokeError {
         action: String,
         caller: &'static str,
     },
-    #[error("capability {capability:?} failed: {error}")]
+    #[error("{capability} refused: {error}")]
     Capability { capability: String, error: CapError },
     #[error("{action:?} is declared as a query but planned {ops} write(s)")]
     QueryMutates { action: String, ops: usize },
