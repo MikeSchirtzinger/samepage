@@ -44,6 +44,16 @@ To import a legacy Atlas base64 state file, use a **new** target path. The sourc
 "$CARGO_TARGET_DIR/debug/samepage" import-legacy /path/to/atlas.json /path/to/new-document.json
 ```
 
+## For agents
+
+An agent attaches to `/mcp` with the bearer token. The MCP `initialize` reply carries a short guide. The host also writes `.samepage/sessions/<pid>.json` in the project with the page URL, the MCP endpoint and the first tool to call, and removes it when the host stops.
+
+- `page_read` reads the whole page as text and starts with what other participants changed since the agent's last read.
+- `await_input` waits for the next change someone else makes and says what it was and who made it. A new set of page problems wakes it once.
+- `page_draw` draws a whole picture in one call: shapes, cards, links, a diagram and claims, with refs across them.
+- `card_place` with a `path` binds a card to a whole file; add `lines` for part of one.
+- People agree to cards, accept claims and publish decisions. An agent that removes a card a person made must pass `confirm_owner: true`.
+
 ## Optional architecture comparison
 
 Select `architecture=crates/samepage-architecture=apps/samepage/modules/architecture.js`
