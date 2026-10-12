@@ -148,8 +148,8 @@ body[data-panel="closed"] .panel-close, body[data-panel="closed"] .tab-body { di
 .dock { grid-area: dock; position: relative; z-index: 20; background: var(--surface-2); border-top: 1px solid var(--line); min-width: 0; }
 .dock-bar { display: flex; align-items: center; gap: 8px; height: var(--dock-h); padding: 0 10px; font-size: 13px; min-width: 0; }
 .dock-segment { padding: 2px 10px; background: transparent; border-color: var(--line); color: var(--soft); white-space: nowrap; flex: 0 0 auto; }
-.dock-segment[aria-expanded="true"] { background: #233959; border-color: var(--focus); color: #fff; }
 .dock-segment[data-attention="true"] { border-color: var(--warn); color: var(--warn); }
+.dock-segment[aria-expanded="true"] { background: #233959; border-color: var(--focus); color: #fff; }
 .toast { flex: 1 1 auto; min-width: 0; margin: 0; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .toast[data-tone="error"] { color: var(--danger-line); }
 .map-count { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
