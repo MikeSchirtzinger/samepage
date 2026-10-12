@@ -157,7 +157,7 @@ fn revising_an_accepted_claim_reopens_it() {
         samepage_review::string(h.view().get(&c).unwrap(), "verdict"),
         "open"
     );
-    assert_eq!(samepage_review::standing(&h.view(), &n), "UNDER CHALLENGE");
+    assert_eq!(samepage_review::standing(&h.view(), &n), "UNREVIEWED");
 }
 #[test]
 fn agreed_is_refused_while_under_challenge() {
@@ -169,7 +169,7 @@ fn agreed_is_refused_while_under_challenge() {
         .invoke(&human(), "card_place", json!({"id":n,"status":"agreed"}))
         .unwrap_err()
         .to_string();
-    assert!(error.contains("under challenge") && error.contains(&c));
+    assert!(error.contains("unreviewed or disputed") && error.contains(&c));
     assert_eq!(before, fingerprint(&h));
     verdict(&h, &c, "accepted");
     h.invoke(&human(), "card_place", json!({"id":n,"status":"agreed"}))
@@ -505,7 +505,7 @@ fn the_second_read_says_what_the_humans_edits_now_mean() {
     let text = second["readback"].as_str().unwrap();
     assert!(
         text.contains("CHANGED SINCE")
-            && text.contains("UNDER CHALLENGE")
+            && text.contains("DISPUTED")
             && text.contains("is now disputed (it was open)")
     );
     assert!(native.read(&h.view(), "reader").unwrap()["changes"]
@@ -798,4 +798,22 @@ fn missing_optional_review_refuses_destructive_orphaning_but_allows_map_edits() 
     assert_eq!(before, fingerprint(&h));
     drop(h);
     std::fs::remove_dir_all(root).unwrap();
+}
+#[test]
+fn standing_separates_unreviewed_questioned_and_disputed() {
+    let h = host();
+    let n = node(&h);
+    let c = claim(&h, &n);
+    assert_eq!(samepage_review::standing(&h.view(), &n), "UNREVIEWED");
+    let mark = h
+        .invoke(&human(), "mark_add", json!({"target":n,"glyph":"?","text":"Which port?"}))
+        .unwrap()
+        .ids["mark"]
+        .clone();
+    assert_eq!(samepage_review::standing(&h.view(), &n), "QUESTIONED");
+    h.invoke(&agent(), "mark_answer", json!({"id":mark,"answer":"8080"}))
+        .unwrap();
+    assert_eq!(samepage_review::standing(&h.view(), &n), "UNREVIEWED");
+    verdict(&h, &c, "rejected");
+    assert_eq!(samepage_review::standing(&h.view(), &n), "DISPUTED");
 }
