@@ -5687,8 +5687,8 @@ fn validate_segment_part(
         ));
     }
     let mut total = 0u64;
-    for chunk in bytes.chunks_exact(4) {
-        let run = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+    for chunk in bytes.as_chunks::<4>().0 {
+        let run = u32::from_le_bytes(*chunk);
         total = total
             .checked_add(u64::from(run))
             .ok_or_else(|| format!("{expected_role} wing mask RLE length overflow"))?;
@@ -5846,8 +5846,8 @@ pub fn materialize_segment(
         return Err("segment mask RLE must be bounded little-endian u32 values".to_string());
     }
     let mut total = 0u64;
-    for chunk in mask_bytes.chunks_exact(4) {
-        let run = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+    for chunk in mask_bytes.as_chunks::<4>().0 {
+        let run = u32::from_le_bytes(*chunk);
         total = total
             .checked_add(u64::from(run))
             .ok_or_else(|| "segment mask RLE length overflow".to_string())?;
@@ -8095,7 +8095,7 @@ pub fn changes(before: &Digest, after: &Digest) -> Vec<String> {
                         .constraints
                         .iter()
                         .find(|constraint| constraint.id == *id)
-                        .map(&named_constraint)
+                        .map(named_constraint)
                         .unwrap_or_else(|| id.clone()))
                     .collect::<Vec<_>>()
                     .join("; ")

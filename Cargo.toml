@@ -39,7 +39,7 @@ members = [
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.95"
+rust-version = "1.99"
 license = "MIT"
 repository = "https://github.com/MikeSchirtzinger/samepage"
 

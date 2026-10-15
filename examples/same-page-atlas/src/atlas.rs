@@ -451,7 +451,7 @@ impl AtlasState {
         let mut attention = self.attention.lock();
         let previous = self
             .attention_sequence
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |sequence| {
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |sequence| {
                 sequence.checked_add(1)
             })
             .map_err(|_| "attention observation sequence is exhausted".to_string())?;

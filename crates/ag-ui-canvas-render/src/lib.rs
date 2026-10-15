@@ -183,7 +183,7 @@ impl Camera2D {
     fn view_proj(&self) -> Mat4 {
         let half_w = self.viewport.0 / (2.0 * self.zoom);
         let half_h = self.viewport.1 / (2.0 * self.zoom);
-        Mat4::orthographic_rh(
+        glam::camera::rh::proj::directx::orthographic(
             self.center.x - half_w,
             self.center.x + half_w,
             self.center.y - half_h,
