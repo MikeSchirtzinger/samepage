@@ -2229,8 +2229,8 @@ fn merge_theme(current: &Theme, args: &JsonValue) -> Result<Theme, String> {
         }
         theme.radius = radius as u8;
     }
-    if let Some(scale) = args.get("scale") {
-        if !scale.is_null() {
+    if let Some(scale) = args.get("scale")
+        && !scale.is_null() {
             let scale = scale
                 .as_f64()
                 .ok_or_else(|| "scale must be a number".to_string())?;
@@ -2239,7 +2239,6 @@ fn merge_theme(current: &Theme, args: &JsonValue) -> Result<Theme, String> {
             }
             theme.scale = (scale * 100.0).round() / 100.0;
         }
-    }
     Ok(theme)
 }
 
@@ -2449,11 +2448,10 @@ const ENCLOSURE_SHOWN: usize = 2;
 /// reads as two separate things having been touched.
 fn enclosure(path: &[PointLevel]) -> String {
     let mut parts = Vec::new();
-    if let Some(first) = path.first() {
-        if !first.role.is_empty() {
+    if let Some(first) = path.first()
+        && !first.role.is_empty() {
             parts.push(format!("a {}", first.role));
         }
-    }
     for level in path.iter().skip(1).take(ENCLOSURE_SHOWN) {
         let described = level.describe();
         if !described.is_empty() {

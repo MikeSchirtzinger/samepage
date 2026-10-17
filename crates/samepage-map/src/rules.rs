@@ -285,8 +285,8 @@ pub fn check_node(
             return Err(err("invalid", format!("{} needs a label", record.id)));
         }
     }
-    if has(K_LABEL) {
-        if let Some(label) = string(record, K_LABEL)? {
+    if has(K_LABEL)
+        && let Some(label) = string(record, K_LABEL)? {
             if text(label, MAX_LABEL, "label")? != label {
                 return Err(err("invalid", "label must not have surrounding whitespace"));
             }
@@ -294,12 +294,10 @@ pub fn check_node(
                 return Err(err("invalid", format!("{} needs a label", record.id)));
             }
         }
-    }
-    if has(K_NOTE) {
-        if let Some(note) = string(record, K_NOTE)? {
+    if has(K_NOTE)
+        && let Some(note) = string(record, K_NOTE)? {
             text(note, MAX_NOTE, "note")?;
         }
-    }
     for (key, allowed) in [
         (K_TONE, TONES),
         (K_STATUS, STATUSES),
@@ -307,25 +305,21 @@ pub fn check_node(
         (K_SIZE, SIZES),
         (K_SHAPE, SHAPES),
     ] {
-        if has(key) {
-            if let Some(value) = string(record, key)? {
+        if has(key)
+            && let Some(value) = string(record, key)? {
                 one_of(value, allowed, key)?;
             }
-        }
     }
-    if has(K_COLOR) {
-        if let Some(color) = string(record, K_COLOR)? {
-            if !color.is_empty() {
+    if has(K_COLOR)
+        && let Some(color) = string(record, K_COLOR)?
+            && !color.is_empty() {
                 one_of(color, INKS, "color")?;
             }
-        }
-    }
     for key in [K_X, K_Y] {
-        if has(key) {
-            if let Some(value) = number(record, key)? {
+        if has(key)
+            && let Some(value) = number(record, key)? {
                 coordinate(value, key)?;
             }
-        }
     }
     if has(K_W) || has(K_W_MIN) {
         let w = number(record, K_W)?;
@@ -356,11 +350,10 @@ pub fn check_node(
             }
         }
     }
-    if has(K_PARENT) {
-        if let Some(parent) = string(record, K_PARENT)? {
+    if has(K_PARENT)
+        && let Some(parent) = string(record, K_PARENT)? {
             check_parent(&record.id, parent, view)?;
         }
-    }
     Ok(())
 }
 
@@ -556,8 +549,8 @@ pub fn check_constraint(
     if created || has(K_OP) {
         one_of(&op, CONSTRAINT_OPS, "constraint op")?;
     }
-    if has(K_AXIS) {
-        if let Some(axis) = record.props.get(K_AXIS).and_then(Scalar::as_str) {
+    if has(K_AXIS)
+        && let Some(axis) = record.props.get(K_AXIS).and_then(Scalar::as_str) {
             if op == "sequence" {
                 one_of(axis, CONSTRAINT_AXES, "constraint axis")?;
             } else if !axis.is_empty() {
@@ -567,9 +560,8 @@ pub fn check_constraint(
                 ));
             }
         }
-    }
-    if has(K_TEXT) {
-        if let Some(body) = record.props.get(K_TEXT).and_then(Scalar::as_str) {
+    if has(K_TEXT)
+        && let Some(body) = record.props.get(K_TEXT).and_then(Scalar::as_str) {
             text(body, MAX_TEXT, "constraint text")?;
             if op != "labels" && !body.is_empty() {
                 return Err(err(
@@ -578,12 +570,10 @@ pub fn check_constraint(
                 ));
             }
         }
-    }
-    if has(K_SALIENCE) {
-        if let Some(salience) = record.props.get(K_SALIENCE).and_then(Scalar::as_str) {
+    if has(K_SALIENCE)
+        && let Some(salience) = record.props.get(K_SALIENCE).and_then(Scalar::as_str) {
             one_of(salience, CONSTRAINT_SALIENCES, "constraint salience")?;
         }
-    }
     Ok(op)
 }
 

@@ -444,7 +444,7 @@ impl Composition {
     ///
     /// Reading is not writing: a reader is consulted about a change to that
     /// kind and may refuse it, but it can never write a key it does not own.
-    pub fn interested_in_kind(&self, kind: &str) -> impl Iterator<Item = &str> {
+    pub fn interested_in_kind(&self, kind: &str) -> impl Iterator<Item = &str> + use<'_> {
         self.kind_interest
             .get(kind)
             .into_iter()

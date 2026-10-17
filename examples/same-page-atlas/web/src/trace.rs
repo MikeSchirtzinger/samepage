@@ -279,13 +279,12 @@ where
         if !CAPTURE_ENABLED.load(Ordering::Relaxed) {
             return;
         }
-        if let Some(span) = ctx.span(id) {
-            if let Some(state) = span.extensions_mut().get_mut::<SpanState>() {
+        if let Some(span) = ctx.span(id)
+            && let Some(state) = span.extensions_mut().get_mut::<SpanState>() {
                 let mut visitor = FieldVisitor::default();
                 values.record(&mut visitor);
                 state.fields.extend(visitor.fields);
             }
-        }
     }
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
@@ -323,11 +322,10 @@ where
         if !CAPTURE_ENABLED.load(Ordering::Relaxed) {
             return;
         }
-        if let Some(span) = ctx.span(id) {
-            if let Some(state) = span.extensions_mut().get_mut::<SpanState>() {
+        if let Some(span) = ctx.span(id)
+            && let Some(state) = span.extensions_mut().get_mut::<SpanState>() {
                 state.entered_at.push(monotonic_ms());
             }
-        }
     }
 
     fn on_exit(&self, id: &Id, ctx: Context<'_, S>) {

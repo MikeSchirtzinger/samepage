@@ -299,8 +299,8 @@ impl ManagedAgentProcess {
 
     pub(super) async fn shutdown(&mut self) {
         #[cfg(unix)]
-        if let Some(process_group) = self.process_group {
-            if process_group_exists(process_group) {
+        if let Some(process_group) = self.process_group
+            && process_group_exists(process_group) {
                 if let Err(error) = signal_process_group(process_group, libc::SIGTERM) {
                     warn!(process_group, %error, "failed to terminate managed-agent process group");
                 }
@@ -321,7 +321,6 @@ impl ManagedAgentProcess {
                         .await;
                 }
             }
-        }
 
         #[cfg(not(unix))]
         if let Some(child) = self.child.as_mut() {
@@ -330,15 +329,14 @@ impl ManagedAgentProcess {
 
         // Explicitly wait for the direct child. Tokio's kill-on-drop is only a
         // best-effort reaper and cannot provide this guarantee by itself.
-        if let Some(mut child) = self.child.take() {
-            if tokio::time::timeout(PROCESS_KILL_GRACE, child.wait())
+        if let Some(mut child) = self.child.take()
+            && tokio::time::timeout(PROCESS_KILL_GRACE, child.wait())
                 .await
                 .is_err()
             {
                 warn!("managed-agent direct child did not exit; forcing shutdown");
                 let _ = child.kill().await;
             }
-        }
 
         #[cfg(unix)]
         if self
@@ -1016,13 +1014,12 @@ fn handle_tool_call_notification(
 
     // ACP delivers `rawInput` whole rather than as a token stream, so this is
     // a single delta followed immediately by END.
-    if !call.arguments_sent {
-        if let Some(raw_input) = update.get("rawInput") {
+    if !call.arguments_sent
+        && let Some(raw_input) = update.get("rawInput") {
             super::emit_tool_call_args(rt, tool_call_id, &raw_input.to_string());
             super::emit_tool_call_end(rt, tool_call_id);
             call.arguments_sent = true;
         }
-    }
 
     if terminal {
         if !call.arguments_sent {

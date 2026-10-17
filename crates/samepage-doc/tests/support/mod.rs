@@ -152,8 +152,8 @@ impl Capability for Cards {
 
     fn validate(&self, delta: &Delta, view: &View) -> Result<(), CapError> {
         for id in delta.created.iter().chain(delta.modified.keys()) {
-            if let Some(record) = view.get(id) {
-                if record.kind == "card"
+            if let Some(record) = view.get(id)
+                && record.kind == "card"
                     && record.props.get("label").and_then(|v| v.as_str()) == Some("")
                 {
                     return Err(CapError::new(
@@ -161,7 +161,6 @@ impl Capability for Cards {
                         format!("{id} has an empty label"),
                     ));
                 }
-            }
         }
         Ok(())
     }

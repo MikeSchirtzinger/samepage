@@ -495,11 +495,10 @@ impl AuthStore {
         }
 
         // 1. runtime override (in-memory, never persisted)
-        if let Some(k) = self.runtime.lock().get(&provider.id) {
-            if !k.is_empty() {
+        if let Some(k) = self.runtime.lock().get(&provider.id)
+            && !k.is_empty() {
                 return Resolved::found(k.clone(), "runtime", None);
             }
-        }
         // 2. stored credential (auth.json)
         let stored = self.creds.lock().get(&provider.id).cloned();
         if let Some(cred) = stored {
@@ -517,12 +516,11 @@ impl AuthStore {
             }
         }
         // 3. models.json key source (`$VAR` / `!cmd` / literal)
-        if let Some(src) = provider.key_source.as_deref() {
-            if let Some(v) = resolve_config_value(src) {
+        if let Some(src) = provider.key_source.as_deref()
+            && let Some(v) = resolve_config_value(src) {
                 let (source, label) = source_of(src);
                 return Resolved::found(v, source, label);
             }
-        }
         // 4. environment fallback
         for var in &provider.env_vars {
             if let Ok(v) = std::env::var(var) {

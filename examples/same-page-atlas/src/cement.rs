@@ -332,14 +332,13 @@ fn settled_entry(entry: &Entry) -> Result<SettledEntry<'_>, Vec<String>> {
             ));
         }
     }
-    if let Assertion::Claim { status, .. } = &entry.assertion {
-        if *status != Status::Settled {
+    if let Assertion::Claim { status, .. } = &entry.assertion
+        && *status != Status::Settled {
             reasons.push(format!(
                 "claim status is {}, not settled",
                 assertion::status_word(*status)
             ));
         }
-    }
 
     if !reasons.is_empty() {
         return Err(reasons);
@@ -1220,11 +1219,10 @@ fn next_adr_number(repository_root: &Path) -> Result<u32, String> {
         let Some((prefix, _)) = name.split_once('-') else {
             continue;
         };
-        if prefix.len() == 4 && prefix.chars().all(|character| character.is_ascii_digit()) {
-            if let Ok(number) = prefix.parse::<u32>() {
+        if prefix.len() == 4 && prefix.chars().all(|character| character.is_ascii_digit())
+            && let Ok(number) = prefix.parse::<u32>() {
                 highest = highest.max(number);
             }
-        }
     }
     highest
         .checked_add(1)

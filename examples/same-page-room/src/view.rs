@@ -319,11 +319,10 @@ fn check(node: &Node, depth: usize, counted: &mut usize) -> Result<(), String> {
         }
         Node::Heading { text, level } => {
             bound("heading text", text, 1, MAX_LABEL)?;
-            if let Some(level) = level {
-                if !(1..=3).contains(level) {
+            if let Some(level) = level
+                && !(1..=3).contains(level) {
                     return Err("heading level must be 1, 2 or 3".to_string());
                 }
-            }
         }
         Node::Text { text, .. } => bound("text", text, 1, MAX_TEXT)?,
         Node::Code { text, lang } => {
@@ -451,11 +450,10 @@ fn check(node: &Node, depth: usize, counted: &mut usize) -> Result<(), String> {
         }
         Node::Source { path, from, to } => {
             bound("source path", path, 1, 400)?;
-            if let (Some(from), Some(to)) = (from, to) {
-                if from > to {
+            if let (Some(from), Some(to)) = (from, to)
+                && from > to {
                     return Err(format!("source range {from}-{to} ends before it starts"));
                 }
-            }
             if matches!(from, Some(0)) {
                 return Err("source lines are 1-based".to_string());
             }
@@ -467,19 +465,17 @@ fn check(node: &Node, depth: usize, counted: &mut usize) -> Result<(), String> {
         }
         Node::Embed { url, height } => {
             web_url(url)?;
-            if let Some(height) = height {
-                if !(120..=2_000).contains(height) {
+            if let Some(height) = height
+                && !(120..=2_000).contains(height) {
                     return Err("embed height must be between 120 and 2000 pixels".to_string());
                 }
-            }
         }
         Node::Html { html, height } => {
             bound("html", html, 1, MAX_HTML)?;
-            if let Some(height) = height {
-                if !(120..=2_000).contains(height) {
+            if let Some(height) = height
+                && !(120..=2_000).contains(height) {
                     return Err("html height must be between 120 and 2000 pixels".to_string());
                 }
-            }
         }
     }
 
@@ -773,11 +769,10 @@ fn walk(node: &Node, kinds: &mut Vec<&'static str>, gist: &mut Option<String>) {
                     Node::Button { label, .. } | Node::Link { label, .. } => Some(label.clone()),
                     _ => None,
                 };
-                if let Some(text) = text {
-                    if !text.trim().is_empty() {
+                if let Some(text) = text
+                    && !text.trim().is_empty() {
                         *gist = Some(text);
                     }
-                }
             }
         }
     }

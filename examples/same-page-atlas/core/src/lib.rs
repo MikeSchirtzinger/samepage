@@ -3974,11 +3974,10 @@ pub fn draw(
         // resolved against what has already landed rather than against the
         // atlas the batch started from.
         let mut patch = node.patch.clone();
-        if let Some(parent) = patch.parent.as_deref() {
-            if let Some(id) = drawn.resolve(parent) {
+        if let Some(parent) = patch.parent.as_deref()
+            && let Some(id) = drawn.resolve(parent) {
                 patch.parent = Some(id.to_string());
             }
-        }
         match place_node(scene, &patch, author) {
             Ok(id) => drawn.nodes.push((node.reference.clone(), id)),
             Err(error) => return Err(partial(&drawn, error)),
@@ -4339,14 +4338,12 @@ pub fn link(
     }
     if let (Some(from_machine), Some(to_machine)) =
         (atlas.state_machine_of(from), atlas.state_machine_of(to))
-    {
-        if from_machine.id == to_machine.id {
+        && from_machine.id == to_machine.id {
             return Err(format!(
                 "a link inside state machine {:?} carries no `event`; a transition is named by the event that fires it",
                 from_machine.label
             ));
         }
-    }
     if let Some(existing) = atlas
         .edges
         .iter()
@@ -6202,27 +6199,25 @@ fn validate_segment_motion(
         if track.delay_ms > 60_000 || track.stagger_ms > 60_000 {
             return Err("motion delay_ms and stagger_ms must not exceed 60000".to_string());
         }
-        if let Some(curve) = track.curve {
-            if !curve.iter().all(|value| value.is_finite())
+        if let Some(curve) = track.curve
+            && (!curve.iter().all(|value| value.is_finite())
                 || !(0.0..=1.0).contains(&curve[0])
                 || !(0.0..=1.0).contains(&curve[2])
                 || !(-10.0..=10.0).contains(&curve[1])
-                || !(-10.0..=10.0).contains(&curve[3])
+                || !(-10.0..=10.0).contains(&curve[3]))
             {
                 return Err(
                     "motion curve must be finite [x1,y1,x2,y2], with x from 0 to 1 and y from -10 to 10"
                         .to_string(),
                 );
             }
-        }
-        if let Some(origin) = track.origin {
-            if !origin
+        if let Some(origin) = track.origin
+            && !origin
                 .iter()
                 .all(|value| value.is_finite() && (0.0..=1.0).contains(value))
             {
                 return Err("motion origin values must be finite numbers from 0 to 1".to_string());
             }
-        }
         if !(2..=24).contains(&track.keyframes.len()) {
             return Err("each motion track must contain from 2 to 24 keyframes".to_string());
         }
@@ -6790,11 +6785,10 @@ pub fn sketch(
     for (index, patch) in shapes.iter().enumerate() {
         let mut resolved = patch.clone();
         for end in [&mut resolved.from, &mut resolved.to, &mut resolved.frame] {
-            if let Some(name) = end.as_deref() {
-                if let Some(id) = refs.get(name) {
+            if let Some(name) = end.as_deref()
+                && let Some(id) = refs.get(name) {
                     *end = Some(id.clone());
                 }
-            }
         }
         match place_shape(scene, &resolved, author) {
             Ok(id) => {
@@ -7417,8 +7411,8 @@ fn read_shape(atlas: &Atlas, shape: &Shape) -> Reading {
         }
 
         // An arrow or line with a head is aimed at whatever its tip reaches.
-        if matches!(shape.form.as_str(), "arrow" | "line") {
-            if let Some(tip) = world.last() {
+        if matches!(shape.form.as_str(), "arrow" | "line")
+            && let Some(tip) = world.last() {
                 let aimed = atlas
                     .nodes
                     .iter()
@@ -7443,7 +7437,6 @@ fn read_shape(atlas: &Atlas, shape: &Shape) -> Reading {
                     return reading("points-at", vec![other.id.clone()], Vec::new());
                 }
             }
-        }
     }
 
     // A box that touches nothing is still worth reporting as a region.
@@ -8925,13 +8918,11 @@ pub fn describe_changes(before: &Digest, after: &Digest) -> String {
             bylines.insert(variable.touched_by.as_str());
         }
     }
-    if before.explanation != after.explanation {
-        if let Some(flow) = after.explanation.as_ref() {
-            if !flow.touched_by.is_empty() {
+    if before.explanation != after.explanation
+        && let Some(flow) = after.explanation.as_ref()
+            && !flow.touched_by.is_empty() {
                 bylines.insert(flow.touched_by.as_str());
             }
-        }
-    }
     // Marks are refused to agents at dispatch, so any mark change is the
     // human by construction.
     if after.marks != before.marks {
@@ -9622,14 +9613,13 @@ fn validate_explanation_structure(
     }
     for beat in &definition.beats {
         for transition in &beat.advance.transitions {
-            if let Some(next) = &transition.next {
-                if !beat_ids.contains(next) {
+            if let Some(next) = &transition.next
+                && !beat_ids.contains(next) {
                     return Err(format!(
                         "transition {:?} from beat {:?} points to missing beat {next:?}",
                         transition.id, beat.id
                     ));
                 }
-            }
         }
     }
 
@@ -9728,15 +9718,14 @@ fn validate_explanation_targets(
         }
     }
     for id in &definition.scene_ids {
-        if let Some(shape) = atlas.shape(id) {
-            if !shape.segment_parent_id.is_empty()
+        if let Some(shape) = atlas.shape(id)
+            && !shape.segment_parent_id.is_empty()
                 && !definition.scene_ids.contains(&shape.segment_parent_id)
             {
                 return Err(format!(
                     "exploration object {id:?} requires its segment parent in scene_ids"
                 ));
             }
-        }
         if definition.about.contains(id) {
             return Err(format!(
                 "subject {id:?} cannot also be owned by its exploration"

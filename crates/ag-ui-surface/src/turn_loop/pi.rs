@@ -494,11 +494,10 @@ async fn wait_for_settled(
             match event.get("type").and_then(Value::as_str) {
                 Some("agent_start") => started = true,
                 Some("agent_settled") if started => {
-                    if let Some(error) = model_error {
-                        if !allow_abort {
+                    if let Some(error) = model_error
+                        && !allow_abort {
                             return Err(error);
                         }
-                    }
                     return Ok(text);
                 }
                 Some("message_update") => {

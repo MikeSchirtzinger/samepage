@@ -349,23 +349,19 @@ impl Capability for Map {
             }
         }
         for id in &deleted {
-            if let Some(record) = change.before.get(id) {
-                if record.kind == CONSTRAINT_MEMBER {
-                    if let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str) {
+            if let Some(record) = change.before.get(id)
+                && record.kind == CONSTRAINT_MEMBER
+                    && let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str) {
                         touched.insert(owner.to_string());
                     }
-                }
-            }
             // A deleted target may leave a constraint short: that shortfall is
             // inherited from the deletion and stays a diagnostic.
             for record in change.before.records() {
                 if record.kind == CONSTRAINT_MEMBER
                     && record.props.get(K_TARGET).and_then(Scalar::as_str) == Some(id.as_str())
-                {
-                    if let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str) {
+                    && let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str) {
                         touched.insert(owner.to_string());
                     }
-                }
             }
         }
         for id in touched {

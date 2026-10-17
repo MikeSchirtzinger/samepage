@@ -1081,8 +1081,8 @@ pub fn changes(b: &Json, a: &Json) -> Vec<String> {
     for (index, p) in next.iter().enumerate() {
         let title = p["title"].as_str().unwrap_or("");
         if let Some(old) = prior.iter().find(|x| x["id"] == p["id"]) {
-            if old["spot"] != p["spot"] {
-                if let (Ok(before), Ok(after)) = (
+            if old["spot"] != p["spot"]
+                && let (Ok(before), Ok(after)) = (
                     serde_json::from_value::<Spot>(old["spot"].clone()),
                     serde_json::from_value::<Spot>(p["spot"].clone()),
                 ) {
@@ -1093,7 +1093,6 @@ pub fn changes(b: &Json, a: &Json) -> Vec<String> {
                         layout::locate(index, &sites)
                     ));
                 }
-            }
             for field in ["title", "view", "mark", "note", "pointed", "pinned"] {
                 if old[field] != p[field] {
                     out.push(format!("{field} changed on “{title}”"));

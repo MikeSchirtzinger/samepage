@@ -232,11 +232,10 @@ impl Capability for Architecture {
                 continue;
             };
             let p = graph::project(&r.id, string(r, "definition"), String::new())?;
-            if let Some(v) = r.props.get("verdict") {
-                if !matches!(v.as_str(), Some("accepted" | "rejected")) {
+            if let Some(v) = r.props.get("verdict")
+                && !matches!(v.as_str(), Some("accepted" | "rejected")) {
                     return Err(invalid("proposal verdict must be accepted or rejected"));
                 }
-            }
             let mut seen = BTreeSet::from([r.id.as_str()]);
             let mut prev = p.definition.previous;
             let baseline = p.definition.baseline;

@@ -746,11 +746,10 @@ pub fn from_excalidraw(document: &str) -> Result<Import, AtlasError> {
                 }
             }
         }
-        if let Some(frame) = element.get("frameId").and_then(JsonValue::as_str) {
-            if !frame.is_empty() && form != "frame" {
+        if let Some(frame) = element.get("frameId").and_then(JsonValue::as_str)
+            && !frame.is_empty() && form != "frame" {
                 import.frames.push((import.shapes.len(), frame.to_string()));
             }
-        }
         import.source_ids.push(id.to_string());
         import.shapes.push(patch);
     }
@@ -777,21 +776,18 @@ fn read_style(
     caption_sizes: &std::collections::HashMap<String, f64>,
     id: &str,
 ) {
-    if let Some(width) = element.get("strokeWidth").and_then(JsonValue::as_f64) {
-        if width > 0.0 && width != DEFAULT_STROKE_WIDTH {
+    if let Some(width) = element.get("strokeWidth").and_then(JsonValue::as_f64)
+        && width > 0.0 && width != DEFAULT_STROKE_WIDTH {
             patch.stroke_width = Some(width);
         }
-    }
-    if let Some(style) = element.get("strokeStyle").and_then(JsonValue::as_str) {
-        if style != "solid" {
+    if let Some(style) = element.get("strokeStyle").and_then(JsonValue::as_str)
+        && style != "solid" {
             patch.stroke_style = Some(style.to_string());
         }
-    }
-    if let Some(opacity) = element.get("opacity").and_then(JsonValue::as_f64) {
-        if opacity < 100.0 {
+    if let Some(opacity) = element.get("opacity").and_then(JsonValue::as_f64)
+        && opacity < 100.0 {
             patch.opacity = Some(opacity);
         }
-    }
     match element.get("roundness") {
         Some(JsonValue::Object(_)) if form != "rect" && form != "frame" => {
             patch.roundness = Some("round".to_string())
@@ -802,21 +798,19 @@ fn read_style(
         _ => {}
     }
     let sized = matches!(form, "rect" | "ellipse" | "diamond" | "text" | "frame");
-    if let Some(angle) = element.get("angle").and_then(JsonValue::as_f64) {
-        if angle != 0.0 && sized {
+    if let Some(angle) = element.get("angle").and_then(JsonValue::as_f64)
+        && angle != 0.0 && sized {
             patch.angle = Some(angle);
         }
-    }
     let font_size = if form == "text" {
         element.get("fontSize").and_then(JsonValue::as_f64)
     } else {
         caption_sizes.get(id).copied()
     };
-    if let Some(size) = font_size {
-        if size > 0.0 {
+    if let Some(size) = font_size
+        && size > 0.0 {
             patch.font_size = Some(size);
         }
-    }
     if let Some(groups) = element.get("groupIds").and_then(JsonValue::as_array) {
         let ids: Vec<&str> = groups.iter().filter_map(JsonValue::as_str).collect();
         if !ids.is_empty() {

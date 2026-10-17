@@ -280,11 +280,10 @@ pub fn opening(
     if whole.camera.scale >= readable_scale {
         return Some(whole);
     }
-    if let Some(floor) = cohesion_floor {
-        if floor.is_finite() && whole.camera.scale >= floor {
+    if let Some(floor) = cohesion_floor
+        && floor.is_finite() && whole.camera.scale >= floor {
             return Some(whole);
         }
-    }
     let candidates: Vec<WorldBox> = cluster_boxes
         .iter()
         .copied()

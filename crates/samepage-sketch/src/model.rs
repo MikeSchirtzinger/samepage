@@ -742,8 +742,8 @@ fn read_shape(atlas: &Drawing, shape: &Shape) -> Reading {
         }
 
         // An arrow or line with a head is aimed at whatever its tip reaches.
-        if matches!(shape.form.as_str(), "arrow" | "line") {
-            if let Some(tip) = world.last() {
+        if matches!(shape.form.as_str(), "arrow" | "line")
+            && let Some(tip) = world.last() {
                 let aimed = atlas
                     .nodes
                     .iter()
@@ -768,7 +768,6 @@ fn read_shape(atlas: &Drawing, shape: &Shape) -> Reading {
                     return reading("points-at", vec![other.id.clone()], Vec::new());
                 }
             }
-        }
     }
 
     // A box that touches nothing is still worth reporting as a region.

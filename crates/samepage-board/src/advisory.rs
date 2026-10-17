@@ -189,14 +189,13 @@ fn settled_entry(entry: &Entry) -> Result<SettledEntry<'_>, Vec<String>> {
             ));
         }
     }
-    if let Assertion::Claim { status, .. } = &entry.assertion {
-        if *status != Status::Settled {
+    if let Assertion::Claim { status, .. } = &entry.assertion
+        && *status != Status::Settled {
             reasons.push(format!(
                 "claim status is {}, not settled",
                 assertion::status_word(*status)
             ));
         }
-    }
 
     if !reasons.is_empty() {
         return Err(reasons);

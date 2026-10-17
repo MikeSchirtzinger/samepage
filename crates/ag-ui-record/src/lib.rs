@@ -502,8 +502,8 @@ fn trust_label_presence(record: &Record, out: &mut Vec<Violation>) {
             "board" => Some(Trust::HostVerified),
             _ => None,
         };
-        if let (Some(expected), Some(trust)) = (expected, document.trust) {
-            if trust != expected {
+        if let (Some(expected), Some(trust)) = (expected, document.trust)
+            && trust != expected {
                 out.push(Violation {
                     check: Check::TrustLabelPresence,
                     message: format!(
@@ -515,7 +515,6 @@ fn trust_label_presence(record: &Record, out: &mut Vec<Violation>) {
                 });
                 return;
             }
-        }
     }
 }
 

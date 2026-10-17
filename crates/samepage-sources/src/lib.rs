@@ -231,8 +231,8 @@ impl Capability for Sources {
     fn validate_change(&self, c: &Change<'_>) -> Result<(), CapError> {
         self.validate(c.delta, c.after)?;
         for (id, keys) in c.attempted {
-            if let Some(r) = c.after.get(id).filter(|r| r.kind == "node") {
-                if keys.iter().any(|k| KEYS.contains(&k.as_str())) && !string(r, "path").is_empty()
+            if let Some(r) = c.after.get(id).filter(|r| r.kind == "node")
+                && keys.iter().any(|k| KEYS.contains(&k.as_str())) && !string(r, "path").is_empty()
                 {
                     let expected = json!({"path":string(r,"path"),"lines":string(r,"lines")});
                     if c.facts.and_then(|f| f.get(id)) != Some(&expected) {
@@ -242,7 +242,6 @@ impl Capability for Sources {
                         ));
                     }
                 }
-            }
         }
         Ok(())
     }

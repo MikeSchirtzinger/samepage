@@ -695,11 +695,10 @@ async fn run_turn(
         // question on the floor: hand it to the agents that are attached, and
         // then the sentence below is a description of what happened rather
         // than a guess about a subsystem this failure knows nothing about.
-        if is_unreachable(&e) && attached_agents > 0 {
-            if let Some(question) = human_text {
+        if is_unreachable(&e) && attached_agents > 0
+            && let Some(question) = human_text {
                 rt.chat_relay().post("you", None, question);
             }
-        }
         let friendly = friendly_error(&e, attached_agents);
         emit_narrate(rt, &friendly);
         crate::narration::fail_turn(rt, &friendly);
@@ -873,8 +872,8 @@ async fn stream_completion(
                 saw_completion = true;
             }
 
-            if let Some(content) = delta.get("content").and_then(Value::as_str) {
-                if !content.is_empty() {
+            if let Some(content) = delta.get("content").and_then(Value::as_str)
+                && !content.is_empty() {
                     append_limited(&mut text, content, MAX_ASSISTANT_TEXT, "assistant text")?;
                     if !rt
                         .final_response_only
@@ -883,7 +882,6 @@ async fn stream_completion(
                         narrate_chunk(rt, content);
                     }
                 }
-            }
 
             if let Some(tcs) = delta.get("tool_calls").and_then(Value::as_array) {
                 for tc in tcs {
@@ -899,11 +897,10 @@ async fn stream_completion(
                     let slot = calls
                         .get_mut(idx)
                         .ok_or_else(|| "internal tool-call slot was not allocated".to_string())?;
-                    if let Some(id) = tc.get("id").and_then(Value::as_str) {
-                        if !id.is_empty() {
+                    if let Some(id) = tc.get("id").and_then(Value::as_str)
+                        && !id.is_empty() {
                             slot.id = id.to_string();
                         }
-                    }
                     let mut argument_delta: Option<&str> = None;
                     if let Some(f) = tc.get("function") {
                         if let Some(name) = f.get("name").and_then(Value::as_str) {
@@ -928,11 +925,10 @@ async fn stream_completion(
                         slot.announced = true;
                         super::emit_tool_call_start(rt, &slot.id, &slot.name);
                         super::emit_tool_call_args(rt, &slot.id, &slot.arguments);
-                    } else if slot.announced {
-                        if let Some(delta) = argument_delta {
+                    } else if slot.announced
+                        && let Some(delta) = argument_delta {
                             super::emit_tool_call_args(rt, &slot.id, delta);
                         }
-                    }
                 }
             }
             if terminal {

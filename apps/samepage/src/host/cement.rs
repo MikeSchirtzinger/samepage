@@ -384,13 +384,11 @@ impl CementHost {
                         target: samepage_capability::Target::Id(id),
                         props,
                     } = op
-                    {
-                        if let Some(ScalarValue::Scalar(samepage_capability::Scalar::Str(s))) =
+                        && let Some(ScalarValue::Scalar(samepage_capability::Scalar::Str(s))) =
                             props.get("cemented")
                         {
                             stamps.insert(id.clone(), s.clone());
                         }
-                    }
                 }
             }
             let pins = paths
@@ -442,14 +440,13 @@ impl CementHost {
             })
             .collect();
         for n in v.records().filter(|r| r.kind == "node") {
-            if let Some(encoded) = string(n, "cemented").splitn(3, '\n').nth(2) {
-                if let Ok(c) = serde_json::from_str::<Coverage>(encoded) {
+            if let Some(encoded) = string(n, "cemented").splitn(3, '\n').nth(2)
+                && let Ok(c) = serde_json::from_str::<Coverage>(encoded) {
                     nodes.insert(
                         n.id.clone(),
                         (c.obligation_ids, samepage_cement::covers(v, n)),
                     );
                 }
-            }
         }
         if nodes.is_empty() {
             return Ok((BTreeMap::new(), Value::Null));
@@ -715,11 +712,10 @@ impl Pending {
 }
 impl Drop for Pending {
     fn drop(&mut self) {
-        if !self.accepted {
-            if let Err(e) = self.rollback() {
+        if !self.accepted
+            && let Err(e) = self.rollback() {
                 eprintln!("Cement rollback failed: {e}");
             }
-        }
     }
 }
 fn ids(a: &Value) -> Result<Vec<String>, String> {

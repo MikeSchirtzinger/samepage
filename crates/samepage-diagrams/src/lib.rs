@@ -168,11 +168,10 @@ impl Capability for Diagrams {
                         .iter()
                         .any(|id| string(record, "parent") == id.as_str()))
             {
-                if let Some(kind) = record.props.get("diagram_kind") {
-                    if !matches!(kind.as_str(), Some("hierarchy" | "state_machine" | "")) {
+                if let Some(kind) = record.props.get("diagram_kind")
+                    && !matches!(kind.as_str(), Some("hierarchy" | "state_machine" | "")) {
                         return Err(invalid("diagram_kind must be hierarchy or state_machine"));
                     }
-                }
                 for key in ["state_initial", "state_terminal"] {
                     if record
                         .props
@@ -278,8 +277,7 @@ impl Capability for Diagrams {
                 .into_iter()
                 .flatten()
                 .find(|old| old["id"] == edge["id"])
-            {
-                if old["sentence"] != edge["sentence"] {
+                && old["sentence"] != edge["sentence"] {
                     lines.push(format!(
                         "- [{}] the transition now reads {}; it was {}",
                         edge["id"].as_str().unwrap_or_default(),
@@ -287,7 +285,6 @@ impl Capability for Diagrams {
                         old["sentence"].as_str().unwrap_or_default()
                     ));
                 }
-            }
         }
         Ok(lines)
     }

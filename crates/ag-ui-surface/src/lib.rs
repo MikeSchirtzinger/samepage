@@ -2475,8 +2475,8 @@ impl App {
         // Resolve the initial active endpoint for the starting provider
         // (OpenAI-backed only; ACP providers manage their own credentials).
         let initial_provider = providers::find(&rt.providers.read(), &provider_id).cloned();
-        if let Some(p) = initial_provider {
-            if matches!(p.backend, providers::Backend::OpenAi) {
+        if let Some(p) = initial_provider
+            && matches!(p.backend, providers::Backend::OpenAi) {
                 let byok = rt.byok.lock().clone();
                 let ov = rt.model_overrides.lock().get(&p.id).cloned();
                 let cfg =
@@ -2493,7 +2493,6 @@ impl App {
                 );
                 *rt.openai.lock() = cfg;
             }
-        }
 
         let prompts = Arc::new(prompts);
         let human_route_token: Arc<str> = Arc::from(uuid::Uuid::new_v4().simple().to_string());
@@ -3384,11 +3383,10 @@ fn surface_route_response(path: &str, resp: RouteResponse) -> Response {
 }
 
 fn surface_status(path: &str, status: u16) -> Option<StatusCode> {
-    if (100..=599).contains(&status) {
-        if let Ok(status) = StatusCode::from_u16(status) {
+    if (100..=599).contains(&status)
+        && let Ok(status) = StatusCode::from_u16(status) {
             return Some(status);
         }
-    }
     tracing::error!(
         path,
         status,
@@ -5452,15 +5450,14 @@ async fn connections_post(State(st): State<RouterState>, Json(body): Json<JsonVa
         .insert(id.clone(), connection.model.clone().unwrap_or_default());
 
     let live = *rt.provider.lock() == id;
-    if live {
-        if let Err(error) = request_provider_switch(rt, &id).await {
+    if live
+        && let Err(error) = request_provider_switch(rt, &id).await {
             return (
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(json!({ "ok": false, "persisted": true, "error": error })),
             )
                 .into_response();
         }
-    }
     let mut snapshot = auth_snapshot(rt);
     snapshot["ok"] = json!(true);
     snapshot["saved"] = json!(id);
@@ -5799,15 +5796,14 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
 
     // Restore the "your turn" state if the tutor is mid-await. The recall
     // question itself is part of the completed transcript replay below.
-    if awaiting {
-        if let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
+    if awaiting
+        && let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
             base: BaseEvent::default(),
             name: "surface.tutor".to_string(),
             value: json!({ "state": "awaiting" }),
         })) {
             initial.push(json);
         }
-    }
 
     let reconnect_events = match turn_loop::run_blocking_surface(surface.clone(), |surface| {
         surface.state().reconnect_events()
@@ -5845,15 +5841,14 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
 
     // Replay completed conversation history so the transcript survives a
     // reload.
-    if !history.is_empty() {
-        if let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
+    if !history.is_empty()
+        && let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
             base: BaseEvent::default(),
             name: "surface.history".to_string(),
             value: json!({ "entries": history }),
         })) {
             initial.push(json);
         }
-    }
 
     // A reconnect can land while a model turn is still streaming. Completed
     // history must arrive first because clients rebuild their transcript from

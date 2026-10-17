@@ -88,8 +88,8 @@ pub fn binary_lanes(root: &Path, walked: &Walked) -> Result<Vec<Lane>, ScanError
             .collect();
 
         if bin_sections.is_empty() {
-            if root.join(&package_dir).join("src/main.rs").is_file() {
-                if let Some(name_match) = name_re.captures(package_body) {
+            if root.join(&package_dir).join("src/main.rs").is_file()
+                && let Some(name_match) = name_re.captures(package_body) {
                     let abs_offset =
                         package_section.body_start + name_match.get(0).unwrap().start();
                     lanes.push(Lane {
@@ -105,7 +105,6 @@ pub fn binary_lanes(root: &Path, walked: &Walked) -> Result<Vec<Lane>, ScanError
                         detail: "package has src/main.rs (implicit default binary)".to_string(),
                     });
                 }
-            }
         } else {
             for bin in &bin_sections {
                 let body = &manifest.contents[bin.body_start..bin.body_end];

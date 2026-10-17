@@ -288,11 +288,9 @@ impl samepage_capability::Capability for StrictSources {
                 .get(id)
                 .and_then(|r| r.props.get("path"))
                 .and_then(|p| p.as_str())
-            {
-                if !path.starts_with("src/") {
+                && !path.starts_with("src/") {
                     return Err(samepage_capability::CapError::new("outside_src", path));
                 }
-            }
         }
         Ok(())
     }

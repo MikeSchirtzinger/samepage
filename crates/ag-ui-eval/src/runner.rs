@@ -317,14 +317,13 @@ fn validate_scorers(scorers: &[crate::model::ScorerSpec], errors: &mut Vec<Strin
         if !ids.insert(scorer.id.as_str()) {
             errors.push(format!("duplicate scorer id {:?}", scorer.id));
         }
-        if let ObservationSource::StdoutJson { pointer } = &scorer.source {
-            if !pointer.starts_with('/') {
+        if let ObservationSource::StdoutJson { pointer } = &scorer.source
+            && !pointer.starts_with('/') {
                 errors.push(format!(
                     "scorer {:?} stdout_json pointer must begin with '/'",
                     scorer.id
                 ));
             }
-        }
         if matches!(scorer.source, ObservationSource::ExitCode)
             && matches!(scorer.threshold.op, ThresholdOp::Eq)
             && scorer.threshold.value == json!(0)
@@ -419,8 +418,8 @@ fn run_scenario(loaded: LoadedScenario, project_root: &Path) -> ScenarioReceipt 
         }
     };
 
-    if let Some(code) = process.receipt.exit_code {
-        if spec.execution.skip_exit_codes.contains(&code) {
+    if let Some(code) = process.receipt.exit_code
+        && spec.execution.skip_exit_codes.contains(&code) {
             let reason = extract_skip_reason(
                 &process.stdout_json,
                 spec.execution.skip_reason_pointer.as_deref(),
@@ -448,7 +447,6 @@ fn run_scenario(loaded: LoadedScenario, project_root: &Path) -> ScenarioReceipt 
                 },
             };
         }
-    }
 
     let scorer_receipts = spec
         .scorers

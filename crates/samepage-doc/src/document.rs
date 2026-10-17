@@ -57,11 +57,10 @@ impl Document {
         let captured = Arc::new(Mutex::new(Vec::new()));
         let sink = captured.clone();
         doc.observe_update_v1(CAPTURE_OBSERVER, move |txn, event| {
-                if txn.origin() == Some(&Origin::from(LOCAL)) {
-                    if let Ok(mut sink) = sink.lock() {
+                if txn.origin() == Some(&Origin::from(LOCAL))
+                    && let Ok(mut sink) = sink.lock() {
                         sink.push(event.update.clone());
                     }
-                }
             })
             .expect("a new document accepts an update observer");
         Self {

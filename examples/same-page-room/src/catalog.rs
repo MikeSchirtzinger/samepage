@@ -237,11 +237,10 @@ impl Workspace {
 
     fn listening(&self, port: u16) -> bool {
         let now = Instant::now();
-        if let Some((at, value)) = self.probes.lock().get(&port) {
-            if now.duration_since(*at) < PROBE_TTL {
+        if let Some((at, value)) = self.probes.lock().get(&port)
+            && now.duration_since(*at) < PROBE_TTL {
                 return *value;
             }
-        }
         let address = SocketAddr::from(([127, 0, 0, 1], port));
         let open = match TcpStream::connect_timeout(&address, PROBE_TIMEOUT) {
             Ok(stream) => {
@@ -413,33 +412,25 @@ fn manifest_value(manifest: &str, key: &str) -> Option<String> {
 /// — which reads as *not runnable* rather than as *not parsed*.
 fn default_port(source: &str) -> Option<(String, u16)> {
     // config::string_or("AGUI_ADDR", "127.0.0.1:8100")
-    if let Some(rest) = after(source, "\"AGUI_ADDR\"") {
-        if let Some(literal) = until(rest, ')') {
-            if let Some(host) = after(literal, "127.0.0.1:") {
-                if let Some(port) = leading_port(host) {
+    if let Some(rest) = after(source, "\"AGUI_ADDR\"")
+        && let Some(literal) = until(rest, ')')
+            && let Some(host) = after(literal, "127.0.0.1:")
+                && let Some(port) = leading_port(host) {
                     return Some(("AGUI_ADDR".to_string(), port));
                 }
-            }
-        }
-    }
     // config::port_or("CANVAS_PORT", 8091)
-    if let Some(rest) = after(source, "port_or(\"") {
-        if let Some(literal) = until(rest, ')') {
-            if let Some((name, default)) = literal.split_once(',') {
-                if let Some(port) = leading_port(default.trim()) {
+    if let Some(rest) = after(source, "port_or(\"")
+        && let Some(literal) = until(rest, ')')
+            && let Some((name, default)) = literal.split_once(',')
+                && let Some(port) = leading_port(default.trim()) {
                     return Some((name.trim_matches('"').to_string(), port));
                 }
-            }
-        }
-    }
     // let raw = configured.unwrap_or("8092");
-    if let Some(rest) = after(source, "unwrap_or(\"") {
-        if let Some(port) = leading_port(rest) {
-            if rest.starts_with(&port.to_string()) && (1024..=65535).contains(&(port as u32)) {
+    if let Some(rest) = after(source, "unwrap_or(\"")
+        && let Some(port) = leading_port(rest)
+            && rest.starts_with(&port.to_string()) && (1024..=65535).contains(&(port as u32)) {
                 return Some((String::new(), port));
             }
-        }
-    }
     None
 }
 
@@ -469,13 +460,11 @@ fn recipe_extensions(path: &Path) -> Vec<String> {
             in_extension = line.starts_with("[[extensions]]");
             continue;
         }
-        if in_extension {
-            if let Some(value) = line.strip_prefix("id") {
-                if let Some((_, id)) = value.split_once('=') {
+        if in_extension
+            && let Some(value) = line.strip_prefix("id")
+                && let Some((_, id)) = value.split_once('=') {
                     ids.push(id.trim().trim_matches('"').to_string());
                 }
-            }
-        }
     }
     ids
 }

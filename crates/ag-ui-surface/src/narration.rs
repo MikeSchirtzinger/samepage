@@ -227,13 +227,11 @@ fn sentence_break(buf: &str) -> Option<usize> {
         if b == b'\n' {
             return Some(i);
         }
-        if matches!(b, b'.' | b'!' | b'?') {
-            if let Some(next) = bytes.get(i + 1) {
-                if next.is_ascii_whitespace() {
+        if matches!(b, b'.' | b'!' | b'?')
+            && let Some(next) = bytes.get(i + 1)
+                && next.is_ascii_whitespace() {
                     return Some(i);
                 }
-            }
-        }
     }
     None
 }
@@ -590,11 +588,10 @@ struct SpeakerProcess {
 impl Drop for SpeakerProcess {
     fn drop(&mut self) {
         #[cfg(unix)]
-        if let Some(process_group) = self.process_group {
-            if process_group_exists(process_group) {
+        if let Some(process_group) = self.process_group
+            && process_group_exists(process_group) {
                 signal_speaker_group(process_group, libc::SIGKILL);
             }
-        }
         let _ = self.child.start_kill();
     }
 }
@@ -610,14 +607,13 @@ async fn terminate_speaker(speaker: &mut SpeakerProcess) {
     let _ = tokio::time::timeout(std::time::Duration::from_millis(500), speaker.child.wait()).await;
 
     #[cfg(unix)]
-    if let Some(process_group) = speaker.process_group {
-        if !wait_for_process_group_exit(process_group, std::time::Duration::from_millis(500)).await
+    if let Some(process_group) = speaker.process_group
+        && !wait_for_process_group_exit(process_group, std::time::Duration::from_millis(500)).await
         {
             signal_speaker_group(process_group, libc::SIGKILL);
             let _ =
                 wait_for_process_group_exit(process_group, std::time::Duration::from_secs(1)).await;
         }
-    }
     #[cfg(not(unix))]
     let _ = speaker.child.start_kill();
     let _ = tokio::time::timeout(std::time::Duration::from_secs(1), speaker.child.wait()).await;
@@ -874,11 +870,10 @@ mod tests {
     async fn wait_for_recorded_pid(path: &std::path::Path) -> libc::pid_t {
         tokio::time::timeout(std::time::Duration::from_secs(2), async {
             loop {
-                if let Ok(value) = std::fs::read_to_string(path) {
-                    if let Ok(pid) = value.trim().parse() {
+                if let Ok(value) = std::fs::read_to_string(path)
+                    && let Ok(pid) = value.trim().parse() {
                         return pid;
                     }
-                }
                 tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         })

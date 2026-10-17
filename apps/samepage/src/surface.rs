@@ -642,11 +642,10 @@ impl SamePageState {
                 }
             }
         }
-        if matches!(action, "decision_draft" | "atlas_decision_draft") {
-            if let Some(cement) = &self.cement {
+        if matches!(action, "decision_draft" | "atlas_decision_draft")
+            && let Some(cement) = &self.cement {
                 cement.check_evidence(&args)?;
             }
-        }
         let mut cement_result = None;
         let mut publication = None;
         let invoked = if matches!(action, "decision_cement" | "atlas_cement_decision") {
@@ -824,8 +823,8 @@ impl SamePageState {
             }
             _ => None,
         };
-        if let (Some(cement), Some(source)) = (&self.cement, &mut source_result) {
-            if source.get("facts").is_some() {
+        if let (Some(cement), Some(source)) = (&self.cement, &mut source_result)
+            && source.get("facts").is_some() {
                 let (gates, check) = cement.gates(&self.host.view())?;
                 source["facts"]["gates"] =
                     serde_json::to_value(gates).map_err(|e| e.to_string())?;
@@ -835,7 +834,6 @@ impl SamePageState {
                     .map_err(|e| e.to_string())?;
                 source["g8_check"] = check;
             }
-        }
         if matches!(
             invoked.action.as_str(),
             "source_read" | "source_list" | "sources_read"
@@ -864,14 +862,13 @@ impl SamePageState {
         };
         if invoked.action == "map_read" { self.input.acknowledge(&actor.participant, self.host.journal().seq); }
         let mut report = report;
-        if let (Some(report), Some(source)) = (&mut report, &source_result) {
-            if let Some(nodes) = report["nodes"].as_array_mut() {
+        if let (Some(report), Some(source)) = (&mut report, &source_result)
+            && let Some(nodes) = report["nodes"].as_array_mut() {
                 for node in nodes {
                     let id = node["id"].as_str().unwrap_or_default().to_string();
                     node["tier"] = source["projection"]["cards"][&id].clone();
                 }
             }
-        }
         let mut readback = report
             .as_ref()
             .and_then(|r| r["readback"].as_str())
@@ -925,8 +922,8 @@ impl SamePageState {
         {
             readback.push(text.into());
         }
-        if invoked.action == "source_read" {
-            if let Some(excerpt) = &source_result {
+        if invoked.action == "source_read"
+            && let Some(excerpt) = &source_result {
                 let excerpt = serde_json::from_value::<samepage_sources::Excerpt>(excerpt.clone())
                     .map_err(|e| e.to_string())?;
                 readback.push(
@@ -936,7 +933,6 @@ impl SamePageState {
                         .into(),
                 );
             }
-        }
         let walkthrough = if invoked.action.starts_with("walkthrough_") {
             Some(samepage_explain::read(&self.host.view(), if invoked.action == "walkthrough_read" && !flow_id.is_empty() { Some(&flow_id) } else { None }).map_err(|e| e.to_string())?)
         } else { None };
@@ -964,8 +960,8 @@ impl SamePageState {
         }
         let result = serde_json::to_string(&reply).map_err(|error| error.to_string());
         drop(_operation);
-        if invoked.commit.is_some() && (matches!(invoked.action.as_str(), "walkthrough_define" | "walkthrough_advance") || (invoked.action == "walkthrough_control" && reenter)) {
-            if let Err(error) = crate::host::explain::attend(&self.host.view(), &flow_id, surface_actor, self.input.attention().as_deref()) {
+        if invoked.commit.is_some() && (matches!(invoked.action.as_str(), "walkthrough_define" | "walkthrough_advance") || (invoked.action == "walkthrough_control" && reenter))
+            && let Err(error) = crate::host::explain::attend(&self.host.view(), &flow_id, surface_actor, self.input.attention().as_deref()) {
                 // Attention is ephemeral and occurs after the durable commit.
                 // Report its failure without calling the accepted write refused.
                 return result.and_then(|raw| {
@@ -974,7 +970,6 @@ impl SamePageState {
                     serde_json::to_string(&value).map_err(|e|e.to_string())
                 });
             }
-        }
         result
     }
 }
@@ -1033,12 +1028,11 @@ impl SamePageState {
             let report = review.read(&view, &actor.participant)?;
             section(&mut out, "REVIEW", report["readback"].as_str().unwrap_or_default());
         }
-        if let Some(panes) = &self.panes {
-            if view.records().any(|r| r.kind == "pane") {
+        if let Some(panes) = &self.panes
+            && view.records().any(|r| r.kind == "pane") {
                 let text = panes.read(&view, &self.host.journal(), &actor.participant)?;
                 section(&mut out, "PANES", &text);
             }
-        }
         if let Some(sources) = &self.sources {
             let mut result = sources.action("sources_read", &json!({}), &view)?;
             if let Some(cement) = &self.cement {
@@ -1160,13 +1154,12 @@ impl SamePageState {
             out.push_str(&format!("woken by: {line}\n"));
         }
         let touches = |set: &[&str]| kinds.iter().any(|k| set.contains(&k.as_str()));
-        if touches(&["mark", "claim", "understanding-context"]) {
-            if let Some(review) = &self.review {
+        if touches(&["mark", "claim", "understanding-context"])
+            && let Some(review) = &self.review {
                 let report = review.read(&view, reader)?;
                 out.push('\n');
                 out.push_str(report["readback"].as_str().unwrap_or_default());
             }
-        }
         if touches(&["shape"]) && self.host.composition().descriptor("sketch").is_some() {
             let read = samepage_sketch::Sketch
                 .plan(&samepage_capability::Call { action: "sketch_read".into(), args: json!({}) }, &view)
@@ -1492,13 +1485,11 @@ fn caller_names(
     view: &samepage_capability::View,
 ) -> Result<samepage_doc::host::Invoked, String> {
     let mut rename = |from: String, to: Option<&str>| {
-        if let Some(to) = to.filter(|t| !t.is_empty()) {
-            if !invoked.ids.contains_key(to) {
-                if let Some(id) = invoked.ids.remove(&from) {
+        if let Some(to) = to.filter(|t| !t.is_empty())
+            && !invoked.ids.contains_key(to)
+                && let Some(id) = invoked.ids.remove(&from) {
                     invoked.ids.insert(to.to_string(), id);
                 }
-            }
-        }
     };
     match invoked.action.as_str() {
         "sketch" => {

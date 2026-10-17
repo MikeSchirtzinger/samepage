@@ -736,13 +736,11 @@ impl Host {
             .held
             .iter()
             .find(|(participant, _)| participant == &actor.participant)
-        {
-            if &held.actor != actor {
+            && &held.actor != actor {
                 return Err(FrameRefusal::ActorChanged {
                     participant: actor.participant.clone(),
                 });
             }
-        }
         let held = inner
             .held
             .iter()
@@ -918,11 +916,10 @@ impl Host {
         }
         let branches_after = branch_ids(&candidate);
         for (id, before) in &branches_before {
-            if let Some(after) = branches_after.get(id) {
-                if after != before {
+            if let Some(after) = branches_after.get(id)
+                && after != before {
                     return Err(FrameRefusal::Replaced(id.clone()));
                 }
-            }
         }
 
         let before = layout::view(&live_inspection, &live_revision);

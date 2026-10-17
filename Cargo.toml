@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
   "crates/samepage",
   "crates/convergence-attrs",
@@ -38,7 +38,7 @@ members = [
 ]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 rust-version = "1.99"
 license = "MIT"
 repository = "https://github.com/MikeSchirtzinger/samepage"

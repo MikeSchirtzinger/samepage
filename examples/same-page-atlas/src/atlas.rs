@@ -396,11 +396,10 @@ impl AtlasState {
     }
 
     pub(crate) fn agent_byline(&self) -> String {
-        if let Some(actor) = ag_ui_surface::current_actor() {
-            if let Some(label) = actor.label {
+        if let Some(actor) = ag_ui_surface::current_actor()
+            && let Some(label) = actor.label {
                 return label;
             }
-        }
         self.actor_label
             .lock()
             .clone()
@@ -5086,8 +5085,8 @@ fn actions(state: &Arc<AtlasState>) -> Vec<ToolDef> {
                     // any of it is written, so one stale line range cannot
                     // leave half a subgraph on the human's screen.
                     for (index, node) in nodes.iter().enumerate() {
-                        if let Some(path) = &node.patch.path {
-                            if let Err(error) = state
+                        if let Some(path) = &node.patch.path
+                            && let Err(error) = state
                                 .verify_source(
                                     path,
                                     node.patch.lines.as_deref().unwrap_or_default(),
@@ -5098,7 +5097,6 @@ fn actions(state: &Arc<AtlasState>) -> Vec<ToolDef> {
                                     "nodes[{index}]: that source reference does not hold: {error}"
                                 ));
                             }
-                        }
                     }
 
                     let state = state.clone();
@@ -5166,15 +5164,14 @@ fn actions(state: &Arc<AtlasState>) -> Vec<ToolDef> {
                 let state = state.clone();
                 move |args: &JsonValue| {
                     let patch = node_patch(args);
-                    if let Some(path) = &patch.path {
-                        if let Err(error) = state
+                    if let Some(path) = &patch.path
+                        && let Err(error) = state
                             .verify_source(path, patch.lines.as_deref().unwrap_or_default(), "")
                         {
                             return Effect::Reject(format!(
                                 "that source reference does not hold: {error}"
                             ));
                         }
-                    }
                     let state = state.clone();
                     Effect::Mutate(Box::new(move |_| {
                         let id = {

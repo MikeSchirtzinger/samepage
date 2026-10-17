@@ -898,19 +898,18 @@ fn validate_step_state(state: &StepSolveState) -> Result<(), AtlasError> {
         }
         _ => {}
     }
-    if let Some(fault) = &state.divergence {
-        if fault.variable.is_empty()
+    if let Some(fault) = &state.divergence
+        && (fault.variable.is_empty()
             || !fault.local.is_finite()
             || !fault.remote.is_finite()
             || !fault.delta.is_finite()
             || !fault.tolerance.is_finite()
             || fault.delta < 0.0
             || fault.tolerance < 0.0
-            || fault.delta <= fault.tolerance
+            || fault.delta <= fault.tolerance)
         {
             return Err("stored divergence fault is incomplete or invalid".to_string());
         }
-    }
     Ok(())
 }
 

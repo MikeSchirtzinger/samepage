@@ -312,8 +312,8 @@ impl Capability for Sketch {
             }
             if !props.is_empty() {
                 let s = shape(r);
-                if s.points.len() < 2 && matches!(s.form.as_str(), "line" | "arrow") {
-                    if let Some(path) = drawing(view).shape_path(&s) {
+                if s.points.len() < 2 && matches!(s.form.as_str(), "line" | "arrow")
+                    && let Some(path) = drawing(view).shape_path(&s) {
                         props.insert(
                             "points".into(),
                             format_points(
@@ -325,7 +325,6 @@ impl Capability for Sketch {
                             .into(),
                         );
                     }
-                }
                 ops.push(set(&r.id, props));
             }
         }
@@ -347,12 +346,10 @@ impl Capability for Sketch {
                 target: Target::Id(id),
                 props,
             } = op
-            {
-                if let Some(s) = d
+                && let Some(s) = d
                     .shape(id)
                     .filter(|s| matches!(s.form.as_str(), "line" | "arrow"))
-                {
-                    if let Some(path) = d.shape_path(s) {
+                    && let Some(path) = d.shape_path(s) {
                         props.insert(
                             "points".into(),
                             format_points(
@@ -364,8 +361,6 @@ impl Capability for Sketch {
                             .into(),
                         );
                     }
-                }
-            }
         }
         Ok(plan)
     }
@@ -690,11 +685,10 @@ fn check_shape(r: &Record, view: &View) -> Result<(), CapError> {
         "angle",
         "z",
     ] {
-        if let Some(v) = r.props.get(key) {
-            if v.as_f64().is_none() {
+        if let Some(v) = r.props.get(key)
+            && v.as_f64().is_none() {
                 return Err(invalid(format!("{key} must be numeric")));
             }
-        }
     }
     for (key, value) in [("x", s.x), ("y", s.y)] {
         rules::coordinate(value, key)?;
@@ -950,11 +944,10 @@ fn place(p: &ShapePatch, view: &View, reference: &str) -> Result<(Op, Record), C
 fn rewrite_refs(op: &mut Op, refs: &BTreeMap<String, String>) {
     if let Op::Create { props, .. } | Op::Set { props, .. } = op {
         for key in ["from", "to", "frame"] {
-            if let Some(Value::Scalar(Scalar::Str(id))) = props.get(key) {
-                if let Some(reference) = refs.get(id) {
+            if let Some(Value::Scalar(Scalar::Str(id))) = props.get(key)
+                && let Some(reference) = refs.get(id) {
                     props.insert(key.into(), Value::reference(reference));
                 }
-            }
         }
     }
 }

@@ -918,12 +918,11 @@ fn ranks(n: usize, edges: &[(usize, usize)]) -> Vec<usize> {
     let mut adj: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut indeg = vec![0usize; n];
     for &(u, v) in edges {
-        if u != v && u < n && v < n {
-            if let (Some(neighbors), Some(degree)) = (adj.get_mut(u), indeg.get_mut(v)) {
+        if u != v && u < n && v < n
+            && let (Some(neighbors), Some(degree)) = (adj.get_mut(u), indeg.get_mut(v)) {
                 neighbors.push(v);
                 *degree += 1;
             }
-        }
     }
     let mut rank = vec![0usize; n];
     let mut work = indeg.clone();

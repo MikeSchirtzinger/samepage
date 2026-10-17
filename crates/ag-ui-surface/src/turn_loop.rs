@@ -1305,8 +1305,8 @@ pub(crate) async fn run_supervisor(
 /// before advancing the HTTP-visible adoption generation.
 fn adopt_provider(rt: &RuntimeState, new_id: String) {
     let provider = providers::find(&rt.providers.read(), &new_id).cloned();
-    if let Some(provider) = provider {
-        if matches!(provider.backend, providers::Backend::OpenAi) {
+    if let Some(provider) = provider
+        && matches!(provider.backend, providers::Backend::OpenAi) {
             let byok = rt.byok.lock().clone();
             let override_model = rt.model_overrides.lock().get(&new_id).cloned();
             let config = openai::resolve_openai_config(
@@ -1317,7 +1317,6 @@ fn adopt_provider(rt: &RuntimeState, new_id: String) {
             );
             *rt.openai.lock() = config;
         }
-    }
     *rt.provider.lock() = new_id.clone();
     rt.provider_generation.fetch_add(1, Ordering::SeqCst);
     rt.activity.record_provider(

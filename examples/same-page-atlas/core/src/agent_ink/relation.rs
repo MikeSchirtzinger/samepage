@@ -383,8 +383,8 @@ pub fn create_relation(
         .create_object_with_props(KIND_RELATION, author.clone(), &props)
         .map_err(|error| format!("could not create relation: {error}"))?;
 
-    if let Some((dependent_id, dependent_name, value)) = derived_update {
-        if let Err(error) = scene.set_props(
+    if let Some((dependent_id, dependent_name, value)) = derived_update
+        && let Err(error) = scene.set_props(
             &dependent_id,
             &[
                 ("state", PropValue::Str("derived".to_string())),
@@ -401,7 +401,6 @@ pub fn create_relation(
                 )),
             };
         }
-    }
 
     Ok(id.into_string())
 }

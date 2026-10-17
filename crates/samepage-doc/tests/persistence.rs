@@ -52,10 +52,10 @@ fn legacy_document() -> Vec<u8> {
     );
     extra.push_back(&mut txn, "entry");
     drop(txn);
-    let bytes = doc
+    
+    doc
         .transact()
-        .encode_state_as_update_v1(&yrs::StateVector::default());
-    bytes
+        .encode_state_as_update_v1(&yrs::StateVector::default())
 }
 
 #[test]

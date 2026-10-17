@@ -151,11 +151,10 @@ fn emit_or_exit<T: Serialize>(value: &T, output: Option<&Path>, exit_code: i32) 
         Ok(serialized) => serialized,
         Err(error) => exit_with_cli_error(format!("could not serialize receipt: {error}")),
     };
-    if let Some(path) = output {
-        if let Err(error) = write_output(path, &serialized) {
+    if let Some(path) = output
+        && let Err(error) = write_output(path, &serialized) {
             exit_with_cli_error(error);
         }
-    }
     println!("{serialized}");
     if exit_code != 0 {
         std::process::exit(exit_code);
@@ -163,8 +162,8 @@ fn emit_or_exit<T: Serialize>(value: &T, output: Option<&Path>, exit_code: i32) 
 }
 
 fn write_output(path: &Path, serialized: &str) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty() {
             fs::create_dir_all(parent).map_err(|error| {
                 format!(
                     "could not create receipt directory {}: {error}",
@@ -172,7 +171,6 @@ fn write_output(path: &Path, serialized: &str) -> Result<(), String> {
                 )
             })?;
         }
-    }
     fs::write(path, format!("{serialized}\n"))
         .map_err(|error| format!("could not write receipt {}: {error}", path.display()))
 }

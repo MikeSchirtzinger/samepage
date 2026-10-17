@@ -429,8 +429,8 @@ pub fn merge_theme(current: &Theme, args: &JsonValue) -> Result<Theme, String> {
         }
         theme.radius = radius as u8;
     }
-    if let Some(scale) = args.get("scale") {
-        if !scale.is_null() {
+    if let Some(scale) = args.get("scale")
+        && !scale.is_null() {
             let scale = scale
                 .as_f64()
                 .ok_or_else(|| "scale must be a number".to_string())?;
@@ -439,7 +439,6 @@ pub fn merge_theme(current: &Theme, args: &JsonValue) -> Result<Theme, String> {
             }
             theme.scale = (scale * 100.0).round() / 100.0;
         }
-    }
     Ok(theme)
 }
 
