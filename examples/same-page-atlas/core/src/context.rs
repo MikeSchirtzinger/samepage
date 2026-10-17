@@ -87,9 +87,10 @@ impl ContextState {
                     return Err("conversation context history contains a cycle".into());
                 }
                 if seen.insert(parent.clone())
-                    && let Some(previous) = self.entries.iter().find(|item| item.id == parent) {
-                        pending.extend(previous.replaces.iter().cloned());
-                    }
+                    && let Some(previous) = self.entries.iter().find(|item| item.id == parent)
+                {
+                    pending.extend(previous.replaces.iter().cloned());
+                }
             }
         }
         self.heads = self

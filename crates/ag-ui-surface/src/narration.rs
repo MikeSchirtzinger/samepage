@@ -19,18 +19,18 @@
 //! a Surface's own chrome, out of this module's scope entirely.
 
 use std::collections::VecDeque;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use tokio::sync::mpsc;
 use tracing::warn;
 
+use ag_ui_core::JsonValue;
 use ag_ui_core::event::{
     BaseEvent, CustomEvent, Event as AgUiEvent, TextMessageContentEvent, TextMessageEndEvent,
     TextMessageStartEvent,
 };
 use ag_ui_core::types::MessageId;
-use ag_ui_core::JsonValue;
 
 use crate::runtime_state::{ActiveMessage, RuntimeState};
 use crate::{ActivityOutcome, Caller};
@@ -229,9 +229,10 @@ fn sentence_break(buf: &str) -> Option<usize> {
         }
         if matches!(b, b'.' | b'!' | b'?')
             && let Some(next) = bytes.get(i + 1)
-                && next.is_ascii_whitespace() {
-                    return Some(i);
-                }
+            && next.is_ascii_whitespace()
+        {
+            return Some(i);
+        }
     }
     None
 }
@@ -589,9 +590,10 @@ impl Drop for SpeakerProcess {
     fn drop(&mut self) {
         #[cfg(unix)]
         if let Some(process_group) = self.process_group
-            && process_group_exists(process_group) {
-                signal_speaker_group(process_group, libc::SIGKILL);
-            }
+            && process_group_exists(process_group)
+        {
+            signal_speaker_group(process_group, libc::SIGKILL);
+        }
         let _ = self.child.start_kill();
     }
 }
@@ -609,11 +611,10 @@ async fn terminate_speaker(speaker: &mut SpeakerProcess) {
     #[cfg(unix)]
     if let Some(process_group) = speaker.process_group
         && !wait_for_process_group_exit(process_group, std::time::Duration::from_millis(500)).await
-        {
-            signal_speaker_group(process_group, libc::SIGKILL);
-            let _ =
-                wait_for_process_group_exit(process_group, std::time::Duration::from_secs(1)).await;
-        }
+    {
+        signal_speaker_group(process_group, libc::SIGKILL);
+        let _ = wait_for_process_group_exit(process_group, std::time::Duration::from_secs(1)).await;
+    }
     #[cfg(not(unix))]
     let _ = speaker.child.start_kill();
     let _ = tokio::time::timeout(std::time::Duration::from_secs(1), speaker.child.wait()).await;
@@ -871,9 +872,10 @@ mod tests {
         tokio::time::timeout(std::time::Duration::from_secs(2), async {
             loop {
                 if let Ok(value) = std::fs::read_to_string(path)
-                    && let Ok(pid) = value.trim().parse() {
-                        return pid;
-                    }
+                    && let Ok(pid) = value.trim().parse()
+                {
+                    return pid;
+                }
                 tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             }
         })

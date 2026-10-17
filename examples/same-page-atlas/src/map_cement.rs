@@ -21,7 +21,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use samepage_extract::Lane;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use sha2::{Digest, Sha256};
 
 use crate::source::Repo;
@@ -71,7 +71,13 @@ pub fn removal_obligation_id(lane_id: &str) -> String {
 /// cements that claim must check every one of them, not just the first.
 /// `None` when any binding cannot be read or is empty text, since a
 /// half-checkable gate is worse than an honest skip (see `CementResult::skipped`).
-fn obligation_for(node: &Node, bindings: &[Binding], repo: &Repo, expected: JsonValue, note: &str) -> Option<JsonValue> {
+fn obligation_for(
+    node: &Node,
+    bindings: &[Binding],
+    repo: &Repo,
+    expected: JsonValue,
+    note: &str,
+) -> Option<JsonValue> {
     if bindings.is_empty() {
         return None;
     }
@@ -157,7 +163,9 @@ pub fn build(
     let mut minted = Vec::new();
     let mut skipped = Vec::new();
     for node in &atlas.nodes {
-        let Some(computed) = tiers.get(&node.id) else { continue };
+        let Some(computed) = tiers.get(&node.id) else {
+            continue;
+        };
         let tier = computed["tier"].as_str().unwrap_or("");
         let struck = computed["struck"].as_bool().unwrap_or(false);
         let bindings = crate::tier::effective_bindings(node, registry);
@@ -170,7 +178,10 @@ pub fn build(
                 "removal gate: the replaced card's own bound content must be gone",
             ) {
                 Some(obligation) => {
-                    minted.push((node.id.clone(), obligation["id"].as_str().unwrap().to_string()));
+                    minted.push((
+                        node.id.clone(),
+                        obligation["id"].as_str().unwrap().to_string(),
+                    ));
                     obligations.push(obligation);
                 }
                 None => skipped.push(format!("{} (struck, no checkable source)", node.label)),
@@ -186,7 +197,10 @@ pub fn build(
                 "the card's cited content must still be in every file it vouches for",
             ) {
                 Some(obligation) => {
-                    minted.push((node.id.clone(), obligation["id"].as_str().unwrap().to_string()));
+                    minted.push((
+                        node.id.clone(),
+                        obligation["id"].as_str().unwrap().to_string(),
+                    ));
                     obligations.push(obligation);
                 }
                 None => skipped.push(format!("{} ({tier}, no checkable source)", node.label)),
@@ -209,12 +223,15 @@ pub fn build(
 pub fn merge_and_write(path: &Path, entries: Vec<JsonValue>) -> Result<(), String> {
     let mut by_id: BTreeMap<String, JsonValue> = match std::fs::read(path) {
         Ok(bytes) => {
-            let existing: JsonValue = serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
+            let existing: JsonValue =
+                serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
             existing["obligations"]
                 .as_array()
                 .into_iter()
                 .flatten()
-                .filter_map(|obligation| Some((obligation["id"].as_str()?.to_string(), obligation.clone())))
+                .filter_map(|obligation| {
+                    Some((obligation["id"].as_str()?.to_string(), obligation.clone()))
+                })
                 .collect()
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => BTreeMap::new(),
@@ -242,10 +259,16 @@ pub fn merge_and_write(path: &Path, entries: Vec<JsonValue>) -> Result<(), Strin
 /// Write the built document (merged with whatever is already there) and
 /// record which obligation belongs to which node in the sidecar registry,
 /// so the next review can ask G8 whether it passed.
-pub fn write(result: &CementResult, registry: &mut TierRegistry, registry_path: &Path) -> Result<(), String> {
+pub fn write(
+    result: &CementResult,
+    registry: &mut TierRegistry,
+    registry_path: &Path,
+) -> Result<(), String> {
     merge_and_write(&result.path, result.obligations.clone())?;
     for (node_id, obligation_id) in &result.minted {
-        registry.cemented.insert(node_id.clone(), obligation_id.clone());
+        registry
+            .cemented
+            .insert(node_id.clone(), obligation_id.clone());
     }
     registry.save(registry_path)
 }
@@ -269,7 +292,10 @@ mod tests {
 
     #[test]
     fn the_anchor_pattern_escapes_regex_metacharacters_and_skips_blank_lines() {
-        assert_eq!(anchor_pattern("\n  \nfn main() {\n"), Some("fn main\\(\\) \\{".to_string()));
+        assert_eq!(
+            anchor_pattern("\n  \nfn main() {\n"),
+            Some("fn main\\(\\) \\{".to_string())
+        );
         assert_eq!(anchor_pattern("   \n  \n"), None);
     }
 
@@ -287,7 +313,11 @@ mod tests {
             .iter()
             .map(|o| o["id"].as_str().unwrap())
             .collect();
-        assert_eq!(ids, vec!["A", "B"], "the second write must not erase the first");
+        assert_eq!(
+            ids,
+            vec!["A", "B"],
+            "the second write must not erase the first"
+        );
         merge_and_write(&path, vec![json!({"id": "A", "value": 99})]).unwrap();
         let document: JsonValue = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         let a = document["obligations"]
@@ -296,7 +326,10 @@ mod tests {
             .iter()
             .find(|o| o["id"] == "A")
             .unwrap();
-        assert_eq!(a["value"], 99, "an id present in the new entries must be replaced, not duplicated");
+        assert_eq!(
+            a["value"], 99,
+            "an id present in the new entries must be replaced, not duplicated"
+        );
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

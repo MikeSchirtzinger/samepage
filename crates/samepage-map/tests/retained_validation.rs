@@ -1,6 +1,6 @@
 use samepage_capability::{Capability, Composition};
-use samepage_doc::{host::Host, Actor, Caller};
-use samepage_map::{validation, Map};
+use samepage_doc::{Actor, Caller, host::Host};
+use samepage_map::{Map, validation};
 use serde_json::json;
 use std::sync::Arc;
 fn host() -> Host {
@@ -96,17 +96,20 @@ fn two_constraint_cycle_is_the_minimal_unsat_core() {
         p["constraint_state"],
         json!({"status":"unsat","core":expected})
     );
-    assert!(p["constraints"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|c| c["status"] == "sat"));
-    assert!(h
-        .invoke(&actor(), "map_read", json!({}))
-        .unwrap()
-        .readback
-        .join("\n")
-        .contains("UNSAT sequence cycle"));
+    assert!(
+        p["constraints"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|c| c["status"] == "sat")
+    );
+    assert!(
+        h.invoke(&actor(), "map_read", json!({}))
+            .unwrap()
+            .readback
+            .join("\n")
+            .contains("UNSAT sequence cycle")
+    );
 }
 #[test]
 fn sequence_cycles_do_not_mix_axes() {

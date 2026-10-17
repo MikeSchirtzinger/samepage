@@ -7,7 +7,7 @@ use samepage_capability::{
     Descriptor, Effect, LegendEntry, Op, Origin, Plan, Record, Target, Trigger, Value, View,
 };
 use serde::Deserialize;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use std::collections::BTreeSet;
 
 pub const ID: &str = "architecture";
@@ -26,11 +26,19 @@ pub fn descriptor() -> Descriptor {
     propose.input_schema = json!({"type":"object","required":["title","baseline_revision"],"properties":{
         "title":{"type":"string","minLength":1,"maxLength":160},"baseline_revision":{"type":"string"},"previous":{"type":"string"},
         "remove":{"type":"array","maxItems":4096,"items":edge},"add":{"type":"array","maxItems":4096,"items":edge}},"additionalProperties":false});
-    let mut read = ActionDecl::new("architecture_read", Audience::Both, Effect::Query,
-        "Read the semantic graph revision, proposal comparisons, potential upstream paths and human verdicts. Layout changes do not stale a baseline.");
+    let mut read = ActionDecl::new(
+        "architecture_read",
+        Audience::Both,
+        Effect::Query,
+        "Read the semantic graph revision, proposal comparisons, potential upstream paths and human verdicts. Layout changes do not stale a baseline.",
+    );
     read.input_schema = json!({"type":"object","properties":{},"additionalProperties":false});
-    let mut decide = ActionDecl::new("architecture_decide", Audience::Human, Effect::Mutate,
-        "Accept or reject one retained proposal revision. This human verdict records agreement, without applying relationships or cementing code.");
+    let mut decide = ActionDecl::new(
+        "architecture_decide",
+        Audience::Human,
+        Effect::Mutate,
+        "Accept or reject one retained proposal revision. This human verdict records agreement, without applying relationships or cementing code.",
+    );
     decide.input_schema = json!({"type":"object","required":["id","verdict"],"properties":{"id":{"type":"string"},"verdict":{"enum":["accepted","rejected"]}},"additionalProperties":false});
     let mut d = Descriptor::new(ID, VERSION, Artifact::Wasm)
         .depends_on(
@@ -233,9 +241,10 @@ impl Capability for Architecture {
             };
             let p = graph::project(&r.id, string(r, "definition"), String::new())?;
             if let Some(v) = r.props.get("verdict")
-                && !matches!(v.as_str(), Some("accepted" | "rejected")) {
-                    return Err(invalid("proposal verdict must be accepted or rejected"));
-                }
+                && !matches!(v.as_str(), Some("accepted" | "rejected"))
+            {
+                return Err(invalid("proposal verdict must be accepted or rejected"));
+            }
             let mut seen = BTreeSet::from([r.id.as_str()]);
             let mut prev = p.definition.previous;
             let baseline = p.definition.baseline;

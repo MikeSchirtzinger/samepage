@@ -32,9 +32,9 @@ use sha2::{Digest, Sha256};
 
 use super::mode::AgentInkMode;
 use super::solve::{DivergenceFault, SolveStatus};
-use super::step::{step_recorded_by, stored_step, StoredStep};
+use super::step::{StoredStep, step_recorded_by, stored_step};
 use super::variable::VarState;
-use crate::{read, AtlasError};
+use crate::{AtlasError, read};
 
 /// One variable's value inside a citable step, joined with the document-wide
 /// facts about it (`unit`, `state`) that [`StoredStep`] itself does not carry
@@ -201,8 +201,8 @@ fn citable_identity(mode: AgentInkMode, stored: &StoredStep) -> String {
 mod tests {
     use super::*;
     use crate::agent_ink::{
-        advance_step_with_options, create_relation, create_variable, record_current_step,
-        set_agent_ink_mode, solve, SolveOptions,
+        SolveOptions, advance_step_with_options, create_relation, create_variable,
+        record_current_step, set_agent_ink_mode, solve,
     };
     use ag_ui_canvas::scene::Author;
 

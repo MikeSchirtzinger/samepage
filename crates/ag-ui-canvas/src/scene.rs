@@ -23,13 +23,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::{
-    Any, Doc, Map, MapPrelim, MapRef, Number, Out, ReadTxn, StateVector, Transact, Update,
-};
+use yrs::{Any, Doc, Map, MapPrelim, MapRef, Number, Out, ReadTxn, StateVector, Transact, Update};
 
 use crate::blob::DType;
 use crate::codec::BlobHeader;
-use crate::ids::{mint_object_id, ObjectId};
+use crate::ids::{ObjectId, mint_object_id};
 
 /// A registered update observer. Dropping it unregisters the callback.
 pub struct UpdateSubscription {
@@ -537,21 +535,23 @@ impl Scene {
             _ => {
                 return Err(SceneError::InvalidData(format!(
                     "object `{object_id}` blob id must be a 16-digit hexadecimal string"
-                )))
+                )));
             }
         };
         let exact_u32 = |index: usize, key: &str| -> Result<u32, SceneError> {
             let value = match get_any(index, key)? {
                 Any::Number(Number::Float(number)) => *number,
-                Any::Number(Number::Int(number)) => u32::try_from(*number).map(f64::from).map_err(|_| {
-                    SceneError::InvalidData(format!(
-                        "object `{object_id}` blob field `{key}` is outside u32"
-                    ))
-                })?,
+                Any::Number(Number::Int(number)) => {
+                    u32::try_from(*number).map(f64::from).map_err(|_| {
+                        SceneError::InvalidData(format!(
+                            "object `{object_id}` blob field `{key}` is outside u32"
+                        ))
+                    })?
+                }
                 _ => {
                     return Err(SceneError::InvalidData(format!(
                         "object `{object_id}` blob field `{key}` must be an exact u32"
-                    )))
+                    )));
                 }
             };
             (value.is_finite()
@@ -634,7 +634,7 @@ impl Scene {
                     _ => {
                         return Err(SceneError::InvalidData(format!(
                             "object `{key}` is not a map"
-                        )))
+                        )));
                     }
                 };
                 let invalid_field = |field: &str, expected: &str| {
@@ -768,7 +768,10 @@ impl Scene {
 
     /// See the native variant; wasm drops the `Send + Sync` bounds.
     #[cfg(target_arch = "wasm32")]
-    pub fn on_update(&self, cb: impl Fn(&[u8]) + 'static) -> Result<UpdateSubscription, SceneError> {
+    pub fn on_update(
+        &self,
+        cb: impl Fn(&[u8]) + 'static,
+    ) -> Result<UpdateSubscription, SceneError> {
         let key = UpdateSubscription::next_key();
         self.doc
             .observe_update_v1(key.as_str(), move |_txn, event| cb(&event.update))

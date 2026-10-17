@@ -275,10 +275,12 @@ fn tool_call_arguments_assemble_into_a_tool_call() {
         json!({"type": "TOOL_CALL_END", "toolCallId": "call_1"}),
     );
     match &finished.updates[..] {
-        [Update::ToolCallFinished {
-            tool_call,
-            parent_message_id,
-        }] => {
+        [
+            Update::ToolCallFinished {
+                tool_call,
+                parent_message_id,
+            },
+        ] => {
             assert_eq!(&*tool_call.id, "call_1");
             assert_eq!(tool_call.function.name, "search");
             assert_eq!(tool_call.function.arguments, r#"{"q":"rust"}"#);

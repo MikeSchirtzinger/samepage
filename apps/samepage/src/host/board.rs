@@ -1,9 +1,9 @@
 //! Native board adapter: authenticated callers, persistence and notifications.
 //! This store never participates in the document's CRDT transaction pipeline.
 use ag_ui_surface::{ActionAudience, ActionDef, Actor, Caller, Effect};
-use samepage_board::{advisory::CementBundle, Board, Context};
+use samepage_board::{Board, Context, advisory::CementBundle};
 use samepage_capability::{Audience, Call};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     fs::{self, OpenOptions},
@@ -233,7 +233,7 @@ impl BoardHost {
                             None => {
                                 return Effect::Reject(
                                     "authenticated board caller is missing".into(),
-                                )
+                                );
                             }
                         };
                         let args = args.clone();

@@ -1,4 +1,4 @@
-use samepage_board::assertion::{catalog, RelationKind};
+use samepage_board::assertion::{RelationKind, catalog};
 use samepage_board::*;
 const NOW: &str = "2026-10-08T00:00:00Z";
 trait TestClock {
@@ -243,7 +243,7 @@ fn retracting_takes_dangling_relations_with_it() {
 #[path = "../../../apps/samepage/src/host/board.rs"]
 mod native;
 use ag_ui_surface::{Actor, Caller};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -299,14 +299,15 @@ fn the_agent_cannot_reach_the_humans_half_and_the_reverse() {
         );
     }
     write_claim(&h, "a").unwrap();
-    assert!(h
-        .invoke_as(
+    assert!(
+        h.invoke_as(
             &agent(),
             "board_mark",
             json!({"id":"a","mark":"agree"}),
             "revision"
         )
-        .is_err());
+        .is_err()
+    );
     let board = h.snapshot();
     assert_eq!(
         board["board"]["entries"][0]["author"],
@@ -430,14 +431,15 @@ fn the_agent_can_preview_cement_but_only_the_human_action_writes_it() {
     );
     let target = d.join("cemented");
     assert!(!target.exists());
-    assert!(h
-        .invoke_as(
+    assert!(
+        h.invoke_as(
             &agent(),
             "atlas_cement",
             json!({"directory":target}),
             "revision"
         )
-        .is_err());
+        .is_err()
+    );
     h.invoke_as(
         &human(),
         "board_cement",
@@ -449,23 +451,26 @@ fn the_agent_can_preview_cement_but_only_the_human_action_writes_it() {
         target.join("obligations-v0.1.json").is_file()
             && target.join("cement-receipt.json").is_file()
     );
-    assert!(h
-        .invoke_as(
+    assert!(
+        h.invoke_as(
             &human(),
             "board_cement",
             json!({"directory":target}),
             "revision"
         )
-        .is_err());
+        .is_err()
+    );
 }
 #[test]
 fn save_failure_refuses_publication_and_does_not_change_memory() {
     let d = dir("save-failure");
     let h = host(&d);
     std::fs::create_dir(d.join("board.json")).unwrap();
-    assert!(write_claim(&h, "a")
-        .unwrap_err()
-        .contains("persistence failed"));
+    assert!(
+        write_claim(&h, "a")
+            .unwrap_err()
+            .contains("persistence failed")
+    );
     assert_eq!(h.revision(), 0);
 }
 #[test]
@@ -539,7 +544,9 @@ fn advisory_golden_bytes_and_old_missing_provenance_are_preserved() {
         include_bytes!("fixtures/cement-receipt.json")
     );
     let old: Board = serde_json::from_str(include_str!("fixtures/old-board.json")).unwrap();
-    assert!(samepage_board::advisory::propose_at(&old, "revision", NOW)
-        .unwrap_err()
-        .contains("missing authorship timestamp"));
+    assert!(
+        samepage_board::advisory::propose_at(&old, "revision", NOW)
+            .unwrap_err()
+            .contains("missing authorship timestamp")
+    );
 }

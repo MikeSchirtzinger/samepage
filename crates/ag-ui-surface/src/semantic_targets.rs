@@ -14,13 +14,13 @@
 //! [`crate::App`], not the presence contract.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 use crate::{
     ActionRouteDef, Actor, Caller, ClientModule, Effect, RouteDef, SnapshotPngFuture, StateBacking,
@@ -439,9 +439,9 @@ impl SemanticTargetService {
     pub fn with_resolver(
         namespaces: impl IntoIterator<Item = String>,
         resolver: impl Fn(&SemanticTargetRef) -> Result<Option<SemanticTarget>, String>
-            + Send
-            + Sync
-            + 'static,
+        + Send
+        + Sync
+        + 'static,
         publish: impl Fn(AttentionSnapshot) + Send + Sync + 'static,
     ) -> Result<Self, String> {
         Self::new(namespaces, Arc::new(resolver), Arc::new(publish))
@@ -1094,7 +1094,9 @@ impl SurfaceState for HostedState {
         self.inner.state().agent_guide()
     }
 
-    fn activity_dropped(&self) -> u64 { self.inner.state().activity_dropped() }
+    fn activity_dropped(&self) -> u64 {
+        self.inner.state().activity_dropped()
+    }
 
     fn activity_feed(&self) -> Option<&crate::ActivityFeed> {
         self.inner.state().activity_feed()

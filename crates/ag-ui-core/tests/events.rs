@@ -12,6 +12,7 @@
 
 #[cfg(test)]
 mod tests {
+    use ag_ui_core::JsonValue;
     use ag_ui_core::event::{
         ActivityDeltaEvent, ActivitySnapshotEvent, BaseEvent, Event as AgUiEvent, EventType,
         ReasoningEncryptedValueEvent, ReasoningEncryptedValueSubtype, ReasoningEndEvent,
@@ -20,7 +21,6 @@ mod tests {
         RunStartedEvent, TextMessageChunkEvent, TextMessageStartEvent,
     };
     use ag_ui_core::types::{Interrupt, MessageId, Role, RunId, ThreadId};
-    use ag_ui_core::JsonValue;
     use serde_json::json;
 
     // ---------------------------------------------------------------

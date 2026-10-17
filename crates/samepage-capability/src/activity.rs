@@ -1,6 +1,6 @@
 //! Counted, storage-free instrumentation shared by independently compiled artifacts.
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicU64, Ordering};
 

@@ -2,8 +2,8 @@ mod common;
 
 use samepage_capability::envelope;
 use samepage_capability::{
-    Call, CapError, Capability, Delta, Descriptor, Op, Plan, Record, Scalar, Target, Value, View,
-    ABI,
+    ABI, Call, CapError, Capability, Delta, Descriptor, Op, Plan, Record, Scalar, Target, Value,
+    View,
 };
 use serde_json::json;
 

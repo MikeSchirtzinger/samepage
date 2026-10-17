@@ -1,10 +1,10 @@
 use convergence_attrs::substrate;
 
+use crate::JsonValue;
 use crate::types::context::Context;
 use crate::types::ids::{RunId, ThreadId};
 use crate::types::message::Message;
 use crate::types::tool::Tool;
-use crate::JsonValue;
 use serde::{Deserialize, Serialize};
 
 /// The complete input payload for an agent run; consumed by every AG-UI agent runner.

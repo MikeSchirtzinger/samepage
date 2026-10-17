@@ -482,7 +482,7 @@ mod tests {
         let authorization = CapabilityPolicy {
             target: ExecutionTarget::BrowserWasm,
             grants: vec![
-                CapabilityGrant::new("state.write").scoped("namespace", ["workspace.notes"])
+                CapabilityGrant::new("state.write").scoped("namespace", ["workspace.notes"]),
             ],
             limits: ExecutionLimits::default(),
         }
@@ -498,7 +498,7 @@ mod tests {
         let error = CapabilityPolicy {
             target: ExecutionTarget::Wasi,
             grants: vec![
-                CapabilityGrant::new("state.write").scoped("namespace", ["workspace.other"])
+                CapabilityGrant::new("state.write").scoped("namespace", ["workspace.other"]),
             ],
             limits: ExecutionLimits::default(),
         }

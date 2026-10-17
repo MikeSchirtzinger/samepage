@@ -370,12 +370,12 @@ pub(super) fn check_formula_arguments(
                         return Err(format!(
                             "formula expression calls {function}(...) with an argument that is {}, not dimensionless; {function} only accepts a dimensionless argument",
                             other.name()
-                        ))
+                        ));
                     }
                     None => {
                         return Err(format!(
                             "formula expression calls {function}(...) with an argument whose dimension could not be shown to be dimensionless; {function} only accepts a dimensionless argument"
-                        ))
+                        ));
                     }
                 }
             }

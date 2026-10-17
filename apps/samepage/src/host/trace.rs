@@ -3,7 +3,7 @@
 use samepage_capability::activity::{ActivityRecord, ActivitySink};
 use samepage_capability::{Call, Capability, View};
 use samepage_trace::{Ring, Trace};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 pub struct TraceHost {
     ring: Mutex<Ring>,
@@ -60,9 +60,10 @@ mod tests {
         let empty: Value =
             serde_json::from_str(&host.invoke("trace_read", json!({})).unwrap()).unwrap();
         assert_eq!(empty["ok"]["records"], json!([]));
-        assert!(host
-            .invoke("trace_benchmark", json!({"iterations":0,"samples":1}))
-            .is_err());
+        assert!(
+            host.invoke("trace_benchmark", json!({"iterations":0,"samples":1}))
+                .is_err()
+        );
         let result: Value = serde_json::from_str(
             &host
                 .invoke("trace_benchmark", json!({"iterations":2,"samples":1}))
@@ -73,9 +74,11 @@ mod tests {
         let snapshot: Value =
             serde_json::from_str(&host.invoke("trace_read", json!({})).unwrap()).unwrap();
         assert_eq!(snapshot["ok"]["emitted"], 8);
-        assert!(!snapshot
-            .to_string()
-            .contains("trace-secret-negative-control"));
+        assert!(
+            !snapshot
+                .to_string()
+                .contains("trace-secret-negative-control")
+        );
         let cleared: Value =
             serde_json::from_str(&host.invoke("trace_clear", json!({})).unwrap()).unwrap();
         assert_eq!(cleared["ok"]["records"], json!([]));

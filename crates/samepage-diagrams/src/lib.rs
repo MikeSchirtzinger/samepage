@@ -11,7 +11,7 @@ use samepage_capability::{
 };
 use samepage_map::rules as map;
 use samepage_map::{prop_num, prop_str};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const ID: &str = "diagrams";
@@ -95,7 +95,10 @@ pub fn state_size(label: &str, note: &str, scale: f64) -> (f64, f64) {
         .max(longest)
         .clamp(samepage_map::rules::MIN_W, samepage_map::rules::MAX_W);
     let height = samepage_map::estimated_height(label, note, width).max(56.0);
-    ((width * scale).min(samepage_map::rules::MAX_W), (height * scale).min(samepage_map::rules::MAX_H))
+    (
+        (width * scale).min(samepage_map::rules::MAX_W),
+        (height * scale).min(samepage_map::rules::MAX_H),
+    )
 }
 
 fn create(reference: &str, label: &str, rect: PackedRect) -> Op {
@@ -169,9 +172,10 @@ impl Capability for Diagrams {
                         .any(|id| string(record, "parent") == id.as_str()))
             {
                 if let Some(kind) = record.props.get("diagram_kind")
-                    && !matches!(kind.as_str(), Some("hierarchy" | "state_machine" | "")) {
-                        return Err(invalid("diagram_kind must be hierarchy or state_machine"));
-                    }
+                    && !matches!(kind.as_str(), Some("hierarchy" | "state_machine" | ""))
+                {
+                    return Err(invalid("diagram_kind must be hierarchy or state_machine"));
+                }
                 for key in ["state_initial", "state_terminal"] {
                     if record
                         .props
@@ -277,14 +281,15 @@ impl Capability for Diagrams {
                 .into_iter()
                 .flatten()
                 .find(|old| old["id"] == edge["id"])
-                && old["sentence"] != edge["sentence"] {
-                    lines.push(format!(
-                        "- [{}] the transition now reads {}; it was {}",
-                        edge["id"].as_str().unwrap_or_default(),
-                        edge["sentence"].as_str().unwrap_or_default(),
-                        old["sentence"].as_str().unwrap_or_default()
-                    ));
-                }
+                && old["sentence"] != edge["sentence"]
+            {
+                lines.push(format!(
+                    "- [{}] the transition now reads {}; it was {}",
+                    edge["id"].as_str().unwrap_or_default(),
+                    edge["sentence"].as_str().unwrap_or_default(),
+                    old["sentence"].as_str().unwrap_or_default()
+                ));
+            }
         }
         Ok(lines)
     }
@@ -352,7 +357,10 @@ pub fn check_binding(record: &Record) -> Result<(), CapError> {
         return Err(invalid("lines needs a path"));
     }
     if !string(record, "path").is_empty() && string(record, "lines").is_empty() {
-        return Err(invalid(format!("{}: pass lines, such as 1-40", string(record, "path"))));
+        return Err(invalid(format!(
+            "{}: pass lines, such as 1-40",
+            string(record, "path")
+        )));
     }
     Ok(())
 }
@@ -422,7 +430,10 @@ fn draw(args: &JsonValue, view: &View) -> Result<Batch, CapError> {
             state_size(&node.label, &note, scale)
         } else {
             let width = 232.0 * scale;
-            (width, samepage_map::estimated_height(&node.label, &note, width).max(150.0) * scale)
+            (
+                width,
+                samepage_map::estimated_height(&node.label, &note, width).max(150.0) * scale,
+            )
         };
         sizes.push((width, height));
         style.insert("note".into(), note.into());

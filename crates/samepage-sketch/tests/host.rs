@@ -1,9 +1,9 @@
 use samepage_capability::{Capability, Composition, Record, View};
-use samepage_doc::{host::Host, Actor, Caller};
-use samepage_map::{prop_str, rules, Map};
+use samepage_doc::{Actor, Caller, host::Host};
+use samepage_map::{Map, prop_str, rules};
 use samepage_review::Review;
-use samepage_sketch::{drawing, parse_points, Sketch};
-use serde_json::{json, Value};
+use samepage_sketch::{Sketch, drawing, parse_points};
+use serde_json::{Value, json};
 use std::sync::Arc;
 #[allow(dead_code)]
 #[path = "../../../apps/samepage/src/diagram_sources.rs"]
@@ -231,10 +231,10 @@ fn a_bound_arrow_follows_the_node_the_human_drags() {
     assert_ne!(before.1, after.1);
     let (l, t, r, b) = d.node(&b).unwrap().bounds();
     assert!(
-        after.1 .0 >= l - 1.0
-            && after.1 .0 <= r + 1.0
-            && after.1 .1 >= t - 1.0
-            && after.1 .1 <= b + 1.0
+        after.1.0 >= l - 1.0
+            && after.1.0 <= r + 1.0
+            && after.1.1 >= t - 1.0
+            && after.1.1 <= b + 1.0
     );
 }
 #[test]
@@ -304,14 +304,16 @@ fn every_form_survives_an_excalidraw_round_trip() {
             .first(),
         Some(&(0.0, 0.0))
     );
-    assert!(b
-        .shapes
-        .iter()
-        .any(|s| s.form == "text" && s.label == "a caption"));
-    assert!(b
-        .shapes
-        .iter()
-        .any(|s| s.form == "rect" && s.label == "the group"));
+    assert!(
+        b.shapes
+            .iter()
+            .any(|s| s.form == "text" && s.label == "a caption")
+    );
+    assert!(
+        b.shapes
+            .iter()
+            .any(|s| s.form == "rect" && s.label == "the group")
+    );
 }
 #[test]
 fn an_import_names_what_it_could_not_bring() {
@@ -462,20 +464,23 @@ fn lift_deduplicates_region_and_consumed_text_members_and_keeps_both_marks() {
     let n = lift(&h, &s);
     let v = h.view();
     assert_eq!(rules::membership(&v, &constraint), vec![n.clone()]);
-    assert!(marks
-        .iter()
-        .all(|id| prop_str(v.get(id).unwrap(), "target") == Some(n.as_str())));
+    assert!(
+        marks
+            .iter()
+            .all(|id| prop_str(v.get(id).unwrap(), "target") == Some(n.as_str()))
+    );
 }
 #[test]
 fn an_agent_cannot_create_a_human_mark_through_sketch() {
     let h = host();
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &agent(),
             "sketch",
             json!({"shapes":[{"form":"rect","created_by":"Human"}]})
         )
-        .is_err());
+        .is_err()
+    );
     assert!(h.view().is_empty());
 }
 #[test]
@@ -495,26 +500,29 @@ fn invalid_imports_and_forward_bindings_store_nothing() {
 fn the_geometry_rejects_non_finite_and_malformed_points() {
     assert_eq!(parse_points("0,0 2,3").len(), 2);
     let h = host();
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &human(),
             "sketch",
             json!({"shapes":[{"form":"ink","points":"0,0 NaN,4"}]})
         )
-        .is_err());
+        .is_err()
+    );
     let r = Record::new("s", "shape")
         .with("form", "ink")
         .with("points", "0,0 bad");
     let v = View::new("r", [r]).unwrap();
-    assert!(Sketch
-        .validate(
-            &samepage_capability::Delta {
-                created: ["s".into()].into(),
-                ..Default::default()
-            },
-            &v
-        )
-        .is_err());
+    assert!(
+        Sketch
+            .validate(
+                &samepage_capability::Delta {
+                    created: ["s".into()].into(),
+                    ..Default::default()
+                },
+                &v
+            )
+            .is_err()
+    );
 }
 #[test]
 fn omitted_review_refuses_a_marked_lift_without_orphaning_records() {
@@ -564,10 +572,12 @@ fn a_scribble_over_one_node_reads_as_crossing_it_out() {
     let id = stroke(&h, &points);
     assert_eq!(readings(&h, &id).relation, "crosses-out");
     assert_eq!(readings(&h, &id).targets, vec![c]);
-    assert!(invoke(&h, "sketch_read", json!({}))
-        .readback
-        .join("")
-        .contains("CROSSES-OUT"));
+    assert!(
+        invoke(&h, "sketch_read", json!({}))
+            .readback
+            .join("")
+            .contains("CROSSES-OUT")
+    );
 }
 #[test]
 fn removing_a_bound_card_detaches_the_arrow_at_its_last_painted_position() {
@@ -759,7 +769,14 @@ fn lifting_a_frame_around_cards_makes_it_their_container() {
     );
     let lifted = lift(&h, &frame);
     let v = h.view();
-    assert_eq!(samepage_map::prop_str(v.get(&inside).unwrap(), "parent"), Some(lifted.as_str()));
-    assert!(samepage_map::prop_str(v.get(&outside).unwrap(), "parent").unwrap_or("").is_empty());
+    assert_eq!(
+        samepage_map::prop_str(v.get(&inside).unwrap(), "parent"),
+        Some(lifted.as_str())
+    );
+    assert!(
+        samepage_map::prop_str(v.get(&outside).unwrap(), "parent")
+            .unwrap_or("")
+            .is_empty()
+    );
     assert!(v.get(&frame).is_none());
 }

@@ -11,7 +11,7 @@ use samepage_capability::{
     Effect, Op, Plan, Target, Value, View,
 };
 use samepage_doc::host::{Commit, Host};
-use samepage_doc::{sync, Actor, Caller};
+use samepage_doc::{Actor, Caller, sync};
 use serde_json::json;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -130,13 +130,13 @@ impl Capability for Cards {
                 return Ok(Plan {
                     ops: vec![],
                     readback: format!("{} cards", view.of_kinds(&["card"]).len()),
-                })
+                });
             }
             "card_tidy" => {
                 return Ok(Plan {
                     ops: vec![],
                     readback: "Nothing to tidy.".into(),
-                })
+                });
             }
             "page_sneak" => vec![Op::Set {
                 target: Target::Id(text("id")),
@@ -154,13 +154,13 @@ impl Capability for Cards {
         for id in delta.created.iter().chain(delta.modified.keys()) {
             if let Some(record) = view.get(id)
                 && record.kind == "card"
-                    && record.props.get("label").and_then(|v| v.as_str()) == Some("")
-                {
-                    return Err(CapError::new(
-                        "empty_label",
-                        format!("{id} has an empty label"),
-                    ));
-                }
+                && record.props.get("label").and_then(|v| v.as_str()) == Some("")
+            {
+                return Err(CapError::new(
+                    "empty_label",
+                    format!("{id} has an empty label"),
+                ));
+            }
         }
         Ok(())
     }

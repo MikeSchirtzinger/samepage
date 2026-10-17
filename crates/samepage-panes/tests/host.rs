@@ -1,7 +1,7 @@
 use samepage_capability::{Batch, BatchEntry, Call, Capability, Composition, Op, Plan, Target};
-use samepage_doc::{host::Host, Actor, Caller, Replica};
-use samepage_panes::{model, Panes};
-use serde_json::{json, Value};
+use samepage_doc::{Actor, Caller, Replica, host::Host};
+use samepage_panes::{Panes, model};
+use serde_json::{Value, json};
 use std::sync::Arc;
 fn agent() -> Actor {
     Actor::new("agent", Caller::Agent).labelled("Panes worker")
@@ -150,11 +150,12 @@ fn the_agent_cannot_send_a_rectangle() {
     put(&h);
     let before = (h.revision(), h.encode_full(), h.journal().seq);
     let args = json!({"expected_revision":h.revision(),"id":"topic","spot":{"x":500,"y":50,"w":400,"h":300}});
-    assert!(h
-        .invoke(&agent(), "pane_put", args.clone())
-        .unwrap_err()
-        .to_string()
-        .contains("rectangle"));
+    assert!(
+        h.invoke(&agent(), "pane_put", args.clone())
+            .unwrap_err()
+            .to_string()
+            .contains("rectangle")
+    );
     let b = Panes
         .plan_batch(
             &Call {
@@ -256,9 +257,11 @@ fn a_source_pane_that_stopped_resolving_says_so_instead_of_vanishing() {
     let value = samepage_panes::projection(&h.view(), &facts).unwrap();
     assert_eq!(value["panes"].as_array().unwrap().len(), 1);
     assert_eq!(value["panes"][0]["view"]["error"], "the file is gone");
-    assert!(samepage_panes::describe_projection(&value)
-        .unwrap()
-        .contains("the file is gone"));
+    assert!(
+        samepage_panes::describe_projection(&value)
+            .unwrap()
+            .contains("the file is gone")
+    );
 }
 #[test]
 fn the_document_survives_a_reopen() {
@@ -290,13 +293,14 @@ fn the_document_survives_a_reopen() {
 fn annotations_and_legacy_bylines_are_protected_on_every_route() {
     let h = host();
     put(&h);
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &agent(),
             "pane_annotate",
             json!({"expected_revision":h.revision(),"id":"topic","mark":"agree"})
         )
-        .is_err());
+        .is_err()
+    );
     let b = Panes
         .plan_batch(
             &Call {
@@ -465,13 +469,14 @@ fn a_new_pane_can_be_pinned_and_its_removal_is_atomic() {
     );
     assert_eq!(p(&h)["pinned"], true);
     let before = (h.revision(), h.encode_full(), h.journal().seq);
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &agent(),
             "pane_remove",
             json!({"expected_revision":h.revision(),"id":"pinned"})
         )
-        .is_err());
+        .is_err()
+    );
     assert_eq!(before, (h.revision(), h.encode_full(), h.journal().seq));
 }
 
@@ -489,9 +494,11 @@ fn importing_a_matching_human_id_retains_history_and_never_mints_a_live_byline()
     assert_eq!(imported["historical"], true);
     assert_eq!(imported["note_historical"], true);
     assert_eq!(imported["imported_by"], "Panes worker");
-    assert!(samepage_panes::describe_projection(&value)
-        .unwrap()
-        .contains("Sam (historical)"));
+    assert!(
+        samepage_panes::describe_projection(&value)
+            .unwrap()
+            .contains("Sam (historical)")
+    );
     call(
         &h,
         &human(),

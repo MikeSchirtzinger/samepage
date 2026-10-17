@@ -21,7 +21,7 @@ use samepage_capability::{
     ActionDecl, Artifact, Audience, Call, CapError, Capability, Change, Delta, Descriptor, Effect,
     LegendEntry, Op, Plan, Record, Scalar, Target, Trigger, Value, View,
 };
-use serde_json::{json, Map as JsonMap, Value as JsonValue};
+use serde_json::{Map as JsonMap, Value as JsonValue, json};
 
 use rules::*;
 
@@ -58,7 +58,12 @@ pub fn descriptor() -> Descriptor {
     )
     .alias("atlas_place");
     place.input_schema = place_schema;
-    let mut moving = ActionDecl::new("card_move", Audience::Both, Effect::Mutate, "Move one card to x, y in world units, y growing down. Only its position changes.");
+    let mut moving = ActionDecl::new(
+        "card_move",
+        Audience::Both,
+        Effect::Mutate,
+        "Move one card to x, y in world units, y growing down. Only its position changes.",
+    );
     moving.input_schema = json!({
         "type": "object", "additionalProperties": false, "required": ["id", "x", "y"],
         "properties": { "id": { "type": "string" }, "x": { "type": "number" }, "y": { "type": "number" } }
@@ -255,7 +260,10 @@ impl Capability for Map {
                 if refers {
                     return Err(err(
                         "dangling",
-                        format!("{} still refers to removed card {id}; remove or detach it in the same change", record.id),
+                        format!(
+                            "{} still refers to removed card {id}; remove or detach it in the same change",
+                            record.id
+                        ),
                     ));
                 }
             }
@@ -351,17 +359,19 @@ impl Capability for Map {
         for id in &deleted {
             if let Some(record) = change.before.get(id)
                 && record.kind == CONSTRAINT_MEMBER
-                    && let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str) {
-                        touched.insert(owner.to_string());
-                    }
+                && let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str)
+            {
+                touched.insert(owner.to_string());
+            }
             // A deleted target may leave a constraint short: that shortfall is
             // inherited from the deletion and stays a diagnostic.
             for record in change.before.records() {
                 if record.kind == CONSTRAINT_MEMBER
                     && record.props.get(K_TARGET).and_then(Scalar::as_str) == Some(id.as_str())
-                    && let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str) {
-                        touched.insert(owner.to_string());
-                    }
+                    && let Some(owner) = record.props.get(K_CONSTRAINT).and_then(Scalar::as_str)
+                {
+                    touched.insert(owner.to_string());
+                }
             }
         }
         for id in touched {
@@ -483,7 +493,9 @@ fn place(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapErro
         if args.contains_key(foreign) {
             return Err(err(
                 "needs_capability",
-                format!("{foreign} belongs to the sources capability; placing a card with a source binding needs the composite adapter, which is not built yet"),
+                format!(
+                    "{foreign} belongs to the sources capability; placing a card with a source binding needs the composite adapter, which is not built yet"
+                ),
             ));
         }
     }
@@ -655,13 +667,13 @@ fn constrain(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, Cap
                 return Err(err(
                     "not_found",
                     format!("constraint member {member:?} does not resolve to an object"),
-                ))
+                ));
             }
             Some(record) if record.kind == CONSTRAINT || record.kind == CONSTRAINT_MEMBER => {
                 return Err(err(
                     "invalid",
                     format!("constraint member {member:?} names another constraint"),
-                ))
+                ));
             }
             Some(_) => {}
         }
@@ -672,7 +684,7 @@ fn constrain(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, Cap
             return Err(err(
                 "invalid",
                 format!("only a sequence has an axis, not {op:?}"),
-            ))
+            ));
         }
         _ if op == "sequence" => "x".to_string(),
         _ => String::new(),
@@ -776,13 +788,13 @@ fn retarget(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapE
             return Err(err(
                 "not_found",
                 format!("no object {target:?} to point {id} at"),
-            ))
+            ));
         }
         Some(record) if record.kind == CONSTRAINT || record.kind == CONSTRAINT_MEMBER => {
             return Err(err(
                 "invalid",
                 format!("{target:?} is a constraint, which cannot be a member"),
-            ))
+            ));
         }
         Some(_) => {}
     }
@@ -933,7 +945,8 @@ fn remove(args: &JsonMap<String, JsonValue>, view: &View) -> Result<Plan, CapErr
                 match record.kind.as_str() {
                     "shape" => "remove a drawing with shape_remove",
                     "claim" => "withdraw a claim with claim_withdraw",
-                    "mark" => "a person's mark stays until they remove it; answer it with mark_answer",
+                    "mark" =>
+                        "a person's mark stays until they remove it; answer it with mark_answer",
                     "pane" => "remove a pane with pane_remove",
                     "constraint" => "remove a constraint with constraint_remove",
                     _ => "the capability that made it removes it",
@@ -1237,7 +1250,10 @@ fn projection(view: &View) -> JsonValue {
 /// Each card's box `[left, top, right, bottom]` with its label: the
 /// browser-measured box when one is given, otherwise the authored or
 /// estimated size.
-pub fn card_boxes(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> Vec<(String, String, [f64; 4])> {
+pub fn card_boxes(
+    view: &View,
+    measured: &BTreeMap<String, [f64; 4]>,
+) -> Vec<(String, String, [f64; 4])> {
     projection(view)["cards"]
         .as_array()
         .into_iter()
@@ -1248,7 +1264,12 @@ pub fn card_boxes(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> Vec<(St
             let bounds = measured.get(&id).copied().unwrap_or_else(|| {
                 let x = card["x"].as_f64().unwrap_or(0.0);
                 let y = card["y"].as_f64().unwrap_or(0.0);
-                [x, y, x + card["width"].as_f64().unwrap_or(DEFAULT_WIDTH), y + card["height"].as_f64().unwrap_or(0.0)]
+                [
+                    x,
+                    y,
+                    x + card["width"].as_f64().unwrap_or(DEFAULT_WIDTH),
+                    y + card["height"].as_f64().unwrap_or(0.0),
+                ]
             });
             (id, label, bounds)
         })
@@ -1289,17 +1310,29 @@ pub fn describe_measured(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> 
             ),
         };
         let mut style = Vec::new();
-        for (key, default) in [("color", ""), ("emphasis", "normal"), ("size", "normal"), ("shape", "rect")] {
+        for (key, default) in [
+            ("color", ""),
+            ("emphasis", "normal"),
+            ("size", "normal"),
+            ("shape", "rect"),
+        ] {
             let value = card[key].as_str().unwrap_or_default();
             if value != default && !value.is_empty() {
-                style.push(if key == "shape" { format!("kind {value}") } else { format!("{key} {value}") });
+                style.push(if key == "shape" {
+                    format!("kind {value}")
+                } else {
+                    format!("{key} {value}")
+                });
             }
         }
         let note = card["note"].as_str().unwrap_or_default();
         let note = if note.is_empty() {
             String::new()
         } else if note.chars().count() > 120 {
-            format!(", note {:?}", format!("{}...", note.chars().take(117).collect::<String>()))
+            format!(
+                ", note {:?}",
+                format!("{}...", note.chars().take(117).collect::<String>())
+            )
         } else {
             format!(", note {note:?}")
         };
@@ -1311,7 +1344,11 @@ pub fn describe_measured(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> 
             number(&card["y"]),
             card["tone"].as_str().unwrap_or_default(),
             card["status"].as_str().unwrap_or_default(),
-            if style.is_empty() { String::new() } else { format!(", {}", style.join(", ")) },
+            if style.is_empty() {
+                String::new()
+            } else {
+                format!(", {}", style.join(", "))
+            },
             match card["touched_by"].as_str() {
                 Some(t) if !t.is_empty() => format!(", last by {t}"),
                 _ => String::new(),
@@ -1357,7 +1394,13 @@ pub fn describe_measured(view: &View, measured: &BTreeMap<String, [f64; 4]>) -> 
             link["id"].as_str().unwrap_or_default(),
             label_of(link["from"].as_str().unwrap_or_default()),
             label_of(link["to"].as_str().unwrap_or_default()),
-            match (link["label"].as_str(), link["id"].as_str().and_then(|id| view.get(id)).and_then(|r| prop_str(r, "event"))) {
+            match (
+                link["label"].as_str(),
+                link["id"]
+                    .as_str()
+                    .and_then(|id| view.get(id))
+                    .and_then(|r| prop_str(r, "event"))
+            ) {
                 (Some(l), _) if !l.is_empty() => format!(": {l}"),
                 (_, Some(event)) if !event.is_empty() => format!(": on {event}"),
                 _ => String::new(),

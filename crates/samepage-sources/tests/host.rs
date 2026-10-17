@@ -2,18 +2,18 @@ use samepage_capability::{
     Batch, BatchEntry, Call, Capability, Change, Composition, Op, Plan, Record, Target, View,
 };
 use samepage_doc::{
-    host::{Host, Verifier},
     Actor, Caller,
+    host::{Host, Verifier},
 };
 use samepage_map::Map;
 use samepage_review::Review;
 use samepage_sources::{Binding, Facts, Sources};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     path::PathBuf,
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicU64, Ordering},
     },
 };
 #[allow(dead_code)]
@@ -119,13 +119,14 @@ fn diagrams_transfer_source_ownership_and_publish_only_after_verification() {
     assert_eq!(made.commit.unwrap().created.len(), 1);
     assert_eq!(h.journal().seq, 1);
     let before = fingerprint(&h);
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &agent(),
             "diagram_draw",
             json!({"nodes":[{"id":"bad","label":"Absent","path":"missing.rs","lines":"1"}]})
         )
-        .is_err());
+        .is_err()
+    );
     assert_eq!(fingerprint(&h), before);
     std::fs::remove_dir_all(r).unwrap();
 }
@@ -240,11 +241,22 @@ fn a_stale_line_range_is_an_error_not_an_empty_excerpt() {
     let repo = native::Repository::open(&r).unwrap();
     for range in ["9000-9100", "1-3"] {
         let error = repo.read("a.rs", range).unwrap_err().to_string();
-        assert!(error.contains("lines, so this range ends past it"), "{error}");
+        assert!(
+            error.contains("lines, so this range ends past it"),
+            "{error}"
+        );
     }
-    let lines = std::fs::read_to_string(r.join("a.rs")).unwrap().lines().count();
+    let lines = std::fs::read_to_string(r.join("a.rs"))
+        .unwrap()
+        .lines()
+        .count();
     assert_eq!(repo.line_count("a.rs").unwrap(), lines);
-    assert!(repo.read("a.rs", "1-3").unwrap_err().to_string().contains(&format!("has {lines} lines")));
+    assert!(
+        repo.read("a.rs", "1-3")
+            .unwrap_err()
+            .to_string()
+            .contains(&format!("has {lines} lines"))
+    );
     std::fs::remove_dir_all(r).unwrap();
 }
 #[test]
@@ -435,12 +447,14 @@ fn tier_precedence_is_proposed_gate_unreadable_drifted_verified() {
     let projection = samepage_sources::project(&v, &f).unwrap();
     assert_eq!(projection["cards"]["n"]["tier"], "gate-unmet");
     assert_eq!(projection["cards"]["n"]["chip"], "GATE UNMET: UNATTESTED");
-    assert!(projection["readback"]
-        .as_str()
-        .unwrap()
-        .contains("GATE UNMET: UNATTESTED; source a.rs:1 (UNATTESTED: GATE passes"),
+    assert!(
+        projection["readback"]
+            .as_str()
+            .unwrap()
+            .contains("GATE UNMET: UNATTESTED; source a.rs:1 (UNATTESTED: GATE passes"),
         "{}",
-        projection["readback"]);
+        projection["readback"]
+    );
     let v = View::new(
         "r",
         [
@@ -472,12 +486,14 @@ fn commit(r: &std::path::Path) -> String {
             "Source baseline",
         ],
     ] {
-        assert!(std::process::Command::new("git")
-            .args(args)
-            .current_dir(r)
-            .status()
-            .unwrap()
-            .success());
+        assert!(
+            std::process::Command::new("git")
+                .args(args)
+                .current_dir(r)
+                .status()
+                .unwrap()
+                .success()
+        );
     }
     String::from_utf8(
         std::process::Command::new("git")
@@ -503,11 +519,13 @@ fn atlas_claim_refuses_a_verified_claim_whose_range_does_not_hold() {
     let h = host(&r);
     let id = place(&h, json!({"label":"State"})).unwrap().ids["card"].clone();
     let before = fingerprint(&h);
-    assert!(claim(
-        &h,
-        json!({"about":id,"text":"stale","basis":"verified","path":"a.rs","lines":"999999"})
-    )
-    .is_err());
+    assert!(
+        claim(
+            &h,
+            json!({"about":id,"text":"stale","basis":"verified","path":"a.rs","lines":"999999"})
+        )
+        .is_err()
+    );
     assert_eq!(fingerprint(&h), before);
     std::fs::remove_dir_all(r).unwrap();
 }

@@ -224,7 +224,9 @@ pub enum PlanError {
     UnknownRef(String),
     #[error("kind {0:?} has no owner in this composition")]
     UnknownKind(String),
-    #[error("capability {capability:?} cannot create or delete {kind:?} records; {owner:?} owns that kind")]
+    #[error(
+        "capability {capability:?} cannot create or delete {kind:?} records; {owner:?} owns that kind"
+    )]
     NotKindOwner {
         capability: String,
         kind: String,
@@ -248,7 +250,9 @@ pub enum PlanError {
     DuplicateMintedId(String),
     #[error("{key:?} is not a finite number")]
     NonFinite { key: String },
-    #[error("{id:?}.{key} still refers to {target:?} (reference {reference:?}), which the batch deletes")]
+    #[error(
+        "{id:?}.{key} still refers to {target:?} (reference {reference:?}), which the batch deletes"
+    )]
     DanglingRef {
         id: String,
         key: String,

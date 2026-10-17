@@ -213,8 +213,10 @@ mod tests {
 
     #[test]
     fn command_backed_feature_resolution_is_fail_closed() {
-        assert!(resolve_enabled_when_available("AUDIO", "speak", None, true)
-            .expect("available default"));
+        assert!(
+            resolve_enabled_when_available("AUDIO", "speak", None, true)
+                .expect("available default")
+        );
         assert!(
             !resolve_enabled_when_available("AUDIO", "speak", None, false)
                 .expect("unavailable default")

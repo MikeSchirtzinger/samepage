@@ -1,6 +1,6 @@
 //! Advisory export of a settled board; never activates enforcement.
 use crate::assertion::{self, Assertion, Author, Board, Entry, Mark, Status};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use sha2::{Digest, Sha256};
 pub const OBLIGATIONS_FILE: &str = "obligations-v0.1.json";
 pub const RECEIPT_FILE: &str = "cement-receipt.json";
@@ -190,12 +190,13 @@ fn settled_entry(entry: &Entry) -> Result<SettledEntry<'_>, Vec<String>> {
         }
     }
     if let Assertion::Claim { status, .. } = &entry.assertion
-        && *status != Status::Settled {
-            reasons.push(format!(
-                "claim status is {}, not settled",
-                assertion::status_word(*status)
-            ));
-        }
+        && *status != Status::Settled
+    {
+        reasons.push(format!(
+            "claim status is {}, not settled",
+            assertion::status_word(*status)
+        ));
+    }
 
     if !reasons.is_empty() {
         return Err(reasons);

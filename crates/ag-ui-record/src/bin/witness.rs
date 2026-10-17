@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use ag_ui_record::{validate, Record, RECORD_VERSION};
+use ag_ui_record::{RECORD_VERSION, Record, validate};
 use serde::Serialize;
 
 const USAGE: &str = "usage: witness validate <path/to/record.json> [--json]";

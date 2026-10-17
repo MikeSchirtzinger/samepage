@@ -3,8 +3,8 @@
 mod common;
 
 use samepage_capability::{
-    ActionDecl, Artifact, Audience, Batch, BatchEntry, Call, CapError, Capability, ComposeError,
-    Composition, Delta, Descriptor, Effect, Op, Plan, Trigger, Value, View, ABI,
+    ABI, ActionDecl, Artifact, Audience, Batch, BatchEntry, Call, CapError, Capability,
+    ComposeError, Composition, Delta, Descriptor, Effect, Op, Plan, Trigger, Value, View,
 };
 use serde_json::json;
 
@@ -70,9 +70,11 @@ fn a_trigger_names_data_the_capability_can_see_and_own() {
         ComposeError::TriggerKeyNotOwned { key, .. } if key == "path"
     ));
     // An owned kind and key are fine.
-    Composition::new(vec![common::map()
-        .trigger(Trigger::kind("node"))
-        .trigger(Trigger::property("node", "label"))])
+    Composition::new(vec![
+        common::map()
+            .trigger(Trigger::kind("node"))
+            .trigger(Trigger::property("node", "label")),
+    ])
     .expect("owned triggers");
 }
 

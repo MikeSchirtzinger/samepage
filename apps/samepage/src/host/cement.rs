@@ -6,9 +6,9 @@ use super::{
 use samepage_capability::{Batch, CapError, Change, Op, Value as ScalarValue, View};
 use samepage_cement::{Bundle, BundleFacts, Coverage};
 use samepage_doc::host::Verifier;
-use samepage_sources::{string, GateFact};
+use samepage_sources::{GateFact, string};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     fs,
@@ -140,7 +140,12 @@ impl CementHost {
     /// naming the check, instead of failing later at review.
     pub fn check_evidence(&self, args: &Value) -> Result<(), String> {
         for check in args["draft"]["checks"].as_array().into_iter().flatten() {
-            for file in check["evidence_files"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+            for file in check["evidence_files"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+            {
                 self.repo.check(file, "1").map_err(|e| {
                     format!(
                         "check {}: evidence file {file} cannot be read: {}",
@@ -386,9 +391,9 @@ impl CementHost {
                     } = op
                         && let Some(ScalarValue::Scalar(samepage_capability::Scalar::Str(s))) =
                             props.get("cemented")
-                        {
-                            stamps.insert(id.clone(), s.clone());
-                        }
+                    {
+                        stamps.insert(id.clone(), s.clone());
+                    }
                 }
             }
             let pins = paths
@@ -441,12 +446,13 @@ impl CementHost {
             .collect();
         for n in v.records().filter(|r| r.kind == "node") {
             if let Some(encoded) = string(n, "cemented").splitn(3, '\n').nth(2)
-                && let Ok(c) = serde_json::from_str::<Coverage>(encoded) {
-                    nodes.insert(
-                        n.id.clone(),
-                        (c.obligation_ids, samepage_cement::covers(v, n)),
-                    );
-                }
+                && let Ok(c) = serde_json::from_str::<Coverage>(encoded)
+            {
+                nodes.insert(
+                    n.id.clone(),
+                    (c.obligation_ids, samepage_cement::covers(v, n)),
+                );
+            }
         }
         if nodes.is_empty() {
             return Ok((BTreeMap::new(), Value::Null));
@@ -479,7 +485,9 @@ impl CementHost {
                 .collect();
             let others = v.records().filter(|r| r.kind == "node").count() - agreed.len();
             return Err(if agreed.is_empty() {
-                format!("Pass ids to cement the agreed subset. No card is agreed yet; a person agrees to a card first ({others} cards are open).")
+                format!(
+                    "Pass ids to cement the agreed subset. No card is agreed yet; a person agrees to a card first ({others} cards are open)."
+                )
             } else {
                 format!(
                     "Pass ids to cement the agreed subset. Agreed now: {}. {others} other cards are not agreed.",
@@ -713,9 +721,10 @@ impl Pending {
 impl Drop for Pending {
     fn drop(&mut self) {
         if !self.accepted
-            && let Err(e) = self.rollback() {
-                eprintln!("Cement rollback failed: {e}");
-            }
+            && let Err(e) = self.rollback()
+        {
+            eprintln!("Cement rollback failed: {e}");
+        }
     }
 }
 fn ids(a: &Value) -> Result<Vec<String>, String> {
@@ -766,12 +775,14 @@ fn gate_fact(ids: &[String], current: bool, obligations: &[Value], failures: &[V
             .collect::<Vec<_>>()
             .join("; ")
     };
-    let passed = !ids.is_empty()
-        && rows.len() == ids.len()
-        && rows.iter().all(|o| o["status"] == "passed");
+    let passed =
+        !ids.is_empty() && rows.len() == ids.len() && rows.iter().all(|o| o["status"] == "passed");
     let met = current && passed && blocked.is_empty() && spec_wide.is_empty();
     let (blocker, reason) = if !current {
-        ("changed", "Reviewed selection changed; old cement is history.".to_string())
+        (
+            "changed",
+            "Reviewed selection changed; old cement is history.".to_string(),
+        )
     } else if rows.len() != ids.len() || ids.is_empty() {
         (
             "missing",
@@ -781,7 +792,11 @@ fn gate_fact(ids: &[String], current: bool, obligations: &[Value], failures: &[V
             ),
         )
     } else if !passed {
-        let failed: Vec<_> = rows.iter().copied().filter(|o| o["status"] != "passed").collect();
+        let failed: Vec<_> = rows
+            .iter()
+            .copied()
+            .filter(|o| o["status"] != "passed")
+            .collect();
         ("failed", summaries(&failed))
     } else if let Some(first) = spec_wide.first().or(blocked.first()) {
         (
@@ -817,7 +832,10 @@ fn blocker_word(classification: &str) -> &'static str {
 fn enforcement_reason(failure: &Value) -> String {
     let classification = failure["classification"].as_str().unwrap_or_default();
     let detail = failure["detail"].as_str().unwrap_or_default();
-    match (blocker_word(classification), failure["obligation_id"].as_str()) {
+    match (
+        blocker_word(classification),
+        failure["obligation_id"].as_str(),
+    ) {
         ("unratified", _) => format!(
             "UNRATIFIED: {SPEC} changed after its last ratification; a person reviews it and runs `g8 ratify`"
         ),
@@ -840,12 +858,18 @@ mod gate_tests {
     #[test]
     fn a_passing_check_without_attestation_is_not_a_met_gate() {
         let ids = vec!["ATLAS-CARD-a".to_string()];
-        let failures = [json!({"classification":"insufficient_rigor","obligation_id":"ATLAS-CARD-a",
-            "detail":"gate requires verified or fresh attested evidence"})];
+        let failures = [
+            json!({"classification":"insufficient_rigor","obligation_id":"ATLAS-CARD-a",
+            "detail":"gate requires verified or fresh attested evidence"}),
+        ];
         let fact = gate_fact(&ids, true, &[passed("ATLAS-CARD-a")], &failures);
         assert!(!fact.met);
         assert_eq!(fact.blocker, "unattested");
-        assert!(fact.reason.starts_with("UNATTESTED: ATLAS-CARD-a"), "{}", fact.reason);
+        assert!(
+            fact.reason.starts_with("UNATTESTED: ATLAS-CARD-a"),
+            "{}",
+            fact.reason
+        );
         assert!(fact.reason.contains("g8 attest ATLAS-CARD-a"));
     }
 
@@ -860,13 +884,19 @@ mod gate_tests {
         assert!(!fact.met);
         assert_eq!(fact.blocker, "unratified");
         assert!(fact.reason.contains("UNRATIFIED") && fact.reason.contains("g8 ratify"));
-        assert!(fact.reason.contains("UNATTESTED"), "both reasons are listed: {}", fact.reason);
+        assert!(
+            fact.reason.contains("UNATTESTED"),
+            "both reasons are listed: {}",
+            fact.reason
+        );
     }
 
     #[test]
     fn a_failure_for_another_obligation_does_not_block_this_gate() {
         let ids = vec!["ATLAS-CARD-a".to_string()];
-        let failures = [json!({"classification":"insufficient_rigor","obligation_id":"ATLAS-CARD-b","detail":"x"})];
+        let failures = [
+            json!({"classification":"insufficient_rigor","obligation_id":"ATLAS-CARD-b","detail":"x"}),
+        ];
         let fact = gate_fact(&ids, true, &[passed("ATLAS-CARD-a")], &failures);
         assert!(fact.met);
         assert_eq!(fact.blocker, "");
@@ -875,10 +905,17 @@ mod gate_tests {
     #[test]
     fn changed_missing_and_failed_obligations_are_unmet_with_their_reason() {
         let ids = vec!["ATLAS-CARD-a".to_string()];
-        assert_eq!(gate_fact(&ids, false, &[passed("ATLAS-CARD-a")], &[]).blocker, "changed");
+        assert_eq!(
+            gate_fact(&ids, false, &[passed("ATLAS-CARD-a")], &[]).blocker,
+            "changed"
+        );
         assert_eq!(gate_fact(&ids, true, &[], &[]).blocker, "missing");
-        let failed = json!({"id":"ATLAS-CARD-a","status":"failed","evidence":{"summary":"no match"}});
+        let failed =
+            json!({"id":"ATLAS-CARD-a","status":"failed","evidence":{"summary":"no match"}});
         let fact = gate_fact(&ids, true, &[failed], &[]);
-        assert_eq!((fact.met, fact.blocker.as_str(), fact.reason.as_str()), (false, "failed", "no match"));
+        assert_eq!(
+            (fact.met, fact.blocker.as_str(), fact.reason.as_str()),
+            (false, "failed", "no match")
+        );
     }
 }

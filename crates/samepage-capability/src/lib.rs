@@ -39,7 +39,7 @@ pub mod record;
 #[cfg(feature = "wasm-export")]
 mod wasm;
 
-pub use audit::{audit, AuditError, Violation};
+pub use audit::{AuditError, Violation, audit};
 pub use capability::{
     Call, CallerKind, CapError, Capability, Change, LegendEntry, Origin, Principal,
 };

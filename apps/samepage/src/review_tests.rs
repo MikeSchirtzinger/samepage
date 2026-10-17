@@ -52,10 +52,12 @@ fn page_validation_returns_post_write_errors_with_applied_ids() {
     let receipt: Value = serde_json::from_str(&error).unwrap();
     assert_eq!(receipt["operation_applied"], true);
     assert_eq!(receipt["validation"]["status"], "failed");
-    assert!(receipt["applied_ids"]
-        .as_array()
-        .unwrap()
-        .contains(&json!(second)));
+    assert!(
+        receipt["applied_ids"]
+            .as_array()
+            .unwrap()
+            .contains(&json!(second))
+    );
     assert!(error.contains(&first) && error.contains(&second));
     assert_eq!(receipt["errors"].as_array().unwrap().len(), 1);
     assert!(receipt["next"].as_str().unwrap().contains("do not repeat"));
@@ -63,11 +65,20 @@ fn page_validation_returns_post_write_errors_with_applied_ids() {
     // A write that touches neither overlapping card succeeds and carries the
     // standing overlap as a warning rather than failing.
     let unrelated = s
-        .invoke_as(&agent(), "card_place", json!({"label":"far away","x":2000,"y":2000}))
+        .invoke_as(
+            &agent(),
+            "card_place",
+            json!({"label":"far away","x":2000,"y":2000}),
+        )
         .unwrap();
     let reply: Value = serde_json::from_str(&unrelated).unwrap();
     assert_eq!(reply["warnings"][0]["code"], "card_overlap");
-    assert!(reply["next"].as_str().unwrap().contains("before this write"));
+    assert!(
+        reply["next"]
+            .as_str()
+            .unwrap()
+            .contains("before this write")
+    );
     assert_eq!(s.host.view().records().count(), 3);
     s.invoke_as(&agent(), "card_place", json!({"id":second,"x":400}))
         .unwrap();
@@ -132,20 +143,22 @@ fn browser_errors_are_fresh_evidence_and_do_not_change_document_or_read_cursor()
         json!({"stream":"tab-a","revision":"stale","sequence":1,"bounds":{},"errors":[]}),
     )
     .unwrap();
-    assert!(s
-        .validation
-        .observe("browser", bad, &s.host.view())
-        .is_err());
+    assert!(
+        s.validation
+            .observe("browser", bad, &s.host.view())
+            .is_err()
+    );
     let input:Observation=serde_json::from_value(json!({"stream":"tab-a","revision":revision,"sequence":2,"bounds":{n:[0,0,232,100]},"errors":[{"code":"browser_exception","message":"renderer failed"}]})).unwrap();
     s.validation
         .observe("browser", input, &s.host.view())
         .unwrap();
-    assert!(s
-        .validation
-        .report(&s.host.view())
-        .unwrap()
-        .to_string()
-        .contains("renderer failed"));
+    assert!(
+        s.validation
+            .report(&s.host.view())
+            .unwrap()
+            .to_string()
+            .contains("renderer failed")
+    );
     assert_eq!(before, s.host.encode_full());
     drop(s);
     std::fs::remove_dir_all(root).unwrap();

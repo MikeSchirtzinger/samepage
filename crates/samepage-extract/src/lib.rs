@@ -158,9 +158,11 @@ pub fn scan(root: &Path) -> Result<Report, ScanError> {
         languages.insert(lang.to_string());
         match lang {
             "rust" => lanes.extend(rust_extract::extract(root, &file.rel_path, &file.contents)?),
-            "javascript" | "typescript" => {
-                lanes.extend(js_manifest::extract_js(root, &file.rel_path, &file.contents)?)
-            }
+            "javascript" | "typescript" => lanes.extend(js_manifest::extract_js(
+                root,
+                &file.rel_path,
+                &file.contents,
+            )?),
             _ => {}
         }
     }

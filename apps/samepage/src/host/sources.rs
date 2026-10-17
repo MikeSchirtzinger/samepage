@@ -2,10 +2,10 @@
 use samepage_capability::{CapError, Change, View};
 use samepage_doc::host::Verifier;
 use samepage_sources::{
-    binding_key, effective_bindings, string, Binding, BindingFact, Excerpt, Facts,
+    Binding, BindingFact, Excerpt, Facts, binding_key, effective_bindings, string,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
@@ -35,8 +35,9 @@ impl Repository {
     pub fn line_count(&self, relative: &str) -> Result<usize, CapError> {
         self.read(relative, "1")?;
         let resolved = self.root.join(relative);
-        let file = fs::File::open(&resolved)
-            .map_err(|_| CapError::new("source_invalid", format!("{relative}: cannot read file")))?;
+        let file = fs::File::open(&resolved).map_err(|_| {
+            CapError::new("source_invalid", format!("{relative}: cannot read file"))
+        })?;
         let mut count = 0;
         let mut reader = BufReader::new(file.take(4 * 1024 * 1024));
         let mut buffer = Vec::new();

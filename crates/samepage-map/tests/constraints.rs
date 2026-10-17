@@ -8,10 +8,10 @@ use samepage_capability::{
     Batch, BatchEntry, Capability, Composition, Op, Plan, Scalar, Target, Value,
 };
 use samepage_doc::host::{CommitError, FrameRefusal, Host, InvokeError};
-use samepage_doc::{sync, Actor, Caller};
-use samepage_map::rules::*;
+use samepage_doc::{Actor, Caller, sync};
 use samepage_map::Map;
-use serde_json::{json, Value as JsonValue};
+use samepage_map::rules::*;
+use serde_json::{Value as JsonValue, json};
 use yrs::updates::decoder::Decode;
 use yrs::{Map as _, MapPrelim, Transact};
 

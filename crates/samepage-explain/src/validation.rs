@@ -194,12 +194,13 @@ pub fn validate_explanation_structure(
     for beat in &definition.beats {
         for transition in &beat.advance.transitions {
             if let Some(next) = &transition.next
-                && !beat_ids.contains(next) {
-                    return Err(format!(
-                        "transition {:?} from beat {:?} points to missing beat {next:?}",
-                        transition.id, beat.id
-                    ));
-                }
+                && !beat_ids.contains(next)
+            {
+                return Err(format!(
+                    "transition {:?} from beat {:?} points to missing beat {next:?}",
+                    transition.id, beat.id
+                ));
+            }
         }
     }
 

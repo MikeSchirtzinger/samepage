@@ -496,9 +496,10 @@ impl AuthStore {
 
         // 1. runtime override (in-memory, never persisted)
         if let Some(k) = self.runtime.lock().get(&provider.id)
-            && !k.is_empty() {
-                return Resolved::found(k.clone(), "runtime", None);
-            }
+            && !k.is_empty()
+        {
+            return Resolved::found(k.clone(), "runtime", None);
+        }
         // 2. stored credential (auth.json)
         let stored = self.creds.lock().get(&provider.id).cloned();
         if let Some(cred) = stored {
@@ -517,10 +518,11 @@ impl AuthStore {
         }
         // 3. models.json key source (`$VAR` / `!cmd` / literal)
         if let Some(src) = provider.key_source.as_deref()
-            && let Some(v) = resolve_config_value(src) {
-                let (source, label) = source_of(src);
-                return Resolved::found(v, source, label);
-            }
+            && let Some(v) = resolve_config_value(src)
+        {
+            let (source, label) = source_of(src);
+            return Resolved::found(v, source, label);
+        }
         // 4. environment fallback
         for var in &provider.env_vars {
             if let Ok(v) = std::env::var(var) {
@@ -1268,9 +1270,11 @@ mod tests {
             missing_error,
             ClaudeCodeOauthError::MissingAccessToken
         ));
-        assert!(missing_error
-            .to_string()
-            .contains("claudeAiOauth.accessToken"));
+        assert!(
+            missing_error
+                .to_string()
+                .contains("claudeAiOauth.accessToken")
+        );
 
         let expired = r#"{"claudeAiOauth":{"accessToken":"expired-token","expiresAt":999}}"#;
         let expired_error = parse_claude_code_oauth_token(expired, 1000)
@@ -1376,9 +1380,11 @@ mod tests {
         std::fs::write(&parent, b"not-a-directory")
             .expect("blocking parent fixture should be created");
 
-        assert!(store
-            .set_api_key("openai", "must-not-stick".into())
-            .is_err());
+        assert!(
+            store
+                .set_api_key("openai", "must-not-stick".into())
+                .is_err()
+        );
         assert!(!store.creds.lock().contains_key("openai"));
 
         let _ = std::fs::remove_file(parent);
@@ -1404,13 +1410,15 @@ mod tests {
         std::fs::remove_dir(&parent).expect("remove temporary parent");
         std::fs::write(&parent, b"not-a-directory").expect("block persistence parent");
         let changed_env = HashMap::from([("model".to_string(), "model-after".to_string())]);
-        assert!(store
-            .update_api_key_entry(
-                "openai",
-                changed_env,
-                ApiKeyUpdate::Set("key-after".to_string()),
-            )
-            .is_err());
+        assert!(
+            store
+                .update_api_key_entry(
+                    "openai",
+                    changed_env,
+                    ApiKeyUpdate::Set("key-after".to_string()),
+                )
+                .is_err()
+        );
         assert_eq!(store.api_key_env("openai"), initial_env);
         match store.creds.lock().get("openai") {
             Some(Credential::ApiKey { key, .. }) => assert_eq!(key, "key-before"),

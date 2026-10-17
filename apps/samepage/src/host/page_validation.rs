@@ -2,7 +2,7 @@
 //! enter the shared CRDT or advance a participant's review read cursor.
 use samepage_capability::View;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     sync::Mutex,
@@ -168,7 +168,8 @@ impl PageValidation {
             .peers
             .values()
             .filter(|p| {
-                p.observation.revision == view.revision() && p.at.elapsed() < Duration::from_secs(15)
+                p.observation.revision == view.revision()
+                    && p.at.elapsed() < Duration::from_secs(15)
             })
             .max_by_key(|p| p.at)
             .map(|p| p.observation.bounds.clone())

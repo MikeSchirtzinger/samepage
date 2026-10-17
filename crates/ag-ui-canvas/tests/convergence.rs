@@ -2,9 +2,9 @@
 //! asserted agreement. These prove the co-edit semantics before any
 //! networking exists.
 
+use ag_ui_canvas::DType;
 use ag_ui_canvas::scene::{Author, BlobRef, PropValue, Scene};
 use ag_ui_canvas::sync::{greeting, handle_payload, update_message};
-use ag_ui_canvas::DType;
 use std::sync::{Arc, Mutex};
 use yrs::{Map, Out, ReadTxn, Transact};
 
@@ -116,9 +116,11 @@ fn snapshot_orders_by_z_index_then_id_and_rejects_non_finite_data() {
     scene
         .set_prop(&hostile, "z_index", PropValue::Num(20.0))
         .expect("set hostile fixture z-index");
-    assert!(scene
-        .set_prop(&hostile, "z_index", PropValue::Num(f64::NAN))
-        .is_err_and(|error| error.to_string().contains("must be finite")));
+    assert!(
+        scene
+            .set_prop(&hostile, "z_index", PropValue::Num(f64::NAN))
+            .is_err_and(|error| error.to_string().contains("must be finite"))
+    );
 
     let snapshot = scene.snapshot().expect("read ordered scene snapshot");
     assert_eq!(snapshot[0].id, low);
@@ -135,9 +137,11 @@ fn snapshot_orders_by_z_index_then_id_and_rejects_non_finite_data() {
     };
     object.insert(&mut txn, "z_index", f64::NAN);
     drop(txn);
-    assert!(scene
-        .snapshot()
-        .is_err_and(|error| error.to_string().contains("finite number")));
+    assert!(
+        scene
+            .snapshot()
+            .is_err_and(|error| error.to_string().contains("finite number"))
+    );
 }
 
 #[test]
@@ -153,10 +157,12 @@ fn malformed_crdt_blob_numbers_do_not_coerce_into_valid_references() {
         ("blob_dtype", PropValue::Num(1.0)),
     ];
     scene.set_props(&id, &valid).expect("set valid blob ref");
-    assert!(scene
-        .get_blob_ref(&id)
-        .expect("read valid blob reference")
-        .is_some());
+    assert!(
+        scene
+            .get_blob_ref(&id)
+            .expect("read valid blob reference")
+            .is_some()
+    );
 
     for (key, bad) in [
         ("blob_gen", -1.0),
@@ -194,29 +200,37 @@ fn snapshot_rejects_non_map_root_entries() {
     objects.insert(&mut txn, "hostile-scalar", 7.0);
     drop(txn);
 
-    assert!(scene
-        .snapshot()
-        .is_err_and(|error| error.to_string().contains("is not a map")));
+    assert!(
+        scene
+            .snapshot()
+            .is_err_and(|error| error.to_string().contains("is not a map"))
+    );
 }
 
 #[test]
 fn local_writes_reject_invalid_state_before_mutation() {
     let mut scene = Scene::new();
-    assert!(scene
-        .create_object_with_props("disc", Author::Agent, &[("x", PropValue::Num(f64::NAN))],)
-        .is_err());
+    assert!(
+        scene
+            .create_object_with_props("disc", Author::Agent, &[("x", PropValue::Num(f64::NAN))],)
+            .is_err()
+    );
     assert_eq!(scene.len().expect("scene length"), 0);
 
     let id = scene
         .create_object("disc", Author::Agent)
         .expect("first valid create");
     assert!(id.as_str().ends_with("-00000000"));
-    assert!(scene
-        .set_prop(&id, "x", PropValue::Str("not-a-number".into()))
-        .is_err());
-    assert!(scene
-        .set_prop(&id, "blob_id", PropValue::Str("0000000000000007".into()),)
-        .is_err());
+    assert!(
+        scene
+            .set_prop(&id, "x", PropValue::Str("not-a-number".into()))
+            .is_err()
+    );
+    assert!(
+        scene
+            .set_prop(&id, "blob_id", PropValue::Str("0000000000000007".into()),)
+            .is_err()
+    );
     assert!(scene.snapshot().is_ok());
 
     let duplicate_blob_props = [
@@ -225,19 +239,21 @@ fn local_writes_reject_invalid_state_before_mutation() {
         ("blob_count", PropValue::Num(4.0)),
         ("blob_dtype", PropValue::Num(1.0)),
     ];
-    assert!(scene
-        .create_object_with_props_and_blob(
-            "particles",
-            Author::Agent,
-            &duplicate_blob_props,
-            BlobRef {
-                blob_id: 7,
-                generation: 1,
-                count: 4,
-                dtype: DType::F32,
-            },
-        )
-        .is_err());
+    assert!(
+        scene
+            .create_object_with_props_and_blob(
+                "particles",
+                Author::Agent,
+                &duplicate_blob_props,
+                BlobRef {
+                    blob_id: 7,
+                    generation: 1,
+                    count: 4,
+                    dtype: DType::F32,
+                },
+            )
+            .is_err()
+    );
     assert_eq!(scene.len().expect("scene length"), 1);
 }
 

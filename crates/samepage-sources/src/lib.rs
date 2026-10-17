@@ -4,9 +4,9 @@ use samepage_capability::{
     ActionDecl, Artifact, Audience, Batch, BatchEntry, Call, CapError, Capability, Change, Delta,
     Descriptor, Effect, LegendEntry, Op, Plan, Record, Target, Trigger, View,
 };
-use samepage_map::{prop_str, Map};
+use samepage_map::{Map, prop_str};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 pub const ID: &str = "sources";
@@ -232,16 +232,17 @@ impl Capability for Sources {
         self.validate(c.delta, c.after)?;
         for (id, keys) in c.attempted {
             if let Some(r) = c.after.get(id).filter(|r| r.kind == "node")
-                && keys.iter().any(|k| KEYS.contains(&k.as_str())) && !string(r, "path").is_empty()
-                {
-                    let expected = json!({"path":string(r,"path"),"lines":string(r,"lines")});
-                    if c.facts.and_then(|f| f.get(id)) != Some(&expected) {
-                        return Err(CapError::new(
-                            "source_unverified",
-                            format!("{id}: source binding needs matching native facts"),
-                        ));
-                    }
+                && keys.iter().any(|k| KEYS.contains(&k.as_str()))
+                && !string(r, "path").is_empty()
+            {
+                let expected = json!({"path":string(r,"path"),"lines":string(r,"lines")});
+                if c.facts.and_then(|f| f.get(id)) != Some(&expected) {
+                    return Err(CapError::new(
+                        "source_unverified",
+                        format!("{id}: source binding needs matching native facts"),
+                    ));
                 }
+            }
         }
         Ok(())
     }
@@ -369,11 +370,7 @@ pub fn project(view: &View, facts: &Facts) -> Result<Value, CapError> {
         let tier = if proposed {
             "proposed"
         } else if let Some(g) = gate {
-            if g.met {
-                "gate-met"
-            } else {
-                "gate-unmet"
-            }
+            if g.met { "gate-met" } else { "gate-unmet" }
         } else if bindings.is_empty() || !readable {
             "claimed"
         } else if drifted {
@@ -419,10 +416,16 @@ pub fn project(view: &View, facts: &Facts) -> Result<Value, CapError> {
             match bindings.as_slice() {
                 [] => "no source".to_string(),
                 [one] => format!("source {}:{}", one.path, one.lines),
-                [first, rest @ ..] => format!("source {}:{} and {} more", first.path, first.lines, rest.len()),
+                [first, rest @ ..] => format!(
+                    "source {}:{} and {} more",
+                    first.path,
+                    first.lines,
+                    rest.len()
+                ),
             },
             match gate {
-                Some(g) if tier == "gate-unmet" && !g.reason.is_empty() => format!(" ({})", g.reason),
+                Some(g) if tier == "gate-unmet" && !g.reason.is_empty() =>
+                    format!(" ({})", g.reason),
                 _ => String::new(),
             }
         ));

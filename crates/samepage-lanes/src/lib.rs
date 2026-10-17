@@ -3,9 +3,9 @@ use samepage_capability::{
     ActionDecl, Artifact, Audience, Call, CapError, Capability, Change, Delta, Descriptor, Effect,
     LegendEntry, Op, Plan, Record, Target, Trigger, View,
 };
-use samepage_sources::{effective_bindings, string, Binding, Facts as SourceFacts};
+use samepage_sources::{Binding, Facts as SourceFacts, effective_bindings, string};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 pub const ID: &str = "lanes";
 pub const VERSION: &str = "0.1.0";
@@ -84,7 +84,12 @@ pub fn descriptor() -> Descriptor {
     )
     .alias("atlas_claim_lane");
     claim.input_schema = json!({"type":"object","required":["lane_id"],"anyOf":[{"required":["node_id"]},{"required":["card_id"]}],"properties":{"lane_id":{"type":"string"},"node_id":{"type":"string"},"card_id":{"type":"string"},"scan_sha256":{"type":"string"}},"additionalProperties":false});
-    let mut read=ActionDecl::new("lanes_read", Audience::Both, Effect::Query, "Scan source and read grouped, unresolved execution-lane evidence. Static extraction is not runtime proof.");
+    let mut read = ActionDecl::new(
+        "lanes_read",
+        Audience::Both,
+        Effect::Query,
+        "Scan source and read grouped, unresolved execution-lane evidence. Static extraction is not runtime proof.",
+    );
     read.input_schema = json!({"type":"object","properties":{},"additionalProperties":false});
     Descriptor::new(ID, VERSION, Artifact::Wasm)
         .depends_on(
@@ -174,7 +179,12 @@ pub fn reconcile(view: &View, facts: &Facts) -> Value {
         groups.entry(key).or_default().push(l.clone());
     }
     let groups:Vec<_>=groups.into_iter().map(|(name,all)|json!({"name":name,"count":all.len(),"shown":all.iter().take(20).collect::<Vec<_>>(),"more":all.len().saturating_sub(20)})).collect();
-    let mut readback=format!("LANES: {} unresolved; {} found or retained; {} source files scanned. Static extraction, not runtime proof.\n",unresolved_count,lanes.len(),facts.scan.scanned_files);
+    let mut readback = format!(
+        "LANES: {} unresolved; {} found or retained; {} source files scanned. Static extraction, not runtime proof.\n",
+        unresolved_count,
+        lanes.len(),
+        facts.scan.scanned_files
+    );
     for l in &lanes {
         readback.push_str(&format!(
             "[{}] {} {}:{} — {}{}\n",

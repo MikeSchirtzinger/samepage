@@ -7,9 +7,9 @@ use samepage_capability::{
     ActionDecl, Artifact, Audience, Batch, BatchEntry, Call, CallerKind, CapError, Capability,
     Change, Delta, Descriptor, Effect, Op, Plan, Record, Target, Trigger, Value, View,
 };
-use samepage_map::{prop_str, Map};
+use samepage_map::{Map, prop_str};
 use samepage_sketch::Sketch;
-use serde_json::{json, Value as Json};
+use serde_json::{Value as Json, json};
 use std::collections::{BTreeMap, BTreeSet};
 pub const ID: &str = "explain";
 pub const VERSION: &str = "0.1.0";
@@ -393,7 +393,7 @@ fn control(f: &ExplanationFlow, command: &str) -> Result<ExplanationFlowState, C
             return Err(invalid(format!(
                 "cannot {command} an explanation whose status is {}",
                 s.status
-            )))
+            )));
         }
     }
     s.revision = increment(f.state.revision)?;
@@ -745,9 +745,11 @@ fn draw(v: &View, a: &Json) -> Result<Vec<BatchEntry>, CapError> {
             .ok_or_else(|| invalid("nodes must be an array"))?;
         for (i, node) in nodes.iter().enumerate() {
             if let Some(id) = node.get("id").and_then(Json::as_str)
-                && scoped && !f.definition.scene_ids.iter().any(|s| s == id) {
-                    return Err(invalid("cannot edit an object outside this exploration"));
-                }
+                && scoped
+                && !f.definition.scene_ids.iter().any(|s| s == id)
+            {
+                return Err(invalid("cannot edit an object outside this exploration"));
+            }
             let virtual_view = View::new(v.revision(), virtual_records.clone())
                 .map_err(|e| invalid(e.to_string()))?;
             let mut plan = Map.plan(
@@ -803,9 +805,11 @@ fn draw(v: &View, a: &Json) -> Result<Vec<BatchEntry>, CapError> {
             .ok_or_else(|| invalid("shapes must be an array"))?;
         for shape in shapes {
             if let Some(id) = shape.get("id").and_then(Json::as_str)
-                && scoped && !f.definition.scene_ids.contains(&id.to_string()) {
-                    return Err(invalid("cannot edit an object outside this exploration"));
-                }
+                && scoped
+                && !f.definition.scene_ids.contains(&id.to_string())
+            {
+                return Err(invalid("cannot edit an object outside this exploration"));
+            }
         }
         let virtual_view =
             View::new(v.revision(), virtual_records).map_err(|e| invalid(e.to_string()))?;
@@ -833,22 +837,24 @@ fn draw(v: &View, a: &Json) -> Result<Vec<BatchEntry>, CapError> {
                 for key in ["from", "to"] {
                     if let Some(Value::Scalar(samepage_capability::Scalar::Str(id))) =
                         props.get(key)
-                        && let Some(reference) = id.strip_prefix("@exploration-card-") {
-                            props.insert(
-                                key.into(),
-                                Value::reference(&format!("exploration-card-{reference}")),
-                            );
-                        }
+                        && let Some(reference) = id.strip_prefix("@exploration-card-")
+                    {
+                        props.insert(
+                            key.into(),
+                            Value::reference(&format!("exploration-card-{reference}")),
+                        );
+                    }
                 }
             }
             if let Op::Create { reference, .. } = op
-                && scoped {
-                    ownership.push(Op::Set {
-                        target: Target::Ref(reference.clone()),
-                        props: [("exploration_id".into(), f.definition.id.clone().into())].into(),
-                    });
-                    count += 1;
-                }
+                && scoped
+            {
+                ownership.push(Op::Set {
+                    target: Target::Ref(reference.clone()),
+                    props: [("exploration_id".into(), f.definition.id.clone().into())].into(),
+                });
+                count += 1;
+            }
         }
         entries.push(entry("sketch", plan));
     }

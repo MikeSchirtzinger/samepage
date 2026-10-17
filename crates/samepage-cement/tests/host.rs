@@ -1,13 +1,13 @@
 use samepage_capability::{Call, Composition, Record, View};
-use samepage_cement::{decision::DraftInput, Cement};
-use samepage_doc::{host::Host, Actor, Caller};
-use serde_json::{json, Value};
+use samepage_cement::{Cement, decision::DraftInput};
+use samepage_doc::{Actor, Caller, host::Host};
+use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     path::PathBuf,
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicU64, Ordering},
     },
 };
 #[allow(dead_code)]
@@ -262,9 +262,10 @@ fn cement_refuses_a_settled_selection_changed_during_publication() {
     )
     .unwrap();
     let before = h.revision();
-    assert!(h
-        .invoke_composed(&human, "decision_cement", &pending.batch)
-        .is_err());
+    assert!(
+        h.invoke_composed(&human, "decision_cement", &pending.batch)
+            .is_err()
+    );
     pending.rollback().unwrap();
     assert_eq!(h.revision(), before);
     assert!(!p.join("docs/decisions/index.json").exists());
@@ -277,9 +278,10 @@ fn reviewed_cement_activates_the_real_g8_gate_and_records_the_adr() {
     let (h, c, n, d) = setup(&p);
     let agent = Actor::new("agent", Caller::Agent);
     let human = Actor::new("human", Caller::Human);
-    assert!(h
-        .invoke(&agent, "decision_preview", json!({"ids":[n],"draft_id":d}))
-        .is_err());
+    assert!(
+        h.invoke(&agent, "decision_preview", json!({"ids":[n],"draft_id":d}))
+            .is_err()
+    );
     h.invoke(&agent, "mode_set", json!({"mode":"alignment"}))
         .unwrap();
     let preview = c
@@ -288,9 +290,10 @@ fn reviewed_cement_activates_the_real_g8_gate_and_records_the_adr() {
     let args = json!({"ids":[n],"draft_id":d,"review_token":preview["bundle"]["review_token"]});
     let pending = c.publish(&h.view(), &args).unwrap();
     assert_eq!(pending.result["receipt"]["g8_status"], "active_passing");
-    assert!(h
-        .invoke_composed(&agent, "decision_cement", &pending.batch)
-        .is_err());
+    assert!(
+        h.invoke_composed(&agent, "decision_cement", &pending.batch)
+            .is_err()
+    );
     let committed = h
         .invoke_composed(&human, "atlas_cement_decision", &pending.batch)
         .unwrap();
@@ -348,10 +351,12 @@ fn structural_draft_schema_is_closed_and_explicit() {
     let mut value = input("n");
     value["checks"][0]["check"]["backend"] = json!("arbitrary_command");
     assert!(serde_json::from_value::<DraftInput>(value).is_err());
-    assert!(serde_json::from_value::<DraftInput>(input("n"))
-        .unwrap()
-        .validate()
-        .is_ok());
+    assert!(
+        serde_json::from_value::<DraftInput>(input("n"))
+            .unwrap()
+            .validate()
+            .is_ok()
+    );
     let _: BTreeMap<String, String> = BTreeMap::new();
 }
 #[test]

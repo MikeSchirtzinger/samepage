@@ -28,7 +28,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 /// Who wrote something. Not an honour-system field: the host sets it from which
 /// endpoint the write arrived through, and the two endpoints have different
@@ -537,14 +537,16 @@ impl Board {
         entry.changed_at = revision;
         // A human agreeing is the only thing that settles a claim.
         if mark == Mark::Agree
-            && let Assertion::Claim { status, .. } = &mut entry.assertion {
-                *status = Status::Settled;
-            }
+            && let Assertion::Claim { status, .. } = &mut entry.assertion
+        {
+            *status = Status::Settled;
+        }
         if mark != Mark::Agree
             && let Assertion::Claim { status, .. } = &mut entry.assertion
-                && *status == Status::Settled {
-                    *status = Status::Proposed;
-                }
+            && *status == Status::Settled
+        {
+            *status = Status::Proposed;
+        }
         self.revision = revision;
         Ok(format!("marked {id} {}", mark.word()))
     }
@@ -572,9 +574,10 @@ impl Board {
         entry.marked_at_revision = None;
         if withdrawn == Some(Mark::Agree)
             && let Assertion::Claim { status, .. } = &mut entry.assertion
-                && *status == Status::Settled {
-                    *status = Status::Proposed;
-                }
+            && *status == Status::Settled
+        {
+            *status = Status::Proposed;
+        }
         entry.changed_at = revision;
         self.revision = revision;
         Ok(format!("unmarked {id}"))
@@ -813,9 +816,10 @@ pub fn validate(assertion: &Assertion) -> Result<(), String> {
         }
     }
     if let Assertion::Decision { chose, because, .. } = assertion
-        && (chose.trim().is_empty() || because.trim().is_empty()) {
-            return Err(format!("`{id}` needs both `chose` and `because`"));
-        }
+        && (chose.trim().is_empty() || because.trim().is_empty())
+    {
+        return Err(format!("`{id}` needs both `chose` and `because`"));
+    }
     Ok(())
 }
 

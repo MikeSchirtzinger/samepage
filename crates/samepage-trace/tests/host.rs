@@ -1,5 +1,5 @@
-use samepage_capability::{activity::ActivityRecord, Call, Capability, View};
-use samepage_trace::{Ring, Trace, CAPACITY};
+use samepage_capability::{Call, Capability, View, activity::ActivityRecord};
+use samepage_trace::{CAPACITY, Ring, Trace};
 use serde_json::json;
 fn record(id: &str, parent: Option<&str>, kind: &str, cap: &str) -> ActivityRecord {
     ActivityRecord {
@@ -73,10 +73,12 @@ fn overflow_is_bounded_and_reports_exact_dropped_records() {
         snapshot.emitted,
         snapshot.records.len() as u64 + snapshot.dropped
     );
-    assert!(snapshot
-        .records
-        .windows(2)
-        .all(|p| p[1].sequence == p[0].sequence + 1));
+    assert!(
+        snapshot
+            .records
+            .windows(2)
+            .all(|p| p[1].sequence == p[0].sequence + 1)
+    );
     let ids: std::collections::BTreeSet<_> = snapshot
         .records
         .iter()
@@ -92,9 +94,10 @@ fn benchmark_bounds_refuse_zero_work_before_mutating_trace_state() {
         .unwrap();
     let before = ring.snapshot();
     for (i, s) in [(0, 1), (1, 0), (10001, 1), (1, 31)] {
-        assert!(ring
-            .benchmark(i, s, || panic!("invalid work read clock"))
-            .is_err());
+        assert!(
+            ring.benchmark(i, s, || panic!("invalid work read clock"))
+                .is_err()
+        );
         assert_eq!(ring.snapshot(), before);
     }
 }

@@ -322,15 +322,24 @@ mod tests {
 
     #[test]
     fn a_persisted_registry_keeps_a_chosen_name_across_a_restart() {
-        let path = std::env::temp_dir().join(format!("people-{}-{}.json", std::process::id(), uuid::Uuid::new_v4().simple()));
+        let path = std::env::temp_dir().join(format!(
+            "people-{}-{}.json",
+            std::process::id(),
+            uuid::Uuid::new_v4().simple()
+        ));
         let before = People::new();
         before.persist_to(&path).unwrap();
         let (person, token) = before.admit(Principal::Local { id: "a".into() }, "someone", &[]);
         before.rename(&token, "Dana", &[]).unwrap();
         let after = People::new();
         after.persist_to(&path).unwrap();
-        let back = after.resolve(&token).expect("the resume token still resolves");
-        assert_eq!((back.participant_id, back.name.as_str()), (person.participant_id, "Dana"));
+        let back = after
+            .resolve(&token)
+            .expect("the resume token still resolves");
+        assert_eq!(
+            (back.participant_id, back.name.as_str()),
+            (person.participant_id, "Dana")
+        );
         let _ = std::fs::remove_file(path);
     }
 

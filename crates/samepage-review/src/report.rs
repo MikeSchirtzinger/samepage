@@ -2,7 +2,7 @@
 use crate::{describe, flag, projection, string};
 use samepage_capability::{CapError, View};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 pub const EVIDENCE_BOUNDARY: &str = "Readable source does not verify a claim's prose or a diagram's arrows. Commit-pinned claims describe their cited revision; freshness against current code has not been established. Connections are authored relations, not detected runtime calls.\n";
@@ -34,21 +34,25 @@ pub fn build(view: &View, facts: &Facts) -> Result<Value, CapError> {
         let id = node["id"].as_str().unwrap_or_default().to_string();
         node["evidence"] = json!(facts.sources.get(&id).cloned().unwrap_or_default());
         node["tier"] = json!(facts.tiers.get(&id));
-        node["claims"] = json!(crate::claims_of(view, &id)
-            .iter()
-            .filter(|r| !flag(r, "withdrawn"))
-            .map(|r| r.id.clone())
-            .collect::<Vec<_>>());
-        node["incoming"] = json!(view
-            .records()
-            .filter(|r| r.kind == "edge" && string(r, "to") == id)
-            .map(|r| string(r, "from"))
-            .collect::<Vec<_>>());
-        node["outgoing"] = json!(view
-            .records()
-            .filter(|r| r.kind == "edge" && string(r, "from") == id)
-            .map(|r| string(r, "to"))
-            .collect::<Vec<_>>());
+        node["claims"] = json!(
+            crate::claims_of(view, &id)
+                .iter()
+                .filter(|r| !flag(r, "withdrawn"))
+                .map(|r| r.id.clone())
+                .collect::<Vec<_>>()
+        );
+        node["incoming"] = json!(
+            view.records()
+                .filter(|r| r.kind == "edge" && string(r, "to") == id)
+                .map(|r| string(r, "from"))
+                .collect::<Vec<_>>()
+        );
+        node["outgoing"] = json!(
+            view.records()
+                .filter(|r| r.kind == "edge" && string(r, "from") == id)
+                .map(|r| string(r, "to"))
+                .collect::<Vec<_>>()
+        );
     }
     Ok(report)
 }

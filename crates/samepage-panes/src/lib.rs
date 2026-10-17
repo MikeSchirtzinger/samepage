@@ -11,7 +11,7 @@ use samepage_capability::{
     Descriptor, Effect, LegendEntry, Op, Origin, Plan, Record, Scalar, Target, Trigger, Value,
     View,
 };
-use serde_json::{json, Value as Json};
+use serde_json::{Value as Json, json};
 use std::collections::{BTreeMap, BTreeSet};
 pub const ID: &str = "panes";
 pub const VERSION: &str = "0.1.0";
@@ -483,7 +483,9 @@ impl Capability for Panes {
                         .keys()
                         .any(|k| !["id", "place", "size", "pinned"].contains(&k.as_str()))
                     {
-                        return Err(invalid("agents arrange by relation and named size; human geometry uses pane_put"));
+                        return Err(invalid(
+                            "agents arrange by relation and named size; human geometry uses pane_put",
+                        ));
                     }
                     let p = pane(&working, arg(adjustment, "id"))?;
                     let current = spot(&working, &p.id)?;
@@ -1085,14 +1087,15 @@ pub fn changes(b: &Json, a: &Json) -> Vec<String> {
                 && let (Ok(before), Ok(after)) = (
                     serde_json::from_value::<Spot>(old["spot"].clone()),
                     serde_json::from_value::<Spot>(p["spot"].clone()),
-                ) {
-                    out.push(format!(
-                        "{} “{title}” by {}. It now sits {}",
-                        geometry_verb(before, after),
-                        p["layout_by_name"].as_str().unwrap_or("someone"),
-                        layout::locate(index, &sites)
-                    ));
-                }
+                )
+            {
+                out.push(format!(
+                    "{} “{title}” by {}. It now sits {}",
+                    geometry_verb(before, after),
+                    p["layout_by_name"].as_str().unwrap_or("someone"),
+                    layout::locate(index, &sites)
+                ));
+            }
             for field in ["title", "view", "mark", "note", "pointed", "pinned"] {
                 if old[field] != p[field] {
                     out.push(format!("{field} changed on “{title}”"));

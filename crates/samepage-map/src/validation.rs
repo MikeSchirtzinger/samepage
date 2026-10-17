@@ -1,7 +1,7 @@
 //! Portable diagnostics. Local measurements are inputs, never document writes.
-use crate::{prop_str, Map};
+use crate::{Map, prop_str};
 use samepage_capability::{CapError, Capability, View};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]

@@ -5,7 +5,7 @@ use samepage_capability::{
     Trigger, View,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::VecDeque;
 pub const ID: &str = "trace";
 pub const VERSION: &str = "0.1.0";

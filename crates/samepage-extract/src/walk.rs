@@ -23,7 +23,10 @@ const ALWAYS_SKIP_DIRS: [&str; 4] = ["target", "node_modules", ".git", ".local"]
 #[derive(Debug)]
 pub enum ScanError {
     NotADirectory(PathBuf),
-    Io { path: PathBuf, source: std::io::Error },
+    Io {
+        path: PathBuf,
+        source: std::io::Error,
+    },
 }
 
 impl fmt::Display for ScanError {

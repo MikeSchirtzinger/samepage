@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use serde::Deserialize;
-use serde_json::{json, Map as JsonMap, Value as JsonValue};
+use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use thiserror::Error;
 
 use crate::services::{
@@ -1947,11 +1947,13 @@ capabilities = ["dom"]
             }
             _ => panic!("expected mutate"),
         }
-        assert!(surface
-            .state()
-            .describe()
-            .expect("compose updated test surface description")
-            .contains("alpha = 1"));
+        assert!(
+            surface
+                .state()
+                .describe()
+                .expect("compose updated test surface description")
+                .contains("alpha = 1")
+        );
     }
 
     #[test]
@@ -2085,10 +2087,12 @@ enabled = false
 "#,
         )
         .unwrap();
-        assert!(disabled
-            .validate()
-            .unwrap_err()
-            .to_string()
-            .contains("at least one"));
+        assert!(
+            disabled
+                .validate()
+                .unwrap_err()
+                .to_string()
+                .contains("at least one")
+        );
     }
 }

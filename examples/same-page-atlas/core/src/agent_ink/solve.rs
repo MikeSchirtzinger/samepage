@@ -7,8 +7,8 @@ use yrs::{Any, Map, Out, Transact};
 
 use super::dimension;
 use super::formula;
-use super::relation::{variable_object_ids, Relation};
-use crate::{read, text, Atlas, AtlasError, VarState, Variable, MAX_LABEL};
+use super::relation::{Relation, variable_object_ids};
+use crate::{Atlas, AtlasError, MAX_LABEL, VarState, Variable, read, text};
 
 pub(super) const KIND_SOLVE_STATE: &str = "agent_ink_solve_state";
 
@@ -162,17 +162,17 @@ pub fn set_variable_value(
         VarState::Free => {
             return Err(format!(
                 "free variable {name:?} is solver-owned and cannot be written directly"
-            ))
+            ));
         }
         VarState::Derived => {
             return Err(format!(
                 "derived variable {name:?} follows its linear relation and cannot be written directly"
-            ))
+            ));
         }
         VarState::Measured => {
             return Err(format!(
                 "measured variable {name:?} is computed from the drawing and cannot be written directly"
-            ))
+            ));
         }
     }
     crate::living_ink::write_variable_value(scene, &atlas, name, variable.value, value, author)
@@ -356,13 +356,15 @@ pub(super) fn project_state(
     }
     match status {
         SolveStatus::Relaxed if dropped.is_empty() => {
-            return Err("a relaxed solve state must name at least one dropped relation".to_string())
+            return Err(
+                "a relaxed solve state must name at least one dropped relation".to_string(),
+            );
         }
         SolveStatus::Converged | SolveStatus::Exhausted if !dropped.is_empty() => {
             return Err(format!(
                 "solve status {} cannot carry dropped relations",
                 status.as_str()
-            ))
+            ));
         }
         _ => {}
     }
@@ -676,14 +678,14 @@ impl System {
                     return Err(format!(
                         "derived variable {:?} has no linear relation",
                         variable.name
-                    ))
+                    ));
                 }
                 (VarState::Derived, true) => {}
                 (_, true) => {
                     return Err(format!(
                         "linear dependent variable {:?} is not projected as derived",
                         variable.name
-                    ))
+                    ));
                 }
                 _ => {}
             }

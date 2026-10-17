@@ -398,14 +398,15 @@ fn verify_pinned_asset(
         .into());
     }
     if let Some(expected_bytes) = expected_bytes
-        && metadata.len() != expected_bytes {
-            return Err(format!(
-                "required semantic-import asset {} has {} bytes, expected {expected_bytes}",
-                path.display(),
-                metadata.len()
-            )
-            .into());
-        }
+        && metadata.len() != expected_bytes
+    {
+        return Err(format!(
+            "required semantic-import asset {} has {} bytes, expected {expected_bytes}",
+            path.display(),
+            metadata.len()
+        )
+        .into());
+    }
     let bytes = std::fs::read(path).map_err(|error| {
         format!(
             "required semantic-import asset {} cannot be opened: {error}",

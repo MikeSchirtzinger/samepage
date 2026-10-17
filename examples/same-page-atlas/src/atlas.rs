@@ -24,7 +24,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
-use ag_ui_canvas::codec::{decode_frame, encode_sync, Frame};
+use ag_ui_canvas::codec::{Frame, decode_frame, encode_sync};
 use ag_ui_canvas::scene::{Author, Scene, UpdateSubscription};
 use ag_ui_canvas::sync::{greeting, handle_payload, update_message};
 use ag_ui_surface::diagram;
@@ -38,7 +38,7 @@ use ag_ui_surface::{
 use base64::Engine as _;
 use parking_lot::Mutex;
 use same_page_atlas_core as atlas;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 use crate::{cement, import_archify, lanes, map_cement, source::Repo, tier};
 
@@ -397,9 +397,10 @@ impl AtlasState {
 
     pub(crate) fn agent_byline(&self) -> String {
         if let Some(actor) = ag_ui_surface::current_actor()
-            && let Some(label) = actor.label {
-                return label;
-            }
+            && let Some(label) = actor.label
+        {
+            return label;
+        }
         self.actor_label
             .lock()
             .clone()
@@ -718,8 +719,17 @@ impl AtlasState {
             format!("{:x}", sha2::Sha256::digest(excerpt.text.as_bytes()))
         };
         let mut tiers = self.tiers.lock();
-        tier::record_claim(&mut tiers, &self.tiers_path, lane_id, card_id, &path, &line, &sha256)?;
-        let count = tier::effective_bindings(atlas.node(card_id).expect("checked above"), &tiers).len();
+        tier::record_claim(
+            &mut tiers,
+            &self.tiers_path,
+            lane_id,
+            card_id,
+            &path,
+            &line,
+            &sha256,
+        )?;
+        let count =
+            tier::effective_bindings(atlas.node(card_id).expect("checked above"), &tiers).len();
         Ok(format!(
             "{card_id} now also claims lane {lane_id} ({path}:{line}), verified at {}; it now vouches for {count} lane{}",
             &sha256[..6],
@@ -762,9 +772,8 @@ impl AtlasState {
         } else {
             reason
         };
-        let obligation = map_cement::build_lane_removal(lane, lane_id, reason).ok_or_else(|| {
-            "this lane's evidence has no matchable text to gate on".to_string()
-        })?;
+        let obligation = map_cement::build_lane_removal(lane, lane_id, reason)
+            .ok_or_else(|| "this lane's evidence has no matchable text to gate on".to_string())?;
         let obligations_path = repo.root().join("specs/obligations-v0.1.json");
         map_cement::merge_and_write(&obligations_path, vec![obligation.clone()])?;
         let mut tiers = self.tiers.lock();
@@ -7075,7 +7084,9 @@ impl Extension for AtlasExtension {
                             let lane_id = body["lane_id"].as_str().unwrap_or("").to_string();
                             let reason = body["reason"].as_str().unwrap_or("").to_string();
                             match state.remove_lane(&lane_id, &reason) {
-                                Ok(result) => RouteResponse::json(200, json!({"ok":true,"result":result})),
+                                Ok(result) => {
+                                    RouteResponse::json(200, json!({"ok":true,"result":result}))
+                                }
                                 Err(error) => {
                                     RouteResponse::json(400, json!({"ok":false,"error":error}))
                                 }
@@ -8516,8 +8527,11 @@ mod tests {
         // The world rectangle the report carries is the core's answer, not a
         // second copy of the projection in JavaScript. `camera.rs` owns it and
         // `the_world_viewport_is_what_the_pane_shows` holds it to the numbers.
-        assert!(source
-            .contains("const seen = atlasCamera.world_viewport(viewport.width, viewport.height);"));
+        assert!(
+            source.contains(
+                "const seen = atlasCamera.world_viewport(viewport.width, viewport.height);"
+            )
+        );
         assert!(
             !source.contains("box.width / camera.scale"),
             "the page is projecting its own viewport again"
@@ -8629,8 +8643,11 @@ mod tests {
         assert!(source.contains(
             "      if (!drag.moved && nodeDragDistance(drag, event) < NODE_DRAG_THRESHOLD_PX) return;"
         ));
-        assert!(source
-            .contains("selectSet(drag.moved ? [...drag.base, ...marqueeHits(drag)] : drag.base);"));
+        assert!(
+            source.contains(
+                "selectSet(drag.moved ? [...drag.base, ...marqueeHits(drag)] : drag.base);"
+            )
+        );
     }
 
     /// R2: shift toggles membership, on every kind of selectable object.
@@ -10055,8 +10072,8 @@ mod tests {
     }
 
     #[test]
-    fn a_three_level_hierarchy_lays_out_with_no_container_overlap_and_every_child_inside_its_parent(
-    ) {
+    fn a_three_level_hierarchy_lays_out_with_no_container_overlap_and_every_child_inside_its_parent()
+     {
         let dir = temp_dir("typed-hierarchy-layout");
         let (state, _ws) = state(&dir);
         let defs = actions(&state);
@@ -10275,9 +10292,11 @@ mod tests {
         assert!(allowed, "{result}");
         assert!(result.contains("active and passing"), "{result}");
         assert!(workspace.join("g8.lock").is_file());
-        assert!(workspace
-            .join("docs/decisions/0001-persistence.md")
-            .is_file());
+        assert!(
+            workspace
+                .join("docs/decisions/0001-persistence.md")
+                .is_file()
+        );
         assert_eq!(state.read().unwrap().challenge(&id).standing, "cemented");
         assert!(state.read().unwrap().describe().contains("CEMENTED as"));
         std::fs::write(
@@ -11511,10 +11530,11 @@ mod tests {
             !diagram.contains("group constraint"),
             "the description still promises the register it no longer writes: {diagram}"
         );
-        let group_field = def("atlas_diagram").parameters["properties"]["nodes"]["items"]
-            ["properties"]["group"]["description"]
-            .as_str()
-            .expect("atlas_diagram group field description");
+        let group_field =
+            def("atlas_diagram").parameters["properties"]["nodes"]["items"]["properties"]["group"]
+                ["description"]
+                .as_str()
+                .expect("atlas_diagram group field description");
         assert!(group_field.contains("container node"), "{group_field}");
 
         // atlas_remove: "removing a container does NOT remove what was inside
@@ -12820,10 +12840,12 @@ mod tests {
         assert_eq!(route_response.status, 200, "{}", route_response.body);
         let body = route_response.body.as_json().expect("route body is JSON");
         assert_eq!(body["enabled"], JsonValue::Bool(true));
-        assert!(body["readback"]
-            .as_str()
-            .expect("readback is a string")
-            .contains("swing arm length"));
+        assert!(
+            body["readback"]
+                .as_str()
+                .expect("readback is a string")
+                .contains("swing arm length")
+        );
         assert_eq!(
             body["variables"].as_array().expect("variables array").len(),
             1

@@ -375,10 +375,10 @@ mod tests {
 
     use super::*;
     use crate::agent_ink::{
-        advance_step, create_relation, create_variable, record_current_step, set_agent_ink_mode,
-        solve, solve_with_options, AgentInkMode, SolveOptions, KIND_RELATION,
+        AgentInkMode, KIND_RELATION, SolveOptions, advance_step, create_relation, create_variable,
+        record_current_step, set_agent_ink_mode, solve, solve_with_options,
     };
-    use crate::{describe_changes_for, read, ShapePatch, RELATIONS};
+    use crate::{RELATIONS, ShapePatch, describe_changes_for, read};
 
     /// A real shape for a `represents` binding to name. `represents_object`
     /// now has to resolve to something on the atlas the moment the variable

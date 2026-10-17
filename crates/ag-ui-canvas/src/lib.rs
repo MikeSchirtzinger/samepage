@@ -18,8 +18,10 @@ pub mod sync;
 
 pub use blob::{AlignedBytes, BlobEntry, BlobStore, DType};
 pub use codec::{
-    decode_frame, encode_blob, encode_blob_ack, encode_blob_request, encode_sync, BlobHeader,
-    CodecError, Frame, FrameType, BLOB_HEADER_LEN,
+    BLOB_HEADER_LEN, BlobHeader, CodecError, Frame, FrameType, decode_frame, encode_blob,
+    encode_blob_ack, encode_blob_request, encode_sync,
 };
-pub use ids::{mint_object_id, ObjectId};
-pub use scene::{Author, BlobRef, ObjectSnapshot, PropValue, Scene, SceneError, UpdateSubscription};
+pub use ids::{ObjectId, mint_object_id};
+pub use scene::{
+    Author, BlobRef, ObjectSnapshot, PropValue, Scene, SceneError, UpdateSubscription,
+};

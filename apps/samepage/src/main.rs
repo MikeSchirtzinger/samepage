@@ -113,8 +113,12 @@ fn advertise(project: &Path, addr: &str) -> Result<(), Box<dyn std::error::Error
     if let Ok(entries) = std::fs::read_dir(&sessions) {
         for entry in entries.flatten() {
             let path = entry.path();
-            let Ok(text) = std::fs::read_to_string(&path) else { continue };
-            let Ok(advert) = serde_json::from_str::<serde_json::Value>(&text) else { continue };
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(advert) = serde_json::from_str::<serde_json::Value>(&text) else {
+                continue;
+            };
             if advert["kind"] != "samepage-host" {
                 continue;
             }

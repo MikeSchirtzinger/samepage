@@ -11,7 +11,7 @@ use samepage_capability::{
     Change, Composition, Delta, Descriptor, Effect, Op, Origin, Plan, Scalar, Target, Value, View,
 };
 use samepage_doc::host::{CommitError, FrameRefusal, Host, InvokeError, Verifier};
-use samepage_doc::{sync, Actor, Caller};
+use samepage_doc::{Actor, Caller, sync};
 use serde_json::json;
 use support::*;
 use yrs::{Map as _, Transact};

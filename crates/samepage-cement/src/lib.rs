@@ -7,7 +7,7 @@ use samepage_capability::{
 };
 use samepage_sources::string;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 pub const ID: &str = "cement";
@@ -46,7 +46,11 @@ pub fn descriptor() -> Descriptor {
             &["definition"],
             "Immutable agent decision drafts",
         )
-        .owns("cement-mode", &["value", "view"], "Shared commitment posture and view mode");
+        .owns(
+            "cement-mode",
+            &["value", "view"],
+            "Shared commitment posture and view mode",
+        );
     for kind in [
         "node",
         "edge",
@@ -155,8 +159,10 @@ pub fn descriptor() -> Descriptor {
 }
 /// The typed argument contract of `decision_draft`, matching [`DraftInput`].
 fn draft_schema() -> Value {
-    let text = |what: &str| json!({"type":"string","minLength":1,"maxLength":8000,"description":what});
-    let strings = |min: u64| json!({"type":"array","minItems":min,"items":{"type":"string","minLength":1}});
+    let text =
+        |what: &str| json!({"type":"string","minLength":1,"maxLength":8000,"description":what});
+    let strings =
+        |min: u64| json!({"type":"array","minItems":min,"items":{"type":"string","minLength":1}});
     let enum_args = json!({
         "type":"object","additionalProperties":false,"required":["file","enum_name","expected_variants"],
         "properties":{
@@ -491,7 +497,11 @@ impl Capability for Cement {
                         }
                     },
                 );
-                if VIEWS.contains(&m) { format!("View: {m}; posture stays {}.", mode(v)) } else { format!("Posture: {m}; view stays {}.", view_mode(v)) }
+                if VIEWS.contains(&m) {
+                    format!("View: {m}; posture stays {}.", mode(v))
+                } else {
+                    format!("Posture: {m}; view stays {}.", view_mode(v))
+                }
             }
             "decision_draft" => {
                 let input: DraftInput = serde_json::from_value(c.args["draft"].clone())
@@ -531,7 +541,7 @@ impl Capability for Cement {
                 return Err(CapError::new(
                     "publication_required",
                     "native reviewed publication must precede the CRDT stamp",
-                ))
+                ));
             }
             "mode_read"
             | "map_cement"
@@ -658,7 +668,17 @@ pub fn bundle(
         .current
         .ok_or_else(|| err("one shared question is required"))?;
     let input = &d.input;
-    let mut adr=format!("# {}\n\nStatus: accepted by the human when cemented.\nDate: {}\n\n## Context\n\nQuestion: {}\nScope: {}\nSubjects: {}\nAssumptions: {}\n\n## Decision\n\n{}\n\n## Why this approach\n\n{}\n\n## Alternatives considered\n\n",input.title,f.at,ctx.question,ctx.altitude.label(),ctx.subjects.join(", "),ctx.assumptions,input.decision,input.rationale);
+    let mut adr = format!(
+        "# {}\n\nStatus: accepted by the human when cemented.\nDate: {}\n\n## Context\n\nQuestion: {}\nScope: {}\nSubjects: {}\nAssumptions: {}\n\n## Decision\n\n{}\n\n## Why this approach\n\n{}\n\n## Alternatives considered\n\n",
+        input.title,
+        f.at,
+        ctx.question,
+        ctx.altitude.label(),
+        ctx.subjects.join(", "),
+        ctx.assumptions,
+        input.decision,
+        input.rationale
+    );
     for a in &input.alternatives {
         adr.push_str(&format!("- {}: {}\n", a.option, a.reason_not_chosen));
     }
@@ -912,18 +932,36 @@ mod mode_tests {
 
     #[test]
     fn view_mode_and_posture_are_independent() {
-        let aligned = View::new("r", [Record::new("m", "cement-mode").with("value", "alignment")]).unwrap();
+        let aligned = View::new(
+            "r",
+            [Record::new("m", "cement-mode").with("value", "alignment")],
+        )
+        .unwrap();
         let plan = Cement
-            .plan(&Call { action: "mode_set".into(), args: json!({"mode":"map"}) }, &aligned)
+            .plan(
+                &Call {
+                    action: "mode_set".into(),
+                    args: json!({"mode":"map"}),
+                },
+                &aligned,
+            )
             .unwrap();
-        assert!(matches!(&plan.ops[0], Op::Set { props, .. } if props.contains_key("view") && !props.contains_key("value")));
+        assert!(
+            matches!(&plan.ops[0], Op::Set { props, .. } if props.contains_key("view") && !props.contains_key("value"))
+        );
         let both = View::new(
             "r",
-            [Record::new("m", "cement-mode").with("value", "alignment").with("view", "map")],
+            [Record::new("m", "cement-mode")
+                .with("value", "alignment")
+                .with("view", "map")],
         )
         .unwrap();
         assert_eq!((mode(&both), view_mode(&both)), ("alignment", "map"));
-        let legacy = View::new("r", [Record::new("m", "cement-mode").with("value", "cement")]).unwrap();
+        let legacy = View::new(
+            "r",
+            [Record::new("m", "cement-mode").with("value", "cement")],
+        )
+        .unwrap();
         assert_eq!((mode(&legacy), view_mode(&legacy)), ("learning", "cement"));
     }
 }

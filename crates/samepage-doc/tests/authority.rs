@@ -166,7 +166,7 @@ impl Capability for Claims {
                         return refuse(
                             "human_verdict",
                             format!("{id}: only a human settles a claim"),
-                        )
+                        );
                     }
                     "accepted" | "rejected" => {}
                     "stale" if text_changed && SETTLED.contains(&before_verdict) => {}
@@ -174,14 +174,14 @@ impl Capability for Claims {
                         return refuse(
                             "invalid_transition",
                             format!("{id}: stale only when a settled claim is rewritten"),
-                        )
+                        );
                     }
                     "open" if created => {}
                     other => {
                         return refuse(
                             "invalid_transition",
                             format!("{id}: verdict {other:?} not allowed here"),
-                        )
+                        );
                     }
                 }
             }
@@ -505,10 +505,11 @@ fn the_hook_receives_the_authenticated_principal_route_and_both_views() {
     );
     assert!(!seen.before_ids.contains(&claim) && seen.after_ids.contains(&claim));
     assert!(seen.delta.created.contains(&claim));
-    assert!(seen
-        .attempted
-        .iter()
-        .any(|(id, keys)| id == &claim && keys.contains(&"verdict".to_string())));
+    assert!(
+        seen.attempted
+            .iter()
+            .any(|(id, keys)| id == &claim && keys.contains(&"verdict".to_string()))
+    );
 
     // Untrusted batch.
     host.commit_batch(
@@ -672,10 +673,11 @@ fn a_same_value_write_is_authorized_like_any_other_write() {
     );
     let seen = claims.seen.lock().unwrap().last().unwrap().clone();
     assert!(seen.delta.is_empty(), "the refused frame changed no value");
-    assert!(seen
-        .attempted
-        .iter()
-        .any(|(id, keys)| id == &claim && keys.contains(&"verdict".to_string())));
+    assert!(
+        seen.attempted
+            .iter()
+            .any(|(id, keys)| id == &claim && keys.contains(&"verdict".to_string()))
+    );
 
     // The same write by a human is allowed; nothing visible changes.
     let reply = host

@@ -15,11 +15,11 @@
 mod trace;
 
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
 
-use ag_ui_canvas::codec::{decode_frame, encode_sync, Frame};
+use ag_ui_canvas::codec::{Frame, decode_frame, encode_sync};
 use ag_ui_canvas::scene::{Author, Scene, UpdateSubscription};
 use ag_ui_canvas::sync::{greeting, handle_payload, update_message};
 use same_page_atlas_core as atlas;

@@ -12,7 +12,7 @@ use samepage_capability::{
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::document::{self, decode, DocError, Document};
+use crate::document::{self, DocError, Document, decode};
 use crate::sync::{self, Incoming, SyncError};
 
 #[derive(Debug, Clone, PartialEq, Error)]

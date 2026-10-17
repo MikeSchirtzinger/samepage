@@ -22,7 +22,7 @@ use std::time::{Duration, Instant};
 
 use base64::Engine as _;
 use futures_util::StreamExt;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 
@@ -31,7 +31,7 @@ use crate::narration::{
     tutor_event,
 };
 use crate::runtime_state::{RuntimeState, TurnRequest};
-use crate::turn_loop::{build_context, Outcome, Prompts};
+use crate::turn_loop::{Outcome, Prompts, build_context};
 use crate::{Caller, Surface, ToolDef};
 
 /// How the active OpenAI-compatible endpoint authenticates.
@@ -695,10 +695,12 @@ async fn run_turn(
         // question on the floor: hand it to the agents that are attached, and
         // then the sentence below is a description of what happened rather
         // than a guess about a subsystem this failure knows nothing about.
-        if is_unreachable(&e) && attached_agents > 0
-            && let Some(question) = human_text {
-                rt.chat_relay().post("you", None, question);
-            }
+        if is_unreachable(&e)
+            && attached_agents > 0
+            && let Some(question) = human_text
+        {
+            rt.chat_relay().post("you", None, question);
+        }
         let friendly = friendly_error(&e, attached_agents);
         emit_narrate(rt, &friendly);
         crate::narration::fail_turn(rt, &friendly);
@@ -873,15 +875,16 @@ async fn stream_completion(
             }
 
             if let Some(content) = delta.get("content").and_then(Value::as_str)
-                && !content.is_empty() {
-                    append_limited(&mut text, content, MAX_ASSISTANT_TEXT, "assistant text")?;
-                    if !rt
-                        .final_response_only
-                        .load(std::sync::atomic::Ordering::Relaxed)
-                    {
-                        narrate_chunk(rt, content);
-                    }
+                && !content.is_empty()
+            {
+                append_limited(&mut text, content, MAX_ASSISTANT_TEXT, "assistant text")?;
+                if !rt
+                    .final_response_only
+                    .load(std::sync::atomic::Ordering::Relaxed)
+                {
+                    narrate_chunk(rt, content);
                 }
+            }
 
             if let Some(tcs) = delta.get("tool_calls").and_then(Value::as_array) {
                 for tc in tcs {
@@ -898,9 +901,10 @@ async fn stream_completion(
                         .get_mut(idx)
                         .ok_or_else(|| "internal tool-call slot was not allocated".to_string())?;
                     if let Some(id) = tc.get("id").and_then(Value::as_str)
-                        && !id.is_empty() {
-                            slot.id = id.to_string();
-                        }
+                        && !id.is_empty()
+                    {
+                        slot.id = id.to_string();
+                    }
                     let mut argument_delta: Option<&str> = None;
                     if let Some(f) = tc.get("function") {
                         if let Some(name) = f.get("name").and_then(Value::as_str) {
@@ -926,9 +930,10 @@ async fn stream_completion(
                         super::emit_tool_call_start(rt, &slot.id, &slot.name);
                         super::emit_tool_call_args(rt, &slot.id, &slot.arguments);
                     } else if slot.announced
-                        && let Some(delta) = argument_delta {
-                            super::emit_tool_call_args(rt, &slot.id, delta);
-                        }
+                        && let Some(delta) = argument_delta
+                    {
+                        super::emit_tool_call_args(rt, &slot.id, delta);
+                    }
                 }
             }
             if terminal {
@@ -1424,9 +1429,11 @@ mod tests {
             arguments: "{}".to_string(),
             announced: false,
         };
-        assert!(validate_completed_tool_calls(&[missing_id])
-            .unwrap_err()
-            .contains("missing its id"));
+        assert!(
+            validate_completed_tool_calls(&[missing_id])
+                .unwrap_err()
+                .contains("missing its id")
+        );
 
         let missing_name = ToolCall {
             id: "call-1".to_string(),
@@ -1434,9 +1441,11 @@ mod tests {
             arguments: "{}".to_string(),
             announced: false,
         };
-        assert!(validate_completed_tool_calls(&[missing_name])
-            .unwrap_err()
-            .contains("missing its function name"));
+        assert!(
+            validate_completed_tool_calls(&[missing_name])
+                .unwrap_err()
+                .contains("missing its function name")
+        );
     }
 
     #[test]
@@ -1449,9 +1458,11 @@ mod tests {
             json!({ "index": 1.5 }),
             json!({ "index": "0" }),
         ] {
-            assert!(tool_call_index(&malformed)
-                .unwrap_err()
-                .contains("non-negative integer index"));
+            assert!(
+                tool_call_index(&malformed)
+                    .unwrap_err()
+                    .contains("non-negative integer index")
+            );
         }
     }
 
@@ -1484,15 +1495,21 @@ mod tests {
             canonical_base_url(" https://example.test/v1/// ").unwrap(),
             "https://example.test/v1"
         );
-        assert!(canonical_base_url("https://user@example.test/v1")
-            .unwrap_err()
-            .contains("user information"));
-        assert!(canonical_base_url("https://example.test/v1?q=x")
-            .unwrap_err()
-            .contains("query or fragment"));
-        assert!(canonical_base_url("https://example.test/v1#x")
-            .unwrap_err()
-            .contains("query or fragment"));
+        assert!(
+            canonical_base_url("https://user@example.test/v1")
+                .unwrap_err()
+                .contains("user information")
+        );
+        assert!(
+            canonical_base_url("https://example.test/v1?q=x")
+                .unwrap_err()
+                .contains("query or fragment")
+        );
+        assert!(
+            canonical_base_url("https://example.test/v1#x")
+                .unwrap_err()
+                .contains("query or fragment")
+        );
     }
 
     #[test]

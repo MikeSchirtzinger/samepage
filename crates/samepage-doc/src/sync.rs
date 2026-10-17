@@ -8,6 +8,7 @@
 //! in hash-map order and valid peers would be refused.
 
 use thiserror::Error;
+use yrs::StateVector;
 use yrs::encoding::read::{Cursor, Read};
 use yrs::sync::protocol::{
     MSG_AUTH, MSG_AWARENESS, MSG_QUERY_AWARENESS, MSG_SYNC, MSG_SYNC_STEP_1, MSG_SYNC_STEP_2,
@@ -16,7 +17,6 @@ use yrs::sync::protocol::{
 use yrs::sync::{Message, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::StateVector;
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum SyncError {
@@ -61,7 +61,7 @@ pub fn parse(frame: &[u8]) -> Result<Vec<Incoming>, SyncError> {
                     other => {
                         return Err(SyncError::Malformed(format!(
                             "unknown sync message {other}"
-                        )))
+                        )));
                     }
                 }
             }

@@ -1,12 +1,12 @@
 use samepage_capability::{Batch, BatchEntry, Call, Capability, Composition, Plan, Record, View};
-use samepage_doc::{host::Host, Actor, Caller};
+use samepage_doc::{Actor, Caller, host::Host};
 use samepage_lanes::{Evidence, Facts, Lane, Lanes, Registry, Removal, Scan};
 use serde_json::json;
 use std::{
     path::PathBuf,
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicU64, Ordering},
     },
 };
 #[allow(dead_code)]
@@ -180,13 +180,14 @@ fn real_scan_claim_adds_a_pinned_binding_and_refuses_stale_or_absent_lanes_atomi
         serde_json::to_value(&b).unwrap(),
         serde_json::to_value(&legacy).unwrap()
     );
-    assert!(lh
-        .prepare(
+    assert!(
+        lh.prepare(
             json!({"card_id":"other","node_id":node,"lane_id":l.lane_id}),
             &h.view(),
             sh.facts(&h.view()).unwrap()
         )
-        .is_err());
+        .is_err()
+    );
     let claimed = h.invoke_composed(&a, "atlas_claim_lane", &legacy).unwrap();
     assert_eq!(claimed.action, "lane_claim");
     assert_eq!(h.journal().seq, 2);
@@ -215,18 +216,21 @@ fn real_scan_claim_adds_a_pinned_binding_and_refuses_stale_or_absent_lanes_atomi
         "fn main() {\n let _listener=std::net::TcpListener::bind(\"127.0.0.1:1\");\n}\n",
     )
     .unwrap();
-    assert!(lh
-        .prepare(args, &h.view(), sh.facts(&h.view()).unwrap())
-        .is_err());
+    assert!(
+        lh.prepare(args, &h.view(), sh.facts(&h.view()).unwrap())
+            .is_err()
+    );
     assert!(h.invoke_composed(&a, "lane_claim", &b).is_err());
     assert_eq!((h.revision(), h.encode_full(), h.journal().seq), before);
     std::fs::remove_file(r.join("src/main.rs")).unwrap();
     let f = lh.facts(&h.view(), sh.facts(&h.view()).unwrap()).unwrap();
-    assert!(samepage_lanes::reconcile(&h.view(), &f)["lanes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|l| l["removal"]["chip"] == "SOURCE VANISHED"));
+    assert!(
+        samepage_lanes::reconcile(&h.view(), &f)["lanes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|l| l["removal"]["chip"] == "SOURCE VANISHED")
+    );
     drop(lh);
     let reopened = native::LanesHost::open(&r, &state).unwrap();
     assert!(!reopened.registry.lock().unwrap().removals.is_empty());

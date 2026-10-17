@@ -8,7 +8,7 @@ use samepage_capability::{
     Descriptor, LegendEntry, Op, Origin, Plan, Record, Scalar, Target, Trigger, Value, View,
 };
 use samepage_map::{prop_str, rules::text};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const ID: &str = "review";
@@ -278,7 +278,7 @@ impl Capability for Review {
                 return context::plan(
                     &serde_json::from_value(args.clone()).map_err(|e| invalid(e.to_string()))?,
                     view,
-                )
+                );
             }
             "review_read" => describe(view)?,
             _ => return Err(CapError::new("unknown_action", &call.action)),
@@ -520,11 +520,11 @@ fn authority(c: &Change<'_>) -> Result<(), CapError> {
         };
         match old.kind.as_str() {
             "claim" if c.after.contains(string(old, "about")) => {
-                return Err(invalid("withdraw claims to preserve their history"))
+                return Err(invalid("withdraw claims to preserve their history"));
             }
             "understanding-context" => return Err(invalid("context history cannot be deleted")),
             "mark" if !human && c.after.contains(string(old, "target")) => {
-                return Err(invalid("only the human can remove a mark"))
+                return Err(invalid("only the human can remove a mark"));
             }
             _ => {}
         }
@@ -854,14 +854,18 @@ fn changes(before: &JsonValue, after: &JsonValue, _reader: &str) -> Vec<String> 
                     item["verdict"].as_str().unwrap_or("")
                 ),
                 _ => {
-                    let status = |r: &JsonValue| r["status"].as_str().filter(|s| !s.is_empty()).unwrap_or("open").to_string();
+                    let status = |r: &JsonValue| {
+                        r["status"]
+                            .as_str()
+                            .filter(|s| !s.is_empty())
+                            .unwrap_or("open")
+                            .to_string()
+                    };
                     let state = |r: &JsonValue| r["state"].as_str().unwrap_or("").to_string();
                     match old {
-                        Some(old) if status(old) == status(item) => format!(
-                            "\"{label}\" is now {} (it was {})",
-                            state(item),
-                            state(old)
-                        ),
+                        Some(old) if status(old) == status(item) => {
+                            format!("\"{label}\" is now {} (it was {})", state(item), state(old))
+                        }
                         _ => format!(
                             "\"{label}\" is now {} (it was {}); {}",
                             status(item),

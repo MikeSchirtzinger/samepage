@@ -9,8 +9,8 @@
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ag_ui_core::JsonValue;
@@ -379,10 +379,21 @@ impl ActivityFeed {
     /// A counted no-op: no event collection and no persistent store.
     pub fn disabled() -> Arc<Self> {
         let (publish, _) = broadcast::channel(1);
-        Arc::new(Self { inner: None, dropped: AtomicU64::new(0), storage: ActivityStorage::Memory, observer_id: String::new(), publish, persistence_error: Mutex::new(None) })
+        Arc::new(Self {
+            inner: None,
+            dropped: AtomicU64::new(0),
+            storage: ActivityStorage::Memory,
+            observer_id: String::new(),
+            publish,
+            persistence_error: Mutex::new(None),
+        })
     }
-    pub fn is_enabled(&self) -> bool { self.inner.is_some() }
-    pub fn dropped(&self) -> u64 { self.dropped.load(Ordering::Relaxed) }
+    pub fn is_enabled(&self) -> bool {
+        self.inner.is_some()
+    }
+    pub fn dropped(&self) -> u64 {
+        self.dropped.load(Ordering::Relaxed)
+    }
 
     /// Open a durable journal. Malformed or unwritable state fails startup.
     pub fn open(path: impl Into<PathBuf>) -> Result<Arc<Self>, ActivityError> {
@@ -439,7 +450,11 @@ impl ActivityFeed {
     }
 
     pub fn snapshot(&self) -> ActivitySnapshot {
-        let persisted = self.inner.as_ref().map(|inner| inner.lock().clone()).unwrap_or_else(PersistedActivity::new);
+        let persisted = self
+            .inner
+            .as_ref()
+            .map(|inner| inner.lock().clone())
+            .unwrap_or_else(PersistedActivity::new);
         let persistence_error = self.persistence_error.lock().clone();
         let status = match (&self.storage, persistence_error.as_ref()) {
             (ActivityStorage::Memory, _) => ActivityDurabilityStatus::ProcessOnly,
@@ -465,7 +480,8 @@ impl ActivityFeed {
         let receiver = self.publish.subscribe();
         let replay = self
             .inner
-            .as_ref().expect("enabled activity feed")
+            .as_ref()
+            .expect("enabled activity feed")
             .lock()
             .events
             .iter()
@@ -486,7 +502,16 @@ impl ActivityFeed {
         after: Vec<ActivityStateRevision>,
         detail: Option<&str>,
     ) {
-        self.record_action_by(caller, None, name, outcome, run_id, (before, after), Vec::new(), detail);
+        self.record_action_by(
+            caller,
+            None,
+            name,
+            outcome,
+            run_id,
+            (before, after),
+            Vec::new(),
+            detail,
+        );
     }
 
     /// An action stamped with the requesting participant and the records it
@@ -663,7 +688,16 @@ impl ActivityFeed {
         after: Vec<ActivityStateRevision>,
         detail: Option<&str>,
     ) {
-        self.append_targeted(category, kind, actor, outcome, correlation, (before, after), Vec::new(), detail);
+        self.append_targeted(
+            category,
+            kind,
+            actor,
+            outcome,
+            correlation,
+            (before, after),
+            Vec::new(),
+            detail,
+        );
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -679,7 +713,10 @@ impl ActivityFeed {
         detail: Option<&str>,
     ) {
         targets.truncate(MAX_TARGETS);
-        if !self.is_enabled() { self.dropped.fetch_add(1, Ordering::Relaxed); return; }
+        if !self.is_enabled() {
+            self.dropped.fetch_add(1, Ordering::Relaxed);
+            return;
+        }
         let at_ms = match now_ms() {
             Ok(at_ms) => at_ms,
             Err(error) => {
@@ -956,7 +993,9 @@ impl SurfaceState for HostedState {
         self.inner.state().agent_guide()
     }
 
-    fn activity_dropped(&self) -> u64 { self.inner.state().activity_dropped() }
+    fn activity_dropped(&self) -> u64 {
+        self.inner.state().activity_dropped()
+    }
 
     fn activity_feed(&self) -> Option<&ActivityFeed> {
         Some(self.feed.as_ref())

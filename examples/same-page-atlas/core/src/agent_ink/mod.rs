@@ -26,22 +26,22 @@ use ag_ui_canvas::scene::{PropValue, Scene};
 use yrs::{Any, Map, Out, Transact};
 
 use crate::{Atlas, AtlasError};
-pub use citable::{citable_step, CitableStep, CitableVariable};
-pub use geometry::{capture_represented_property, REPRESENTED_PROPERTIES};
-pub use measure::{create_measured_variable, Measure, MeasureKind, MEASURE_KINDS};
-pub use mode::{set_agent_ink_mode, AgentInkMode, PromotionRecord};
-pub use promote::{promote_to_alignment, PromotedStep, PromotionReport};
+pub use citable::{CitableStep, CitableVariable, citable_step};
+pub use geometry::{REPRESENTED_PROPERTIES, capture_represented_property};
+pub use measure::{MEASURE_KINDS, Measure, MeasureKind, create_measured_variable};
+pub use mode::{AgentInkMode, PromotionRecord, set_agent_ink_mode};
+pub use promote::{PromotedStep, PromotionReport, promote_to_alignment};
 pub use read_back::VariableDigest;
-pub use relation::{create_relation, Relation, KIND_RELATION, RELATION_OPS};
+pub use relation::{KIND_RELATION, RELATION_OPS, Relation, create_relation};
 pub use solve::{
+    DIVERGENCE_TOLERANCE, DivergenceFault, SolveOptions, SolveState, SolveStatus, SolvedValue,
     report_replica_solution, set_variable_value, solve, solve_with_options, solved_values,
-    DivergenceFault, SolveOptions, SolveState, SolveStatus, SolvedValue, DIVERGENCE_TOLERANCE,
 };
 pub use step::{
-    advance_step, advance_step_with_options, record_current_step, scrub_step, stored_step,
-    StepSolveState, StoredStep, KIND_STEP, MAX_STORED_STEPS,
+    KIND_STEP, MAX_STORED_STEPS, StepSolveState, StoredStep, advance_step,
+    advance_step_with_options, record_current_step, scrub_step, stored_step,
 };
-pub use variable::{create_variable, VarState, Variable, VAR_STATES};
+pub use variable::{VAR_STATES, VarState, Variable, create_variable};
 
 /// Resolve the one variable the shared page exposes as its timeline index.
 ///

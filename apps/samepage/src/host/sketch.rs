@@ -43,7 +43,10 @@ impl Verifier for SketchUnavailable {
                 .iter()
                 .any(|key| c.delta.deleted.contains(prop_str(r, key).unwrap_or("")))
             {
-                return Err(CapError::new("needs_capability", "sketch capability is not loaded; it must detach its bindings before removing their target"));
+                return Err(CapError::new(
+                    "needs_capability",
+                    "sketch capability is not loaded; it must detach its bindings before removing their target",
+                ));
             }
         }
         Ok(serde_json::json!({}))

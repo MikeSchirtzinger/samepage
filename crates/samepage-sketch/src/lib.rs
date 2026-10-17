@@ -7,9 +7,9 @@ use samepage_capability::{
     ActionDecl, Artifact, Audience, Batch, BatchEntry, Call, CapError, Capability, Change, Delta,
     Descriptor, LegendEntry, Op, Plan, Record, Scalar, Target, Trigger, Value, View,
 };
-use samepage_map::{prop_num, prop_str, rules, Map};
+use samepage_map::{Map, prop_num, prop_str, rules};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use std::collections::{BTreeMap, BTreeSet};
 pub const ID: &str = "sketch";
 pub const VERSION: &str = "0.1.0";
@@ -271,7 +271,10 @@ impl Capability for Sketch {
         for r in view.records().filter(|r| r.kind == "shape") {
             for key in ["from", "to", "frame"] {
                 if delta.deleted.contains(prop_str(r, key).unwrap_or("")) {
-                    return Err(invalid(format!("sketch: {} still refers to a removed {key}; detach or retarget it in the same batch",r.id)));
+                    return Err(invalid(format!(
+                        "sketch: {} still refers to a removed {key}; detach or retarget it in the same batch",
+                        r.id
+                    )));
                 }
             }
         }
@@ -312,19 +315,21 @@ impl Capability for Sketch {
             }
             if !props.is_empty() {
                 let s = shape(r);
-                if s.points.len() < 2 && matches!(s.form.as_str(), "line" | "arrow")
-                    && let Some(path) = drawing(view).shape_path(&s) {
-                        props.insert(
-                            "points".into(),
-                            format_points(
-                                &path
-                                    .iter()
-                                    .map(|(x, y)| (x - s.x, y - s.y))
-                                    .collect::<Vec<_>>(),
-                            )
-                            .into(),
-                        );
-                    }
+                if s.points.len() < 2
+                    && matches!(s.form.as_str(), "line" | "arrow")
+                    && let Some(path) = drawing(view).shape_path(&s)
+                {
+                    props.insert(
+                        "points".into(),
+                        format_points(
+                            &path
+                                .iter()
+                                .map(|(x, y)| (x - s.x, y - s.y))
+                                .collect::<Vec<_>>(),
+                        )
+                        .into(),
+                    );
+                }
                 ops.push(set(&r.id, props));
             }
         }
@@ -349,18 +354,19 @@ impl Capability for Sketch {
                 && let Some(s) = d
                     .shape(id)
                     .filter(|s| matches!(s.form.as_str(), "line" | "arrow"))
-                    && let Some(path) = d.shape_path(s) {
-                        props.insert(
-                            "points".into(),
-                            format_points(
-                                &path
-                                    .iter()
-                                    .map(|(x, y)| (x - s.x, y - s.y))
-                                    .collect::<Vec<_>>(),
-                            )
-                            .into(),
-                        );
-                    }
+                && let Some(path) = d.shape_path(s)
+            {
+                props.insert(
+                    "points".into(),
+                    format_points(
+                        &path
+                            .iter()
+                            .map(|(x, y)| (x - s.x, y - s.y))
+                            .collect::<Vec<_>>(),
+                    )
+                    .into(),
+                );
+            }
         }
         Ok(plan)
     }
@@ -686,9 +692,10 @@ fn check_shape(r: &Record, view: &View) -> Result<(), CapError> {
         "z",
     ] {
         if let Some(v) = r.props.get(key)
-            && v.as_f64().is_none() {
-                return Err(invalid(format!("{key} must be numeric")));
-            }
+            && v.as_f64().is_none()
+        {
+            return Err(invalid(format!("{key} must be numeric")));
+        }
     }
     for (key, value) in [("x", s.x), ("y", s.y)] {
         rules::coordinate(value, key)?;
@@ -945,9 +952,10 @@ fn rewrite_refs(op: &mut Op, refs: &BTreeMap<String, String>) {
     if let Op::Create { props, .. } | Op::Set { props, .. } = op {
         for key in ["from", "to", "frame"] {
             if let Some(Value::Scalar(Scalar::Str(id))) = props.get(key)
-                && let Some(reference) = refs.get(id) {
-                    props.insert(key.into(), Value::reference(reference));
-                }
+                && let Some(reference) = refs.get(id)
+            {
+                props.insert(key.into(), Value::reference(reference));
+            }
         }
     }
 }
@@ -1169,7 +1177,7 @@ pub fn lift_consumed(view: &View, id: &str) -> Result<(Shape, String, Vec<String
                 return Err(invalid(format!(
                     "this {} holds {n} texts and a card needs one title",
                     s.form
-                )))
+                )));
             }
         }
     } else {
@@ -1247,7 +1255,11 @@ fn lift(view: &View, id: &str) -> Result<Vec<BatchEntry>, CapError> {
                 } else {
                     format!(
                         "Lifted {title:?} into a container card holding {}; references follow in this batch.",
-                        enclosed.iter().map(|n| format!("{:?}", n.label)).collect::<Vec<_>>().join(", ")
+                        enclosed
+                            .iter()
+                            .map(|n| format!("{:?}", n.label))
+                            .collect::<Vec<_>>()
+                            .join(", ")
                     )
                 },
             },

@@ -3,8 +3,8 @@ use super::sources::Repository;
 use samepage_capability::{Call, CapError, Change, View};
 use samepage_doc::host::Verifier;
 use samepage_lanes::{Evidence, Facts, Lane, Registry, Removal, Scan};
-use samepage_sources::{string, Facts as SourceFacts};
-use serde_json::{json, Value};
+use samepage_sources::{Facts as SourceFacts, string};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     fs,

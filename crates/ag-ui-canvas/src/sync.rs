@@ -20,7 +20,7 @@ use yrs::updates::decoder::DecoderV1;
 use yrs::updates::encoder::Encode;
 
 use crate::blob::BlobStore;
-use crate::codec::{encode_blob, encode_sync, BlobHeader, CodecError};
+use crate::codec::{BlobHeader, CodecError, encode_blob, encode_sync};
 use crate::scene::{Scene, SceneError};
 
 #[derive(Debug, thiserror::Error)]

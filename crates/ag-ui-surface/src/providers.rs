@@ -790,10 +790,14 @@ mod tests {
             select_default_id(&providers, None, Some(("AGUI_PROVIDER", "missing")))
                 .is_err_and(|error| error.contains("unknown provider"))
         );
-        assert!(select_default_id(&providers, Some("missing"), None)
-            .is_err_and(|error| error.contains("is not enabled")));
-        assert!(select_default_id(&providers, Some("  "), None)
-            .is_err_and(|error| error.contains("must not be empty")));
+        assert!(
+            select_default_id(&providers, Some("missing"), None)
+                .is_err_and(|error| error.contains("is not enabled"))
+        );
+        assert!(
+            select_default_id(&providers, Some("  "), None)
+                .is_err_and(|error| error.contains("must not be empty"))
+        );
     }
 
     #[test]

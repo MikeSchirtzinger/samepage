@@ -65,7 +65,7 @@ use serde::{Deserialize, Serialize};
 
 use super::geometry::object_exists;
 use super::variable::{create_measured_variable_object, required_text, validated_name};
-use crate::{capacity, read, Atlas, AtlasError, MAX_PATH};
+use crate::{Atlas, AtlasError, MAX_PATH, capacity, read};
 
 /// The closed vocabulary of geometric measures a variable may report.
 pub const MEASURE_KINDS: &[&str] = &["gap", "center_distance", "width", "height", "angle"];
@@ -456,8 +456,8 @@ mod tests {
     use ag_ui_canvas::scene::{Author, PropValue, Scene};
 
     use super::*;
-    use crate::agent_ink::{create_relation, create_variable, solve, VarState};
-    use crate::{read, ShapePatch};
+    use crate::agent_ink::{VarState, create_relation, create_variable, solve};
+    use crate::{ShapePatch, read};
 
     fn make_rect(scene: &mut Scene, x: f64, y: f64, w: f64, h: f64) -> String {
         crate::place_shape(

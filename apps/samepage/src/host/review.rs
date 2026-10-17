@@ -4,10 +4,11 @@ use crate::diagram_sources::DiagramSources;
 use samepage_capability::{CapError, Capability, Change, View};
 use samepage_doc::host::Verifier;
 use samepage_review::{
+    Review,
     report::{self, Facts},
-    string, Review,
+    string,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
@@ -308,7 +309,12 @@ impl Verifier for ReviewUnavailable {
                     _ => continue,
                 };
                 if change.after.contains(&record.id) && !change.after.contains(target) {
-                    return Err(CapError::new("review_unavailable",format!("review capability is unavailable; deleting {target} requires its review cascade")));
+                    return Err(CapError::new(
+                        "review_unavailable",
+                        format!(
+                            "review capability is unavailable; deleting {target} requires its review cascade"
+                        ),
+                    ));
                 }
             }
         }

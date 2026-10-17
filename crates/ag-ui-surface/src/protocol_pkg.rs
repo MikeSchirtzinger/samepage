@@ -43,7 +43,9 @@ pub enum ProtocolPkgError {
         missing: &'static str,
         hint: String,
     },
-    #[error("protocol client crate {crate_dir} is not a checkout (no Cargo.toml); set App::protocol_pkg_dir(...) to a built package")]
+    #[error(
+        "protocol client crate {crate_dir} is not a checkout (no Cargo.toml); set App::protocol_pkg_dir(...) to a built package"
+    )]
     NotACheckout { crate_dir: PathBuf },
     #[error("wasm-pack could not be started for {crate_dir}: {source}")]
     Spawn {

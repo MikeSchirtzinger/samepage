@@ -3,7 +3,7 @@ use crate::{
     view::{self, Node},
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 const MAX_PANES: usize = 24;
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -430,15 +430,16 @@ pub fn merge_theme(current: &Theme, args: &JsonValue) -> Result<Theme, String> {
         theme.radius = radius as u8;
     }
     if let Some(scale) = args.get("scale")
-        && !scale.is_null() {
-            let scale = scale
-                .as_f64()
-                .ok_or_else(|| "scale must be a number".to_string())?;
-            if !(0.8..=1.4).contains(&scale) {
-                return Err("scale must be between 0.8 and 1.4".to_string());
-            }
-            theme.scale = (scale * 100.0).round() / 100.0;
+        && !scale.is_null()
+    {
+        let scale = scale
+            .as_f64()
+            .ok_or_else(|| "scale must be a number".to_string())?;
+        if !(0.8..=1.4).contains(&scale) {
+            return Err("scale must be between 0.8 and 1.4".to_string());
         }
+        theme.scale = (scale * 100.0).round() / 100.0;
+    }
     Ok(theme)
 }
 

@@ -7,12 +7,12 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use axum::http::{header, HeaderMap};
+use axum::http::{HeaderMap, header};
 use base64::Engine as _;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::runtime_state::RuntimeState;
-use crate::{turn_loop, ActionAudience, ActionDef, Caller, Surface};
+use crate::{ActionAudience, ActionDef, Caller, Surface, turn_loop};
 
 /// The MCP revision this implementation negotiates. Newer clients may
 /// negotiate down to it; older `2025-03-26` clients are not advertised because
@@ -337,11 +337,9 @@ async fn call_tool(
 /// situations used to share one sentence: an action meant for people, an
 /// action this surface retired, and a name that never existed.
 pub(crate) fn unavailable(surface: &dyn Surface, name: &str) -> String {
-    if surface
-        .tools()
-        .iter()
-        .any(|tool| (tool.name == name || tool.aliases.iter().any(|a| a == name)) && !tool.audience.agent())
-    {
+    if surface.tools().iter().any(|tool| {
+        (tool.name == name || tool.aliases.iter().any(|a| a == name)) && !tool.audience.agent()
+    }) {
         return format!(
             "action {name:?} is for the people on this page, not for agents. Ask them in chat_reply, or say what you know in a tool you can call."
         );
@@ -447,11 +445,13 @@ mod identity_tests {
 
     #[test]
     fn only_initialize_announces_an_identity() {
-        assert!(client_identity(&json!({
-            "method": "tools/list",
-            "params": { "clientInfo": { "name": "claude" } }
-        }))
-        .is_none());
+        assert!(
+            client_identity(&json!({
+                "method": "tools/list",
+                "params": { "clientInfo": { "name": "claude" } }
+            }))
+            .is_none()
+        );
     }
 
     #[test]
@@ -758,10 +758,12 @@ mod tests {
         surface.actions[1] = surface.actions[1].clone().alias("atlas_human_reset");
         let catalog = Catalog::from_actions(surface.tools()).unwrap();
         let rt = runtime(surface.tools());
-        assert!(catalog
-            .wire_tools()
-            .iter()
-            .all(|tool| tool["name"] != "atlas_add"));
+        assert!(
+            catalog
+                .wire_tools()
+                .iter()
+                .all(|tool| tool["name"] != "atlas_add")
+        );
         let bad = call_tool(
             &catalog,
             &rt,
@@ -800,14 +802,18 @@ mod tests {
         .await;
         assert_eq!(forbidden["isError"], true);
         let journal = rt.activity.snapshot();
-        assert!(journal
-            .events
-            .iter()
-            .any(|event| event.kind == "action.add"));
-        assert!(!journal
-            .events
-            .iter()
-            .any(|event| event.kind == "action.atlas_add"));
+        assert!(
+            journal
+                .events
+                .iter()
+                .any(|event| event.kind == "action.add")
+        );
+        assert!(
+            !journal
+                .events
+                .iter()
+                .any(|event| event.kind == "action.atlas_add")
+        );
     }
 
     async fn tools_list_response(surface: &TestSurface) -> Value {
@@ -886,10 +892,12 @@ mod tests {
             panic!("request must reply")
         };
         assert_eq!(invalid["result"]["isError"], true);
-        assert!(invalid["result"]["content"][0]["text"]
-            .as_str()
-            .unwrap()
-            .contains("invalid arguments"));
+        assert!(
+            invalid["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("invalid arguments")
+        );
         assert!(surface.state.values.lock().is_empty());
 
         let add = handle(
@@ -940,10 +948,12 @@ mod tests {
             panic!("request must reply")
         };
         assert_eq!(failed_snapshot["result"]["isError"], true);
-        assert!(failed_snapshot["result"]["content"][0]["text"]
-            .as_str()
-            .expect("snapshot error text")
-            .contains("state snapshot failed after `inspect`: renderer unavailable"));
+        assert!(
+            failed_snapshot["result"]["content"][0]["text"]
+                .as_str()
+                .expect("snapshot error text")
+                .contains("state snapshot failed after `inspect`: renderer unavailable")
+        );
 
         for (id, name) in [(3, "human_reset"), (4, "missing"), (5, "reject")] {
             let reply = handle(
@@ -957,7 +967,9 @@ mod tests {
                 panic!("request must reply")
             };
             assert_eq!(reply["result"]["isError"], true, "{name}");
-            let text = reply["result"]["content"][0]["text"].as_str().unwrap_or_default();
+            let text = reply["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap_or_default();
             match name {
                 "human_reset" => assert!(text.contains("is for the people on this page"), "{text}"),
                 "missing" => assert!(text.contains("there is no action named"), "{text}"),
@@ -1127,10 +1139,12 @@ mod tests {
         assert_eq!(original["result"]["isError"], false);
         assert_eq!(original["result"]["content"][0]["text"], "same:original");
         assert_eq!(duplicate["result"]["isError"], true);
-        assert!(duplicate["result"]["content"][0]["text"]
-            .as_str()
-            .unwrap()
-            .contains("already pending"));
+        assert!(
+            duplicate["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("already pending")
+        );
     }
 
     #[test]
@@ -1141,9 +1155,11 @@ mod tests {
             json!({ "type": "string" }),
             |_args| Effect::Query(Box::new(|_state| Ok("no".to_string()))),
         );
-        assert!(Catalog::from_actions(&[invalid])
-            .unwrap_err()
-            .contains("type=object"));
+        assert!(
+            Catalog::from_actions(&[invalid])
+                .unwrap_err()
+                .contains("type=object")
+        );
     }
 
     #[test]

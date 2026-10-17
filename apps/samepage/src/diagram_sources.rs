@@ -3,7 +3,7 @@
 use samepage_capability::{CapError, Change};
 use samepage_doc::host::Verifier;
 use samepage_map::prop_str;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     fs,
     io::{BufRead, BufReader, Read},

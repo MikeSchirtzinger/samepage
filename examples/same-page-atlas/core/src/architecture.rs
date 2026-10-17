@@ -458,9 +458,11 @@ mod tests {
             assert_eq!(diff.upstream.len(), 1); // Cycle terminates and unrelated component stays out.
         }
         change.previous = second;
-        assert!(propose(&mut scene, &change, &Author::Human)
-            .unwrap_err()
-            .contains("already exists"));
+        assert!(
+            propose(&mut scene, &change, &Author::Human)
+                .unwrap_err()
+                .contains("already exists")
+        );
     }
 
     #[test]
@@ -509,10 +511,12 @@ mod tests {
                 .unwrap();
         }
         let atlas = crate::read(&scene).unwrap();
-        assert!(atlas
-            .decision_drafts
-            .windows(2)
-            .all(|pair| pair[0].id < pair[1].id));
+        assert!(
+            atlas
+                .decision_drafts
+                .windows(2)
+                .all(|pair| pair[0].id < pair[1].id)
+        );
         let peer = Scene::from_state(&scene.encode_full().unwrap()).unwrap();
         assert_eq!(atlas.describe(), crate::read(&peer).unwrap().describe());
     }

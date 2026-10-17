@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
 use crate::descriptor::{Artifact, Descriptor, Trigger};
-use crate::{is_reserved_key, ABI};
+use crate::{ABI, is_reserved_key};
 
 /// Preferred action names may not carry these product prefixes. They survive
 /// only as aliases.
@@ -43,7 +43,9 @@ pub enum ComposeError {
         kind: String,
         key: String,
     },
-    #[error("capability {capability:?} claims {key:?} on {kind:?}, which is not a lowercase snake_case key")]
+    #[error(
+        "capability {capability:?} claims {key:?} on {kind:?}, which is not a lowercase snake_case key"
+    )]
     InvalidKey {
         capability: String,
         kind: String,
@@ -62,7 +64,9 @@ pub enum ComposeError {
         "capability {capability:?} extends its own kind {kind:?}; list the keys in its kind claim"
     )]
     PropClaimOnOwnKind { capability: String, kind: String },
-    #[error("capability {capability:?} extends {kind:?}, owned by {owner:?}, without depending on {owner:?}")]
+    #[error(
+        "capability {capability:?} extends {kind:?}, owned by {owner:?}, without depending on {owner:?}"
+    )]
     PropClaimWithoutDependency {
         capability: String,
         kind: String,
@@ -91,9 +95,13 @@ pub enum ComposeError {
     },
     #[error("capability {0:?} depends on itself")]
     SelfDependency(String),
-    #[error("capability {capability:?} declares action name {name:?}, which is not lowercase noun_verb words")]
+    #[error(
+        "capability {capability:?} declares action name {name:?}, which is not lowercase noun_verb words"
+    )]
     InvalidActionName { capability: String, name: String },
-    #[error("capability {capability:?} uses {name:?} as a public name; product-prefixed names may only be aliases")]
+    #[error(
+        "capability {capability:?} uses {name:?} as a public name; product-prefixed names may only be aliases"
+    )]
     ProductPrefix { capability: String, name: String },
     #[error("action name {name:?} is declared by both {first:?} and {second:?}")]
     DuplicateActionName {
@@ -101,11 +109,15 @@ pub enum ComposeError {
         first: String,
         second: String,
     },
-    #[error("capability {0:?} claims part of the document but declares a native-only artifact; its projection and validation must ship as WebAssembly")]
+    #[error(
+        "capability {0:?} claims part of the document but declares a native-only artifact; its projection and validation must ship as WebAssembly"
+    )]
     NativeOnlyClaimsDocument(String),
     #[error("capability {0:?} declares a native-only artifact without a reason")]
     NativeOnlyWithoutReason(String),
-    #[error("capability {capability:?} triggers on kind {kind:?}, which it neither owns, extends nor reads")]
+    #[error(
+        "capability {capability:?} triggers on kind {kind:?}, which it neither owns, extends nor reads"
+    )]
     TriggerKindNotVisible { capability: String, kind: String },
     #[error(
         "capability {capability:?} triggers on {kind:?}.{key}, a key it neither owns nor extends"

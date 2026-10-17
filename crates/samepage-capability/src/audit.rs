@@ -26,7 +26,7 @@ use thiserror::Error;
 
 use crate::compose::Composition;
 use crate::record::{Delta, View};
-use crate::{is_reserved_key, AUTHORSHIP_KEYS};
+use crate::{AUTHORSHIP_KEYS, is_reserved_key};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Violation {

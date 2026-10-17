@@ -473,19 +473,23 @@ mod tests {
 
         let mut wrong = item.clone();
         wrong.descriptor["triggers"][2]["key"] = json!("guard");
-        assert!(validate_artifact_set(
-            [("diagram", "1", Some(&wrong), None)],
-            std::slice::from_ref(&host)
-        )
-        .is_err());
+        assert!(
+            validate_artifact_set(
+                [("diagram", "1", Some(&wrong), None)],
+                std::slice::from_ref(&host)
+            )
+            .is_err()
+        );
 
         wrong = item.clone();
         wrong.descriptor["triggers"][2]["name"] = json!("event");
-        assert!(validate_artifact_set(
-            [("diagram", "1", Some(&wrong), None)],
-            std::slice::from_ref(&host)
-        )
-        .is_err());
+        assert!(
+            validate_artifact_set(
+                [("diagram", "1", Some(&wrong), None)],
+                std::slice::from_ref(&host)
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -519,11 +523,13 @@ mod tests {
             Ok(())
         );
         item.descriptor["actions"][0]["input_schema"] = json!({"type":"object"});
-        assert!(validate_artifact_set(
-            [("map", "1", Some(&item), None)],
-            std::slice::from_ref(&host)
-        )
-        .is_err());
+        assert!(
+            validate_artifact_set(
+                [("map", "1", Some(&item), None)],
+                std::slice::from_ref(&host)
+            )
+            .is_err()
+        );
         item.descriptor["actions"][0]["input_schema"] = host.parameters.clone();
         item.descriptor["actions"][0]["aliases"] = json!([]);
         assert!(validate_artifact_set([("map", "1", Some(&item), None)], &[host]).is_err());
@@ -551,29 +557,35 @@ mod tests {
             ),
             Ok(())
         );
-        assert!(validate_artifact_set(
-            [("adapter", "1", None, None), ("map", "1", Some(&map), None),],
-            &[]
-        )
-        .is_err());
-        assert!(validate_artifact_set(
-            [
-                ("adapter", "2", None, Some(&native)),
-                ("map", "1", Some(&map), None),
-            ],
-            &[]
-        )
-        .is_err());
+        assert!(
+            validate_artifact_set(
+                [("adapter", "1", None, None), ("map", "1", Some(&map), None),],
+                &[]
+            )
+            .is_err()
+        );
+        assert!(
+            validate_artifact_set(
+                [
+                    ("adapter", "2", None, Some(&native)),
+                    ("map", "1", Some(&map), None),
+                ],
+                &[]
+            )
+            .is_err()
+        );
         let mut invalid = native.clone();
         invalid["kinds"] = json!(["node"]);
-        assert!(validate_artifact_set(
-            [
-                ("adapter", "1", None, Some(&invalid)),
-                ("map", "1", Some(&map), None),
-            ],
-            &[]
-        )
-        .is_err());
+        assert!(
+            validate_artifact_set(
+                [
+                    ("adapter", "1", None, Some(&invalid)),
+                    ("map", "1", Some(&map), None),
+                ],
+                &[]
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -603,14 +615,16 @@ mod tests {
         );
         let mut wrong = native.clone();
         wrong["depends_on"][0]["version"] = json!("2");
-        assert!(validate_artifact_set(
-            [
-                ("tags", "1", Some(&tags), None),
-                ("adapter", "1", None, Some(&wrong)),
-                ("spare", "1", Some(&spare), None),
-            ],
-            &[]
-        )
-        .is_err());
+        assert!(
+            validate_artifact_set(
+                [
+                    ("tags", "1", Some(&tags), None),
+                    ("adapter", "1", None, Some(&wrong)),
+                    ("spare", "1", Some(&spare), None),
+                ],
+                &[]
+            )
+            .is_err()
+        );
     }
 }

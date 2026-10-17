@@ -6,14 +6,14 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use thiserror::Error;
 use wait_timeout::ChildExt;
 
 use crate::model::{
-    ExecutionSpec, Layer, ObservationSource, ProcessReceipt, ProviderSpec, ScenarioReceipt,
-    ScenarioSpec, ScenarioStatus, ScorerReceipt, SubjectKind, SubjectReceipt, SuiteReceipt,
-    SuiteStatus, SuiteSummary, ThresholdOp, ThresholdSpec, SCHEMA_VERSION,
+    ExecutionSpec, Layer, ObservationSource, ProcessReceipt, ProviderSpec, SCHEMA_VERSION,
+    ScenarioReceipt, ScenarioSpec, ScenarioStatus, ScorerReceipt, SubjectKind, SubjectReceipt,
+    SuiteReceipt, SuiteStatus, SuiteSummary, ThresholdOp, ThresholdSpec,
 };
 
 const MAX_CAPTURE_CHARS: usize = 32_768;
@@ -318,12 +318,13 @@ fn validate_scorers(scorers: &[crate::model::ScorerSpec], errors: &mut Vec<Strin
             errors.push(format!("duplicate scorer id {:?}", scorer.id));
         }
         if let ObservationSource::StdoutJson { pointer } = &scorer.source
-            && !pointer.starts_with('/') {
-                errors.push(format!(
-                    "scorer {:?} stdout_json pointer must begin with '/'",
-                    scorer.id
-                ));
-            }
+            && !pointer.starts_with('/')
+        {
+            errors.push(format!(
+                "scorer {:?} stdout_json pointer must begin with '/'",
+                scorer.id
+            ));
+        }
         if matches!(scorer.source, ObservationSource::ExitCode)
             && matches!(scorer.threshold.op, ThresholdOp::Eq)
             && scorer.threshold.value == json!(0)
@@ -419,34 +420,35 @@ fn run_scenario(loaded: LoadedScenario, project_root: &Path) -> ScenarioReceipt 
     };
 
     if let Some(code) = process.receipt.exit_code
-        && spec.execution.skip_exit_codes.contains(&code) {
-            let reason = extract_skip_reason(
-                &process.stdout_json,
-                spec.execution.skip_reason_pointer.as_deref(),
-            );
-            return match reason {
-                Ok(reason) => ScenarioReceipt {
-                    id: spec.id,
-                    status: ScenarioStatus::Skipped,
-                    subject,
-                    provider: spec.provider,
-                    skip_reason: Some(reason),
-                    failure_reason: None,
-                    process: Some(process.receipt),
-                    scorers: Vec::new(),
-                },
-                Err(error) => ScenarioReceipt {
-                    id: spec.id,
-                    status: ScenarioStatus::Fail,
-                    subject,
-                    provider: spec.provider,
-                    skip_reason: None,
-                    failure_reason: Some(error),
-                    process: Some(process.receipt),
-                    scorers: Vec::new(),
-                },
-            };
-        }
+        && spec.execution.skip_exit_codes.contains(&code)
+    {
+        let reason = extract_skip_reason(
+            &process.stdout_json,
+            spec.execution.skip_reason_pointer.as_deref(),
+        );
+        return match reason {
+            Ok(reason) => ScenarioReceipt {
+                id: spec.id,
+                status: ScenarioStatus::Skipped,
+                subject,
+                provider: spec.provider,
+                skip_reason: Some(reason),
+                failure_reason: None,
+                process: Some(process.receipt),
+                scorers: Vec::new(),
+            },
+            Err(error) => ScenarioReceipt {
+                id: spec.id,
+                status: ScenarioStatus::Fail,
+                subject,
+                provider: spec.provider,
+                skip_reason: None,
+                failure_reason: Some(error),
+                process: Some(process.receipt),
+                scorers: Vec::new(),
+            },
+        };
+    }
 
     let scorer_receipts = spec
         .scorers

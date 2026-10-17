@@ -1,7 +1,7 @@
 mod common;
 
 use common::{composition, view};
-use samepage_capability::{audit, Delta, Record, View, Violation};
+use samepage_capability::{Delta, Record, View, Violation, audit};
 
 fn after(records: Vec<Record>) -> View {
     View::new("rev-2", records).expect("valid view")

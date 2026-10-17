@@ -6,14 +6,14 @@ mod actions;
 pub mod advisory;
 pub mod assertion;
 pub use assertion::{
-    fresh_agreement, Assertion, Author, Board, Delta as BoardDelta, Entry, Mark, Status,
+    Assertion, Author, Board, Delta as BoardDelta, Entry, Mark, Status, fresh_agreement,
 };
 use samepage_capability::{
     Artifact, Call, CapError, Capability, Delta, Descriptor, LegendEntry, Plan, Record, Trigger,
     View,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 pub const ID: &str = "board";
 pub const VERSION: &str = "0.1.0";
 pub fn descriptor() -> Descriptor {
@@ -221,12 +221,14 @@ pub fn snapshot_view(board: &Board) -> View {
 pub fn snapshot_view_for(board: &Board, reader: Option<&str>) -> View {
     View::new(
         board.revision().to_string(),
-        vec![Record::new("board.snapshot", "board-snapshot")
-            .with(
-                "json",
-                serde_json::to_string(board).expect("board serializes"),
-            )
-            .with("reader", reader.unwrap_or_default())],
+        vec![
+            Record::new("board.snapshot", "board-snapshot")
+                .with(
+                    "json",
+                    serde_json::to_string(board).expect("board serializes"),
+                )
+                .with("reader", reader.unwrap_or_default()),
+        ],
     )
     .expect("snapshot record")
 }
@@ -284,10 +286,18 @@ impl Capability for BoardCapability {
         let board = from_view(view)?;
         let name =
             preferred(&call.action).ok_or_else(|| CapError::new("unknown_action", &call.action))?;
-        let readback=match name.as_str() {
-            "board_read"=>board.render_for(0, reader_from_view(view)),"board_revision"=>board.revision().to_string(),
-            "board_snapshot"=>serde_json::to_string(&board).map_err(|e|invalid(e.to_string()))?,
-            _=>return Err(CapError::new("native_store_required","board transitions publish through the native LWW adapter, never document ops; use transition with host-supplied context")),
+        let readback = match name.as_str() {
+            "board_read" => board.render_for(0, reader_from_view(view)),
+            "board_revision" => board.revision().to_string(),
+            "board_snapshot" => {
+                serde_json::to_string(&board).map_err(|e| invalid(e.to_string()))?
+            }
+            _ => {
+                return Err(CapError::new(
+                    "native_store_required",
+                    "board transitions publish through the native LWW adapter, never document ops; use transition with host-supplied context",
+                ));
+            }
         };
         Ok(Plan {
             ops: vec![],

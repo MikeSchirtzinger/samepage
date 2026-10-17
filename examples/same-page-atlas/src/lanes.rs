@@ -10,7 +10,7 @@
 use std::path::Path;
 
 use samepage_extract::{Lane, Report};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use sha2::{Digest, Sha256};
 
 use crate::tier::{self, G8Status, TierRegistry};
@@ -59,7 +59,11 @@ fn binding_matches(node_path: &str, node_lines: &str, lane: &Lane) -> bool {
 
 /// A card's full binding set (see `tier::effective_bindings`) checked
 /// against one lane: true if ANY bound file is close enough.
-fn any_binding_matches(node: &same_page_atlas_core::Node, registry: &TierRegistry, lane: &Lane) -> bool {
+fn any_binding_matches(
+    node: &same_page_atlas_core::Node,
+    registry: &TierRegistry,
+    lane: &Lane,
+) -> bool {
     tier::effective_bindings(node, registry)
         .iter()
         .any(|binding| binding_matches(&binding.path, &binding.lines, lane))
@@ -78,7 +82,12 @@ fn any_binding_matches(node: &same_page_atlas_core::Node, registry: &TierRegistr
 /// A lane nothing claims may still not be plain `undeclared`: if
 /// `atlas_remove_lane` cemented a removal obligation for it, it carries a
 /// `removal` object instead, gate-unmet until G8 confirms the code is gone.
-pub fn reconcile(report: &Report, atlas: &Atlas, registry: &TierRegistry, g8: &G8Status) -> JsonValue {
+pub fn reconcile(
+    report: &Report,
+    atlas: &Atlas,
+    registry: &TierRegistry,
+    g8: &G8Status,
+) -> JsonValue {
     let removal_json = |obligation_id: &str| {
         if g8.gate_met(obligation_id) {
             json!({"tier": "gate-met", "chip": "REMOVE met", "obligation_id": obligation_id})
@@ -201,12 +210,18 @@ mod tests {
 
     #[test]
     fn the_same_lane_gets_the_same_id_across_two_separate_scans() {
-        assert_eq!(lane_id(&lane("src/main.rs", 12)), lane_id(&lane("src/main.rs", 12)));
+        assert_eq!(
+            lane_id(&lane("src/main.rs", 12)),
+            lane_id(&lane("src/main.rs", 12))
+        );
     }
 
     #[test]
     fn a_different_line_or_kind_gets_a_different_id() {
-        assert_ne!(lane_id(&lane("src/main.rs", 12)), lane_id(&lane("src/main.rs", 13)));
+        assert_ne!(
+            lane_id(&lane("src/main.rs", 12)),
+            lane_id(&lane("src/main.rs", 13))
+        );
         let mut other_kind = lane("src/main.rs", 12);
         other_kind.kind = LaneKind::Spawn;
         assert_ne!(lane_id(&lane("src/main.rs", 12)), lane_id(&other_kind));
@@ -250,7 +265,11 @@ mod tests {
         );
         let output = reconcile(&report, &atlas, &registry, &G8Status::NotCemented);
         let lanes = output["lanes"].as_array().unwrap();
-        assert_eq!(lanes.len(), 1, "the still-live lane must not also appear as an orphaned removal");
+        assert_eq!(
+            lanes.len(),
+            1,
+            "the still-live lane must not also appear as an orphaned removal"
+        );
         assert_eq!(lanes[0]["removal"]["chip"], "REMOVE unmet");
     }
 
@@ -273,14 +292,24 @@ mod tests {
         let unmet = reconcile(&report, &atlas, &registry, &G8Status::NotCemented);
         let lanes = unmet["lanes"].as_array().unwrap();
         assert_eq!(lanes.len(), 2, "the live lane plus the orphaned removal");
-        let orphan = lanes.iter().find(|l| l["lane_id"] == "gone-lane-id").expect("orphaned removal must still render");
+        let orphan = lanes
+            .iter()
+            .find(|l| l["lane_id"] == "gone-lane-id")
+            .expect("orphaned removal must still render");
         assert_eq!(orphan["removal"]["chip"], "REMOVE unmet");
         assert_eq!(orphan["matched_node_id"], JsonValue::Null);
 
-        let clean: std::collections::HashSet<String> = ["ATLAS-REMOVE-bbbb2222".to_string()].into_iter().collect();
+        let clean: std::collections::HashSet<String> =
+            ["ATLAS-REMOVE-bbbb2222".to_string()].into_iter().collect();
         let met = reconcile(&report, &atlas, &registry, &G8Status::Ran { clean });
         let lanes = met["lanes"].as_array().unwrap();
-        let orphan = lanes.iter().find(|l| l["lane_id"] == "gone-lane-id").unwrap();
-        assert_eq!(orphan["removal"]["chip"], "REMOVE met", "once G8 confirms the code is gone, the card must flip green");
+        let orphan = lanes
+            .iter()
+            .find(|l| l["lane_id"] == "gone-lane-id")
+            .unwrap();
+        assert_eq!(
+            orphan["removal"]["chip"], "REMOVE met",
+            "once G8 confirms the code is gone, the card must flip green"
+        );
     }
 }

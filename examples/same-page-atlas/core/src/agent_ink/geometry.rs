@@ -15,7 +15,7 @@ use ag_ui_canvas::ids::ObjectId;
 use ag_ui_canvas::scene::{Author, PropValue, Scene};
 
 use super::solve::set_variable_value;
-use crate::{read, Atlas, AtlasError};
+use crate::{Atlas, AtlasError, read};
 
 /// The closed vocabulary of shape/node fields a variable may drive or read
 /// back. Both kinds use the same key names for position and extent, so one
@@ -176,7 +176,7 @@ mod tests {
     use crate::agent_ink::{
         advance_step, create_relation, create_variable, record_current_step, scrub_step, solve,
     };
-    use crate::{read, ShapePatch};
+    use crate::{ShapePatch, read};
 
     fn make_shape(scene: &mut Scene, x: f64) -> String {
         crate::place_shape(

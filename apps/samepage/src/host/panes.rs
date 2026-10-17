@@ -4,10 +4,10 @@ use super::panes_catalog::Workspace;
 use samepage_capability::{Capability, View};
 use samepage_doc::journal::Journal;
 use samepage_panes::{
-    view::{self, Node},
     Panes,
+    view::{self, Node},
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::Path, sync::Mutex};
 use tokio::sync::Notify;
 
@@ -107,10 +107,12 @@ impl PanesHost {
             .ok_or("pane projection absent")?
         {
             if pane["author"] == "participant" {
-                pane["author"] = json!(actors
-                    .get(pane["by_id"].as_str().unwrap_or(""))
-                    .copied()
-                    .unwrap_or("participant"));
+                pane["author"] = json!(
+                    actors
+                        .get(pane["by_id"].as_str().unwrap_or(""))
+                        .copied()
+                        .unwrap_or("participant")
+                );
             }
         }
         Ok(
@@ -183,7 +185,7 @@ impl PanesHost {
 mod tests {
     use super::*;
     use samepage_capability::Composition;
-    use samepage_doc::{host::Host, Actor, Caller};
+    use samepage_doc::{Actor, Caller, host::Host};
     use std::sync::Arc;
     fn host() -> Host {
         Host::in_memory(
@@ -245,22 +247,32 @@ mod tests {
             json!({"id":"topic","title":"Topic","view":{"kind":"text","text":"own rewrite"}}),
         );
         invoke(&h, "b", "card_place", json!({"label":"unrelated card"}));
-        assert!(!panes
-            .unread_from_others(&h.view(), &h.journal(), "a")
-            .unwrap());
-        assert!(panes
-            .unread_from_others(&h.view(), &h.journal(), "b")
-            .unwrap());
-        assert!(panes
-            .read(&h.view(), &h.journal(), "b")
-            .unwrap()
-            .contains("CHANGED"));
-        assert!(!panes
-            .unread_from_others(&h.view(), &h.journal(), "b")
-            .unwrap());
-        assert!(panes
-            .read(&h.view(), &h.journal(), "a")
-            .unwrap()
-            .contains("CHANGED"));
+        assert!(
+            !panes
+                .unread_from_others(&h.view(), &h.journal(), "a")
+                .unwrap()
+        );
+        assert!(
+            panes
+                .unread_from_others(&h.view(), &h.journal(), "b")
+                .unwrap()
+        );
+        assert!(
+            panes
+                .read(&h.view(), &h.journal(), "b")
+                .unwrap()
+                .contains("CHANGED")
+        );
+        assert!(
+            !panes
+                .unread_from_others(&h.view(), &h.journal(), "b")
+                .unwrap()
+        );
+        assert!(
+            panes
+                .read(&h.view(), &h.journal(), "a")
+                .unwrap()
+                .contains("CHANGED")
+        );
     }
 }

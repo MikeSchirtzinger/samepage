@@ -35,8 +35,8 @@
 
 #[cfg(test)]
 mod tests {
-    use ag_ui_core::event::{Event as AgUiEvent, EventType};
     use ag_ui_core::JsonValue;
+    use ag_ui_core::event::{Event as AgUiEvent, EventType};
     use std::collections::BTreeSet;
 
     /// One `(name, fixture json)` pair per canonical AG-UI event fixture.

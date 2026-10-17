@@ -8,7 +8,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use samepage_capability::{Batch, Descriptor, Plan};
-use samepage_doc::{ReplicaError, DOCUMENT_ABI, LAYOUT_VERSION};
+use samepage_doc::{DOCUMENT_ABI, LAYOUT_VERSION, ReplicaError};
 use wasm_bindgen::prelude::*;
 
 static LIVE: AtomicBool = AtomicBool::new(false);

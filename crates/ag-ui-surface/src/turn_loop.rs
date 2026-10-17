@@ -14,22 +14,22 @@ pub mod acp;
 pub mod openai;
 mod pi;
 
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 use tokio::sync::{mpsc, oneshot};
 use tracing::warn;
 
+use ag_ui_core::JsonValue;
 use ag_ui_core::event::{
     BaseEvent, Event as AgUiEvent, ToolCallArgsEvent, ToolCallEndEvent, ToolCallResultEvent,
     ToolCallStartEvent,
 };
 use ag_ui_core::types::{MessageId, Role, ToolCallId};
-use ag_ui_core::JsonValue;
 
 use crate::runtime_state::{PendingDecision, RuntimeState, TurnRequest};
-use crate::{providers, Caller, Effect, Surface};
+use crate::{Caller, Effect, Surface, providers};
 
 /// Announce that the agent has begun emitting a tool call, before its
 /// arguments are known.
@@ -270,15 +270,17 @@ pub fn guard_mcp_bridge_parent() {
 
         if let Err(error) = std::thread::Builder::new()
             .name("ag-ui-mcp-parent-guard".into())
-            .spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_millis(250));
-                // SAFETY: `getppid` has no preconditions and only reads process state.
-                if unsafe { libc::getppid() } != expected_parent {
-                    // The stdio owner is gone. `_exit` avoids waiting on locks
-                    // the main thread may hold while blocked in stdin or HTTP.
-                    // SAFETY: the owner is gone; `_exit` avoids deadlocking on
-                    // locks held by the bridge's blocked main thread.
-                    unsafe { libc::_exit(0) };
+            .spawn(move || {
+                loop {
+                    std::thread::sleep(std::time::Duration::from_millis(250));
+                    // SAFETY: `getppid` has no preconditions and only reads process state.
+                    if unsafe { libc::getppid() } != expected_parent {
+                        // The stdio owner is gone. `_exit` avoids waiting on locks
+                        // the main thread may hold while blocked in stdin or HTTP.
+                        // SAFETY: the owner is gone; `_exit` avoids deadlocking on
+                        // locks held by the bridge's blocked main thread.
+                        unsafe { libc::_exit(0) };
+                    }
                 }
             })
         {
@@ -859,7 +861,7 @@ fn interrupted_before_effect() -> (String, bool, bool, bool) {
 mod cancellation_tests {
     use std::collections::VecDeque;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::{mpsc as std_mpsc, Arc};
+    use std::sync::{Arc, mpsc as std_mpsc};
     use std::time::Duration;
 
     use ag_ui_core::event::BaseEvent;
@@ -1306,17 +1308,14 @@ pub(crate) async fn run_supervisor(
 fn adopt_provider(rt: &RuntimeState, new_id: String) {
     let provider = providers::find(&rt.providers.read(), &new_id).cloned();
     if let Some(provider) = provider
-        && matches!(provider.backend, providers::Backend::OpenAi) {
-            let byok = rt.byok.lock().clone();
-            let override_model = rt.model_overrides.lock().get(&new_id).cloned();
-            let config = openai::resolve_openai_config(
-                &rt.auth,
-                &byok,
-                &provider,
-                override_model.as_deref(),
-            );
-            *rt.openai.lock() = config;
-        }
+        && matches!(provider.backend, providers::Backend::OpenAi)
+    {
+        let byok = rt.byok.lock().clone();
+        let override_model = rt.model_overrides.lock().get(&new_id).cloned();
+        let config =
+            openai::resolve_openai_config(&rt.auth, &byok, &provider, override_model.as_deref());
+        *rt.openai.lock() = config;
+    }
     *rt.provider.lock() = new_id.clone();
     rt.provider_generation.fetch_add(1, Ordering::SeqCst);
     rt.activity.record_provider(
@@ -1534,10 +1533,17 @@ mod journal_tests {
             Ok("test".into())
         }
         fn snapshot(&self) -> Result<StateSnapshot, String> {
-            Ok(StateSnapshot { backing: StateBacking::Ephemeral, body: json!({}), chrome: None })
+            Ok(StateSnapshot {
+                backing: StateBacking::Ephemeral,
+                body: json!({}),
+                chrome: None,
+            })
         }
         fn activity_targets(&self, _action: &str, args: &JsonValue, _result: &str) -> Vec<String> {
-            args["id"].as_str().map(|id| vec![id.to_string()]).unwrap_or_default()
+            args["id"]
+                .as_str()
+                .map(|id| vec![id.to_string()])
+                .unwrap_or_default()
         }
     }
     struct TargetSurface {
@@ -1560,18 +1566,36 @@ mod journal_tests {
     async fn reads_are_not_journaled_and_writes_carry_the_participant_and_targets() {
         let schema = json!({"type":"object","properties":{"id":{"type":"string"}}});
         let actions = vec![
-            ToolDef::new("look", "Read.", schema.clone(), |_| Effect::Query(Box::new(|_| Ok("seen".into())))),
-            ToolDef::new("write", "Write.", schema, |_| Effect::Mutate(Box::new(|_| Ok(None)))),
+            ToolDef::new("look", "Read.", schema.clone(), |_| {
+                Effect::Query(Box::new(|_| Ok("seen".into())))
+            }),
+            ToolDef::new("write", "Write.", schema, |_| {
+                Effect::Mutate(Box::new(|_| Ok(None)))
+            }),
         ];
         let (ws_tx, _) = tokio::sync::broadcast::channel(8);
         let (sse_tx, _) = tokio::sync::broadcast::channel(8);
-        let auth = std::env::temp_dir().join(format!("ag-ui-journal-{}-{}.json", std::process::id(), MessageId::random()));
+        let auth = std::env::temp_dir().join(format!(
+            "ag-ui-journal-{}-{}.json",
+            std::process::id(),
+            MessageId::random()
+        ));
         let (rt, _) = RuntimeState::new(
-            ws_tx, sse_tx, Arc::new(Mutex::new(VecDeque::new())), Vec::new(),
-            Arc::new(AuthStore::open(auth).expect("auth store")), "test".into(), ByokConfig::default(), false, 0,
+            ws_tx,
+            sse_tx,
+            Arc::new(Mutex::new(VecDeque::new())),
+            Vec::new(),
+            Arc::new(AuthStore::open(auth).expect("auth store")),
+            "test".into(),
+            ByokConfig::default(),
+            false,
+            0,
         );
         rt.install_action_schemas(&actions).expect("schemas");
-        let surface = TargetSurface { state: TargetState, actions };
+        let surface = TargetSurface {
+            state: TargetState,
+            actions,
+        };
         let actor = crate::Actor {
             caller: Caller::Agent,
             label: Some("reviewer-agent".into()),
@@ -1581,9 +1605,23 @@ mod journal_tests {
         };
         crate::with_actor(actor, async {
             for _ in 0..5 {
-                dispatch_tool(&rt, &surface, Caller::Agent, "look", &json!({"id":"card-1"})).await;
+                dispatch_tool(
+                    &rt,
+                    &surface,
+                    Caller::Agent,
+                    "look",
+                    &json!({"id":"card-1"}),
+                )
+                .await;
             }
-            dispatch_tool(&rt, &surface, Caller::Agent, "write", &json!({"id":"card-1"})).await;
+            dispatch_tool(
+                &rt,
+                &surface,
+                Caller::Agent,
+                "write",
+                &json!({"id":"card-1"}),
+            )
+            .await;
         })
         .await;
         let events = rt.activity.snapshot().events;
@@ -1595,12 +1633,22 @@ mod journal_tests {
         assert_eq!(event.actor.participant_id.as_deref(), Some("agent-7"));
         assert_eq!(event.targets, vec!["card-1".to_string()]);
         crate::with_actor(
-            crate::Actor { caller: Caller::Agent, label: None, participant_id: None, hue: None, responsible: None },
+            crate::Actor {
+                caller: Caller::Agent,
+                label: None,
+                participant_id: None,
+                hue: None,
+                responsible: None,
+            },
             dispatch_tool(&rt, &surface, Caller::Agent, "write", &json!({"id": 7})),
         )
         .await;
         let events = rt.activity.snapshot().events;
-        assert_eq!(events.len(), 2, "a refused write is journaled once: {events:?}");
+        assert_eq!(
+            events.len(),
+            2,
+            "a refused write is journaled once: {events:?}"
+        );
         assert_eq!(events[1].outcome, crate::ActivityOutcome::Failed);
     }
 }

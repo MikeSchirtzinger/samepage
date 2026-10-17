@@ -134,7 +134,6 @@ pub fn blank_string_literals(line: &str) -> String {
     out
 }
 
-
 /// Strips a `//` line comment from a line of Rust or JS/TS source, so a
 /// pattern written only in prose doesn't get picked up as a real call site.
 ///

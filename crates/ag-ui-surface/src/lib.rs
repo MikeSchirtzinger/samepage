@@ -19,13 +19,13 @@ use std::future::Future;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use axum::body::Bytes;
 use axum::extract::ws::{CloseFrame, Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, Request, State};
-use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
@@ -39,8 +39,8 @@ use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
-use ag_ui_core::event::{BaseEvent, Event as AgUiEvent, StateSnapshotEvent};
 use ag_ui_core::JsonValue;
+use ag_ui_core::event::{BaseEvent, Event as AgUiEvent, StateSnapshotEvent};
 
 // Re-exported from ag-ui-core: `CustomEvent` (name/value payload on
 // `BaseEvent`) is exactly the type `Effect::EmitAndAwait` needs — no reason
@@ -114,7 +114,7 @@ pub mod identity;
 mod action_schema;
 mod capability_manifest;
 pub use capability_manifest::{
-    ArtifactFile, CapabilityArtifact, DocumentMount, CAPABILITY_SCHEMA_VERSION,
+    ArtifactFile, CAPABILITY_SCHEMA_VERSION, CapabilityArtifact, DocumentMount,
 };
 
 /// Runtime-owned Model Context Protocol projection and request handling. The
@@ -335,7 +335,9 @@ pub trait SurfaceState: Send + Sync + 'static {
     /// Runtime-installed host activity service. Application state returns
     /// `None`; the wrapper installed by [`App::serve`] supplies the feed.
     /// Unrecorded diagnostic spans, without retaining any trace state.
-    fn activity_dropped(&self) -> u64 { 0 }
+    fn activity_dropped(&self) -> u64 {
+        0
+    }
 
     fn activity_feed(&self) -> Option<&ActivityFeed> {
         None
@@ -2273,8 +2275,11 @@ impl App {
             .activity_path
             .unwrap_or_else(|| auth.default_activity_path());
         let activity = if self.activity_enabled {
-            ActivityFeed::open(&activity_path).map_err(|error| AppError::InvalidConfiguration(error.to_string()))?
-        } else { ActivityFeed::disabled() };
+            ActivityFeed::open(&activity_path)
+                .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?
+        } else {
+            ActivityFeed::disabled()
+        };
         let surface = activity::install(surface, activity.clone());
         let action_schemas = action_schema::ActionSchemas::compile(surface.tools())
             .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?;
@@ -2476,23 +2481,23 @@ impl App {
         // (OpenAI-backed only; ACP providers manage their own credentials).
         let initial_provider = providers::find(&rt.providers.read(), &provider_id).cloned();
         if let Some(p) = initial_provider
-            && matches!(p.backend, providers::Backend::OpenAi) {
-                let byok = rt.byok.lock().clone();
-                let ov = rt.model_overrides.lock().get(&p.id).cloned();
-                let cfg =
-                    turn_loop::openai::resolve_openai_config(&rt.auth, &byok, &p, ov.as_deref());
-                tracing::info!(
-                    "initial endpoint: base_url={}, model={}, auth={}",
-                    cfg.base_url,
-                    cfg.model,
-                    if cfg.auth == turn_loop::openai::AuthMode::Oauth {
-                        "oauth"
-                    } else {
-                        "api_key"
-                    }
-                );
-                *rt.openai.lock() = cfg;
-            }
+            && matches!(p.backend, providers::Backend::OpenAi)
+        {
+            let byok = rt.byok.lock().clone();
+            let ov = rt.model_overrides.lock().get(&p.id).cloned();
+            let cfg = turn_loop::openai::resolve_openai_config(&rt.auth, &byok, &p, ov.as_deref());
+            tracing::info!(
+                "initial endpoint: base_url={}, model={}, auth={}",
+                cfg.base_url,
+                cfg.model,
+                if cfg.auth == turn_loop::openai::AuthMode::Oauth {
+                    "oauth"
+                } else {
+                    "api_key"
+                }
+            );
+            *rt.openai.lock() = cfg;
+        }
 
         let prompts = Arc::new(prompts);
         let human_route_token: Arc<str> = Arc::from(uuid::Uuid::new_v4().simple().to_string());
@@ -3384,9 +3389,10 @@ fn surface_route_response(path: &str, resp: RouteResponse) -> Response {
 
 fn surface_status(path: &str, status: u16) -> Option<StatusCode> {
     if (100..=599).contains(&status)
-        && let Ok(status) = StatusCode::from_u16(status) {
-            return Some(status);
-        }
+        && let Ok(status) = StatusCode::from_u16(status)
+    {
+        return Some(status);
+    }
     tracing::error!(
         path,
         status,
@@ -3946,7 +3952,9 @@ async fn join_handler(
     // changed to "Ana-2": the person would otherwise not know their name.
     if let Some(name) = &proposed {
         let mine = person_from(&st, &headers).map(|person| person.name);
-        if mine.as_deref() != Some(name.as_str()) && names_in_use(&st).iter().any(|taken| taken == name) {
+        if mine.as_deref() != Some(name.as_str())
+            && names_in_use(&st).iter().any(|taken| taken == name)
+        {
             return (
                 StatusCode::CONFLICT,
                 Json(json!({
@@ -4831,7 +4839,7 @@ async fn semantic_targets_focus_handler(
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "ok": false, "error": error })),
             )
-                .into_response()
+                .into_response();
         }
     };
     let message = body
@@ -5450,14 +5458,13 @@ async fn connections_post(State(st): State<RouterState>, Json(body): Json<JsonVa
         .insert(id.clone(), connection.model.clone().unwrap_or_default());
 
     let live = *rt.provider.lock() == id;
-    if live
-        && let Err(error) = request_provider_switch(rt, &id).await {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(json!({ "ok": false, "persisted": true, "error": error })),
-            )
-                .into_response();
-        }
+    if live && let Err(error) = request_provider_switch(rt, &id).await {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "ok": false, "persisted": true, "error": error })),
+        )
+            .into_response();
+    }
     let mut snapshot = auth_snapshot(rt);
     snapshot["ok"] = json!(true);
     snapshot["saved"] = json!(id);
@@ -5683,7 +5690,9 @@ fn pending_decision_events(rt: &runtime_state::RuntimeState) -> Vec<String> {
 }
 
 async fn activity_handler(State(st): State<RouterState>) -> Response {
-    if !st.rt.activity.is_enabled() { return StatusCode::NOT_FOUND.into_response(); }
+    if !st.rt.activity.is_enabled() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
     Json(st.rt.activity.snapshot()).into_response()
 }
 
@@ -5694,7 +5703,9 @@ async fn activity_events_handler(
     State(st): State<RouterState>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Response {
-    if !st.rt.activity.is_enabled() { return StatusCode::NOT_FOUND.into_response(); }
+    if !st.rt.activity.is_enabled() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
     let after = query
         .get("after")
         .and_then(|value| value.parse::<u64>().ok());
@@ -5801,9 +5812,10 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
             base: BaseEvent::default(),
             name: "surface.tutor".to_string(),
             value: json!({ "state": "awaiting" }),
-        })) {
-            initial.push(json);
-        }
+        }))
+    {
+        initial.push(json);
+    }
 
     let reconnect_events = match turn_loop::run_blocking_surface(surface.clone(), |surface| {
         surface.state().reconnect_events()
@@ -5846,9 +5858,10 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
             base: BaseEvent::default(),
             name: "surface.history".to_string(),
             value: json!({ "entries": history }),
-        })) {
-            initial.push(json);
-        }
+        }))
+    {
+        initial.push(json);
+    }
 
     // A reconnect can land while a model turn is still streaming. Completed
     // history must arrive first because clients rebuild their transcript from
@@ -6161,7 +6174,10 @@ mod tests {
         assert_eq!(first.participant_id, again.participant_id);
         assert_eq!(first.label, "reviewer");
         assert_eq!(again.label, "reviewer", "a reconnect is not reviewer-2");
-        assert_ne!(first.session, again.session, "each connection keeps its own credential");
+        assert_ne!(
+            first.session, again.session,
+            "each connection keeps its own credential"
+        );
         assert_ne!(other.participant_id, first.participant_id);
         let roster = attached_agents_json(&rs.rt).to_string();
         assert_eq!(roster.matches(&first.participant_id).count(), 1, "{roster}");
@@ -6211,13 +6227,22 @@ mod tests {
                 header::AUTHORIZATION,
                 HeaderValue::from_str(&format!("Bearer {}", rs.rt.mcp_token)).unwrap(),
             );
-            for guess in [participant_id.as_str(), participant_id.trim_start_matches("agent-")] {
-                headers.insert(mcp::SESSION_ID_HEADER, HeaderValue::from_str(guess).unwrap());
+            for guess in [
+                participant_id.as_str(),
+                participant_id.trim_start_matches("agent-"),
+            ] {
+                headers.insert(
+                    mcp::SESSION_ID_HEADER,
+                    HeaderValue::from_str(guess).unwrap(),
+                );
                 let response = mcp_delete_handler(State(rs.clone()), headers.clone()).await;
                 assert_eq!(response.status(), StatusCode::NOT_FOUND);
             }
             assert!(rs.rt.mcp_agents.lock().contains_key(session));
-            headers.insert(mcp::SESSION_ID_HEADER, HeaderValue::from_str(session).unwrap());
+            headers.insert(
+                mcp::SESSION_ID_HEADER,
+                HeaderValue::from_str(session).unwrap(),
+            );
             let response = mcp_delete_handler(State(rs.clone()), headers).await;
             assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
@@ -7121,14 +7146,33 @@ mod tests {
 
     #[tokio::test]
     async fn disabled_activity_routes_return_404_and_health_reports_drops() {
-        let surface: Arc<dyn Surface> = Arc::new(WebsocketSurface { state: WebsocketState, tools: Vec::new() });
+        let surface: Arc<dyn Surface> = Arc::new(WebsocketSurface {
+            state: WebsocketState,
+            tools: Vec::new(),
+        });
         let mut state = test_router_state(surface);
         Arc::get_mut(&mut state.rt).unwrap().activity = ActivityFeed::disabled();
-        state.rt.activity.record_lifecycle("disabled.edit", activity::ActivityOutcome::Info, None, None);
-        assert_eq!(activity_handler(State(state.clone())).await.status(), StatusCode::NOT_FOUND);
-        assert_eq!(activity_events_handler(State(state.clone()), Query(HashMap::new())).await.status(), StatusCode::NOT_FOUND);
+        state.rt.activity.record_lifecycle(
+            "disabled.edit",
+            activity::ActivityOutcome::Info,
+            None,
+            None,
+        );
+        assert_eq!(
+            activity_handler(State(state.clone())).await.status(),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            activity_events_handler(State(state.clone()), Query(HashMap::new()))
+                .await
+                .status(),
+            StatusCode::NOT_FOUND
+        );
         let Json(health) = extensions_with_activity_handler(State(state)).await;
-        assert_eq!(health["activity"], serde_json::json!({"enabled":false,"dropped":1}));
+        assert_eq!(
+            health["activity"],
+            serde_json::json!({"enabled":false,"dropped":1})
+        );
     }
 
     /// A router state with a real, installed semantic-target service, for the
@@ -7469,16 +7513,37 @@ mod tests {
     async fn joined_person_keeps_action_authority_after_navigation_cookie_rotation() {
         let state = test_router_state(websocket_surface_with_human_route());
         let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
-            .await.into_response();
-        let person = joined.headers().get(header::SET_COOKIE).unwrap()
-            .to_str().unwrap().split(';').next().unwrap();
+            .await
+            .into_response();
+        let person = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap();
         let mut headers = HeaderMap::new();
-        headers.insert(header::COOKIE, format!("{}=expired; {person}", human_route_cookie(state.rt.port)).parse().unwrap());
+        headers.insert(
+            header::COOKIE,
+            format!("{}=expired; {person}", human_route_cookie(state.rt.port))
+                .parse()
+                .unwrap(),
+        );
         assert_eq!(action_route_caller(&headers, &state), Caller::Human);
-        headers.insert(header::AUTHORIZATION, format!("Bearer {}", state.rt.mcp_token).parse().unwrap());
+        headers.insert(
+            header::AUTHORIZATION,
+            format!("Bearer {}", state.rt.mcp_token).parse().unwrap(),
+        );
         assert_eq!(action_route_caller(&headers, &state), Caller::Unknown);
         headers.remove(header::AUTHORIZATION);
-        headers.insert(header::COOKIE, format!("{}=forged", person_cookie(state.rt.port)).parse().unwrap());
+        headers.insert(
+            header::COOKIE,
+            format!("{}=forged", person_cookie(state.rt.port))
+                .parse()
+                .unwrap(),
+        );
         assert_eq!(action_route_caller(&headers, &state), Caller::Unknown);
     }
 
@@ -7646,13 +7711,17 @@ mod tests {
         let mut stream = tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
             .await
             .unwrap();
-        let request = format!("GET /ws HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nOrigin: http://127.0.0.1:{port}\r\nCookie: {cookie}\r\n\r\n");
+        let request = format!(
+            "GET /ws HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nOrigin: http://127.0.0.1:{port}\r\nCookie: {cookie}\r\n\r\n"
+        );
         stream.write_all(request.as_bytes()).await.unwrap();
         let mut response = [0_u8; 512];
         let len = stream.read(&mut response).await.unwrap();
-        assert!(std::str::from_utf8(&response[..len])
-            .unwrap()
-            .starts_with("HTTP/1.1 101"));
+        assert!(
+            std::str::from_utf8(&response[..len])
+                .unwrap()
+                .starts_with("HTTP/1.1 101")
+        );
         let payload = br#"{"author":"forged"}"#;
         let mask = [1_u8, 2, 3, 4];
         let mut frame = vec![0x82, 0x80 | u8::try_from(payload.len()).unwrap()];
@@ -8276,49 +8345,61 @@ mod tests {
         assert!(layout(&[route("/ws", HttpMethod::Get)], &[]).is_err());
         assert!(layout(&[route("/pkg/board.js", HttpMethod::Get)], &[]).is_err());
         assert!(layout(&[route("/_agui/alternate.js", HttpMethod::Get)], &[]).is_err());
-        assert!(layout(
-            &[
-                route("/custom", HttpMethod::Post),
-                route("/custom", HttpMethod::Post),
-            ],
-            &[],
-        )
-        .is_err());
-        assert!(layout(
-            &[route("/preview/state", HttpMethod::Get)],
-            &[("/preview".to_string(), PathBuf::from("."))],
-        )
-        .is_err());
-        assert!(layout(
-            &[],
-            &[
-                ("/preview".to_string(), PathBuf::from(".")),
-                ("/preview/assets".to_string(), PathBuf::from(".")),
-            ],
-        )
-        .is_err());
-        assert!(layout(
-            &[
-                route("/mission", HttpMethod::Get),
-                route("/mission", HttpMethod::Post),
-            ],
-            &[("/preview".to_string(), PathBuf::from("."))],
-        )
-        .is_ok());
-        assert!(layout(
-            &[],
-            &[("/extensions/board".to_string(), PathBuf::from("."))],
-        )
-        .is_ok());
+        assert!(
+            layout(
+                &[
+                    route("/custom", HttpMethod::Post),
+                    route("/custom", HttpMethod::Post),
+                ],
+                &[],
+            )
+            .is_err()
+        );
+        assert!(
+            layout(
+                &[route("/preview/state", HttpMethod::Get)],
+                &[("/preview".to_string(), PathBuf::from("."))],
+            )
+            .is_err()
+        );
+        assert!(
+            layout(
+                &[],
+                &[
+                    ("/preview".to_string(), PathBuf::from(".")),
+                    ("/preview/assets".to_string(), PathBuf::from(".")),
+                ],
+            )
+            .is_err()
+        );
+        assert!(
+            layout(
+                &[
+                    route("/mission", HttpMethod::Get),
+                    route("/mission", HttpMethod::Post),
+                ],
+                &[("/preview".to_string(), PathBuf::from("."))],
+            )
+            .is_ok()
+        );
+        assert!(
+            layout(
+                &[],
+                &[("/extensions/board".to_string(), PathBuf::from("."))],
+            )
+            .is_ok()
+        );
         assert!(layout(&[], &[("/pkg/board".to_string(), PathBuf::from("."))],).is_err());
         assert!(layout(&[], &[("/_agui/assets".to_string(), PathBuf::from("."))],).is_err());
         assert!(layout(&[], &[("/:id".to_string(), PathBuf::from("."))],).is_err());
         assert!(layout(&[], &[("/extensions/:id".to_string(), PathBuf::from("."))],).is_err());
-        assert!(layout(
-            &[route("/preview", HttpMethod::Get)],
-            &[("/preview/assets".to_string(), PathBuf::from("."))],
-        )
-        .is_ok());
+        assert!(
+            layout(
+                &[route("/preview", HttpMethod::Get)],
+                &[("/preview/assets".to_string(), PathBuf::from("."))],
+            )
+            .is_ok()
+        );
 
         fn action_route(
             path: &'static str,
@@ -8341,37 +8422,45 @@ mod tests {
             |_args| Effect::Reject("not called by layout validation".to_string()),
         )
         .human_only();
-        assert!(validate_http_layout(
-            &[],
-            &[action_route("/paper/write", HttpMethod::Post, "write")],
-            std::slice::from_ref(&action),
-            &[],
-        )
-        .is_ok());
-        assert!(validate_http_layout(
-            &[],
-            &[action_route("/paper/missing", HttpMethod::Post, "missing")],
-            std::slice::from_ref(&action),
-            &[],
-        )
-        .unwrap_err()
-        .contains("unknown action"));
-        assert!(validate_http_layout(
-            &[],
-            &[action_route("/paper/read", HttpMethod::Get, "write")],
-            std::slice::from_ref(&action),
-            &[],
-        )
-        .unwrap_err()
-        .contains("mutating HTTP method"));
-        assert!(validate_http_layout(
-            &[route("/paper/write", HttpMethod::Post)],
-            &[action_route("/paper/write", HttpMethod::Post, "write")],
-            std::slice::from_ref(&action),
-            &[],
-        )
-        .unwrap_err()
-        .contains("duplicate surface route"));
+        assert!(
+            validate_http_layout(
+                &[],
+                &[action_route("/paper/write", HttpMethod::Post, "write")],
+                std::slice::from_ref(&action),
+                &[],
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_http_layout(
+                &[],
+                &[action_route("/paper/missing", HttpMethod::Post, "missing")],
+                std::slice::from_ref(&action),
+                &[],
+            )
+            .unwrap_err()
+            .contains("unknown action")
+        );
+        assert!(
+            validate_http_layout(
+                &[],
+                &[action_route("/paper/read", HttpMethod::Get, "write")],
+                std::slice::from_ref(&action),
+                &[],
+            )
+            .unwrap_err()
+            .contains("mutating HTTP method")
+        );
+        assert!(
+            validate_http_layout(
+                &[route("/paper/write", HttpMethod::Post)],
+                &[action_route("/paper/write", HttpMethod::Post, "write")],
+                std::slice::from_ref(&action),
+                &[],
+            )
+            .unwrap_err()
+            .contains("duplicate surface route")
+        );
     }
 
     /// The new decision `App::serve` makes when the typed protocol client is
@@ -8419,9 +8508,11 @@ mod tests {
         std::fs::write(static_dir.join("index.html"), b"<!doctype html>").unwrap();
         std::fs::write(&pkg_file, b"not a directory").unwrap();
 
-        assert!(validate_static_directories(Path::new(""), None, &[])
-            .unwrap_err()
-            .contains("must not be empty"));
+        assert!(
+            validate_static_directories(Path::new(""), None, &[])
+                .unwrap_err()
+                .contains("must not be empty")
+        );
 
         assert_eq!(
             validate_static_directories(
@@ -8431,9 +8522,11 @@ mod tests {
             ),
             Ok(())
         );
-        assert!(validate_static_directories(&empty_dir, None, &[])
-            .unwrap_err()
-            .contains("static entry"));
+        assert!(
+            validate_static_directories(&empty_dir, None, &[])
+                .unwrap_err()
+                .contains("static entry")
+        );
         assert_eq!(
             validate_static_directories(&static_dir, Some(&pkg_dir), &[]),
             Ok(())
@@ -8771,21 +8864,24 @@ mod tests {
 
         // An old waiter's Drop token cannot close a same-id replacement.
         let (old, _old_reply) = pending("old-token", "same");
-        assert!(rs
-            .rt
-            .register_pending_decision("same".to_string(), old)
-            .is_ok());
+        assert!(
+            rs.rt
+                .register_pending_decision("same".to_string(), old)
+                .is_ok()
+        );
         rs.rt
             .close_pending_decision_if_token("same", "old-token", "resolved");
         let (new, _new_reply) = pending("new-token", "same");
-        assert!(rs
-            .rt
-            .register_pending_decision("same".to_string(), new)
-            .is_ok());
-        assert!(rs
-            .rt
-            .close_pending_decision_if_token("same", "old-token", "wait_dropped")
-            .is_none());
+        assert!(
+            rs.rt
+                .register_pending_decision("same".to_string(), new)
+                .is_ok()
+        );
+        assert!(
+            rs.rt
+                .close_pending_decision_if_token("same", "old-token", "wait_dropped")
+                .is_none()
+        );
         assert_eq!(
             rs.rt
                 .decision
@@ -8810,19 +8906,20 @@ mod tests {
         for id in ["a", "b"] {
             let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
             replies.push(reply_rx);
-            assert!(rs
-                .rt
-                .register_pending_decision(
-                    id.to_string(),
-                    runtime_state::PendingDecision {
-                        token: format!("token-{id}"),
-                        reply_kind: ReplyKind::Any,
-                        on_reply: Some(Box::new(|_| Ok("resolved".to_string()))),
-                        event_json: json!({ "pending": id }).to_string(),
-                        reply_tx: Some(reply_tx),
-                    },
-                )
-                .is_ok());
+            assert!(
+                rs.rt
+                    .register_pending_decision(
+                        id.to_string(),
+                        runtime_state::PendingDecision {
+                            token: format!("token-{id}"),
+                            reply_kind: ReplyKind::Any,
+                            on_reply: Some(Box::new(|_| Ok("resolved".to_string()))),
+                            event_json: json!({ "pending": id }).to_string(),
+                            reply_tx: Some(reply_tx),
+                        },
+                    )
+                    .is_ok()
+            );
         }
         // Discard the two pending broadcasts, then observe terminal events.
         assert!(events.try_recv().is_ok());
@@ -8988,9 +9085,11 @@ mod tests {
                     .action("delete_everything"),
             ],
         };
-        assert!(ExtensionManifest::from_surface(&invalid)
-            .unwrap_err()
-            .contains("unknown or non-human action"));
+        assert!(
+            ExtensionManifest::from_surface(&invalid)
+                .unwrap_err()
+                .contains("unknown or non-human action")
+        );
     }
 
     #[test]
@@ -9028,9 +9127,11 @@ mod tests {
                     .action("agent"),
             ],
         };
-        assert!(ExtensionManifest::from_surface(&invalid)
-            .unwrap_err()
-            .contains("non-human"));
+        assert!(
+            ExtensionManifest::from_surface(&invalid)
+                .unwrap_err()
+                .contains("non-human")
+        );
     }
 
     #[tokio::test]
@@ -9153,13 +9254,10 @@ mod tests {
         let surface: Arc<dyn Surface> = Arc::new(MultiModuleSurface {
             state: FocusState,
             tools: vec![action],
-            modules: vec![ClientModule::lazy(
-                "blocking",
-                "1.0.0",
-                "/extensions/blocking.js",
-                "blocking",
-            )
-            .action("blocked_write")],
+            modules: vec![
+                ClientModule::lazy("blocking", "1.0.0", "/extensions/blocking.js", "blocking")
+                    .action("blocked_write"),
+            ],
         });
         let state = test_router_state(surface);
         let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
@@ -9263,13 +9361,10 @@ mod tests {
         let surface: Arc<dyn Surface> = Arc::new(MultiModuleSurface {
             state: FocusState,
             tools: vec![human_action, agent_action],
-            modules: vec![ClientModule::lazy(
-                "records",
-                "1.0.0",
-                "/extensions/records.js",
-                "records",
-            )
-            .action("human_write")],
+            modules: vec![
+                ClientModule::lazy("records", "1.0.0", "/extensions/records.js", "records")
+                    .action("human_write"),
+            ],
         });
         let state = test_router_state(surface);
         let route_cookie = human_route_cookie(state.rt.port);

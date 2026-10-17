@@ -212,7 +212,10 @@ fn the_five_state_machine_problem_sentences_are_exact() {
         "state machine \"empty cursor\": no state is marked initial",
         "state machine \"explanation cursor\": \"active\" and \"paused\" are both marked initial",
     ] {
-        assert!(details.contains(&expected.to_string()), "{expected}: {details:?}");
+        assert!(
+            details.contains(&expected.to_string()),
+            "{expected}: {details:?}"
+        );
     }
 }
 

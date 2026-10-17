@@ -1,10 +1,10 @@
 use samepage_capability::{
     Batch, BatchEntry, Call, Capability, Composition, Op, Plan, Target, Value,
 };
-use samepage_doc::{host::Host, Actor, Caller, Replica};
+use samepage_doc::{Actor, Caller, Replica, host::Host};
 use samepage_map::Map;
-use samepage_review::{context, Review};
-use serde_json::{json, Value as JsonValue};
+use samepage_review::{Review, context};
+use serde_json::{Value as JsonValue, json};
 use std::sync::Arc;
 #[path = "../../../apps/samepage/src/diagram_sources.rs"]
 mod diagram_sources;
@@ -101,36 +101,41 @@ fn only_the_agent_creates_and_only_the_human_gives_a_verdict() {
             &h.view(),
         )
         .unwrap();
-    assert!(h
-        .commit_batch(&human(), &batch(&h, "review", planned.ops))
-        .is_err());
+    assert!(
+        h.commit_batch(&human(), &batch(&h, "review", planned.ops))
+            .is_err()
+    );
     let c = claim(&h, &n);
     let before = fingerprint(&h);
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &agent(),
             "claim_verdict",
             json!({"id":c,"verdict":"accepted"})
         )
-        .is_err());
-    assert!(h
-        .commit_batch(
+        .is_err()
+    );
+    assert!(
+        h.commit_batch(
             &agent(),
             &batch(&h, "review", vec![set(&c, "verdict", "accepted")])
         )
-        .is_err());
+        .is_err()
+    );
     assert_eq!(before, fingerprint(&h));
     verdict(&h, &c, "accepted");
-    assert!(h
-        .invoke(&human(), "claim_withdraw", json!({"id":c}))
-        .is_err());
+    assert!(
+        h.invoke(&human(), "claim_withdraw", json!({"id":c}))
+            .is_err()
+    );
     // Even an attempted same-value write cannot impersonate a human verdict.
-    assert!(h
-        .commit_batch(
+    assert!(
+        h.commit_batch(
             &agent(),
             &batch(&h, "review", vec![set(&c, "verdict", "accepted")])
         )
-        .is_err());
+        .is_err()
+    );
 }
 #[test]
 fn revising_an_accepted_claim_reopens_it() {
@@ -140,12 +145,13 @@ fn revising_an_accepted_claim_reopens_it() {
     verdict(&h, &c, "accepted");
     assert_eq!(samepage_review::standing(&h.view(), &n), "SETTLED");
     let before = fingerprint(&h);
-    assert!(h
-        .commit_batch(
+    assert!(
+        h.commit_batch(
             &agent(),
             &batch(&h, "review", vec![set(&c, "text", "Changed words")])
         )
-        .is_err());
+        .is_err()
+    );
     assert_eq!(before, fingerprint(&h));
     h.invoke(
         &agent(),
@@ -175,12 +181,13 @@ fn agreed_is_refused_while_under_challenge() {
     h.invoke(&human(), "card_place", json!({"id":n,"status":"agreed"}))
         .unwrap();
     verdict(&h, &c, "rejected");
-    assert!(h
-        .commit_batch(
+    assert!(
+        h.commit_batch(
             &human(),
             &batch(&h, "map", vec![set(&n, "status", "agreed")])
         )
-        .is_err());
+        .is_err()
+    );
 }
 #[test]
 fn removing_a_node_removes_its_claims_and_their_marks() {
@@ -231,8 +238,8 @@ fn a_context_change_retains_the_previous_question_and_refuses_a_stale_writer() {
     let state = context::project(&h.view()).unwrap();
     assert_eq!(state.heads, vec![second]);
     assert!(state.entries.iter().any(|e| e.id == first));
-    assert!(h
-        .commit_batch(
+    assert!(
+        h.commit_batch(
             &human(),
             &batch(
                 &h,
@@ -244,7 +251,8 @@ fn a_context_change_retains_the_previous_question_and_refuses_a_stale_writer() {
                 )]
             )
         )
-        .is_err());
+        .is_err()
+    );
 }
 #[test]
 fn unrelated_context_heads_are_visible_until_explicitly_reconciled() {
@@ -289,13 +297,14 @@ fn unrelated_context_heads_are_visible_until_explicitly_reconciled() {
 fn an_unknown_scope_target_cannot_partially_change_the_page() {
     let h = host();
     let before = fingerprint(&h);
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &human(),
             "context_set",
             json!({"question":"Which component?","altitude":"component","subjects":["missing"]})
         )
-        .is_err());
+        .is_err()
+    );
     assert_eq!(before, fingerprint(&h));
 }
 #[test]
@@ -366,14 +375,17 @@ fn real_crdt_peers_preserve_concurrent_scopes_and_question_history() {
         ctx("What is the sync boundary?", state.heads),
     )
     .unwrap();
-    assert!(h
-        .view()
-        .records()
-        .filter(|r| r.kind == "mark")
-        .all(|r| samepage_review::string(r, "context_ids") == a_id));
-    assert!(samepage_review::describe(&h.view())
-        .unwrap()
-        .contains("asked at System scope: How do peers sync?"));
+    assert!(
+        h.view()
+            .records()
+            .filter(|r| r.kind == "mark")
+            .all(|r| samepage_review::string(r, "context_ids") == a_id)
+    );
+    assert!(
+        samepage_review::describe(&h.view())
+            .unwrap()
+            .contains("asked at System scope: How do peers sync?")
+    );
 }
 #[test]
 fn forged_replica_verdict_and_human_claim_are_refused_without_mutation() {
@@ -414,9 +426,10 @@ fn forged_replica_verdict_and_human_claim_are_refused_without_mutation() {
 fn only_humans_author_marks_but_both_participants_can_answer() {
     let h = host();
     let n = node(&h);
-    assert!(h
-        .invoke(&agent(), "mark_add", json!({"target":n,"glyph":"?"}))
-        .is_err());
+    assert!(
+        h.invoke(&agent(), "mark_add", json!({"target":n,"glyph":"?"}))
+            .is_err()
+    );
     let m = h
         .invoke(
             &human(),
@@ -426,12 +439,13 @@ fn only_humans_author_marks_but_both_participants_can_answer() {
         .unwrap()
         .ids["mark"]
         .clone();
-    assert!(h
-        .commit_batch(
+    assert!(
+        h.commit_batch(
             &agent(),
             &batch(&h, "review", vec![set(&m, "text", "Forged question")])
         )
-        .is_err());
+        .is_err()
+    );
     h.invoke(
         &agent(),
         "mark_answer",
@@ -462,29 +476,32 @@ fn unknown_basis_and_withdrawal_cannot_invent_settlement() {
         .unwrap()
         .ids["claim"]
         .clone();
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &human(),
             "claim_verdict",
             json!({"id":c,"verdict":"accepted"})
         )
-        .is_err());
+        .is_err()
+    );
     h.invoke(&agent(), "claim_withdraw", json!({"id":c}))
         .unwrap();
     assert_eq!(samepage_review::standing(&h.view(), &n), "NO CLAIMS");
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &agent(),
             "claim_add",
             json!({"id":c,"text":"Now known","basis":"inferred"})
         )
-        .is_err());
-    assert!(h
-        .commit_batch(
+        .is_err()
+    );
+    assert!(
+        h.commit_batch(
             &agent(),
             &batch(&h, "review", vec![set(&c, "withdrawn", false)])
         )
-        .is_err());
+        .is_err()
+    );
 }
 #[test]
 fn the_second_read_says_what_the_humans_edits_now_mean() {
@@ -494,10 +511,12 @@ fn the_second_read_says_what_the_humans_edits_now_mean() {
     let native =
         native_review::ReviewHost::open(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap();
     let first = native.read(&h.view(), "reader").unwrap();
-    assert!(!first["readback"]
-        .as_str()
-        .unwrap()
-        .contains("CHANGED SINCE"));
+    assert!(
+        !first["readback"]
+            .as_str()
+            .unwrap()
+            .contains("CHANGED SINCE")
+    );
     verdict(&h, &c, "rejected");
     h.invoke(&human(), "card_place", json!({"id":n,"status":"disputed"}))
         .unwrap();
@@ -508,10 +527,12 @@ fn the_second_read_says_what_the_humans_edits_now_mean() {
             && text.contains("DISPUTED")
             && text.contains("is now disputed (it was open)")
     );
-    assert!(native.read(&h.view(), "reader").unwrap()["changes"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(
+        native.read(&h.view(), "reader").unwrap()["changes"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 #[test]
 fn a_plain_describe_does_not_advance_the_read_mark() {
@@ -524,14 +545,18 @@ fn a_plain_describe_does_not_advance_the_read_mark() {
     verdict(&h, &c, "accepted");
     native.inspect(&h.view()).unwrap();
     samepage_review::describe(&h.view()).unwrap();
-    assert!(!native.read(&h.view(), "reader").unwrap()["changes"]
-        .as_array()
-        .unwrap()
-        .is_empty());
-    assert!(native.read(&h.view(), "other-reader").unwrap()["changes"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(
+        !native.read(&h.view(), "reader").unwrap()["changes"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        native.read(&h.view(), "other-reader").unwrap()["changes"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 #[test]
 fn identical_restatement_does_not_reopen_and_malformed_scalars_cannot_fake_a_revision() {
@@ -550,8 +575,8 @@ fn identical_restatement_does_not_reopen_and_malformed_scalars_cannot_fake_a_rev
     assert!(result.commit.is_none());
     assert_eq!(before, fingerprint(&h));
     for key in ["path", "lines", "revision"] {
-        assert!(h
-            .commit_batch(
+        assert!(
+            h.commit_batch(
                 &agent(),
                 &batch(
                     &h,
@@ -559,7 +584,8 @@ fn identical_restatement_does_not_reopen_and_malformed_scalars_cannot_fake_a_rev
                     vec![set(&c, key, false), set(&c, "verdict", "open")]
                 )
             )
-            .is_err());
+            .is_err()
+        );
     }
     // A raw CRDT property deletion is also an attempted write, not a revision
     // of the content the human actually accepted.
@@ -582,9 +608,10 @@ fn identical_restatement_does_not_reopen_and_malformed_scalars_cannot_fake_a_rev
     let raw = doc
         .transact()
         .encode_state_as_update_v1(&StateVector::default());
-    assert!(h
-        .receive_frame(&agent(), &samepage_doc::sync::update(raw))
-        .is_err());
+    assert!(
+        h.receive_frame(&agent(), &samepage_doc::sync::update(raw))
+            .is_err()
+    );
     assert_eq!(before, fingerprint(&h));
 }
 #[test]
@@ -693,11 +720,12 @@ fn offline_mark_keeps_its_question_context_when_the_other_scope_arrives_first() 
     )
     .unwrap();
     assert_eq!(context::project(&h.view()).unwrap().heads.len(), 2);
-    assert!(h
-        .view()
-        .records()
-        .filter(|r| r.kind == "mark")
-        .all(|r| samepage_review::string(r, "context_ids") == context));
+    assert!(
+        h.view()
+            .records()
+            .filter(|r| r.kind == "mark")
+            .all(|r| samepage_review::string(r, "context_ids") == context)
+    );
 }
 fn temporary(name: &str) -> std::path::PathBuf {
     let p = std::env::temp_dir().join(format!(
@@ -729,10 +757,12 @@ fn source_deletion_is_visible_and_readability_is_not_claim_verification() {
     .unwrap();
     let report = native.inspect(&h.view()).unwrap();
     assert_eq!(report["nodes"][0]["evidence"][0]["state"], "readable");
-    assert!(report["evidence_boundary"]
-        .as_str()
-        .unwrap()
-        .contains("does not verify"));
+    assert!(
+        report["evidence_boundary"]
+            .as_str()
+            .unwrap()
+            .contains("does not verify")
+    );
     std::fs::remove_file(root.join("lib.rs")).unwrap();
     assert_eq!(
         native.inspect(&h.view()).unwrap()["nodes"][0]["evidence"][0]["state"],
@@ -790,11 +820,12 @@ fn missing_optional_review_refuses_destructive_orphaning_but_allows_map_edits() 
     h.invoke(&human(), "card_move", json!({"id":n,"x":500,"y":20}))
         .unwrap();
     let before = fingerprint(&h);
-    assert!(h
-        .invoke(&human(), "object_remove", json!({"id":n}))
-        .unwrap_err()
-        .to_string()
-        .contains("review_unavailable"));
+    assert!(
+        h.invoke(&human(), "object_remove", json!({"id":n}))
+            .unwrap_err()
+            .to_string()
+            .contains("review_unavailable")
+    );
     assert_eq!(before, fingerprint(&h));
     drop(h);
     std::fs::remove_dir_all(root).unwrap();
@@ -806,7 +837,11 @@ fn standing_separates_unreviewed_questioned_and_disputed() {
     let c = claim(&h, &n);
     assert_eq!(samepage_review::standing(&h.view(), &n), "UNREVIEWED");
     let mark = h
-        .invoke(&human(), "mark_add", json!({"target":n,"glyph":"?","text":"Which port?"}))
+        .invoke(
+            &human(),
+            "mark_add",
+            json!({"target":n,"glyph":"?","text":"Which port?"}),
+        )
         .unwrap()
         .ids["mark"]
         .clone();

@@ -62,12 +62,16 @@ fn every_export_matches_the_native_capability() {
         .iter()
         .map(|s| serde_json::from_str(s).unwrap())
         .collect();
-    assert!(values.iter().any(|r| r["ok"]["error"]
-        .as_str()
-        .is_some_and(|s| s.contains("third") && s.contains("Already written: added a, added b"))));
-    assert!(values.iter().any(|r| r["ok"]["entries"]
-        .as_array()
-        .is_some_and(|es| es.iter().any(|e| e["standing"] == "SETTLED"))));
+    assert!(values.iter().any(|r| {
+        r["ok"]["error"]
+            .as_str()
+            .is_some_and(|s| s.contains("third") && s.contains("Already written: added a, added b"))
+    }));
+    assert!(values.iter().any(|r| {
+        r["ok"]["entries"]
+            .as_array()
+            .is_some_and(|es| es.iter().any(|e| e["standing"] == "SETTLED"))
+    }));
     for code in [
         "bad_input",
         "unknown_action",

@@ -1,8 +1,8 @@
 use samepage_board::{
-    fresh_agreement, project_for, Assertion, Author, Board, BoardCapability, Context, Mark,
+    Assertion, Author, Board, BoardCapability, Context, Mark, fresh_agreement, project_for,
 };
 use samepage_capability::{Call, Capability};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 const NOW: &str = "2026-10-08T12:00:00Z";
@@ -44,12 +44,14 @@ fn a_second_humans_mark_is_named_to_the_first_and_you_to_the_second() {
     let b = marked(Mark::Question);
     let before = serde_json::to_value(&b).unwrap();
     for (reader, marker) in [("human-a", "Blair"), ("human-b", "you"), ("agent", "Blair")] {
-        assert!(b
-            .render_for(0, Some(reader))
-            .contains(&format!("marked question by {marker}")));
-        assert!(b
-            .render_for(0, Some(reader))
-            .contains(&format!("marked by {marker}: claim")));
+        assert!(
+            b.render_for(0, Some(reader))
+                .contains(&format!("marked question by {marker}"))
+        );
+        assert!(
+            b.render_for(0, Some(reader))
+                .contains(&format!("marked by {marker}: claim"))
+        );
         assert_eq!(
             project_for(&b, 0, Some(reader))["entries"][0]["mark"]["by"],
             marker
@@ -59,17 +61,19 @@ fn a_second_humans_mark_is_named_to_the_first_and_you_to_the_second() {
             BoardCapability.project(&view).unwrap()["entries"][0]["mark"]["by"],
             marker
         );
-        assert!(BoardCapability
-            .plan(
-                &Call {
-                    action: "board_read".into(),
-                    args: json!({})
-                },
-                &view
-            )
-            .unwrap()
-            .readback
-            .contains(&format!("marked question by {marker}")));
+        assert!(
+            BoardCapability
+                .plan(
+                    &Call {
+                        action: "board_read".into(),
+                        args: json!({})
+                    },
+                    &view
+                )
+                .unwrap()
+                .readback
+                .contains(&format!("marked question by {marker}"))
+        );
         assert_eq!(
             BoardCapability
                 .changes(
@@ -97,12 +101,14 @@ fn a_second_humans_mark_is_named_to_the_first_and_you_to_the_second() {
 fn signoff_names_are_viewer_relative_without_changing_freshness() {
     let mut b = marked(Mark::Agree);
     assert!(fresh_agreement(b.get("claim").unwrap()));
-    assert!(b
-        .render_for(0, Some("human-a"))
-        .contains("marked agree by Blair"));
-    assert!(b
-        .render_for(0, Some("human-b"))
-        .contains("marked agree by you"));
+    assert!(
+        b.render_for(0, Some("human-a"))
+            .contains("marked agree by Blair")
+    );
+    assert!(
+        b.render_for(0, Some("human-b"))
+            .contains("marked agree by you")
+    );
     b.assert_at(
         Assertion::Claim {
             id: "claim".into(),
@@ -114,12 +120,14 @@ fn signoff_names_are_viewer_relative_without_changing_freshness() {
     )
     .unwrap();
     assert!(!fresh_agreement(b.get("claim").unwrap()));
-    assert!(b
-        .render_for(0, Some("human-a"))
-        .contains("marked agree by Blair"));
-    assert!(b
-        .render_for(0, Some("human-b"))
-        .contains("STALE: human sign-off"));
+    assert!(
+        b.render_for(0, Some("human-a"))
+            .contains("marked agree by Blair")
+    );
+    assert!(
+        b.render_for(0, Some("human-b"))
+            .contains("STALE: human sign-off")
+    );
     b.unmark("claim").unwrap();
     assert!(project_for(&b, 0, Some("human-b"))["entries"][0]["mark"].is_null());
     assert!(!b.render_for(0, Some("human-b")).contains("marked agree"));
@@ -216,27 +224,31 @@ fn the_native_host_persists_authenticated_names_and_reads_for_each_participant()
             h.read(reader.participant_id.as_deref().unwrap()).unwrap()
         );
     }
-    assert!(h
-        .read("human-a")
-        .unwrap()
-        .contains("marked question by Blair"));
-    assert!(h
-        .read("human-b")
-        .unwrap()
-        .contains("marked question by you"));
-    assert!(h
-        .invoke_as(&agent, "board_read", json!({}), "doc")
-        .unwrap()
-        .contains("marked question by Blair"));
+    assert!(
+        h.read("human-a")
+            .unwrap()
+            .contains("marked question by Blair")
+    );
+    assert!(
+        h.read("human-b")
+            .unwrap()
+            .contains("marked question by you")
+    );
+    assert!(
+        h.invoke_as(&agent, "board_read", json!({}), "doc")
+            .unwrap()
+            .contains("marked question by Blair")
+    );
     let saved = h.snapshot();
     assert_eq!(saved["board"]["participants"]["human-b"], "Blair");
     drop(h);
     let h = native::BoardHost::open(dir.join("board.json"), Arc::new(|_, _| {})).unwrap();
     assert!(h.peek().contains("marked question by Blair"));
-    assert!(h
-        .read("human-b")
-        .unwrap()
-        .contains("marked question by you"));
+    assert!(
+        h.read("human-b")
+            .unwrap()
+            .contains("marked question by you")
+    );
     assert_eq!(h.snapshot(), saved);
     std::fs::remove_dir_all(dir).unwrap();
 }

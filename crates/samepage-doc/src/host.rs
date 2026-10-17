@@ -51,9 +51,9 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use base64::Engine as _;
 use samepage_capability::{
-    audit, is_reserved_key, Audience, AuditError, Batch, BatchBuilder, Call, CapError, Capability,
-    Change, Composition, Delta, Effect, Origin, PlanError, Principal, ResolvedOp, View,
-    AUTHORSHIP_KEYS, KIND_KEY,
+    AUTHORSHIP_KEYS, Audience, AuditError, Batch, BatchBuilder, Call, CapError, Capability, Change,
+    Composition, Delta, Effect, KIND_KEY, Origin, PlanError, Principal, ResolvedOp, View, audit,
+    is_reserved_key,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -61,7 +61,7 @@ use yrs::types::{EntryChange, Event, PathSegment};
 use yrs::updates::encoder::Encode;
 use yrs::{Any, BranchID, DeepObservable, Map, Out, Transact, Update};
 
-use crate::document::{self, decode, id_client, DocError, Document};
+use crate::document::{self, DocError, Document, decode, id_client};
 use crate::journal::{Entry, Journal};
 use crate::layout;
 use crate::sync::{self, Incoming, SyncError};
@@ -148,7 +148,9 @@ pub enum FrameRefusal {
     QuarantineFull { updates: usize, bytes: usize },
     #[error("too many actors hold unresolved updates")]
     TooManyHeld,
-    #[error("participant {participant:?} has held updates recorded under a different caller or label; the held updates keep their original actor")]
+    #[error(
+        "participant {participant:?} has held updates recorded under a different caller or label; the held updates keep their original actor"
+    )]
     ActorChanged { participant: String },
     #[error("the live document has pending content after a commit; this is a kernel bug")]
     Internal,
@@ -204,7 +206,9 @@ pub enum OpenError {
     },
     #[error("{path} is not a saved document: {reason}")]
     Format { path: PathBuf, reason: String },
-    #[error("{path} holds content that cannot be integrated (missing dependencies); refusing to open it as authoritative")]
+    #[error(
+        "{path} holds content that cannot be integrated (missing dependencies); refusing to open it as authoritative"
+    )]
     Unresolved { path: PathBuf },
     #[error("document: {0}")]
     Doc(#[from] DocError),
@@ -736,11 +740,12 @@ impl Host {
             .held
             .iter()
             .find(|(participant, _)| participant == &actor.participant)
-            && &held.actor != actor {
-                return Err(FrameRefusal::ActorChanged {
-                    participant: actor.participant.clone(),
-                });
-            }
+            && &held.actor != actor
+        {
+            return Err(FrameRefusal::ActorChanged {
+                participant: actor.participant.clone(),
+            });
+        }
         let held = inner
             .held
             .iter()
@@ -917,9 +922,10 @@ impl Host {
         let branches_after = branch_ids(&candidate);
         for (id, before) in &branches_before {
             if let Some(after) = branches_after.get(id)
-                && after != before {
-                    return Err(FrameRefusal::Replaced(id.clone()));
-                }
+                && after != before
+            {
+                return Err(FrameRefusal::Replaced(id.clone()));
+            }
         }
 
         let before = layout::view(&live_inspection, &live_revision);
@@ -1175,7 +1181,10 @@ impl Host {
                 action: preferred.clone(),
                 args,
             };
-            let _plan_span = samepage_capability::activity::Span::new(&capability_id, &format!("{capability_id}.plan"));
+            let _plan_span = samepage_capability::activity::Span::new(
+                &capability_id,
+                &format!("{capability_id}.plan"),
+            );
             let batch =
                 capability
                     .plan_batch(&call, &view)

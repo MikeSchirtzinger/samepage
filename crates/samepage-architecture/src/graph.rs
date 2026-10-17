@@ -100,7 +100,9 @@ impl Graph {
                 ));
             }
             if edge.label.chars().count() > 500 || !seen.insert(edge) {
-                return Err(invalid("relationship labels must fit 500 characters and relationships must be distinct"));
+                return Err(invalid(
+                    "relationship labels must fit 500 characters and relationships must be distinct",
+                ));
             }
         }
         Ok(())

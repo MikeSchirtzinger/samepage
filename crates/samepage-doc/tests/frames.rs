@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use samepage_capability::{Op, Plan, Scalar, Target, Value};
 use samepage_doc::host::{FrameOutcome, FrameRefusal};
-use samepage_doc::{sync, Replica};
+use samepage_doc::{Replica, sync};
 use serde_json::json;
 use support::*;
 use yrs::{Any, Map, MapPrelim, Transact};
@@ -71,12 +71,14 @@ fn an_honest_edit_commits_with_the_host_stamp_in_the_same_change() {
     let id = applied.ids["card"].clone();
     assert!(id.starts_with(&format!("{:016x}-", replica.client_id())));
     // The browser does not stamp.
-    assert!(!replica
-        .view()
-        .get(&id)
-        .unwrap()
-        .props
-        .contains_key("touched_by"));
+    assert!(
+        !replica
+            .view()
+            .get(&id)
+            .unwrap()
+            .props
+            .contains_key("touched_by")
+    );
 
     let before = host.encode_full();
     assert!(matches!(

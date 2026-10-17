@@ -5,8 +5,8 @@ mod support;
 
 use base64::Engine as _;
 use samepage_capability::Scalar;
-use samepage_doc::host::{Host, OpenError};
 use samepage_doc::Document;
+use samepage_doc::host::{Host, OpenError};
 use serde_json::json;
 use support::*;
 use yrs::updates::decoder::Decode;
@@ -52,9 +52,8 @@ fn legacy_document() -> Vec<u8> {
     );
     extra.push_back(&mut txn, "entry");
     drop(txn);
-    
-    doc
-        .transact()
+
+    doc.transact()
         .encode_state_as_update_v1(&yrs::StateVector::default())
 }
 
@@ -415,8 +414,10 @@ fn preexisting_hidden_sequence_content_is_preserved_and_cannot_be_replaced_at_eq
         host.save().unwrap();
         Host::open(dir.join("page.samepage"), composition(), capabilities()).unwrap()
     };
-    assert!(reopened
-        .opened_anomalies()
-        .iter()
-        .any(|a| a == "sequence:objects"));
+    assert!(
+        reopened
+            .opened_anomalies()
+            .iter()
+            .any(|a| a == "sequence:objects")
+    );
 }

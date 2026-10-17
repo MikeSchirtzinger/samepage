@@ -3,7 +3,7 @@
 //! correctness gate — it validates the full wgpu pipeline (shaders, instance
 //! layout, camera, blob upload) without a browser.
 
-use ag_ui_canvas_render::{text, Renderer, SceneObject, TextQuad};
+use ag_ui_canvas_render::{Renderer, SceneObject, TextQuad, text};
 
 const W: u32 = 256;
 const H: u32 = 256;

@@ -764,9 +764,10 @@ pub fn describe(atlas: &Atlas) -> String {
             }
             if let Some(coverage) =
                 encoded.and_then(|value| serde_json::from_str::<CementCoverage>(value).ok())
-                && !coverage.g8_status.is_empty() {
-                    out.push_str(&format!("    G8 at adoption: {}. Run g8 check --enforce for current status; structural checks do not prove behavior.\n", coverage.g8_status));
-                }
+                && !coverage.g8_status.is_empty()
+            {
+                out.push_str(&format!("    G8 at adoption: {}. Run g8 check --enforce for current status; structural checks do not prove behavior.\n", coverage.g8_status));
+            }
         }
     }
     out
@@ -931,9 +932,10 @@ pub fn changes(before: &Digest, after: &Digest) -> Vec<String> {
         let was = standing(before, node);
         let now = standing(after, node);
         if was != now
-            && let Some(now) = now {
-                out.push(format!("- {} is now {now}", label_of(node)));
-            }
+            && let Some(now) = now
+        {
+            out.push(format!("- {} is now {now}", label_of(node)));
+        }
     }
     out
 }

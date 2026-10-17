@@ -1,12 +1,12 @@
 use samepage_capability::{
     Batch, BatchEntry, Call, Capability, Composition, Op, Plan, Target, Value as PlanValue,
 };
-use samepage_doc::{host::Host, Actor, Caller, Replica};
+use samepage_doc::{Actor, Caller, Replica, host::Host};
 use samepage_explain::*;
-use samepage_map::{prop_str, Map};
+use samepage_map::{Map, prop_str};
 use samepage_review::Review;
 use samepage_sketch::Sketch;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 fn descriptors() -> Vec<samepage_capability::Descriptor> {
     vec![
@@ -166,9 +166,10 @@ fn scoped_explanations_coexist_and_reject_cross_room_ownership() {
         vec!["missing".into()],
     ] {
         second.scene_ids = scope;
-        assert!(h
-            .invoke(&agent(), "walkthrough_define", json!({"flow":second}))
-            .is_err());
+        assert!(
+            h.invoke(&agent(), "walkthrough_define", json!({"flow":second}))
+                .is_err()
+        );
         assert_eq!(h.view(), before);
     }
     first.beats[0].cue = "A revised explanation.".into();
@@ -177,13 +178,14 @@ fn scoped_explanations_coexist_and_reject_cross_room_ownership() {
     assert_eq!(revised.state.revision, 3);
     assert_eq!(flows(&h.view()).unwrap().len(), 2);
     assert_eq!(state(&h, &other.definition.id).revision, 1);
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &human(),
             "walkthrough_draw",
             json!({"flow_id":first.id,"nodes":[{"id":second.about[0],"label":"outside edit"}]})
         )
-        .is_err());
+        .is_err()
+    );
     assert_eq!(state(&h, &first.id).revision, 3);
 }
 #[test]
@@ -200,11 +202,12 @@ fn explanation_path_trace_requires_a_connector_and_preserves_marks_on_revision()
     let mut d = explanation_fixture(&a, &b);
     d.beats[0].actions[0].kind = "trace-path".into();
     let before = h.view();
-    assert!(h
-        .invoke(&agent(), "walkthrough_define", json!({"flow":d}))
-        .unwrap_err()
-        .to_string()
-        .contains("arrow or line"));
+    assert!(
+        h.invoke(&agent(), "walkthrough_define", json!({"flow":d}))
+            .unwrap_err()
+            .to_string()
+            .contains("arrow or line")
+    );
     assert_eq!(h.view(), before);
     d.beats[0].actions[0].target_id = connector.clone();
     let f = define(&h, &d);
@@ -222,22 +225,25 @@ fn explanation_path_trace_requires_a_connector_and_preserves_marks_on_revision()
     assert_eq!(f.object_id, revised.object_id);
     assert_eq!(revised.state.revision, 2);
     let before = h.view();
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &human(),
             "walkthrough_control",
             json!({"flow_id":d.id,"expected_revision":1,"command":"pause"})
         )
-        .is_err());
+        .is_err()
+    );
     assert_eq!(h.view(), before);
     assert_eq!(
         prop_str(h.view().get(&mark).unwrap(), "target"),
         Some(connector.as_str())
     );
-    assert!(read(&h.view(), None).unwrap()["readback"]
-        .as_str()
-        .unwrap()
-        .contains("trace-path"));
+    assert!(
+        read(&h.view(), None).unwrap()["readback"]
+            .as_str()
+            .unwrap()
+            .contains("trace-path")
+    );
     let edge = invoke(&h, "card_link", json!({"from":a,"to":b})).ids["link"].clone();
     d.id = "map-link-trace".into();
     d.beats[0].actions[0].target_id = edge;
@@ -256,10 +262,12 @@ fn one_generic_explanation_flow_advances_with_utterance_and_selection_evidence()
     assert_eq!(s.last_response, "yes");
     assert_eq!(s.last_selected_target_ids, vec![a]);
     assert_eq!(s.touched_by, "Human");
-    assert!(read(&h.view(), None).unwrap()["readback"]
-        .as_str()
-        .unwrap()
-        .contains("response=\"yes\""));
+    assert!(
+        read(&h.view(), None).unwrap()["readback"]
+            .as_str()
+            .unwrap()
+            .contains("response=\"yes\"")
+    );
 }
 #[test]
 fn invalid_explanation_graphs_and_stale_transitions_are_atomic() {
@@ -269,15 +277,17 @@ fn invalid_explanation_graphs_and_stale_transitions_are_atomic() {
     let mut invalid = d.clone();
     invalid.beats[0].advance.transitions[0].control = Some("link".into());
     let before = h.view();
-    assert!(h
-        .invoke(&agent(), "walkthrough_define", json!({"flow":invalid}))
-        .is_err());
+    assert!(
+        h.invoke(&agent(), "walkthrough_define", json!({"flow":invalid}))
+            .is_err()
+    );
     assert_eq!(h.view(), before);
     let mut missing = d.clone();
     missing.beats[0].evidence[0].target_id = "not-on-page".into();
-    assert!(h
-        .invoke(&agent(), "walkthrough_define", json!({"flow":missing}))
-        .is_err());
+    assert!(
+        h.invoke(&agent(), "walkthrough_define", json!({"flow":missing}))
+            .is_err()
+    );
     assert_eq!(h.view(), before);
     let mut cycle = d.clone();
     cycle.beats[1].advance = ExplanationAdvance {
@@ -292,11 +302,12 @@ fn invalid_explanation_graphs_and_stale_transitions_are_atomic() {
             phrases: vec![],
         }],
     };
-    assert!(h
-        .invoke(&agent(), "walkthrough_define", json!({"flow":cycle}))
-        .unwrap_err()
-        .to_string()
-        .contains("must be finite"));
+    assert!(
+        h.invoke(&agent(), "walkthrough_define", json!({"flow":cycle}))
+            .unwrap_err()
+            .to_string()
+            .contains("must be finite")
+    );
     assert_eq!(h.view(), before);
     define(&h, &d);
     let before = h.view();
@@ -375,10 +386,12 @@ fn unsupported_replay_motion_is_named_and_does_not_disable_the_flow() {
     define(&h, &d);
     let projection = read(&h.view(), None).unwrap();
     assert_eq!(projection["unsupported"][0]["kind"], "replay-motion");
-    assert!(projection["readback"]
-        .as_str()
-        .unwrap()
-        .contains("UNSUPPORTED: replay-motion"));
+    assert!(
+        projection["readback"]
+            .as_str()
+            .unwrap()
+            .contains("UNSUPPORTED: replay-motion")
+    );
     invoke(
         &h,
         "walkthrough_advance",
@@ -407,8 +420,8 @@ fn raw_cursor_and_definition_forgery_are_refused_on_batch_and_replica_routes() {
         }],
         readback: String::new(),
     };
-    assert!(h
-        .commit_batch(
+    assert!(
+        h.commit_batch(
             &human(),
             &Batch {
                 base_revision: before.revision().into(),
@@ -418,7 +431,8 @@ fn raw_cursor_and_definition_forgery_are_refused_on_batch_and_replica_routes() {
                 }]
             }
         )
-        .is_err());
+        .is_err()
+    );
     assert_eq!(h.view(), before);
     let mut p = peer(&h);
     p.apply(ID, plan).unwrap();
@@ -490,10 +504,12 @@ fn aliases_are_hidden_and_journaled_under_preferred_names() {
         h.journal().recent.back().unwrap().action.as_deref(),
         Some("walkthrough_define")
     );
-    assert!(descriptor()
-        .actions
-        .iter()
-        .all(|a| !a.name.starts_with("atlas_")));
+    assert!(
+        descriptor()
+            .actions
+            .iter()
+            .all(|a| !a.name.starts_with("atlas_"))
+    );
 }
 
 #[test]

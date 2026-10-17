@@ -1,10 +1,10 @@
 use samepage_architecture::{
-    compare, describe, inspect, proposals, Architecture, Graph, Impact, ProposalInput, Relationship,
+    Architecture, Graph, Impact, ProposalInput, Relationship, compare, describe, inspect, proposals,
 };
 use samepage_capability::{
     Batch, BatchEntry, Call, Capability, Composition, Op, Plan, Target, Value,
 };
-use samepage_doc::{host::Host, Actor, Caller, Document, Replica};
+use samepage_doc::{Actor, Caller, Document, Replica, host::Host};
 use samepage_map::Map;
 use serde_json::json;
 use std::{collections::BTreeSet, sync::Arc};
@@ -184,9 +184,11 @@ fn no_change_and_layout_changes_have_no_impact_but_semantic_edits_stale_the_base
             .as_bool()
             .unwrap()
     );
-    assert!(describe(&h.view())
-        .unwrap()
-        .contains("captured baseline is stale"));
+    assert!(
+        describe(&h.view())
+            .unwrap()
+            .contains("captured baseline is stale")
+    );
 }
 #[test]
 fn invalid_and_stale_writes_are_atomic_and_revisions_keep_alternatives() {
@@ -196,18 +198,20 @@ fn invalid_and_stale_writes_are_atomic_and_revisions_keep_alternatives() {
     let before = fingerprint(&h);
     let mut bad = request.clone();
     bad.baseline_revision = "stale".into();
-    assert!(h
-        .invoke(&human(), "architecture_propose", json!(bad))
-        .is_err());
+    assert!(
+        h.invoke(&human(), "architecture_propose", json!(bad))
+            .is_err()
+    );
     bad = request.clone();
     bad.add.push(Relationship {
         from: ids[0].clone(),
         to: "missing".into(),
         label: "calls".into(),
     });
-    assert!(h
-        .invoke(&human(), "architecture_propose", json!(bad))
-        .is_err());
+    assert!(
+        h.invoke(&human(), "architecture_propose", json!(bad))
+            .is_err()
+    );
     assert_eq!(fingerprint(&h), before);
     let mut change = request.clone();
     change.previous = first.clone();
@@ -223,11 +227,12 @@ fn invalid_and_stale_writes_are_atomic_and_revisions_keep_alternatives() {
         assert_eq!(d.upstream.len(), 1);
     }
     change.previous = second;
-    assert!(h
-        .invoke(&human(), "architecture_propose", json!(change))
-        .unwrap_err()
-        .to_string()
-        .contains("already exists"));
+    assert!(
+        h.invoke(&human(), "architecture_propose", json!(change))
+            .unwrap_err()
+            .to_string()
+            .contains("already exists")
+    );
 }
 #[test]
 fn concurrent_peer_proposals_merge_and_each_reader_sees_the_other_authors_revision() {
@@ -309,19 +314,21 @@ fn human_verdict_is_enforced_on_actions_batches_frames_and_same_value_attempts()
     let (h, _) = setup();
     let id = propose(&h, &input(&h), &agent());
     let before = fingerprint(&h);
-    assert!(h
-        .invoke(
+    assert!(
+        h.invoke(
             &agent(),
             "architecture_decide",
             json!({"id":id,"verdict":"accepted"})
         )
-        .is_err());
+        .is_err()
+    );
     let verdict = batch(&h, vec![set(&id, "verdict", "accepted")]);
-    assert!(h
-        .commit_batch(&agent(), &verdict)
-        .unwrap_err()
-        .to_string()
-        .contains("architecture_human_only"));
+    assert!(
+        h.commit_batch(&agent(), &verdict)
+            .unwrap_err()
+            .to_string()
+            .contains("architecture_human_only")
+    );
     assert_eq!(before, fingerprint(&h));
     let mut p = peer(&h);
     p.apply_batch(&verdict).unwrap();
@@ -343,9 +350,10 @@ fn human_verdict_is_enforced_on_actions_batches_frames_and_same_value_attempts()
     assert_eq!(Graph::capture(&h.view()), graph);
     assert_eq!(proposals(&h.view()).unwrap()[0].decided_by, "human");
     let before = fingerprint(&h);
-    assert!(h
-        .commit_batch(&agent(), &batch(&h, vec![set(&id, "verdict", "accepted")]))
-        .is_err());
+    assert!(
+        h.commit_batch(&agent(), &batch(&h, vec![set(&id, "verdict", "accepted")]))
+            .is_err()
+    );
     assert_eq!(before, fingerprint(&h));
     h.invoke(
         &human(),
@@ -362,8 +370,8 @@ fn proposal_history_cannot_be_rewritten_deleted_or_forged() {
     let view = h.view();
     let before = fingerprint(&h);
     for who in [human(), agent()] {
-        assert!(h
-            .commit_batch(
+        assert!(
+            h.commit_batch(
                 &who,
                 &batch(
                     &h,
@@ -374,9 +382,10 @@ fn proposal_history_cannot_be_rewritten_deleted_or_forged() {
                     )]
                 )
             )
-            .is_err());
-        assert!(h
-            .commit_batch(
+            .is_err()
+        );
+        assert!(
+            h.commit_batch(
                 &who,
                 &batch(
                     &h,
@@ -385,7 +394,8 @@ fn proposal_history_cannot_be_rewritten_deleted_or_forged() {
                     }]
                 )
             )
-            .is_err());
+            .is_err()
+        );
     }
     let mut p = Architecture
         .plan(

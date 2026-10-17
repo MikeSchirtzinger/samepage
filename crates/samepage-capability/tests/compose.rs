@@ -34,9 +34,11 @@ fn a_valid_set_resolves_owners_writers_and_names() {
     assert!(!preferred.alias);
     let names = composition.public_action_names();
     assert!(names.contains(&"card_place") && names.contains(&"source_read"));
-    assert!(names
-        .iter()
-        .all(|name| !name.starts_with("atlas_") && *name != "repo_read"));
+    assert!(
+        names
+            .iter()
+            .all(|name| !name.starts_with("atlas_") && *name != "repo_read")
+    );
 }
 
 #[test]

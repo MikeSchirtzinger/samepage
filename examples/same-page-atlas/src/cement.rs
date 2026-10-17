@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use sha2::{Digest, Sha256};
 
 use crate::assertion::{self, Assertion, Author, Board, Entry, Mark, Status};
@@ -333,12 +333,13 @@ fn settled_entry(entry: &Entry) -> Result<SettledEntry<'_>, Vec<String>> {
         }
     }
     if let Assertion::Claim { status, .. } = &entry.assertion
-        && *status != Status::Settled {
-            reasons.push(format!(
-                "claim status is {}, not settled",
-                assertion::status_word(*status)
-            ));
-        }
+        && *status != Status::Settled
+    {
+        reasons.push(format!(
+            "claim status is {}, not settled",
+            assertion::status_word(*status)
+        ));
+    }
 
     if !reasons.is_empty() {
         return Err(reasons);
@@ -1219,10 +1220,12 @@ fn next_adr_number(repository_root: &Path) -> Result<u32, String> {
         let Some((prefix, _)) = name.split_once('-') else {
             continue;
         };
-        if prefix.len() == 4 && prefix.chars().all(|character| character.is_ascii_digit())
-            && let Ok(number) = prefix.parse::<u32>() {
-                highest = highest.max(number);
-            }
+        if prefix.len() == 4
+            && prefix.chars().all(|character| character.is_ascii_digit())
+            && let Ok(number) = prefix.parse::<u32>()
+        {
+            highest = highest.max(number);
+        }
     }
     highest
         .checked_add(1)
@@ -1291,7 +1294,7 @@ fn write_new_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
 mod tests {
     use super::*;
     use ag_ui_canvas::scene::{Author as CanvasAuthor, Scene};
-    use same_page_atlas_core::{claim, claim_verdict, place_node, read, NodePatch};
+    use same_page_atlas_core::{NodePatch, claim, claim_verdict, place_node, read};
 
     const SETTLED_BOARD: &str = include_str!("../fixtures/cement/settled-board.json");
     const UNSETTLED_BOARD: &str = include_str!("../fixtures/cement/unsettled-board.json");

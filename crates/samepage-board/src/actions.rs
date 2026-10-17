@@ -1,6 +1,6 @@
 //! One catalog shared by the native dispatcher and the WASM descriptor.
 use samepage_capability::{ActionDecl, Audience, Effect};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 fn assertion_schema() -> JsonValue {
     json!({
         "type": "object",

@@ -7,9 +7,9 @@ use std::sync::{Arc, Mutex};
 use base64::Engine as _;
 use samepage_capability::{Capability, Composition, Scalar, View};
 use samepage_doc::host::{Commit, FrameRefusal, Host, InvokeError};
-use samepage_doc::{sync, Actor, Caller};
+use samepage_doc::{Actor, Caller, sync};
 use samepage_map::Map;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use yrs::updates::decoder::Decode;
 use yrs::{Map as _, MapPrelim, Transact};
 

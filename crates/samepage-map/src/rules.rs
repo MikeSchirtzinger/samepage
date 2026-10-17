@@ -286,18 +286,20 @@ pub fn check_node(
         }
     }
     if has(K_LABEL)
-        && let Some(label) = string(record, K_LABEL)? {
-            if text(label, MAX_LABEL, "label")? != label {
-                return Err(err("invalid", "label must not have surrounding whitespace"));
-            }
-            if label.is_empty() {
-                return Err(err("invalid", format!("{} needs a label", record.id)));
-            }
+        && let Some(label) = string(record, K_LABEL)?
+    {
+        if text(label, MAX_LABEL, "label")? != label {
+            return Err(err("invalid", "label must not have surrounding whitespace"));
         }
+        if label.is_empty() {
+            return Err(err("invalid", format!("{} needs a label", record.id)));
+        }
+    }
     if has(K_NOTE)
-        && let Some(note) = string(record, K_NOTE)? {
-            text(note, MAX_NOTE, "note")?;
-        }
+        && let Some(note) = string(record, K_NOTE)?
+    {
+        text(note, MAX_NOTE, "note")?;
+    }
     for (key, allowed) in [
         (K_TONE, TONES),
         (K_STATUS, STATUSES),
@@ -306,20 +308,23 @@ pub fn check_node(
         (K_SHAPE, SHAPES),
     ] {
         if has(key)
-            && let Some(value) = string(record, key)? {
-                one_of(value, allowed, key)?;
-            }
+            && let Some(value) = string(record, key)?
+        {
+            one_of(value, allowed, key)?;
+        }
     }
     if has(K_COLOR)
         && let Some(color) = string(record, K_COLOR)?
-            && !color.is_empty() {
-                one_of(color, INKS, "color")?;
-            }
+        && !color.is_empty()
+    {
+        one_of(color, INKS, "color")?;
+    }
     for key in [K_X, K_Y] {
         if has(key)
-            && let Some(value) = number(record, key)? {
-                coordinate(value, key)?;
-            }
+            && let Some(value) = number(record, key)?
+        {
+            coordinate(value, key)?;
+        }
     }
     if has(K_W) || has(K_W_MIN) {
         let w = number(record, K_W)?;
@@ -351,9 +356,10 @@ pub fn check_node(
         }
     }
     if has(K_PARENT)
-        && let Some(parent) = string(record, K_PARENT)? {
-            check_parent(&record.id, parent, view)?;
-        }
+        && let Some(parent) = string(record, K_PARENT)?
+    {
+        check_parent(&record.id, parent, view)?;
+    }
     Ok(())
 }
 
@@ -375,7 +381,11 @@ pub fn check_parent(id: &str, parent: &str, view: &View) -> Result<(), CapError>
                     .and_then(|r| r.props.get(K_LABEL).and_then(Scalar::as_str))
                     .filter(|l| !l.is_empty())
                     .map(|l| format!("{l:?}"))
-                    .unwrap_or_else(|| if id.is_empty() { "the new card".into() } else { id.to_string() })
+                    .unwrap_or_else(|| if id.is_empty() {
+                        "the new card".into()
+                    } else {
+                        id.to_string()
+                    })
             ),
         ));
     }
@@ -550,30 +560,33 @@ pub fn check_constraint(
         one_of(&op, CONSTRAINT_OPS, "constraint op")?;
     }
     if has(K_AXIS)
-        && let Some(axis) = record.props.get(K_AXIS).and_then(Scalar::as_str) {
-            if op == "sequence" {
-                one_of(axis, CONSTRAINT_AXES, "constraint axis")?;
-            } else if !axis.is_empty() {
-                return Err(err(
-                    "invalid",
-                    format!("only a sequence has an axis, not {op:?}"),
-                ));
-            }
+        && let Some(axis) = record.props.get(K_AXIS).and_then(Scalar::as_str)
+    {
+        if op == "sequence" {
+            one_of(axis, CONSTRAINT_AXES, "constraint axis")?;
+        } else if !axis.is_empty() {
+            return Err(err(
+                "invalid",
+                format!("only a sequence has an axis, not {op:?}"),
+            ));
         }
+    }
     if has(K_TEXT)
-        && let Some(body) = record.props.get(K_TEXT).and_then(Scalar::as_str) {
-            text(body, MAX_TEXT, "constraint text")?;
-            if op != "labels" && !body.is_empty() {
-                return Err(err(
-                    "invalid",
-                    format!("only a labels constraint carries text, not {op:?}"),
-                ));
-            }
+        && let Some(body) = record.props.get(K_TEXT).and_then(Scalar::as_str)
+    {
+        text(body, MAX_TEXT, "constraint text")?;
+        if op != "labels" && !body.is_empty() {
+            return Err(err(
+                "invalid",
+                format!("only a labels constraint carries text, not {op:?}"),
+            ));
         }
+    }
     if has(K_SALIENCE)
-        && let Some(salience) = record.props.get(K_SALIENCE).and_then(Scalar::as_str) {
-            one_of(salience, CONSTRAINT_SALIENCES, "constraint salience")?;
-        }
+        && let Some(salience) = record.props.get(K_SALIENCE).and_then(Scalar::as_str)
+    {
+        one_of(salience, CONSTRAINT_SALIENCES, "constraint salience")?;
+    }
     Ok(op)
 }
 

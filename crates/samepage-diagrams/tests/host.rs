@@ -3,7 +3,7 @@ use samepage_diagrams::Diagrams;
 use samepage_doc::host::Host;
 use samepage_doc::{Actor, Caller};
 use samepage_map::Map;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use std::sync::{Arc, Mutex};
 #[path = "../../../apps/samepage/src/diagram_sources.rs"]
 mod diagram_sources;
@@ -69,9 +69,10 @@ fn one_diagram_call_lands_nodes_links_and_no_drawn_shapes() {
         samepage_map::prop_str(view.get(&ids["node-0"]).unwrap(), "parent"),
         Some(ids["container-0"].as_str())
     );
-    assert!(view
-        .records()
-        .all(|r| samepage_map::prop_str(r, "created_by") == Some("Diagram agent")));
+    assert!(
+        view.records()
+            .all(|r| samepage_map::prop_str(r, "created_by") == Some("Diagram agent"))
+    );
 }
 #[test]
 fn diagram_validation_finishes_before_the_first_node_lands() {
@@ -102,13 +103,14 @@ fn self_loop_and_parallel_transitions_are_fresh_edges_ordinary_links_keep_their_
         .map(|e| e["points"].to_string())
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(paths.len(), 3);
-    assert!(host
-        .invoke(
+    assert!(
+        host.invoke(
             &actor(),
             "card_link",
             json!({"from":ids["node-0"],"to":ids["node-0"]})
         )
-        .is_err());
+        .is_err()
+    );
     let a = host
         .invoke(
             &actor(),
@@ -116,10 +118,11 @@ fn self_loop_and_parallel_transitions_are_fresh_edges_ordinary_links_keep_their_
             json!({"from":ids["node-0"],"to":ids["node-1"],"label":"ordinary"}),
         )
         .unwrap();
-    assert!(a
-        .ids
-        .values()
-        .all(|id| id != &ids["edge-1"] && id != &ids["edge-2"]));
+    assert!(
+        a.ids
+            .values()
+            .all(|id| id != &ids["edge-1"] && id != &ids["edge-2"])
+    );
     let count = host.view().records().count();
     host.invoke(
         &actor(),
@@ -133,9 +136,11 @@ fn self_loop_and_parallel_transitions_are_fresh_edges_ordinary_links_keep_their_
 fn a_transition_reads_back_as_from_on_when_arrow() {
     let host = host();
     draw(&host, machine());
-    assert!(samepage_diagrams::describe(&host.view())
-        .unwrap()
-        .contains("- from \"Idle\" on Submit when valid -> \"Pending\""));
+    assert!(
+        samepage_diagrams::describe(&host.view())
+            .unwrap()
+            .contains("- from \"Idle\" on Submit when valid -> \"Pending\"")
+    );
 }
 #[test]
 fn state_roles_are_separate_lww_properties() {
@@ -182,7 +187,9 @@ fn the_five_state_machine_problem_sentences_are_exact() {
         "state machine \"explanation cursor\": state \"active\" has two transitions on \"advance\" and neither carries a guard; which one fires is ambiguous",
         "state machine \"empty cursor\": no state is marked initial",
         "state machine \"explanation cursor\": \"active\" and \"paused\" are both marked initial",
-    ]{assert!(details.contains(&expected),"{details:?}");}
+    ] {
+        assert!(details.contains(&expected), "{details:?}");
+    }
 }
 #[test]
 fn a_rebound_transition_is_reported_as_the_relation_that_changed() {
@@ -193,7 +200,13 @@ fn a_rebound_transition_is_reported_as_the_relation_that_changed() {
     let changes = Diagrams
         .changes(&before, &Diagrams.digest(&host.view()).unwrap(), "agent")
         .unwrap();
-    assert_eq!(changes,vec![format!("- [{}] the transition now reads from \"Idle\" on Submit when valid -> \"Idle\"; it was from \"Idle\" on Submit when valid -> \"Pending\"",ids["edge-0"])]);
+    assert_eq!(
+        changes,
+        vec![format!(
+            "- [{}] the transition now reads from \"Idle\" on Submit when valid -> \"Idle\"; it was from \"Idle\" on Submit when valid -> \"Pending\"",
+            ids["edge-0"]
+        )]
+    );
 }
 #[test]
 fn a_guard_edit_reports_both_transition_sentences() {
@@ -201,7 +214,15 @@ fn a_guard_edit_reports_both_transition_sentences() {
     let ids = draw(&host, machine());
     let before = Diagrams.digest(&host.view()).unwrap();
     edit(&host, "diagrams", &ids["edge-0"], "guard", "ready");
-    assert_eq!(Diagrams.changes(&before,&Diagrams.digest(&host.view()).unwrap(),"agent").unwrap(),vec![format!("- [{}] the transition now reads from \"Idle\" on Submit when ready -> \"Pending\"; it was from \"Idle\" on Submit when valid -> \"Pending\"",ids["edge-0"])]);
+    assert_eq!(
+        Diagrams
+            .changes(&before, &Diagrams.digest(&host.view()).unwrap(), "agent")
+            .unwrap(),
+        vec![format!(
+            "- [{}] the transition now reads from \"Idle\" on Submit when ready -> \"Pending\"; it was from \"Idle\" on Submit when valid -> \"Pending\"",
+            ids["edge-0"]
+        )]
+    );
 }
 #[test]
 fn atlas_diagram_stores_the_styles_it_used_to_discard() {
@@ -497,22 +518,40 @@ fn portable_routes_follow_local_measured_bounds_without_mutating_the_view() {
 #[test]
 fn states_are_as_wide_as_their_names_and_one_line_tall() {
     let host = host();
-    let ids = draw(&host, json!({"kind":"state_machine","title":"Order lifecycle","nodes":[
+    let ids = draw(
+        &host,
+        json!({"kind":"state_machine","title":"Order lifecycle","nodes":[
         {"id":"received","label":"Received","initial":true},{"id":"validated","label":"Validated"},
         {"id":"receipted","label":"Receipted","terminal":true},{"id":"rejected","label":"Rejected","terminal":true},
         {"id":"long","label":"Awaiting manual fraud review by a person"}],
         "edges":[{"from":"received","to":"validated","event":"validate"},{"from":"validated","to":"receipted","event":"emit_receipt"},
-        {"from":"received","to":"rejected","event":"reject"},{"from":"validated","to":"long","event":"flag"}]}));
+        {"from":"received","to":"rejected","event":"reject"},{"from":"validated","to":"long","event":"flag"}]}),
+    );
     let view = host.view();
-    let num = |id: &str, key: &str| samepage_map::prop_num(view.get(&ids[id]).unwrap(), key).unwrap();
-    for (state, label) in [("node-0", "Received"), ("node-1", "Validated"), ("node-2", "Receipted"), ("node-3", "Rejected")] {
+    let num =
+        |id: &str, key: &str| samepage_map::prop_num(view.get(&ids[id]).unwrap(), key).unwrap();
+    for (state, label) in [
+        ("node-0", "Received"),
+        ("node-1", "Validated"),
+        ("node-2", "Receipted"),
+        ("node-3", "Rejected"),
+    ] {
         let w = num(state, "w");
-        assert!(w >= label.len() as f64 * 9.0 + 57.0 && w <= 160.0, "{state} {w}");
+        assert!(
+            w >= label.len() as f64 * 9.0 + 57.0 && w <= 160.0,
+            "{state} {w}"
+        );
         assert!(num(state, "h_pref") <= 60.0, "{state}");
     }
     let long = num("node-4", "w");
-    assert!(long <= 232.0 && long >= "manual".len() as f64 * 7.5, "a long name wraps at card width: {long}");
+    assert!(
+        long <= 232.0 && long >= "manual".len() as f64 * 7.5,
+        "a long name wraps at card width: {long}"
+    );
     assert!(num("container-0", "w") < 984.0 && num("container-0", "h_pref") < 946.0);
     let (w, _) = samepage_diagrams::state_size("Supercalifragilisticexpialidocious", "", 1.0);
-    assert!(w > 232.0, "a word longer than the card width is never broken: {w}");
+    assert!(
+        w > 232.0,
+        "a word longer than the card width is never broken: {w}"
+    );
 }

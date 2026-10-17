@@ -450,7 +450,7 @@ fn verify_settlement(settlement: &Settlement) -> Result<(), String> {
                 return Err(
                     "assertion is missing author.board_revision or signed_off.board_revision"
                         .to_string(),
-                )
+                );
             }
         }
     }
@@ -503,18 +503,19 @@ fn trust_label_presence(record: &Record, out: &mut Vec<Violation>) {
             _ => None,
         };
         if let (Some(expected), Some(trust)) = (expected, document.trust)
-            && trust != expected {
-                out.push(Violation {
-                    check: Check::TrustLabelPresence,
-                    message: format!(
-                        "documents[{index}] scope {:?} must be trust {}, got {}",
-                        document.scope,
-                        expected.as_str(),
-                        trust.as_str()
-                    ),
-                });
-                return;
-            }
+            && trust != expected
+        {
+            out.push(Violation {
+                check: Check::TrustLabelPresence,
+                message: format!(
+                    "documents[{index}] scope {:?} must be trust {}, got {}",
+                    document.scope,
+                    expected.as_str(),
+                    trust.as_str()
+                ),
+            });
+            return;
+        }
     }
 }
 

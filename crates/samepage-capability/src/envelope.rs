@@ -10,13 +10,13 @@
 //! exports, so the convention is tested natively; `export_capability!` only
 //! forwards to them.
 
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::json;
 
-use crate::capability::{Call, CapError, Capability};
-use crate::record::{Delta, View, NON_FINITE_SERIALIZE};
 use crate::ABI;
+use crate::capability::{Call, CapError, Capability};
+use crate::record::{Delta, NON_FINITE_SERIALIZE, View};
 
 fn ok(value: impl Serialize) -> String {
     match serde_json::to_value(value) {

@@ -342,7 +342,10 @@ fn shorten_instance(message: String, instance: &Value) -> String {
     }
     let quoted = Value::String(text.to_string()).to_string();
     let head: String = text.chars().take(40).collect();
-    message.replace(&quoted, &format!("{:?} ({length} characters)", format!("{head}...")))
+    message.replace(
+        &quoted,
+        &format!("{:?} ({length} characters)", format!("{head}...")),
+    )
 }
 
 #[cfg(test)]
@@ -352,7 +355,10 @@ mod shorten_tests {
         let long = "x".repeat(400);
         let message = format!("{:?} is longer than 140 characters", long);
         let short = super::shorten_instance(message, &serde_json::json!(long));
-        assert!(short.contains("(400 characters) is longer than 140 characters"), "{short}");
+        assert!(
+            short.contains("(400 characters) is longer than 140 characters"),
+            "{short}"
+        );
         assert!(short.len() < 120, "{short}");
     }
 }

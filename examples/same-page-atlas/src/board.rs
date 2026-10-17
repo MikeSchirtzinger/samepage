@@ -32,7 +32,7 @@ use ag_ui_surface::{
     SurfaceState, ToolDef, Transport,
 };
 use parking_lot::Mutex;
-use serde_json::{json, Map as JsonMap, Value as JsonValue};
+use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use tokio::sync::Notify;
 
 use crate::assertion::{self, Assertion, Author, Board, Entry, Mark};
@@ -974,8 +974,8 @@ fn paper_action_routes(state: &Arc<BoardState>) -> Vec<ActionRouteDef> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ag_ui_surface::services::ServiceRegistry;
     use ag_ui_surface::AsyncQueryEffect;
+    use ag_ui_surface::services::ServiceRegistry;
     use ag_ui_surface::{ActionAudience, Actor, AppRecipe, Caller, CompositeSurface, Surface};
     use serde::Deserialize;
     use std::collections::VecDeque;

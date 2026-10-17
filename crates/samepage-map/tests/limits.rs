@@ -5,11 +5,11 @@ use std::sync::Arc;
 use base64::Engine as _;
 use samepage_capability::{Capability, Composition, Scalar};
 use samepage_doc::host::{FrameRefusal, Host, InvokeError};
-use samepage_doc::{sync, Actor, Caller};
-use samepage_map::rules::{
-    grid_rows, grid_slot, GRID_COLUMNS, GRID_ORIGIN, GRID_STEP, MAX_MAP_OBJECTS, WORLD_LIMIT,
-};
+use samepage_doc::{Actor, Caller, sync};
 use samepage_map::Map;
+use samepage_map::rules::{
+    GRID_COLUMNS, GRID_ORIGIN, GRID_STEP, MAX_MAP_OBJECTS, WORLD_LIMIT, grid_rows, grid_slot,
+};
 use serde_json::json;
 use yrs::updates::decoder::Decode;
 use yrs::{Map as _, MapPrelim, Transact};

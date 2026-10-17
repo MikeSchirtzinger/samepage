@@ -743,31 +743,32 @@ fn read_shape(atlas: &Drawing, shape: &Shape) -> Reading {
 
         // An arrow or line with a head is aimed at whatever its tip reaches.
         if matches!(shape.form.as_str(), "arrow" | "line")
-            && let Some(tip) = world.last() {
-                let aimed = atlas
-                    .nodes
-                    .iter()
-                    .filter(|node| !shape.from.eq(&node.id))
-                    .map(|node| (node, distance_to_box(*tip, node.bounds())))
-                    .filter(|(_, distance)| *distance <= POINT_SLOP)
-                    .min_by(|a, b| a.1.total_cmp(&b.1));
-                if let Some((node, _)) = aimed {
-                    return reading("points-at", vec![node.id.clone()], Vec::new());
-                }
-                // No card in reach of the tip: the nearest drawn matter is
-                // what the arrow is aimed at, by the same yardstick.
-                let aimed_matter = atlas
-                    .shapes
-                    .iter()
-                    .filter(|other| reads_against(shape, other))
-                    .filter(|other| !shape.from.eq(&other.id))
-                    .map(|other| (other, distance_to_box(*tip, other.bounds())))
-                    .filter(|(_, distance)| *distance <= POINT_SLOP)
-                    .min_by(|a, b| a.1.total_cmp(&b.1));
-                if let Some((other, _)) = aimed_matter {
-                    return reading("points-at", vec![other.id.clone()], Vec::new());
-                }
+            && let Some(tip) = world.last()
+        {
+            let aimed = atlas
+                .nodes
+                .iter()
+                .filter(|node| !shape.from.eq(&node.id))
+                .map(|node| (node, distance_to_box(*tip, node.bounds())))
+                .filter(|(_, distance)| *distance <= POINT_SLOP)
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            if let Some((node, _)) = aimed {
+                return reading("points-at", vec![node.id.clone()], Vec::new());
             }
+            // No card in reach of the tip: the nearest drawn matter is
+            // what the arrow is aimed at, by the same yardstick.
+            let aimed_matter = atlas
+                .shapes
+                .iter()
+                .filter(|other| reads_against(shape, other))
+                .filter(|other| !shape.from.eq(&other.id))
+                .map(|other| (other, distance_to_box(*tip, other.bounds())))
+                .filter(|(_, distance)| *distance <= POINT_SLOP)
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            if let Some((other, _)) = aimed_matter {
+                return reading("points-at", vec![other.id.clone()], Vec::new());
+            }
+        }
     }
 
     // A box that touches nothing is still worth reporting as a region.
