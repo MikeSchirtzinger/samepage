@@ -22,4 +22,4 @@ pub use codec::{
     CodecError, Frame, FrameType, BLOB_HEADER_LEN,
 };
 pub use ids::{mint_object_id, ObjectId};
-pub use scene::{Author, BlobRef, ObjectSnapshot, PropValue, Scene, SceneError};
+pub use scene::{Author, BlobRef, ObjectSnapshot, PropValue, Scene, SceneError, UpdateSubscription};

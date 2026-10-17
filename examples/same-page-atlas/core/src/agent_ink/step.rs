@@ -11,7 +11,7 @@ use super::solve::{
     solve, solve_with_options, DivergenceFault, SolveOptions, SolveState, SolveStatus, SolvedValue,
     DIVERGENCE_TOLERANCE, KIND_SOLVE_STATE,
 };
-use crate::{read, Atlas, AtlasError, VarState};
+use crate::{number_f64, read, Atlas, AtlasError, VarState};
 
 /// Persisted object kind for one solved point in an agent-ink timeline.
 pub const KIND_STEP: &str = "agent_ink_step";
@@ -239,8 +239,7 @@ pub(super) fn step_recorded_by(scene: &Scene, index: u32) -> Result<String, Atla
             _ => String::new(),
         };
         let number = |key: &str| match map.get(&txn, key) {
-            Some(Out::Any(Any::Number(value))) => Some(value),
-            Some(Out::Any(Any::BigInt(value))) => Some(value as f64),
+            Some(Out::Any(Any::Number(value))) => Some(number_f64(value)),
             _ => None,
         };
         if string("kind") != KIND_STEP {
@@ -736,8 +735,7 @@ pub(super) fn step_entries(
             _ => String::new(),
         };
         let number = |key: &str| match map.get(&txn, key) {
-            Some(Out::Any(Any::Number(value))) => Some(value),
-            Some(Out::Any(Any::BigInt(value))) => Some(value as f64),
+            Some(Out::Any(Any::Number(value))) => Some(number_f64(value)),
             _ => None,
         };
         if string("kind") != KIND_STEP {

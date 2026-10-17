@@ -470,7 +470,7 @@ fn an_identical_looking_replacement_map_is_refused() {
         for (key, value) in &record.props {
             let value = match value {
                 Scalar::Str(s) => Any::from(s.as_str()),
-                Scalar::Num(n) => Any::Number(*n),
+                Scalar::Num(n) => Any::Number(yrs::Number::try_i64(*n)),
                 Scalar::Bool(b) => Any::Bool(*b),
             };
             replacement.insert(&mut txn, key.as_str(), value);

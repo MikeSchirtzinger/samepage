@@ -11,7 +11,7 @@
       "emphasis": "strong",
       "initial": true,
       "path": "examples/same-page-atlas/core/src/lib.rs",
-      "lines": "9811-9817",
+      "lines": "9818-9824",
       "note": "The status a flow is defined into unless its start beat is terminal. This machine is the cursor of a multi-beat flow, so active is the initial state. A single-beat definition whose start beat is terminal lands on completed instead, and that case is out of this fixture."
     },
     {
@@ -20,7 +20,7 @@
       "shape": "rect",
       "color": "amber",
       "path": "examples/same-page-atlas/core/src/lib.rs",
-      "lines": "10105-10106",
+      "lines": "10112-10113",
       "note": "Pause requires active and resume requires paused. A paused cursor refuses advance."
     },
     {
@@ -29,7 +29,7 @@
       "shape": "rect",
       "color": "blue",
       "path": "examples/same-page-atlas/core/src/lib.rs",
-      "lines": "10052",
+      "lines": "10059",
       "note": "Advance sets completed when the transition has no next beat, or the next beat is terminal. Not a terminal state of this machine: restart leaves it."
     },
     {
@@ -38,7 +38,7 @@
       "shape": "rect",
       "color": "red",
       "path": "examples/same-page-atlas/core/src/lib.rs",
-      "lines": "10120-10122",
+      "lines": "10127-10129",
       "note": "Stop accepts active or paused. Not a terminal state of this machine: restart leaves it."
     }
   ],

@@ -61,9 +61,9 @@ serde_json = "1"
 thiserror = "2"
 uuid = { version = "1", features = ["v4", "v5", "serde"] }
 # Canvas stack — versions verified against crates.io 2026-06-06.
-yrs = "0.27"
+yrs = "0.28"
 bytemuck = { version = "1", features = ["derive"] }
-glam = { version = "0.33", features = ["bytemuck"] }
+glam = { version = "0.34", features = ["bytemuck"] }
 log = "0.4"
 parking_lot = "0.12"
 wait-timeout = "0.2"

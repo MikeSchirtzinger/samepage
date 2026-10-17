@@ -20,7 +20,7 @@ use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sha2::{Digest as _, Sha256};
-use yrs::{Any, Map, Out, Transact};
+use yrs::{Any, Map, Number, Out, Transact};
 
 #[path = "generated/segmentation_sources.rs"]
 mod segmentation_sources;
@@ -29,6 +29,14 @@ pub use segmentation_sources::{
     DEFAULT_SEGMENT_SOURCE_ID, SEGMENTATION_CONTRACT_SHA256, SEGMENT_SOURCES,
     SEGMENT_SOURCE_HEIGHT, SEGMENT_SOURCE_SHA256, SEGMENT_SOURCE_URL, SEGMENT_SOURCE_WIDTH,
 };
+
+/// The number a stored value reads as. Whole values are stored as integers.
+pub(crate) fn number_f64(number: Number) -> f64 {
+    match number {
+        Number::Int(value) => value as f64,
+        Number::Float(value) => value,
+    }
+}
 
 pub mod agent_ink;
 pub mod anchor;
@@ -3191,8 +3199,7 @@ pub fn read(scene: &Scene) -> Result<Atlas, AtlasError> {
         };
         let optional_number = |key: &str| -> Option<f64> {
             match map.get(&txn, key) {
-                Some(Out::Any(Any::Number(value))) => Some(value),
-                Some(Out::Any(Any::BigInt(value))) => Some(value as f64),
+                Some(Out::Any(Any::Number(value))) => Some(number_f64(value)),
                 _ => None,
             }
         };

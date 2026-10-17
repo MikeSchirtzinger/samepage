@@ -21,7 +21,7 @@ use samepage_capability::{Record, Scalar, View};
 use sha2::{Digest, Sha256};
 use yrs::branch::{Branch, BranchPtr};
 use yrs::types::ToJson;
-use yrs::{Any, ArrayRef, Map, MapRef, Out, ReadTxn};
+use yrs::{Any, ArrayRef, Map, MapRef, Number, Out, ReadTxn};
 
 /// The one root the layout allows.
 pub const OBJECTS: &str = "objects";
@@ -128,9 +128,11 @@ pub fn view(inspection: &Inspection, revision: &str) -> View {
 fn scalar(value: &Out) -> Option<Scalar> {
     match value {
         Out::Any(Any::String(text)) => Some(Scalar::Str(text.to_string())),
-        Out::Any(Any::Number(number)) if number.is_finite() => Some(Scalar::Num(*number)),
-        // Integers the Atlas scene layer may have written; they read as numbers.
-        Out::Any(Any::BigInt(number)) => Some(Scalar::Num(*number as f64)),
+        // Whole values are stored as integers; they read as numbers.
+        Out::Any(Any::Number(Number::Int(number))) => Some(Scalar::Num(*number as f64)),
+        Out::Any(Any::Number(Number::Float(number))) if number.is_finite() => {
+            Some(Scalar::Num(*number))
+        }
         Out::Any(Any::Bool(flag)) => Some(Scalar::Bool(*flag)),
         _ => None,
     }
@@ -176,11 +178,13 @@ fn canonical(any: &Any, out: &mut String) {
         Any::Bool(flag) => {
             let _ = write!(out, "{flag}");
         }
-        Any::Number(number) => {
-            let _ = write!(out, "n{:016x}", number.to_bits());
+        // Whole values decode as integers; fingerprint the number they read
+        // as, so a stored fingerprint does not move.
+        Any::Number(Number::Int(number)) => {
+            let _ = write!(out, "n{:016x}", (*number as f64).to_bits());
         }
-        Any::BigInt(number) => {
-            let _ = write!(out, "i{number}");
+        Any::Number(Number::Float(number)) => {
+            let _ = write!(out, "n{:016x}", number.to_bits());
         }
         Any::String(text) => {
             let _ = write!(out, "{:?}", text.as_ref());

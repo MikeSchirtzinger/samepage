@@ -11,7 +11,7 @@ use samepage_capability::{Minter, ResolvedOp, Scalar};
 use thiserror::Error;
 use yrs::updates::decoder::Decode;
 use yrs::{
-    Any, Doc, Map, MapPrelim, MapRef, Origin, ReadTxn, StateVector, Subscription, Transact,
+    Any, Doc, Map, MapPrelim, MapRef, Number, Origin, ReadTxn, StateVector, Transact,
     TransactionMut, Update,
 };
 
@@ -20,6 +20,8 @@ use crate::layout::{self, Inspection, OBJECTS};
 /// Transaction origin of every write this crate makes. Only these updates
 /// are captured as outbound; updates applied from a peer are not echoed.
 const LOCAL: &str = "samepage.local";
+/// Observer key for the local-update capture; one per document.
+const CAPTURE_OBSERVER: &str = "samepage-doc.capture";
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum DocError {
@@ -37,7 +39,6 @@ pub struct Document {
     doc: Doc,
     objects: MapRef,
     captured: Arc<Mutex<Vec<Vec<u8>>>>,
-    _capture: Subscription,
     next_seq: u32,
 }
 
@@ -55,8 +56,7 @@ impl Document {
         let objects = doc.get_or_insert_map(OBJECTS);
         let captured = Arc::new(Mutex::new(Vec::new()));
         let sink = captured.clone();
-        let capture = doc
-            .observe_update_v1(move |txn, event| {
+        doc.observe_update_v1(CAPTURE_OBSERVER, move |txn, event| {
                 if txn.origin() == Some(&Origin::from(LOCAL)) {
                     if let Ok(mut sink) = sink.lock() {
                         sink.push(event.update.clone());
@@ -68,7 +68,6 @@ impl Document {
             doc,
             objects,
             captured,
-            _capture: capture,
             next_seq: 0,
         }
     }
@@ -226,7 +225,7 @@ pub fn id_client(id: &str) -> Option<u64> {
 pub(crate) fn any(value: &Scalar) -> Any {
     match value {
         Scalar::Str(text) => Any::from(text.as_str()),
-        Scalar::Num(number) => Any::Number(*number),
+        Scalar::Num(number) => Any::Number(Number::try_i64(*number)),
         Scalar::Bool(flag) => Any::Bool(*flag),
     }
 }

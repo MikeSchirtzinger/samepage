@@ -25,7 +25,7 @@ use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use ag_ui_canvas::codec::{decode_frame, encode_sync, Frame};
-use ag_ui_canvas::scene::{Author, Scene};
+use ag_ui_canvas::scene::{Author, Scene, UpdateSubscription};
 use ag_ui_canvas::sync::{greeting, handle_payload, update_message};
 use ag_ui_surface::diagram;
 use ag_ui_surface::services::{ServiceRegistry, ServiceRequirement};
@@ -39,7 +39,6 @@ use base64::Engine as _;
 use parking_lot::Mutex;
 use same_page_atlas_core as atlas;
 use serde_json::{json, Value as JsonValue};
-use yrs::Subscription;
 
 use crate::{cement, import_archify, lanes, map_cement, source::Repo, tier};
 
@@ -189,7 +188,7 @@ pub struct AtlasState {
     flush: Mutex<(bool, Instant)>,
     /// Keeps the update observer alive for the process lifetime; dropping the
     /// subscription would silently stop broadcasting the agent's own edits.
-    _updates: Mutex<Option<Subscription>>,
+    _updates: Mutex<Option<UpdateSubscription>>,
     /// The display name of the agent whose call is currently being dispatched,
     /// stashed by [`Extension::note_caller`] and read while applying a write.
     ///

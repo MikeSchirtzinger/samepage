@@ -74,6 +74,8 @@ pub const MAX_HELD_BYTES: usize = 1 << 20;
 pub const MAX_HELD_ACTORS: usize = 64;
 /// Cascade rounds before a delete chain is refused as runaway.
 const MAX_CASCADE_ROUNDS: usize = 8;
+/// Observer key for the per-frame touched-record collector.
+const TOUCHED_OBSERVER: &str = "samepage-doc.touched";
 
 /// One accepted change, as every observer sees it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -871,18 +873,19 @@ impl Host {
         let candidate = Document::from_state(&inner.live.encode_full())?;
         let branches_before = branch_ids(&candidate);
         let touched = Arc::new(Mutex::new(Touched::default()));
-        let subscription = {
+        let objects = candidate.objects_ref();
+        {
             let sink = touched.clone();
-            let objects = candidate.objects_ref();
-            objects.observe_deep(move |txn, events| {
+            objects.observe_deep(TOUCHED_OBSERVER, move |txn, events| {
                 let mut sink = sink.lock().unwrap_or_else(|poison| poison.into_inner());
                 for event in events.iter() {
                     sink.collect(txn, event);
                 }
-            })
-        };
-        candidate.apply_remote(update)?;
-        drop(subscription);
+            });
+        }
+        let applied = candidate.apply_remote(update);
+        objects.unobserve_deep(TOUCHED_OBSERVER);
+        applied?;
 
         // (1) Settled only: pending content never reaches the live document.
         if candidate.has_missing_updates() {
