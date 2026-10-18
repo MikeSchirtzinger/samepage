@@ -10472,7 +10472,7 @@ mod tests {
         assert!(state.read().expect("read").claims.is_empty());
     }
 
-    const CHALLENGE_BASELINE_REVISION: &str = "38012ed3dd144bfc29b34d4ba508b79e1af9b6b8";
+    const CHALLENGE_BASELINE_REVISION: &str = "a822e3bbfeccee6387aa854a1b6f8738e0cee6ba";
 
     #[test]
     fn atlas_claim_and_its_revise_path_verify_a_present_revision_with_git() {
@@ -11889,7 +11889,7 @@ mod tests {
             assert_eq!(claims.len(), 1, "{label} must have one imported claim");
             claims[0].id.clone()
         };
-        let revision = "38012ed3dd144bfc29b34d4ba508b79e1af9b6b8";
+        let revision = "a822e3bbfeccee6387aa854a1b6f8738e0cee6ba";
         let expected = format!(
             concat!(
                 "\nCLAIMS (what the agent says it understands, and what the human said back)\n",
