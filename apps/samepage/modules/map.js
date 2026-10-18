@@ -14,6 +14,8 @@ export async function activate({ mount, wasm, application }) {
   // geometry is always read in stage units, never through the camera.
   let camera = {scale: 1, x: 0, y: 0};
   let fitted = false, spaceHeld = false, selectedId = null;
+  // The latest projection, so a key press can name the card it acts on.
+  let latestCards = new Map(), latestRecords = new Map();
   const zoomLabel = document.getElementById("zoom-level");
   const clampScale = (value) => Math.min(2.5, Math.max(0.2, value));
   const typing = (target) => Boolean(target?.closest?.("input, textarea, select, [contenteditable=''], [contenteditable='true']"));
@@ -185,6 +187,25 @@ export async function activate({ mount, wasm, application }) {
     else if (event.key === "-" || event.key === "_") { zoomAt(1 / 1.2); event.preventDefault(); }
     else if (event.key === "0") { zoomAt(1 / camera.scale); event.preventDefault(); }
     else if (event.key === "Escape") { select(null); document.dispatchEvent(new CustomEvent("samepage:sketch-tool", {detail: {tool: "select"}})); }
+    else if ((event.key === "Delete" || event.key === "Backspace") && selectedId && latestCards.has(selectedId)) {
+      // The key that removes a drawing removes a selected card too. A person
+      // is not asked to confirm: every edit is attributed, and the toast names
+      // whose card it was. Agents are the ones that must ask first.
+      const id = selectedId, card = latestCards.get(id), record = latestRecords.get(id);
+      event.preventDefault();
+      const by = who(card.created_by, record?.props?.created_by_participant);
+      void (async () => {
+        try {
+          const planned = await application.plan("map", "object_remove", {id});
+          await application.applyBatch(planned);
+          select(null);
+          application.resolved?.("map", "object_remove");
+          application.toast?.(`Removed “${card.label || "card"}”, made by ${by}.`);
+        } catch (error) {
+          application.problem?.("map", "object_remove", `Card removal refused: ${error.message}`);
+        }
+      })();
+    }
   };
   const onFocus = (event) => { if (event.detail?.id) reveal(event.detail.id); };
   mount.addEventListener("wheel", onWheel, {passive: false});
@@ -263,6 +284,7 @@ export async function activate({ mount, wasm, application }) {
     const constraints = projection.constraints || [];
     const byId = new Map(cards.map((card) => [card.id, card]));
     const recordById = new Map(view.records.filter((record) => record.kind === "node").map((record) => [record.id, record]));
+    latestCards = byId; latestRecords = recordById;
     const local = measureLocalHeights(cards);
     const heightOf = (card) => local.get(card.id)?.height ?? Number(card.height || 100);
     const originX = 42 - Math.min(0, ...cards.map((card) => Number(card.x) || 0));
