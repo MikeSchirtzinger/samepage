@@ -2630,6 +2630,12 @@ impl App {
                 header::CACHE_CONTROL,
                 HeaderValue::from_static("no-store"),
             ))
+            // A person's resume cookie is re-issued on every request it still
+            // resolves on, so its lifetime counts from the last request.
+            .layer(middleware::from_fn_with_state(
+                router_state.clone(),
+                refresh_person_cookie,
+            ))
             .with_state(router_state)
             // Reject DNS-rebinding and cross-origin browser requests before
             // they can reach either runtime routes, Surface routes, or static
@@ -3848,6 +3854,60 @@ fn person_cookie(port: u16) -> String {
     format!("agui_person_{port}")
 }
 
+/// How long a person's resume cookie outlives their last request.
+///
+/// Every response to a request whose cookie still resolves re-issues it with
+/// this lifetime ([`refresh_person_cookie`]), so the day counts from the last
+/// time this browser spoke to the host rather than from the join. A page left
+/// open keeps one identity for as long as it keeps talking; a tab that went a
+/// whole day without a request has lost it and rejoins on its next action.
+const PERSON_COOKIE_MAX_AGE_SECS: u32 = 86_400;
+
+fn person_cookie_header(port: u16, token: &str) -> Option<HeaderValue> {
+    HeaderValue::from_str(&format!(
+        "{}={token}; Path=/; Max-Age={PERSON_COOKIE_MAX_AGE_SECS}; SameSite=Lax; HttpOnly",
+        person_cookie(port)
+    ))
+    .ok()
+}
+
+/// The person cookie to re-issue on this response, when the request carried
+/// one that still resolves to an admitted person.
+///
+/// A cookie that does not resolve (forged, stale, or minted by a registry that
+/// is gone) is left alone: re-issuing it would keep a dead token alive, and
+/// minting a new one here would turn every request into a join.
+fn refreshed_person_cookie(st: &RouterState, headers: &HeaderMap) -> Option<HeaderValue> {
+    let token = cookie_value(headers, &person_cookie(st.rt.port))?;
+    st.rt.people.resolve(&token)?;
+    person_cookie_header(st.rt.port, &token)
+}
+
+/// Whether the handler already set this person's cookie, as the join does.
+fn sets_person_cookie(headers: &HeaderMap, port: u16) -> bool {
+    let prefix = format!("{}=", person_cookie(port));
+    headers
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .any(|value| value.to_str().is_ok_and(|value| value.starts_with(&prefix)))
+}
+
+/// Sliding expiry for the person cookie: see [`PERSON_COOKIE_MAX_AGE_SECS`].
+async fn refresh_person_cookie(
+    State(st): State<RouterState>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let refreshed = refreshed_person_cookie(&st, request.headers());
+    let mut response = next.run(request).await;
+    if let Some(value) = refreshed
+        && !sets_person_cookie(response.headers(), st.rt.port)
+    {
+        response.headers_mut().append(header::SET_COOKIE, value);
+    }
+    response
+}
+
 /// Every display name currently spoken for, by a person or by an agent.
 ///
 /// Both sources matter for the same reason `unique_participant_label` reads
@@ -4005,10 +4065,7 @@ async fn join_handler(
         "person joined"
     );
     let mut response = Json(person_json(&person)).into_response();
-    if let Ok(value) = HeaderValue::from_str(&format!(
-        "{}={token}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly",
-        person_cookie(st.rt.port)
-    )) {
+    if let Some(value) = person_cookie_header(st.rt.port, &token) {
         response
             .headers_mut()
             .insert(axum::http::header::SET_COOKIE, value);
@@ -6181,6 +6238,45 @@ mod tests {
         assert_ne!(other.participant_id, first.participant_id);
         let roster = attached_agents_json(&rs.rt).to_string();
         assert_eq!(roster.matches(&first.participant_id).count(), 1, "{roster}");
+    }
+
+    #[tokio::test]
+    async fn a_resolving_person_cookie_is_reissued_and_a_stale_one_is_not() {
+        let state = test_router_state(websocket_surface_with_human_route());
+        let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let issued = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .expect("a join issues the person cookie")
+            .to_str()
+            .unwrap()
+            .to_string();
+        assert!(issued.contains("Max-Age=86400"), "{issued}");
+        assert!(sets_person_cookie(joined.headers(), state.rt.port));
+
+        // The browser sends back only the name=token pair.
+        let pair = issued.split(';').next().unwrap();
+        let mut headers = HeaderMap::new();
+        headers.insert(header::COOKIE, pair.parse().unwrap());
+        let refreshed = refreshed_person_cookie(&state, &headers)
+            .expect("a cookie that still resolves is re-issued");
+        assert_eq!(
+            refreshed.to_str().unwrap(),
+            issued,
+            "same token, full lifetime again"
+        );
+
+        let mut forged = HeaderMap::new();
+        forged.insert(
+            header::COOKIE,
+            format!("{}=not-host-minted", person_cookie(state.rt.port))
+                .parse()
+                .unwrap(),
+        );
+        assert!(refreshed_person_cookie(&state, &forged).is_none());
+        assert!(refreshed_person_cookie(&state, &HeaderMap::new()).is_none());
     }
 
     #[tokio::test]

@@ -1,5 +1,5 @@
 import { createLegend } from "/legend.mjs";
-import { AgUiClient, loadExtensions, rememberMe, whoAmI } from "/_agui/client.js";
+import { AgUiClient, loadExtensions, rejoin, rememberMe, whoAmI } from "/_agui/client.js";
 import {
   beginPersistenceHandshake,
   finishPersistenceHandshake,
@@ -115,7 +115,39 @@ function createKernel({ documentModule, manifest }) {
   let lastObservedAt = 0;
   let observing = false;
   let observationError = null;
+  let identityExpired = false;
+  // Close code this page uses when it drops its own socket to pick up a
+  // renewed identity. Client-chosen codes live in 4000-4999.
+  const IDENTITY_RENEWED = 4001;
+  // Whether the host still recognises this browser's resume cookie. One GET
+  // and never a join, so nothing here makes an idle page rejoin by itself. A
+  // host that cannot be reached counts as still joined: an outage is not an
+  // identity problem.
+  const stillJoined = () => fetch("/surface/me", {credentials: "same-origin"})
+    .then(response => response.ok ? response.json() : null)
+    .then(me => me ? me.joined === true : true)
+    .catch(() => true);
+  const whenSynced = (ms) => new Promise((resolve, reject) => {
+    const deadline = Date.now() + ms;
+    const check = () => {
+      if (sync === "ready" && socket?.readyState === WebSocket.OPEN) return resolve();
+      if (Date.now() > deadline) return reject(new Error("the shared document did not resync after rejoining"));
+      setTimeout(check, 100);
+    };
+    check();
+  });
+  // Join again and carry the new identity onto the document socket, which
+  // still holds the one captured when it connected. The socket's close path
+  // rebuilds the replica from a fresh copy, so nothing is applied twice.
+  const rejoinAsNewPerson = async () => {
+    const me = await rejoin();
+    if (!me) throw new Error("rejoining this page failed");
+    Object.assign(globalThis.samepagePerson ??= {}, me);
+    socket?.close(IDENTITY_RENEWED, "identity renewed");
+    await whenSynced(10000);
+  };
   const observeLayout = async () => {
+    if (identityExpired) return;
     if (sync !== 'ready' || rendering || observing || renderedRevision !== replica.revision()) return;
     const stage = document.querySelector('.map-stage');
     if (!stage) return;
@@ -143,6 +175,16 @@ function createKernel({ documentModule, manifest }) {
       // Retry its actual geometry on the next render; never mark it passed.
       if (observationGeneration !== connectGeneration || sync !== 'ready') return;
       lastObservation = '';
+      if (!identityExpired && !(await stillJoined())) {
+        // The host refused the measurement because this browser's resume
+        // cookie expired. Measuring is not a person's action, so it does not
+        // rejoin; the next action this person takes does. Stop re-measuring
+        // until then.
+        identityExpired = true;
+        observationError = "Page validation is paused: your identity on this page expired. Your next action rejoins.";
+        reportProblem("map", "validate", observationError);
+        return;
+      }
       if (!String(error.message).includes('stale revision')) {
         observationError = `Page validation unavailable: ${error.message}`;
         reportProblem("map", "validate", observationError);
@@ -208,6 +250,7 @@ function createKernel({ documentModule, manifest }) {
     seenHello = 0;
     lastObservation = "";
     lastObservedAt = 0;
+    identityExpired = false;
     renderedRevision = null;
     notify();
     const ws = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`);
@@ -255,6 +298,8 @@ function createKernel({ documentModule, manifest }) {
         reportProblem(owner, "edit", refused);
         toast(refused, "error");
         showSyncLoss("Reconnecting with a fresh copy of the page after a refused edit…");
+      } else if (event.code === IDENTITY_RENEWED) {
+        showSyncLoss("Rejoining this page: your identity here had expired. Earlier edits keep the name they were signed with.");
       } else {
         showSyncLoss("Connection lost. Unconfirmed edits may be lost while a fresh document reconnects.");
       }
@@ -272,6 +317,9 @@ function createKernel({ documentModule, manifest }) {
           const person = response.ok ? await response.json() : null;
           if (!person?.joined) throw new Error("host identity join failed");
           rememberMe(person);
+          // Bylines compare against this object live, so a person admitted
+          // afresh after a restart reads as "you" without a reload.
+          Object.assign(globalThis.samepagePerson ??= {}, person);
           if (generation === connectGeneration) connect();
         } catch (error) {
           showSyncLoss(`Document reconnect is waiting for identity: ${error.message}`);
@@ -356,7 +404,23 @@ function createKernel({ documentModule, manifest }) {
     activateForTool: (tool) => runtime?.activateForTool(tool),
     activateForRoute: (route) => runtime?.activateForRoute(route),
     // An action's next success clears the problem it left behind.
-    dispatch: async (name, args) => { const result = await client.action(name, args); resolveAction(name); return result; },
+    // `background: true` marks a call a timer made rather than a person: it
+    // never rejoins, so an idle page keeps whatever identity it has.
+    dispatch: async (name, args, {background = false} = {}) => {
+      let result;
+      try { result = await client.action(name, args); }
+      catch (error) {
+        // The resume cookie outlives the last request by a day. A tab that
+        // slept longer wakes with its socket open and its identity gone, and
+        // the host refuses the action before doing anything with it. Rejoin
+        // once, on this person's own action and never from a timer, then
+        // retry the same call.
+        if (background || await stillJoined()) throw error;
+        await rejoinAsNewPerson();
+        result = await client.action(name, args);
+      }
+      resolveAction(name); return result;
+    },
     problem: (capability, action, error) => reportProblem(capability, action, error),
     resolved: (capability, action) => resolveProblem(capability, action),
     toast: (message, tone) => toast(message, tone),

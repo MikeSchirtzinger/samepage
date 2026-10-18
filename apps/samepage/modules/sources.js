@@ -17,8 +17,8 @@ export async function activate({wasm, application}) {
     return value.ok;
   };
   const fail = (e, action = 'read') => application.problem('sources', action, action === 'read' ? `Source facts could not be read: ${e.message}` : `Source could not be shown: ${e.message}`);
-  const dispatch = async (name, args) => {
-    const response = await application.dispatch(name, args);
+  const dispatch = async (name, args, options) => {
+    const response = await application.dispatch(name, args, options);
     return JSON.parse(response.result).sources;
   };
   async function openViewer(id) {
@@ -129,7 +129,8 @@ export async function activate({wasm, application}) {
     if (disposed || busy || !application.ready()) return;
     busy = true;
     try {
-      facts = (await dispatch('sources_read', {})).facts;
+      // A timer's read, never a person's: it must not rejoin an idle page.
+      facts = (await dispatch('sources_read', {}, {background: true})).facts;
       decorate(application.view());
       application.resolved('sources', 'read');
     } catch (e) { fail(e); } finally { busy = false; }

@@ -7,13 +7,13 @@ export function activate({wasm, application, mount}) {
 const who=(name,participant)=>participant&&participant===globalThis.samepagePerson?.id?'you':String(participant||'').startsWith('agent-')?String(name||'agent').replace(/-\d+$/,''):(name||'someone');
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
   const fail=(e,action='read')=>application.problem('lanes',action,action==='read'?`Found in source could not be read: ${e.message}`:`Lane claim refused: ${e.message}`);
-  const dispatch=async(name,args)=>JSON.parse((await application.dispatch(name,args)).result);
+  const dispatch=async(name,args,options)=>JSON.parse((await application.dispatch(name,args,options)).result);
   const envelope=raw=>{const r=JSON.parse(raw);if(r.abi!=='samepage.capability.v2'||r.error)throw Error(r.error?.message||'Lanes ABI mismatch');return r.ok;};
   const button=(label,action,key='read')=>{const n=el('button',label);n.type='button';n.addEventListener('click',()=>Promise.resolve().then(action).then(()=>application.resolved('lanes',key)).catch(e=>fail(e,key)));return n;};
-  async function render({view}) {
+  async function render({view,background=false}) {
     if(disposed||busy||!application.ready())return;busy=true;
     try {
-      const data=(await dispatch('lanes_read',{})).lanes;
+      const data=(await dispatch('lanes_read',{},{background})).lanes;
       if(data.revision!==view.revision)return;
       const projection=envelope(wasm.project_with_facts(JSON.stringify(view),JSON.stringify(data.facts)));
       const strip=el('details',undefined,'lanes-strip');strip.open=true;
@@ -62,6 +62,6 @@ const who=(name,participant)=>participant&&participant===globalThis.samepagePers
   document.addEventListener('samepage:lanes-open',open);
   const unregister=application.registerRenderer('lanes',{render});
   // Rescan on a timer only while the findings are on screen.
-  const timer=setInterval(()=>{const drawer=document.getElementById('dock-drawer');if(drawer&&!drawer.hidden&&drawer.dataset.drawer==='lanes')void render({view:application.view()});},5000);
+  const timer=setInterval(()=>{const drawer=document.getElementById('dock-drawer');if(drawer&&!drawer.hidden&&drawer.dataset.drawer==='lanes')void render({view:application.view(),background:true});},5000);
   return {dispose(){disposed=true;clearInterval(timer);unregister();document.removeEventListener('samepage:lanes-open',open);document.removeEventListener('map-selection-changed',selectionChanged);}};
 }

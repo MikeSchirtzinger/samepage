@@ -43,6 +43,14 @@ export function rememberMe(person) {
   joining = Promise.resolve(person || null);
 }
 
+/// Join again as whoever the host now admits. For a browser whose resume
+/// cookie expired: the cached answer describes a person the host no longer
+/// recognises, so it is dropped before asking.
+export function rejoin() {
+  joining = null;
+  return whoAmI();
+}
+
 export class AgUiRequestError extends Error {
   constructor(message, { status = 0, body = null } = {}) {
     super(message);

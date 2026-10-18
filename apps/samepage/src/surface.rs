@@ -2206,7 +2206,7 @@ fn map_actor(actor: &SurfaceActor) -> Result<Actor, String> {
     let participant = actor
         .participant_id
         .as_ref()
-        .ok_or("host-minted participant is required")?;
+        .ok_or("this call names no participant: a person joins the page first, an agent initializes its MCP session first")?;
     let caller = match actor.caller {
         ag_ui_surface::Caller::Human => Caller::Human,
         ag_ui_surface::Caller::Agent | ag_ui_surface::Caller::Companion => Caller::Agent,
