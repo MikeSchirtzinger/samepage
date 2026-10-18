@@ -78,8 +78,7 @@ pub fn binary_lanes(root: &Path, walked: &Walked) -> Result<Vec<Lane>, ScanError
             .parent()
             .map(Path::to_path_buf)
             .unwrap_or_default();
-        let package_body =
-            &manifest.contents[package_section.body_start..package_section.body_end];
+        let package_body = &manifest.contents[package_section.body_start..package_section.body_end];
         let package_name = name_re.captures(package_body).map(|c| c[1].to_string());
 
         let bin_sections: Vec<&TomlSection> = sections
@@ -88,23 +87,22 @@ pub fn binary_lanes(root: &Path, walked: &Walked) -> Result<Vec<Lane>, ScanError
             .collect();
 
         if bin_sections.is_empty() {
-            if root.join(&package_dir).join("src/main.rs").is_file() {
-                if let Some(name_match) = name_re.captures(package_body) {
-                    let abs_offset =
-                        package_section.body_start + name_match.get(0).unwrap().start();
-                    lanes.push(Lane {
-                        kind: LaneKind::Binary,
-                        label: name_match[1].to_string(),
-                        evidence: Evidence {
-                            path: manifest.rel_path.clone(),
-                            line: line_number_at(&manifest.contents, abs_offset),
-                            snippet: trimmed_snippet(line_at(&manifest.contents, abs_offset)),
-                            sha256: manifest_sha.clone(),
-                        },
-                        package: package_name.clone(),
-                        detail: "package has src/main.rs (implicit default binary)".to_string(),
-                    });
-                }
+            if root.join(&package_dir).join("src/main.rs").is_file()
+                && let Some(name_match) = name_re.captures(package_body)
+            {
+                let abs_offset = package_section.body_start + name_match.get(0).unwrap().start();
+                lanes.push(Lane {
+                    kind: LaneKind::Binary,
+                    label: name_match[1].to_string(),
+                    evidence: Evidence {
+                        path: manifest.rel_path.clone(),
+                        line: line_number_at(&manifest.contents, abs_offset),
+                        snippet: trimmed_snippet(line_at(&manifest.contents, abs_offset)),
+                        sha256: manifest_sha.clone(),
+                    },
+                    package: package_name.clone(),
+                    detail: "package has src/main.rs (implicit default binary)".to_string(),
+                });
             }
         } else {
             for bin in &bin_sections {
@@ -138,7 +136,10 @@ pub fn binary_lanes(root: &Path, walked: &Walked) -> Result<Vec<Lane>, ScanError
                 .collect();
             bin_files.sort();
             for bin_file in bin_files {
-                let rel = bin_file.strip_prefix(root).unwrap_or(&bin_file).to_path_buf();
+                let rel = bin_file
+                    .strip_prefix(root)
+                    .unwrap_or(&bin_file)
+                    .to_path_buf();
                 let Some(walked_file) = walked.get(&rel) else {
                     continue; // filtered out by the walk (too large, binary, tests/)
                 };

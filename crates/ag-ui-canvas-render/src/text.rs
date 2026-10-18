@@ -12,9 +12,9 @@
 //! to know how pretext laid the text out, only how to sample a cell.
 
 use skrifa::{
+    FontRef, MetadataProvider,
     instance::{LocationRef, Size},
     outline::{DrawSettings, OutlinePen},
-    FontRef, MetadataProvider,
 };
 use zeno::{Command, Format, Mask, Origin, PathBuilder};
 

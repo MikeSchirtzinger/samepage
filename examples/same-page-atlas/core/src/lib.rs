@@ -20,20 +20,28 @@ use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sha2::{Digest as _, Sha256};
-use yrs::{Any, Map, Out, Transact};
+use yrs::{Any, Map, Number, Out, Transact};
 
 #[path = "generated/segmentation_sources.rs"]
 mod segmentation_sources;
 pub use segmentation_sources::{
-    segment_source_by_id, segment_source_by_identity, SegmentSourceContract,
-    DEFAULT_SEGMENT_SOURCE_ID, SEGMENTATION_CONTRACT_SHA256, SEGMENT_SOURCES,
-    SEGMENT_SOURCE_HEIGHT, SEGMENT_SOURCE_SHA256, SEGMENT_SOURCE_URL, SEGMENT_SOURCE_WIDTH,
+    DEFAULT_SEGMENT_SOURCE_ID, SEGMENT_SOURCE_HEIGHT, SEGMENT_SOURCE_SHA256, SEGMENT_SOURCE_URL,
+    SEGMENT_SOURCE_WIDTH, SEGMENT_SOURCES, SEGMENTATION_CONTRACT_SHA256, SegmentSourceContract,
+    segment_source_by_id, segment_source_by_identity,
 };
+
+/// The number a stored value reads as. Whole values are stored as integers.
+pub(crate) fn number_f64(number: Number) -> f64 {
+    match number {
+        Number::Int(value) => value as f64,
+        Number::Float(value) => value,
+    }
+}
 
 pub mod agent_ink;
 pub mod anchor;
 pub mod claims;
-pub use claims::{claim, claim_verdict, revise_claim, withdraw_claim, Claim, ClaimDigest};
+pub use claims::{Claim, ClaimDigest, claim, claim_verdict, revise_claim, withdraw_claim};
 pub mod architecture;
 pub mod camera;
 pub mod context;
@@ -47,7 +55,7 @@ pub mod validation;
 #[cfg(test)]
 mod state_machine_tests;
 
-pub use agent_ink::{create_variable, Relation, SolveState, VarState, Variable, VAR_STATES};
+pub use agent_ink::{Relation, SolveState, VAR_STATES, VarState, Variable, create_variable};
 
 /// Object kinds. A single flat object space keeps the CRDT simple; the `kind`
 /// property is what the projection dispatches on.
@@ -939,7 +947,7 @@ pub mod living_ink {
     use ag_ui_canvas::scene::{Author, PropValue, Scene};
     use yrs::{Any, Map, Out, Transact};
 
-    use super::{agent_ink, read, Atlas, AtlasError, Node, MAX_LABEL};
+    use super::{Atlas, AtlasError, MAX_LABEL, Node, agent_ink, read};
 
     pub(super) const K_STATE_VARIABLE: &str = "state_variable";
     pub(super) const K_STATE_PREVIOUS_VALUE: &str = "state_previous_value";
@@ -1321,7 +1329,7 @@ pub mod living_ink {
     mod tests {
         use super::*;
         use crate::{
-            agent_ink, place_node, set_node_diagram_kind, set_state_roles, transition, NodePatch,
+            NodePatch, agent_ink, place_node, set_node_diagram_kind, set_state_roles, transition,
         };
 
         fn machine(scene: &mut Scene) -> (String, String, String) {
@@ -3191,8 +3199,7 @@ pub fn read(scene: &Scene) -> Result<Atlas, AtlasError> {
         };
         let optional_number = |key: &str| -> Option<f64> {
             match map.get(&txn, key) {
-                Some(Out::Any(Any::Number(value))) => Some(value),
-                Some(Out::Any(Any::BigInt(value))) => Some(value as f64),
+                Some(Out::Any(Any::Number(value))) => Some(number_f64(value)),
                 _ => None,
             }
         };
@@ -3967,10 +3974,10 @@ pub fn draw(
         // resolved against what has already landed rather than against the
         // atlas the batch started from.
         let mut patch = node.patch.clone();
-        if let Some(parent) = patch.parent.as_deref() {
-            if let Some(id) = drawn.resolve(parent) {
-                patch.parent = Some(id.to_string());
-            }
+        if let Some(parent) = patch.parent.as_deref()
+            && let Some(id) = drawn.resolve(parent)
+        {
+            patch.parent = Some(id.to_string());
         }
         match place_node(scene, &patch, author) {
             Ok(id) => drawn.nodes.push((node.reference.clone(), id)),
@@ -4332,13 +4339,12 @@ pub fn link(
     }
     if let (Some(from_machine), Some(to_machine)) =
         (atlas.state_machine_of(from), atlas.state_machine_of(to))
+        && from_machine.id == to_machine.id
     {
-        if from_machine.id == to_machine.id {
-            return Err(format!(
-                "a link inside state machine {:?} carries no `event`; a transition is named by the event that fires it",
-                from_machine.label
-            ));
-        }
+        return Err(format!(
+            "a link inside state machine {:?} carries no `event`; a transition is named by the event that fires it",
+            from_machine.label
+        ));
     }
     if let Some(existing) = atlas
         .edges
@@ -5687,8 +5693,8 @@ fn validate_segment_part(
         ));
     }
     let mut total = 0u64;
-    for chunk in bytes.chunks_exact(4) {
-        let run = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+    for chunk in bytes.as_chunks::<4>().0 {
+        let run = u32::from_le_bytes(*chunk);
         total = total
             .checked_add(u64::from(run))
             .ok_or_else(|| format!("{expected_role} wing mask RLE length overflow"))?;
@@ -5846,8 +5852,8 @@ pub fn materialize_segment(
         return Err("segment mask RLE must be bounded little-endian u32 values".to_string());
     }
     let mut total = 0u64;
-    for chunk in mask_bytes.chunks_exact(4) {
-        let run = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+    for chunk in mask_bytes.as_chunks::<4>().0 {
+        let run = u32::from_le_bytes(*chunk);
         total = total
             .checked_add(u64::from(run))
             .ok_or_else(|| "segment mask RLE length overflow".to_string())?;
@@ -6195,26 +6201,24 @@ fn validate_segment_motion(
         if track.delay_ms > 60_000 || track.stagger_ms > 60_000 {
             return Err("motion delay_ms and stagger_ms must not exceed 60000".to_string());
         }
-        if let Some(curve) = track.curve {
-            if !curve.iter().all(|value| value.is_finite())
+        if let Some(curve) = track.curve
+            && (!curve.iter().all(|value| value.is_finite())
                 || !(0.0..=1.0).contains(&curve[0])
                 || !(0.0..=1.0).contains(&curve[2])
                 || !(-10.0..=10.0).contains(&curve[1])
-                || !(-10.0..=10.0).contains(&curve[3])
-            {
-                return Err(
+                || !(-10.0..=10.0).contains(&curve[3]))
+        {
+            return Err(
                     "motion curve must be finite [x1,y1,x2,y2], with x from 0 to 1 and y from -10 to 10"
                         .to_string(),
                 );
-            }
         }
-        if let Some(origin) = track.origin {
-            if !origin
+        if let Some(origin) = track.origin
+            && !origin
                 .iter()
                 .all(|value| value.is_finite() && (0.0..=1.0).contains(value))
-            {
-                return Err("motion origin values must be finite numbers from 0 to 1".to_string());
-            }
+        {
+            return Err("motion origin values must be finite numbers from 0 to 1".to_string());
         }
         if !(2..=24).contains(&track.keyframes.len()) {
             return Err("each motion track must contain from 2 to 24 keyframes".to_string());
@@ -6783,10 +6787,10 @@ pub fn sketch(
     for (index, patch) in shapes.iter().enumerate() {
         let mut resolved = patch.clone();
         for end in [&mut resolved.from, &mut resolved.to, &mut resolved.frame] {
-            if let Some(name) = end.as_deref() {
-                if let Some(id) = refs.get(name) {
-                    *end = Some(id.clone());
-                }
+            if let Some(name) = end.as_deref()
+                && let Some(id) = refs.get(name)
+            {
+                *end = Some(id.clone());
             }
         }
         match place_shape(scene, &resolved, author) {
@@ -7410,31 +7414,31 @@ fn read_shape(atlas: &Atlas, shape: &Shape) -> Reading {
         }
 
         // An arrow or line with a head is aimed at whatever its tip reaches.
-        if matches!(shape.form.as_str(), "arrow" | "line") {
-            if let Some(tip) = world.last() {
-                let aimed = atlas
-                    .nodes
-                    .iter()
-                    .filter(|node| !shape.from.eq(&node.id))
-                    .map(|node| (node, distance_to_box(*tip, node.bounds())))
-                    .filter(|(_, distance)| *distance <= POINT_SLOP)
-                    .min_by(|a, b| a.1.total_cmp(&b.1));
-                if let Some((node, _)) = aimed {
-                    return reading("points-at", vec![node.id.clone()], Vec::new());
-                }
-                // No card in reach of the tip: the nearest drawn matter is
-                // what the arrow is aimed at, by the same yardstick.
-                let aimed_matter = atlas
-                    .shapes
-                    .iter()
-                    .filter(|other| reads_against(shape, other))
-                    .filter(|other| !shape.from.eq(&other.id))
-                    .map(|other| (other, distance_to_box(*tip, other.bounds())))
-                    .filter(|(_, distance)| *distance <= POINT_SLOP)
-                    .min_by(|a, b| a.1.total_cmp(&b.1));
-                if let Some((other, _)) = aimed_matter {
-                    return reading("points-at", vec![other.id.clone()], Vec::new());
-                }
+        if matches!(shape.form.as_str(), "arrow" | "line")
+            && let Some(tip) = world.last()
+        {
+            let aimed = atlas
+                .nodes
+                .iter()
+                .filter(|node| !shape.from.eq(&node.id))
+                .map(|node| (node, distance_to_box(*tip, node.bounds())))
+                .filter(|(_, distance)| *distance <= POINT_SLOP)
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            if let Some((node, _)) = aimed {
+                return reading("points-at", vec![node.id.clone()], Vec::new());
+            }
+            // No card in reach of the tip: the nearest drawn matter is
+            // what the arrow is aimed at, by the same yardstick.
+            let aimed_matter = atlas
+                .shapes
+                .iter()
+                .filter(|other| reads_against(shape, other))
+                .filter(|other| !shape.from.eq(&other.id))
+                .map(|other| (other, distance_to_box(*tip, other.bounds())))
+                .filter(|(_, distance)| *distance <= POINT_SLOP)
+                .min_by(|a, b| a.1.total_cmp(&b.1));
+            if let Some((other, _)) = aimed_matter {
+                return reading("points-at", vec![other.id.clone()], Vec::new());
             }
         }
     }
@@ -8095,7 +8099,7 @@ pub fn changes(before: &Digest, after: &Digest) -> Vec<String> {
                         .constraints
                         .iter()
                         .find(|constraint| constraint.id == *id)
-                        .map(&named_constraint)
+                        .map(named_constraint)
                         .unwrap_or_else(|| id.clone()))
                     .collect::<Vec<_>>()
                     .join("; ")
@@ -8918,12 +8922,11 @@ pub fn describe_changes(before: &Digest, after: &Digest) -> String {
             bylines.insert(variable.touched_by.as_str());
         }
     }
-    if before.explanation != after.explanation {
-        if let Some(flow) = after.explanation.as_ref() {
-            if !flow.touched_by.is_empty() {
-                bylines.insert(flow.touched_by.as_str());
-            }
-        }
+    if before.explanation != after.explanation
+        && let Some(flow) = after.explanation.as_ref()
+        && !flow.touched_by.is_empty()
+    {
+        bylines.insert(flow.touched_by.as_str());
     }
     // Marks are refused to agents at dispatch, so any mark change is the
     // human by construction.
@@ -9615,13 +9618,13 @@ fn validate_explanation_structure(
     }
     for beat in &definition.beats {
         for transition in &beat.advance.transitions {
-            if let Some(next) = &transition.next {
-                if !beat_ids.contains(next) {
-                    return Err(format!(
-                        "transition {:?} from beat {:?} points to missing beat {next:?}",
-                        transition.id, beat.id
-                    ));
-                }
+            if let Some(next) = &transition.next
+                && !beat_ids.contains(next)
+            {
+                return Err(format!(
+                    "transition {:?} from beat {:?} points to missing beat {next:?}",
+                    transition.id, beat.id
+                ));
             }
         }
     }
@@ -9721,14 +9724,13 @@ fn validate_explanation_targets(
         }
     }
     for id in &definition.scene_ids {
-        if let Some(shape) = atlas.shape(id) {
-            if !shape.segment_parent_id.is_empty()
-                && !definition.scene_ids.contains(&shape.segment_parent_id)
-            {
-                return Err(format!(
-                    "exploration object {id:?} requires its segment parent in scene_ids"
-                ));
-            }
+        if let Some(shape) = atlas.shape(id)
+            && !shape.segment_parent_id.is_empty()
+            && !definition.scene_ids.contains(&shape.segment_parent_id)
+        {
+            return Err(format!(
+                "exploration object {id:?} requires its segment parent in scene_ids"
+            ));
         }
         if definition.about.contains(id) {
             return Err(format!(
@@ -10988,12 +10990,14 @@ mod tests {
         // The diff is directional: read the other way round, the same two
         // documents swap added for removed.
         let back = after.diff(&before);
-        assert!(back
-            .iter()
-            .any(|line| line == &format!("removed node \"Activity journal\" [{arrived}]")));
-        assert!(back
-            .iter()
-            .any(|line| line == &format!("added node \"Scratch\" [{doomed}]")));
+        assert!(
+            back.iter()
+                .any(|line| line == &format!("removed node \"Activity journal\" [{arrived}]"))
+        );
+        assert!(
+            back.iter()
+                .any(|line| line == &format!("added node \"Scratch\" [{doomed}]"))
+        );
         assert!(back.iter().any(|line| line
             == &format!("moved node \"Persistence\" [{persistence}] 40 left and 12 down")));
     }
@@ -12579,10 +12583,10 @@ mod tests {
         let target = atlas.node(&b).expect("node");
         let (l, t, r, bottom) = target.bounds();
         assert!(
-            after.1 .0 >= l - 1.0
-                && after.1 .0 <= r + 1.0
-                && after.1 .1 >= t - 1.0
-                && after.1 .1 <= bottom + 1.0,
+            after.1.0 >= l - 1.0
+                && after.1.0 <= r + 1.0
+                && after.1.1 >= t - 1.0
+                && after.1.1 <= bottom + 1.0,
             "endpoint {:?} should sit on the box {:?}",
             after.1,
             (l, t, r, bottom)
@@ -13308,10 +13312,12 @@ mod tests {
 
         let atlas = read(&scene).expect("read");
         assert!(atlas.painting().links[0].path.len() > 2);
-        assert!(!layout(&atlas)
-            .problems
-            .iter()
-            .any(|problem| problem.detail.contains("passes under")));
+        assert!(
+            !layout(&atlas)
+                .problems
+                .iter()
+                .any(|problem| problem.detail.contains("passes under"))
+        );
         place_node(
             &mut scene,
             &NodePatch {
@@ -13323,10 +13329,12 @@ mod tests {
         )
         .expect("block port");
         let blocked = layout(&read(&scene).expect("read"));
-        assert!(blocked
-            .problems
-            .iter()
-            .any(|problem| problem.detail.contains("route unavailable")));
+        assert!(
+            blocked
+                .problems
+                .iter()
+                .any(|problem| problem.detail.contains("route unavailable"))
+        );
 
         // Move the obstacle out of the way and the complaint goes with it.
         place_node(
@@ -13339,10 +13347,12 @@ mod tests {
             &Author::Agent,
         )
         .expect("move");
-        assert!(!layout(&read(&scene).expect("read"))
-            .problems
-            .iter()
-            .any(|problem| problem.detail.contains("passes under")));
+        assert!(
+            !layout(&read(&scene).expect("read"))
+                .problems
+                .iter()
+                .any(|problem| problem.detail.contains("passes under"))
+        );
     }
 
     #[test]
@@ -13367,10 +13377,12 @@ mod tests {
                 .path,
             before
         );
-        assert!(!layout(&atlas)
-            .problems
-            .iter()
-            .any(|p| p.detail.contains("share a route segment")));
+        assert!(
+            !layout(&atlas)
+                .problems
+                .iter()
+                .any(|p| p.detail.contains("share a route segment"))
+        );
     }
 
     #[test]
@@ -13392,10 +13404,12 @@ mod tests {
             assert_eq!(link.path.first(), Some(&link.ends[0]));
             assert_eq!(link.path.last(), Some(&link.ends[1]));
         }
-        assert!(!incoming.path.windows(2).any(|a| outgoing
-            .path
-            .windows(2)
-            .any(|b| routing::shared_segment(a[0], a[1], b[0], b[1]))));
+        assert!(!incoming.path.windows(2).any(|a| {
+            outgoing
+                .path
+                .windows(2)
+                .any(|b| routing::shared_segment(a[0], a[1], b[0], b[1]))
+        }));
         assert!(layout(&atlas).problems.is_empty());
     }
 
@@ -13644,16 +13658,18 @@ mod tests {
     #[test]
     fn rejects_unknown_tone_and_glyph() {
         let mut scene = Scene::new();
-        assert!(place_node(
-            &mut scene,
-            &NodePatch {
-                label: Some("x".into()),
-                tone: Some("rainbow".into()),
-                ..Default::default()
-            },
-            &Author::Agent,
-        )
-        .is_err());
+        assert!(
+            place_node(
+                &mut scene,
+                &NodePatch {
+                    label: Some("x".into()),
+                    tone: Some("rainbow".into()),
+                    ..Default::default()
+                },
+                &Author::Agent,
+            )
+            .is_err()
+        );
         let id = node(&mut scene, "x", Author::Agent);
         assert!(mark(&mut scene, &id, "%", "hm", &Author::Human).is_err());
     }
@@ -14629,10 +14645,12 @@ mod tests {
         assert_eq!(labels.axis, None);
         assert_eq!(atlas.constraint_state.status, "sat");
         assert!(atlas.constraint_state.core.is_empty());
-        assert!(atlas
-            .constraints
-            .windows(2)
-            .all(|pair| pair[0].id <= pair[1].id));
+        assert!(
+            atlas
+                .constraints
+                .windows(2)
+                .all(|pair| pair[0].id <= pair[1].id)
+        );
 
         let described = atlas.describe();
         assert!(described.contains("\nCONSTRAINTS\n"), "{described}");
@@ -14706,10 +14724,12 @@ mod tests {
         expected.sort();
         assert_eq!(atlas.constraint_state.status, "unsat");
         assert_eq!(atlas.constraint_state.core, expected);
-        assert!(atlas
-            .constraints
-            .iter()
-            .all(|constraint| constraint.status == "sat"));
+        assert!(
+            atlas
+                .constraints
+                .iter()
+                .all(|constraint| constraint.status == "sat")
+        );
     }
 
     #[test]
@@ -14757,21 +14777,27 @@ mod tests {
         let before = read(&scene).expect("read").digest();
         let id = constraint(&mut scene, "sequence", &[&a, &b], None, None);
         let created = read(&scene).expect("read").digest();
-        assert!(changes(&before, &created)
-            .iter()
-            .any(|line| line.contains("NEW CONSTRAINT") && line.contains(&id)));
+        assert!(
+            changes(&before, &created)
+                .iter()
+                .any(|line| line.contains("NEW CONSTRAINT") && line.contains(&id))
+        );
 
         remove(&scene, &b).expect("remove member");
         let broken = read(&scene).expect("read").digest();
-        assert!(changes(&created, &broken)
-            .iter()
-            .any(|line| line.contains("BROKEN") && line.contains(&id)));
+        assert!(
+            changes(&created, &broken)
+                .iter()
+                .any(|line| line.contains("BROKEN") && line.contains(&id))
+        );
 
         remove(&scene, &id).expect("remove constraint");
         let removed = read(&scene).expect("read").digest();
-        assert!(changes(&broken, &removed)
-            .iter()
-            .any(|line| line.contains("GONE CONSTRAINT") && line.contains(&id)));
+        assert!(
+            changes(&broken, &removed)
+                .iter()
+                .any(|line| line.contains("GONE CONSTRAINT") && line.contains(&id))
+        );
     }
 
     #[test]
@@ -14816,11 +14842,13 @@ mod tests {
         let exported: serde_json::Value =
             serde_json::from_str(&excalidraw::to_excalidraw(&read(&scene).expect("read")))
                 .expect("export JSON");
-        assert!(exported["skipped"]
-            .as_array()
-            .expect("skipped report")
-            .iter()
-            .any(|note| note.as_str().is_some_and(|note| note.contains(&id))));
+        assert!(
+            exported["skipped"]
+                .as_array()
+                .expect("skipped report")
+                .iter()
+                .any(|note| note.as_str().is_some_and(|note| note.contains(&id)))
+        );
         assert!(exported["notes"].is_array());
     }
 
@@ -15824,10 +15852,12 @@ mod segment_tests {
         let error = accept_human_segment(&mut scene, &proposal(), &mut unknown, &Author::Human)
             .expect_err("unknown source must fail");
         assert!(error.contains("generated source"), "{error}");
-        assert!(read(&scene)
-            .expect("read after rejection")
-            .shapes
-            .is_empty());
+        assert!(
+            read(&scene)
+                .expect("read after rejection")
+                .shapes
+                .is_empty()
+        );
 
         let mut root_result = materialization("not-yet-bound", 1);
         let root = accept_human_segment(&mut scene, &proposal(), &mut root_result, &Author::Human)
@@ -16020,9 +16050,11 @@ mod segment_tests {
                 .collect::<Vec<_>>(),
             before
         );
-        assert!(atlas
-            .describe()
-            .contains("motion=\"Alternating claw loading\" compositing=cutout tracks=1 targets=2"));
+        assert!(
+            atlas.describe().contains(
+                "motion=\"Alternating claw loading\" compositing=cutout tracks=1 targets=2"
+            )
+        );
 
         let mut unrelated_result = materialization("not-yet-bound", 1);
         let unrelated = accept_human_segment(
@@ -16047,12 +16079,14 @@ mod segment_tests {
         );
 
         set_segment_motion(&mut scene, &root, None, &Author::Human).expect("clear motion");
-        assert!(read(&scene)
-            .expect("read cleared")
-            .shape(&root)
-            .expect("root cleared")
-            .segment_motion
-            .is_null());
+        assert!(
+            read(&scene)
+                .expect("read cleared")
+                .shape(&root)
+                .expect("root cleared")
+                .segment_motion
+                .is_null()
+        );
     }
 
     #[test]
@@ -16233,10 +16267,12 @@ mod segment_tests {
             .expect_err("wrong graph must fail closed");
 
         assert!(error.contains("pinned MobileSAM"), "{error}");
-        assert!(read(&scene)
-            .expect("read after rejected acceptance")
-            .shapes
-            .is_empty());
+        assert!(
+            read(&scene)
+                .expect("read after rejected acceptance")
+                .shapes
+                .is_empty()
+        );
     }
 
     #[test]
@@ -16266,10 +16302,12 @@ mod segment_tests {
                 .and_then(JsonValue::as_str),
             Some(receipt.output_sha256.as_str())
         );
-        assert!(read(&scene)
-            .expect("read")
-            .describe()
-            .contains("semantics=multimodal-agent:test-vision-model"));
+        assert!(
+            read(&scene)
+                .expect("read")
+                .describe()
+                .contains("semantics=multimodal-agent:test-vision-model")
+        );
     }
 
     #[test]
@@ -16297,27 +16335,35 @@ mod segment_tests {
         let id = propose_segment(&mut scene, &proposal(), &Author::Agent).expect("proposal");
 
         let stale = materialization(&id, 2);
-        assert!(materialize_segment(&mut scene, &id, &stale)
-            .expect_err("stale generation")
-            .contains("expects proposed generation 1"));
+        assert!(
+            materialize_segment(&mut scene, &id, &stale)
+                .expect_err("stale generation")
+                .contains("expects proposed generation 1")
+        );
 
         let mut wrong_graph = materialization(&id, 1);
         wrong_graph.encoder_sha256 = "0".repeat(64);
-        assert!(materialize_segment(&mut scene, &id, &wrong_graph)
-            .expect_err("wrong graph")
-            .contains("pinned MobileSAM"));
+        assert!(
+            materialize_segment(&mut scene, &id, &wrong_graph)
+                .expect_err("wrong graph")
+                .contains("pinned MobileSAM")
+        );
 
         let mut wrong_rle = materialization(&id, 1);
         wrong_rle.mask_runs = base64::engine::general_purpose::STANDARD.encode(3u32.to_le_bytes());
-        assert!(materialize_segment(&mut scene, &id, &wrong_rle)
-            .expect_err("wrong pixel count")
-            .contains("covers 3 pixels, expected 4"));
+        assert!(
+            materialize_segment(&mut scene, &id, &wrong_rle)
+                .expect_err("wrong pixel count")
+                .contains("covers 3 pixels, expected 4")
+        );
 
         let mut wrong_receipt = materialization(&id, 1);
         wrong_receipt.receipt["predictedIoU"] = serde_json::json!(0.5);
-        assert!(materialize_segment(&mut scene, &id, &wrong_receipt)
-            .expect_err("wrong receipt")
-            .contains("predictedIoU does not match"));
+        assert!(
+            materialize_segment(&mut scene, &id, &wrong_receipt)
+                .expect_err("wrong receipt")
+                .contains("predictedIoU does not match")
+        );
     }
 
     #[test]
@@ -16617,9 +16663,11 @@ mod segment_tests {
                 .expect("right room");
             left.apply_update(&right.encode_full().expect("update"))
                 .expect("merge");
-            assert!(read(&left)
-                .expect_err("ambiguous merged scope")
-                .contains(if same_name { "identity" } else { "ownership" }));
+            assert!(
+                read(&left)
+                    .expect_err("ambiguous merged scope")
+                    .contains(if same_name { "identity" } else { "ownership" })
+            );
             remove(&left, &conflicting.object_id)
                 .expect("remove conflicting definition without reading ambiguous projection");
             assert_eq!(read(&left).expect("recovered").explanations.len(), 1);
@@ -16711,17 +16759,21 @@ mod segment_tests {
         assert!(atlas.describe().contains("second-question"));
         let before = scene.encode_full().expect("before invalid scope");
         second.scene_ids = vec![beyond.clone(), beyond.clone()];
-        assert!(define_explanation_flow(&mut scene, &second, &Author::Agent)
-            .expect_err("duplicate scope")
-            .contains("duplicate"));
+        assert!(
+            define_explanation_flow(&mut scene, &second, &Author::Agent)
+                .expect_err("duplicate scope")
+                .contains("duplicate")
+        );
         assert_eq!(
             before,
             scene.encode_full().expect("duplicate refusal is atomic")
         );
         second.scene_ids = vec![beyond.clone()];
-        assert!(define_explanation_flow(&mut scene, &second, &Author::Agent)
-            .expect_err("ownership conflict")
-            .contains("another exploration"));
+        assert!(
+            define_explanation_flow(&mut scene, &second, &Author::Agent)
+                .expect_err("ownership conflict")
+                .contains("another exploration")
+        );
         assert_eq!(before, scene.encode_full().expect("unchanged"));
         second.scene_ids = vec![inside];
         assert!(define_explanation_flow(&mut scene, &second, &Author::Agent).is_err());
@@ -16792,10 +16844,12 @@ mod segment_tests {
             projected.explanation.as_ref().expect("flow").state.revision,
             2
         );
-        assert!(projected
-            .marks
-            .iter()
-            .any(|mark| mark.id == question && mark.target == connector));
+        assert!(
+            projected
+                .marks
+                .iter()
+                .any(|mark| mark.id == question && mark.target == connector)
+        );
         assert!(projected.describe().contains("trace-path"));
     }
 
@@ -16846,10 +16900,12 @@ mod segment_tests {
             error.contains("explanation transition control") && error.contains("button"),
             "{error}"
         );
-        assert!(read(&scene)
-            .expect("read after control refusal")
-            .explanation
-            .is_none());
+        assert!(
+            read(&scene)
+                .expect("read after control refusal")
+                .explanation
+                .is_none()
+        );
 
         let mut missing = explanation_fixture(&inside, &beyond);
         missing.beats[0].evidence[0].target_id = "not-on-page".to_string();
@@ -16875,10 +16931,12 @@ mod segment_tests {
         let error = define_explanation_flow(&mut scene, &cyclic, &Author::Agent)
             .expect_err("cycle refusal");
         assert!(error.contains("must be finite"), "{error}");
-        assert!(read(&scene)
-            .expect("read after graph refusals")
-            .explanation
-            .is_none());
+        assert!(
+            read(&scene)
+                .expect("read after graph refusals")
+                .explanation
+                .is_none()
+        );
 
         let definition = explanation_fixture(&inside, &beyond);
         define_explanation_flow(&mut scene, &definition, &Author::Agent).expect("valid definition");

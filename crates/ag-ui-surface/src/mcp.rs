@@ -5,13 +5,14 @@
 //! recipe-selected extension set, while direct Surfaces use the same path.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
-use axum::http::{header, HeaderMap};
+use axum::http::{HeaderMap, header};
 use base64::Engine as _;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::runtime_state::RuntimeState;
-use crate::{turn_loop, ActionAudience, ActionDef, Caller, Surface};
+use crate::{ActionAudience, ActionDef, Caller, Surface, turn_loop};
 
 /// The MCP revision this implementation negotiates. Newer clients may
 /// negotiate down to it; older `2025-03-26` clients are not advertised because
@@ -86,12 +87,14 @@ pub(crate) struct ToolSchema {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Catalog {
     tools: Vec<ToolSchema>,
+    aliases: std::collections::HashMap<String, String>,
 }
 
 impl Catalog {
     pub(crate) fn from_actions(actions: &[ActionDef]) -> Result<Self, String> {
         let mut names = HashSet::new();
         let mut tools = Vec::new();
+        let mut aliases = std::collections::HashMap::new();
         for action in actions {
             let Some(mcp_apps_visibility) = mcp_apps_visibility(action.audience) else {
                 // Human-only actions stay absent rather than being disclosed
@@ -122,12 +125,16 @@ impl Catalog {
                 mcp_apps_visibility,
                 include_state_snapshot: action.include_state_snapshot,
             });
+            for alias in &action.aliases {
+                aliases.insert(alias.clone(), action.name.clone());
+            }
         }
-        Ok(Self { tools })
+        Ok(Self { tools, aliases })
     }
 
     fn get(&self, name: &str) -> Option<&ToolSchema> {
-        self.tools.iter().find(|tool| tool.name == name)
+        let preferred = self.aliases.get(name).map(String::as_str).unwrap_or(name);
+        self.tools.iter().find(|tool| tool.name == preferred)
     }
 
     pub(crate) fn wire_tools(&self) -> Vec<Value> {
@@ -170,10 +177,31 @@ pub(crate) enum Reply {
 /// Handle one MCP JSON-RPC request or notification. HTTP concurrency is the
 /// concurrency model: a long `EmitAndAwait` call suspends only its own request,
 /// so another named decision can remain in flight independently.
+#[cfg(test)]
 pub(crate) async fn handle(
     catalog: &Catalog,
     rt: &RuntimeState,
     surface: &dyn Surface,
+    message: Value,
+) -> Reply {
+    handle_with_surface(catalog, rt, surface, None, message).await
+}
+
+pub(crate) async fn handle_shared(
+    catalog: &Catalog,
+    rt: &RuntimeState,
+    surface: Arc<dyn Surface>,
+    message: Value,
+) -> Reply {
+    let shared = surface.clone();
+    handle_with_surface(catalog, rt, shared.as_ref(), Some(surface), message).await
+}
+
+async fn handle_with_surface(
+    catalog: &Catalog,
+    rt: &RuntimeState,
+    surface: &dyn Surface,
+    blocking_surface: Option<Arc<dyn Surface>>,
     message: Value,
 ) -> Reply {
     let Some(object) = message.as_object() else {
@@ -215,14 +243,18 @@ pub(crate) async fn handle(
                         PROTOCOL_VERSION
                     };
                     *rt.mcp_protocol_version.lock() = Some(version.to_string());
-                    Ok(json!({
+                    let mut result = json!({
                         "protocolVersion": version,
                         "capabilities": { "tools": { "listChanged": false } },
                         "serverInfo": {
                             "name": "ag-ui-surface",
                             "version": env!("CARGO_PKG_VERSION")
                         }
-                    }))
+                    });
+                    if let Some(guide) = surface.state().agent_guide() {
+                        result["instructions"] = json!(guide);
+                    }
+                    Ok(result)
                 }
                 None => Err((
                     -32602,
@@ -232,7 +264,9 @@ pub(crate) async fn handle(
         }
         "ping" => Ok(json!({})),
         "tools/list" => Ok(json!({ "tools": catalog.wire_tools() })),
-        "tools/call" => Ok(call_tool(catalog, rt, surface, object.get("params")).await),
+        "tools/call" => {
+            Ok(call_tool(catalog, rt, surface, blocking_surface, object.get("params")).await)
+        }
         _ => Err((-32601, format!("method not found: {method}"))),
     };
 
@@ -246,6 +280,7 @@ async fn call_tool(
     catalog: &Catalog,
     rt: &RuntimeState,
     surface: &dyn Surface,
+    blocking_surface: Option<Arc<dyn Surface>>,
     params: Option<&Value>,
 ) -> Value {
     let name = params
@@ -258,16 +293,15 @@ async fn call_tool(
         .unwrap_or_else(|| json!({}));
 
     let Some(schema) = catalog.get(name) else {
-        return tool_error(format!("action {name:?} is not visible to this agent"));
+        return tool_error(unavailable(surface, name));
     };
 
     // Re-check the executable definition, not just the serialized catalog.
     // This fails closed if a future refactor ever lets those two drift.
-    if !surface
-        .tools()
-        .iter()
-        .any(|action| action.name == name && action.audience.agent())
-    {
+    if !surface.tools().iter().any(|action| {
+        (action.name == name || action.aliases.iter().any(|alias| alias == name))
+            && action.audience.agent()
+    }) {
         return tool_error(format!("action {name:?} is not enabled"));
     }
 
@@ -276,8 +310,12 @@ async fn call_tool(
     // schema before apply, exactly as it does for OpenAI and human calls — and
     // re-checks the audience against `Caller::Agent`, which is now the
     // authoritative gate rather than the two checks above.
-    let (text, _was_query, ok) =
-        turn_loop::dispatch_tool(rt, surface, Caller::Agent, name, &args).await;
+    let (text, _was_query, ok) = match blocking_surface {
+        Some(surface) => {
+            turn_loop::dispatch_tool_shared(rt, surface, Caller::Agent, name, &args).await
+        }
+        None => turn_loop::dispatch_tool(rt, surface, Caller::Agent, name, &args).await,
+    };
     let mut content = vec![json!({ "type": "text", "text": text })];
     if ok && schema.include_state_snapshot {
         match surface.state().snapshot_png().await {
@@ -293,6 +331,23 @@ async fn call_tool(
         }
     }
     json!({ "content": content, "isError": !ok })
+}
+
+/// Why an agent cannot call `name`, and what to do instead. Three different
+/// situations used to share one sentence: an action meant for people, an
+/// action this surface retired, and a name that never existed.
+pub(crate) fn unavailable(surface: &dyn Surface, name: &str) -> String {
+    if surface.tools().iter().any(|tool| {
+        (tool.name == name || tool.aliases.iter().any(|a| a == name)) && !tool.audience.agent()
+    }) {
+        return format!(
+            "action {name:?} is for the people on this page, not for agents. Ask them in chat_reply, or say what you know in a tool you can call."
+        );
+    }
+    if let Some(instead) = surface.state().retired_action(name) {
+        return format!("action {name:?} is not offered here: {instead}");
+    }
+    format!("there is no action named {name:?}; tools/list names every action you can call")
 }
 
 fn tool_error(message: String) -> Value {
@@ -390,11 +445,13 @@ mod identity_tests {
 
     #[test]
     fn only_initialize_announces_an_identity() {
-        assert!(client_identity(&json!({
-            "method": "tools/list",
-            "params": { "clientInfo": { "name": "claude" } }
-        }))
-        .is_none());
+        assert!(
+            client_identity(&json!({
+                "method": "tools/list",
+                "params": { "clientInfo": { "name": "claude" } }
+            }))
+            .is_none()
+        );
     }
 
     #[test]
@@ -694,6 +751,71 @@ mod tests {
         assert!(tools.iter().all(|tool| tool["name"] != "human_reset"));
     }
 
+    #[tokio::test]
+    async fn alias_is_unlisted_but_uses_preferred_schema_authority_and_journal_name() {
+        let mut surface = surface();
+        surface.actions[0] = surface.actions[0].clone().alias("atlas_add");
+        surface.actions[1] = surface.actions[1].clone().alias("atlas_human_reset");
+        let catalog = Catalog::from_actions(surface.tools()).unwrap();
+        let rt = runtime(surface.tools());
+        assert!(
+            catalog
+                .wire_tools()
+                .iter()
+                .all(|tool| tool["name"] != "atlas_add")
+        );
+        let bad = call_tool(
+            &catalog,
+            &rt,
+            &surface,
+            None,
+            Some(&json!({
+                "name": "atlas_add", "arguments": {"value": 42}
+            })),
+        )
+        .await;
+        assert_eq!(
+            bad["isError"], true,
+            "alias must use the preferred input schema"
+        );
+        let accepted = call_tool(
+            &catalog,
+            &rt,
+            &surface,
+            None,
+            Some(&json!({
+                "name": "atlas_add", "arguments": {"value": "one"}
+            })),
+        )
+        .await;
+        assert_eq!(accepted["isError"], false);
+        assert_eq!(*surface.state.values.lock(), vec!["one"]);
+        let forbidden = call_tool(
+            &catalog,
+            &rt,
+            &surface,
+            None,
+            Some(&json!({
+                "name": "atlas_human_reset", "arguments": {}
+            })),
+        )
+        .await;
+        assert_eq!(forbidden["isError"], true);
+        let journal = rt.activity.snapshot();
+        assert!(
+            journal
+                .events
+                .iter()
+                .any(|event| event.kind == "action.add")
+        );
+        assert!(
+            !journal
+                .events
+                .iter()
+                .any(|event| event.kind == "action.atlas_add")
+        );
+    }
+
     async fn tools_list_response(surface: &TestSurface) -> Value {
         let catalog = Catalog::from_actions(surface.tools()).unwrap();
         let rt = runtime(surface.tools());
@@ -770,10 +892,12 @@ mod tests {
             panic!("request must reply")
         };
         assert_eq!(invalid["result"]["isError"], true);
-        assert!(invalid["result"]["content"][0]["text"]
-            .as_str()
-            .unwrap()
-            .contains("invalid arguments"));
+        assert!(
+            invalid["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("invalid arguments")
+        );
         assert!(surface.state.values.lock().is_empty());
 
         let add = handle(
@@ -824,10 +948,12 @@ mod tests {
             panic!("request must reply")
         };
         assert_eq!(failed_snapshot["result"]["isError"], true);
-        assert!(failed_snapshot["result"]["content"][0]["text"]
-            .as_str()
-            .expect("snapshot error text")
-            .contains("state snapshot failed after `inspect`: renderer unavailable"));
+        assert!(
+            failed_snapshot["result"]["content"][0]["text"]
+                .as_str()
+                .expect("snapshot error text")
+                .contains("state snapshot failed after `inspect`: renderer unavailable")
+        );
 
         for (id, name) in [(3, "human_reset"), (4, "missing"), (5, "reject")] {
             let reply = handle(
@@ -841,6 +967,14 @@ mod tests {
                 panic!("request must reply")
             };
             assert_eq!(reply["result"]["isError"], true, "{name}");
+            let text = reply["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap_or_default();
+            match name {
+                "human_reset" => assert!(text.contains("is for the people on this page"), "{text}"),
+                "missing" => assert!(text.contains("there is no action named"), "{text}"),
+                _ => {}
+            }
         }
     }
 
@@ -1005,10 +1139,12 @@ mod tests {
         assert_eq!(original["result"]["isError"], false);
         assert_eq!(original["result"]["content"][0]["text"], "same:original");
         assert_eq!(duplicate["result"]["isError"], true);
-        assert!(duplicate["result"]["content"][0]["text"]
-            .as_str()
-            .unwrap()
-            .contains("already pending"));
+        assert!(
+            duplicate["result"]["content"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("already pending")
+        );
     }
 
     #[test]
@@ -1019,9 +1155,11 @@ mod tests {
             json!({ "type": "string" }),
             |_args| Effect::Query(Box::new(|_state| Ok("no".to_string()))),
         );
-        assert!(Catalog::from_actions(&[invalid])
-            .unwrap_err()
-            .contains("type=object"));
+        assert!(
+            Catalog::from_actions(&[invalid])
+                .unwrap_err()
+                .contains("type=object")
+        );
     }
 
     #[test]

@@ -192,7 +192,7 @@ fn tokenize(input: &str) -> Result<Vec<Token>, AtlasError> {
             other => {
                 return Err(format!(
                     "formula expression has an unrecognized character {other:?}"
-                ))
+                ));
             }
         }
     }

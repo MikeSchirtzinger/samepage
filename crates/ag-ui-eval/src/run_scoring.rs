@@ -319,8 +319,10 @@ mod tests {
                 skipped: 1,
             },
         };
-        assert!(validate(&contract)
-            .iter()
-            .any(|error| error.contains("reason is required")));
+        assert!(
+            validate(&contract)
+                .iter()
+                .any(|error| error.contains("reason is required"))
+        );
     }
 }

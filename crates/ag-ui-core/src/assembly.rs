@@ -44,9 +44,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::AgentState;
 use crate::event::{Event, EventType, RunFinishedOutcome};
 use crate::types::{FunctionCall, Message, MessageId, Role, RunId, ThreadId, ToolCall, ToolCallId};
-use crate::AgentState;
 
 /// One assembled fact a transcript can act on.
 ///
@@ -225,15 +225,15 @@ pub enum AssemblyError {
     TextChunkWithoutMessageId,
     #[error("TOOL_CALL_ARGS for tool call {tool_call_id} which was never started")]
     ToolCallArgsWithoutStart { tool_call_id: ToolCallId },
-    #[error(
-        "TOOL_CALL_CHUNK carried arguments but no toolCallId and no chunked tool call is open"
-    )]
+    #[error("TOOL_CALL_CHUNK carried arguments but no toolCallId and no chunked tool call is open")]
     ToolCallChunkWithoutId,
     #[error("TOOL_CALL_CHUNK opened tool call {tool_call_id} without a toolCallName")]
     ToolCallChunkWithoutName { tool_call_id: ToolCallId },
     #[error("REASONING_MESSAGE_CONTENT for message {message_id} which was never started")]
     ReasoningContentWithoutStart { message_id: MessageId },
-    #[error("REASONING_MESSAGE_CHUNK carried content but no messageId and no chunked reasoning message is open")]
+    #[error(
+        "REASONING_MESSAGE_CHUNK carried content but no messageId and no chunked reasoning message is open"
+    )]
     ReasoningChunkWithoutMessageId,
     #[error("THINKING_TEXT_MESSAGE_CONTENT with no thinking text open")]
     ThinkingContentWithoutStart,
@@ -1243,11 +1243,11 @@ impl Assembler {
 )]
 mod tests {
     use super::*;
+    use crate::JsonValue;
     use crate::event::{
         BaseEvent, TextMessageChunkEvent, TextMessageContentEvent, TextMessageEndEvent,
         TextMessageStartEvent,
     };
-    use crate::JsonValue;
 
     type Ev = Event<JsonValue>;
 

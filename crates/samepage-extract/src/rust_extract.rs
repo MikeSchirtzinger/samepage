@@ -8,7 +8,8 @@ use std::path::Path;
 use regex::Regex;
 
 use crate::util::{
-    cfg_test_ranges, fn_spans, local_depth_at, sha256_hex, blank_string_literals, strip_line_comment, trimmed_snippet,
+    blank_string_literals, cfg_test_ranges, fn_spans, local_depth_at, sha256_hex,
+    strip_line_comment, trimmed_snippet,
 };
 use crate::{Evidence, Lane, LaneKind, ScanError};
 
@@ -22,10 +23,8 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
     .unwrap();
     // A constructor or a call. `cmd: &mut tokio::process::Command` in a
     // signature is a type, not a child process.
-    let spawn_re = Regex::new(
-        r"Command::new\s*\(|process::Command::new\s*\(|\.spawn\s*\(\s*\)",
-    )
-    .unwrap();
+    let spawn_re =
+        Regex::new(r"Command::new\s*\(|process::Command::new\s*\(|\.spawn\s*\(\s*\)").unwrap();
     let background_re =
         Regex::new(r"tokio::spawn\s*\(|std::thread::spawn\s*\(|\bthread::spawn\s*\(").unwrap();
 
@@ -42,11 +41,8 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
 
     let test_ranges = cfg_test_ranges(contents);
     let spans = fn_spans(contents);
-    let main_span = spans
-        .iter()
-        .find(|s| s.name == "main" || s.is_tokio_main);
-    let entry_keyword_re =
-        Regex::new(r"(?i)serve|run|start|boot|worker|loop|tick").unwrap();
+    let main_span = spans.iter().find(|s| s.name == "main" || s.is_tokio_main);
+    let entry_keyword_re = Regex::new(r"(?i)serve|run|start|boot|worker|loop|tick").unwrap();
 
     let sha = sha256_hex(contents.as_bytes());
     let mut offset = 0usize;
@@ -74,7 +70,10 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
         // An import names a type; it does not bind, spawn, or connect. Without
         // this, `use std::process::Command;` reads as a sidecar.
         let head = stripped.trim_start();
-        if head.starts_with("use ") || head.starts_with("pub use ") || head.starts_with("extern crate ") {
+        if head.starts_with("use ")
+            || head.starts_with("pub use ")
+            || head.starts_with("extern crate ")
+        {
             continue;
         }
 
@@ -94,7 +93,11 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
         };
 
         if listener_re.is_match(stripped) {
-            push(&mut lanes, LaneKind::Listener, "socket bind or serve() call");
+            push(
+                &mut lanes,
+                LaneKind::Listener,
+                "socket bind or serve() call",
+            );
         }
         if spawn_re.is_match(stripped) {
             // `Command::new("node")` on one line and its `.spawn()` a few
@@ -146,7 +149,9 @@ pub fn extract(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<Lane>
                 || span.is_tokio_main
                 || (entry_keyword_re.is_match(&span.name)
                     && main_span
-                        .map(|m| contents[m.body_start..m.body_end].contains(&format!("{}(", span.name)))
+                        .map(|m| {
+                            contents[m.body_start..m.body_end].contains(&format!("{}(", span.name))
+                        })
                         .unwrap_or(false));
             if !is_entry {
                 continue;

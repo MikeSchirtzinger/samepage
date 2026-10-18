@@ -40,6 +40,14 @@ impl ActionSchemas {
                     action.name
                 ));
             }
+            for alias in &action.aliases {
+                if !valid_action_name(alias) || alias == &action.name {
+                    return Err(format!(
+                        "action {:?} has invalid alias {:?}",
+                        action.name, alias
+                    ));
+                }
+            }
 
             let schema = &action.parameters;
             if !schema.is_object() || schema.get("type").and_then(Value::as_str) != Some("object") {
@@ -64,6 +72,15 @@ impl ActionSchemas {
             validators.insert(action.name.clone(), validator);
         }
 
+        let mut names = std::collections::HashSet::new();
+        for action in actions {
+            for name in std::iter::once(&action.name).chain(action.aliases.iter()) {
+                if !names.insert(name) {
+                    return Err(format!("action name or alias {:?} collides globally", name));
+                }
+            }
+        }
+
         Ok(Self { validators })
     }
 
@@ -77,10 +94,11 @@ impl ActionSchemas {
             .take(4)
             .map(|error| {
                 let path = error.instance_path().to_string();
+                let message = shorten_instance(error.to_string(), error.instance());
                 if path.is_empty() {
-                    error.to_string()
+                    message
                 } else {
-                    format!("{path}: {error}")
+                    format!("{path}: {message}")
                 }
             })
             .collect::<Vec<_>>();
@@ -204,6 +222,24 @@ mod tests {
     }
 
     #[test]
+    fn aliases_cannot_collide_with_any_preferred_name_or_alias() {
+        let schema = json!({"type":"object"});
+        for actions in [
+            vec![
+                action("card_place", schema.clone()).alias("atlas_place"),
+                action("atlas_place", schema.clone()),
+            ],
+            vec![
+                action("card_place", schema.clone()).alias("atlas_place"),
+                action("card_link", schema.clone()).alias("atlas_place"),
+            ],
+        ] {
+            let error = ActionSchemas::compile(&actions).unwrap_err();
+            assert!(error.contains("collides globally"), "{error}");
+        }
+    }
+
+    #[test]
     fn rejects_non_object_duplicate_unsupported_and_unresolved_schemas() {
         let non_object =
             ActionSchemas::compile(&[action("bad", json!({ "type": "string" }))]).unwrap_err();
@@ -291,5 +327,38 @@ mod tests {
             .unwrap_err();
         assert!(error.contains("/name"), "{error}");
         assert!(error.contains("shorter"), "{error}");
+    }
+}
+
+/// A refusal names the field and the rule; it does not echo a long value
+/// back. Long text is cut to its first words and its length.
+fn shorten_instance(message: String, instance: &Value) -> String {
+    let Some(text) = instance.as_str() else {
+        return message;
+    };
+    let length = text.chars().count();
+    if length <= 60 {
+        return message;
+    }
+    let quoted = Value::String(text.to_string()).to_string();
+    let head: String = text.chars().take(40).collect();
+    message.replace(
+        &quoted,
+        &format!("{:?} ({length} characters)", format!("{head}...")),
+    )
+}
+
+#[cfg(test)]
+mod shorten_tests {
+    #[test]
+    fn a_long_value_is_cut_to_its_start_and_length() {
+        let long = "x".repeat(400);
+        let message = format!("{:?} is longer than 140 characters", long);
+        let short = super::shorten_instance(message, &serde_json::json!(long));
+        assert!(
+            short.contains("(400 characters) is longer than 140 characters"),
+            "{short}"
+        );
+        assert!(short.len() < 120, "{short}");
     }
 }

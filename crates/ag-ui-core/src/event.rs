@@ -1,9 +1,9 @@
 use convergence_attrs::substrate;
 
+use crate::JsonValue;
 use crate::state::AgentState;
 use crate::types::{Interrupt, MessageId, RunAgentInput, RunId, ThreadId, ToolCallId};
 use crate::types::{Message, Role};
-use crate::JsonValue;
 use serde::{Deserialize, Serialize};
 
 /// Event type discriminant for the AG-UI protocol; consumed by all event routing and serialization.

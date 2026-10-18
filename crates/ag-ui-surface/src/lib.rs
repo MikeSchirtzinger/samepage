@@ -14,18 +14,18 @@
 //! contribute a [`Surface`] plus static client assets.
 
 use parking_lot::Mutex;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use axum::body::Bytes;
-use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
+use axum::extract::ws::{CloseFrame, Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, Request, State};
-use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
@@ -39,8 +39,8 @@ use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
-use ag_ui_core::event::{BaseEvent, Event as AgUiEvent, StateSnapshotEvent};
 use ag_ui_core::JsonValue;
+use ag_ui_core::event::{BaseEvent, Event as AgUiEvent, StateSnapshotEvent};
 
 // Re-exported from ag-ui-core: `CustomEvent` (name/value payload on
 // `BaseEvent`) is exactly the type `Effect::EmitAndAwait` needs — no reason
@@ -112,6 +112,10 @@ pub mod identity;
 
 /// Startup-compiled ActionDef schemas shared by every invocation origin.
 mod action_schema;
+mod capability_manifest;
+pub use capability_manifest::{
+    ArtifactFile, CAPABILITY_SCHEMA_VERSION, CapabilityArtifact, DocumentMount,
+};
 
 /// Runtime-owned Model Context Protocol projection and request handling. The
 /// public application API stays [`ActionDef`]/[`Surface::tools`]; this module
@@ -192,6 +196,8 @@ impl Drop for RuntimeTaskGuard {
 /// every application gets the same core without copying a generated asset into
 /// its own static directory.
 const AGUI_CLIENT_JS: &str = include_str!("../client/ag-ui-client.js");
+const CAPABILITY_LOADER_JS: &str = include_str!("../client/capability-loader.js");
+const EXTENSION_LOADER_JS: &str = include_str!("../client/extension-loader.js");
 const PROVIDER_SETTINGS_JS: &str = include_str!("../client/provider-settings.js");
 const PROVIDER_SETTINGS_CSS: &str = include_str!("../client/provider-settings.css");
 const CONVERSATION_JS: &str = include_str!("../client/conversation.js");
@@ -307,8 +313,32 @@ pub trait SurfaceState: Send + Sync + 'static {
         Ok(Vec::new())
     }
 
+    /// Record ids an accepted or refused action touched, for its journal
+    /// entry. `result` is the action's reply text. Empty means unknown.
+    fn activity_targets(&self, _action: &str, _args: &JsonValue, _result: &str) -> Vec<String> {
+        Vec::new()
+    }
+
+    /// For an action name this surface no longer offers, what to use
+    /// instead. Read when an agent calls a name it cannot see.
+    fn retired_action(&self, _name: &str) -> Option<String> {
+        None
+    }
+
+    /// Standing guidance for an agent that attaches over MCP: what to call
+    /// first, how to wait and how to answer. Sent as `instructions` in the
+    /// MCP `initialize` result so every client receives it without a file.
+    fn agent_guide(&self) -> Option<String> {
+        None
+    }
+
     /// Runtime-installed host activity service. Application state returns
     /// `None`; the wrapper installed by [`App::serve`] supplies the feed.
+    /// Unrecorded diagnostic spans, without retaining any trace state.
+    fn activity_dropped(&self) -> u64 {
+        0
+    }
+
     fn activity_feed(&self) -> Option<&ActivityFeed> {
         None
     }
@@ -376,6 +406,28 @@ pub trait SurfaceState: Send + Sync + 'static {
     fn ws_receive(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, String> {
         let _ = data;
         Err(BINARY_TRANSPORT_NOT_IMPLEMENTED.to_string())
+    }
+
+    /// Receive a frame with the actor established by the host at upgrade.
+    /// Existing surfaces keep their binary protocol through the default.
+    fn ws_receive_as(&self, actor: &Actor, data: &[u8]) -> Result<Vec<Vec<u8>>, String> {
+        let _ = actor;
+        self.ws_receive(data)
+    }
+
+    /// Distinguish sync answers for this connection from committed updates
+    /// for all peers. The default preserves legacy broadcast semantics.
+    fn ws_receive_as_split(&self, actor: &Actor, data: &[u8]) -> Result<WsInbound, String> {
+        self.ws_receive_as(actor, data).map(|broadcasts| WsInbound {
+            replies: Vec::new(),
+            broadcasts,
+        })
+    }
+
+    /// Optional host-driven refusal of a previously held frame. The runtime
+    /// closes only the authenticated participant's affected socket with 4409.
+    fn ws_refusals(&self) -> Option<broadcast::Receiver<WsRefusal>> {
+        None
     }
 
     /// Named SSE custom-event replay entries for a freshly-connected/
@@ -548,6 +600,11 @@ pub trait Surface: Send + Sync + 'static {
     /// view while the protocol core remains unchanged.
     fn client_modules(&self) -> Vec<ClientModule>;
 
+    /// The single shared browser document package, when this app has one.
+    fn document_mount(&self) -> Option<DocumentMount> {
+        None
+    }
+
     /// The durable projection. For teaching-canvas: peripheral learner model
     /// (None or small). For Vellum: the PRIMARY state — the ADR log — and
     /// `state()` is its live projection. Optional by capability, NOT by
@@ -693,6 +750,18 @@ pub struct StateSnapshot {
     pub chrome: Option<serde_json::Value>,
 }
 
+/// Frames emitted by one authenticated binary input.
+pub struct WsInbound {
+    pub replies: Vec<Vec<u8>>,
+    pub broadcasts: Vec<Vec<u8>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct WsRefusal {
+    pub participant_id: String,
+    pub reason: String,
+}
+
 /// The browser-side half of one enabled extension.
 ///
 /// This is deliberately runtime metadata, not a remote plugin descriptor. The
@@ -721,6 +790,12 @@ pub struct ClientModule {
     /// A compiled wasm renderer bundle to mount, if the Surface's view is
     /// *drawn* (not DOM-manipulated). `None` for a DOM-native Surface.
     pub wasm: Option<WasmMount>,
+    /// Independently verified capability or document package. Legacy modules
+    /// keep using `wasm` without claiming integrity verification.
+    pub artifact: Option<CapabilityArtifact>,
+    /// Host-provided adapter with a C1 NativeOnly descriptor and no browser package.
+    pub native_only: Option<JsonValue>,
+    pub on_demand: bool,
     /// The DOM id the shell reserves for this Surface to mount/draw into —
     /// teaching-canvas: the `<canvas>` element id; a DOM Surface: the container
     /// wrapping its own view.
@@ -754,6 +829,9 @@ impl ClientModule {
             version: version.into(),
             module: Some(module.into()),
             wasm: None,
+            artifact: None,
+            native_only: None,
+            on_demand: false,
             mount_id: mount_id.into(),
             events: Vec::new(),
             actions: None,
@@ -774,6 +852,9 @@ impl ClientModule {
             version: version.into(),
             module: None,
             wasm: None,
+            artifact: None,
+            native_only: None,
+            on_demand: false,
             mount_id: mount_id.into(),
             events: Vec::new(),
             actions: None,
@@ -784,6 +865,22 @@ impl ClientModule {
 
     pub fn wasm(mut self, wasm: WasmMount) -> Self {
         self.wasm = Some(wasm);
+        self
+    }
+
+    pub fn verified_artifact(mut self, artifact: CapabilityArtifact) -> Self {
+        self.artifact = Some(artifact);
+        self.on_demand = true;
+        self
+    }
+
+    pub fn native_adapter_descriptor(mut self, descriptor: JsonValue) -> Self {
+        self.native_only = Some(descriptor);
+        self
+    }
+
+    pub fn on_demand(mut self) -> Self {
+        self.on_demand = true;
         self
     }
 
@@ -872,6 +969,28 @@ impl ClientModule {
                 }
             }
         }
+        if let Some(artifact) = &self.artifact {
+            artifact.validate(&self.id, &self.version, self.module.as_deref())?;
+            if self.wasm.is_some() {
+                return Err(format!(
+                    "extension {} declares both legacy wasm and verified artifact",
+                    self.id
+                ));
+            }
+        } else if self.on_demand {
+            return Err(format!(
+                "extension {} requests on-demand loading without verified artifact",
+                self.id
+            ));
+        }
+        if self.native_only.is_some()
+            && (self.artifact.is_some() || self.module.is_some() || self.wasm.is_some())
+        {
+            return Err(format!(
+                "extension {} native adapter must be host-provided without browser artifact",
+                self.id
+            ));
+        }
         Ok(())
     }
 }
@@ -896,6 +1015,10 @@ pub struct WasmMount {
 pub struct ExtensionManifest {
     pub schema_version: u32,
     pub protocol: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capability_schema_version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub document: Option<DocumentMount>,
     pub extensions: Vec<ExtensionDescriptor>,
 }
 
@@ -914,6 +1037,10 @@ pub struct ExtensionDescriptor {
     pub required: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub wasm: Option<WasmMount>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact: Option<CapabilityArtifact>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub native_only: Option<JsonValue>,
 }
 
 impl ExtensionManifest {
@@ -928,6 +1055,25 @@ impl ExtensionManifest {
         let mut ids = std::collections::HashSet::new();
         let mut mounts = std::collections::HashSet::new();
         let mut extensions = Vec::with_capacity(modules.len());
+        capability_manifest::validate_artifact_set(
+            modules.iter().map(|module| {
+                (
+                    module.id.as_str(),
+                    module.version.as_str(),
+                    module.artifact.as_ref(),
+                    module.native_only.as_ref(),
+                )
+            }),
+            surface.tools(),
+        )?;
+        let has_artifacts = modules.iter().any(|module| module.artifact.is_some());
+        let document = surface.document_mount();
+        if let Some(mount) = &document {
+            mount.validate()?;
+        }
+        if has_artifacts && document.is_none() {
+            return Err("capability artifacts require one shared document mount".into());
+        }
 
         let composed = modules.len() > 1;
         for module in modules {
@@ -958,7 +1104,27 @@ impl ExtensionManifest {
                     actions
                 }
             };
-            let loading = if module.module.is_some() {
+            if let Some(artifact) = &module.artifact {
+                let mut declared: Vec<&str> = artifact.descriptor["actions"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|action| action["audience"] == "human" || action["audience"] == "both")
+                    .filter_map(|action| action["name"].as_str())
+                    .collect();
+                let mut exposed: Vec<&str> = actions.iter().map(String::as_str).collect();
+                declared.sort_unstable();
+                exposed.sort_unstable();
+                if declared != exposed {
+                    return Err(format!(
+                        "extension {} browser action inventory differs from its capability descriptor",
+                        module.id
+                    ));
+                }
+            }
+            let loading = if module.on_demand {
+                "on-demand"
+            } else if module.module.is_some() {
                 "lazy"
             } else {
                 "host"
@@ -974,12 +1140,17 @@ impl ExtensionManifest {
                 capabilities: module.capabilities,
                 required: module.required,
                 wasm: module.wasm,
+                artifact: module.artifact,
+                native_only: module.native_only,
             });
         }
 
         Ok(Self {
             schema_version: 1,
             protocol: "ag-ui".to_string(),
+            capability_schema_version: (has_artifacts || document.is_some())
+                .then_some(CAPABILITY_SCHEMA_VERSION),
+            document,
             extensions,
         })
     }
@@ -991,6 +1162,18 @@ fn validate_extension_assets(
     pkg_dir: Option<&Path>,
     mounts: &[(String, PathBuf)],
 ) -> Result<(), String> {
+    if let Some(document) = &manifest.document {
+        for (kind, url) in [
+            ("document JS", document.js.as_str()),
+            ("document WASM", document.wasm.as_str()),
+        ] {
+            let path = extension_asset_path(url, static_dir, pkg_dir, mounts)
+                .ok_or_else(|| format!("{kind} {url:?} has no matching static mount"))?;
+            if !path.is_file() {
+                return Err(format!("{kind} {url:?} is missing at {}", path.display()));
+            }
+        }
+    }
     for extension in &manifest.extensions {
         let mut assets = Vec::new();
         if let Some(module) = &extension.module {
@@ -999,6 +1182,11 @@ fn validate_extension_assets(
         if let Some(wasm) = &extension.wasm {
             assets.push(("wasm JS", wasm.js.as_str()));
             assets.push(("wasm binary", wasm.wasm.as_str()));
+        }
+        if let Some(artifact) = &extension.artifact {
+            for file in [&artifact.entry, &artifact.glue, &artifact.wasm] {
+                assets.push(("verified artifact", file.url.as_str()));
+            }
         }
         for (kind, url) in assets {
             let Some(path) = extension_asset_path(url, static_dir, pkg_dir, mounts) else {
@@ -1317,6 +1505,8 @@ impl Actor {
 #[derive(Clone)]
 pub struct ActionDef {
     pub name: String,
+    /// Accepted compatibility names. Discovery and journals use `name`.
+    pub aliases: Vec<String>,
     pub description: String,
     /// JSON-Schema object for the tool's arguments — an MCP `inputSchema` /
     /// OpenAI function `parameters` object. It must declare root `type=object`.
@@ -1374,6 +1564,7 @@ impl ActionDef {
     ) -> Self {
         Self {
             name: name.into(),
+            aliases: Vec::new(),
             description: description.into(),
             parameters,
             audience: ActionAudience::Both,
@@ -1385,6 +1576,11 @@ impl ActionDef {
 
     pub fn audience(mut self, audience: ActionAudience) -> Self {
         self.audience = audience;
+        self
+    }
+
+    pub fn alias(mut self, name: impl Into<String>) -> Self {
+        self.aliases.push(name.into());
         self
     }
 
@@ -1783,6 +1979,8 @@ pub struct App {
     default_provider: Option<String>,
     auth: Option<Arc<auth::AuthStore>>,
     activity_path: Option<PathBuf>,
+    people_path: Option<PathBuf>,
+    activity_enabled: bool,
     prompt: Option<turn_loop::Prompts>,
     final_response_only: bool,
     voice: bool,
@@ -1821,6 +2019,8 @@ impl App {
             default_provider: None,
             auth: None,
             activity_path: None,
+            people_path: None,
+            activity_enabled: true,
             prompt: None,
             final_response_only: false,
             voice: false,
@@ -1857,6 +2057,20 @@ impl App {
     /// application gets restart-safe telemetry rather than process memory.
     pub fn activity_store(mut self, path: impl Into<PathBuf>) -> Self {
         self.activity_path = Some(path.into());
+        self
+    }
+
+    /// Keep joined people (resume token, participant id and chosen name) in
+    /// `path`, so a person keeps their name across a host restart. Without
+    /// this call the registry lives in process memory.
+    pub fn people_store(mut self, path: impl Into<PathBuf>) -> Self {
+        self.people_path = Some(path.into());
+        self
+    }
+
+    /// Disable operational telemetry without disabling document history or authorship.
+    pub fn activity_enabled(mut self, enabled: bool) -> Self {
+        self.activity_enabled = enabled;
         self
     }
 
@@ -2060,8 +2274,12 @@ impl App {
         let activity_path = self
             .activity_path
             .unwrap_or_else(|| auth.default_activity_path());
-        let activity = ActivityFeed::open(&activity_path)
-            .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?;
+        let activity = if self.activity_enabled {
+            ActivityFeed::open(&activity_path)
+                .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?
+        } else {
+            ActivityFeed::disabled()
+        };
         let surface = activity::install(surface, activity.clone());
         let action_schemas = action_schema::ActionSchemas::compile(surface.tools())
             .map_err(|error| AppError::InvalidConfiguration(error.to_string()))?;
@@ -2126,8 +2344,7 @@ impl App {
         // state rather than silently guessing at the wire format in
         // JavaScript. Serving nothing under the prefix is what makes that
         // path honest instead of a second, quieter kind of pretending.
-        let protocol_pkg_dir = match protocol_pkg::resolve(self.protocol_pkg_dir.as_deref()).await
-        {
+        let protocol_pkg_dir = match protocol_pkg::resolve(self.protocol_pkg_dir.as_deref()).await {
             Ok(dir) => dir,
             Err(error) => {
                 tracing::error!(
@@ -2234,6 +2451,11 @@ impl App {
             activity,
         );
         rt.set_final_response_only(self.final_response_only);
+        if let Some(path) = &self.people_path {
+            rt.people
+                .persist_to(path)
+                .map_err(AppError::InvalidConfiguration)?;
+        }
         rt.activity.record_lifecycle(
             "runtime.started",
             ActivityOutcome::Started,
@@ -2258,24 +2480,23 @@ impl App {
         // Resolve the initial active endpoint for the starting provider
         // (OpenAI-backed only; ACP providers manage their own credentials).
         let initial_provider = providers::find(&rt.providers.read(), &provider_id).cloned();
-        if let Some(p) = initial_provider {
-            if matches!(p.backend, providers::Backend::OpenAi) {
-                let byok = rt.byok.lock().clone();
-                let ov = rt.model_overrides.lock().get(&p.id).cloned();
-                let cfg =
-                    turn_loop::openai::resolve_openai_config(&rt.auth, &byok, &p, ov.as_deref());
-                tracing::info!(
-                    "initial endpoint: base_url={}, model={}, auth={}",
-                    cfg.base_url,
-                    cfg.model,
-                    if cfg.auth == turn_loop::openai::AuthMode::Oauth {
-                        "oauth"
-                    } else {
-                        "api_key"
-                    }
-                );
-                *rt.openai.lock() = cfg;
-            }
+        if let Some(p) = initial_provider
+            && matches!(p.backend, providers::Backend::OpenAi)
+        {
+            let byok = rt.byok.lock().clone();
+            let ov = rt.model_overrides.lock().get(&p.id).cloned();
+            let cfg = turn_loop::openai::resolve_openai_config(&rt.auth, &byok, &p, ov.as_deref());
+            tracing::info!(
+                "initial endpoint: base_url={}, model={}, auth={}",
+                cfg.base_url,
+                cfg.model,
+                if cfg.auth == turn_loop::openai::AuthMode::Oauth {
+                    "oauth"
+                } else {
+                    "api_key"
+                }
+            );
+            *rt.openai.lock() = cfg;
         }
 
         let prompts = Arc::new(prompts);
@@ -2307,6 +2528,11 @@ impl App {
         let mut router: Router<RouterState> = Router::new()
             .route("/_agui/client.js", get(agui_client_handler))
             .route(
+                "/_agui/capability-loader.js",
+                get(capability_loader_handler),
+            )
+            .route("/_agui/extension-loader.js", get(extension_loader_handler))
+            .route(
                 "/_agui/provider-settings.js",
                 get(provider_settings_handler),
             )
@@ -2324,7 +2550,7 @@ impl App {
                 "/_agui/semantic-targets.css",
                 get(semantic_targets_style_handler),
             )
-            .route("/extensions", get(extensions_handler))
+            .route("/extensions", get(extensions_with_activity_handler))
             .route("/activity", get(activity_handler))
             .route("/activity/events", get(activity_events_handler))
             .route(
@@ -2403,6 +2629,12 @@ impl App {
             .layer(SetResponseHeaderLayer::overriding(
                 header::CACHE_CONTROL,
                 HeaderValue::from_static("no-store"),
+            ))
+            // A person's resume cookie is re-issued on every request it still
+            // resolves on, so its lifetime counts from the last request.
+            .layer(middleware::from_fn_with_state(
+                router_state.clone(),
+                refresh_person_cookie,
             ))
             .with_state(router_state)
             // Reject DNS-rebinding and cross-origin browser requests before
@@ -2919,7 +3151,7 @@ fn action_route_caller(headers: &HeaderMap, st: &RouterState) -> Caller {
         headers,
         &human_route_cookie(st.rt.port),
         st.human_route_token.as_ref(),
-    );
+    ) || person_from(st, headers).is_some();
 
     match (authorization_present, agent, human) {
         (true, true, false) => Caller::Agent,
@@ -3047,7 +3279,7 @@ async fn action_route_request(
     st.surface.note_caller(&actor);
     let (result, _, ok) = with_actor(
         actor,
-        turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, route.action, &body),
+        turn_loop::dispatch_tool_shared(&st.rt, st.surface.clone(), caller, route.action, &body),
     )
     .await;
     if !ok {
@@ -3162,10 +3394,10 @@ fn surface_route_response(path: &str, resp: RouteResponse) -> Response {
 }
 
 fn surface_status(path: &str, status: u16) -> Option<StatusCode> {
-    if (100..=599).contains(&status) {
-        if let Ok(status) = StatusCode::from_u16(status) {
-            return Some(status);
-        }
+    if (100..=599).contains(&status)
+        && let Ok(status) = StatusCode::from_u16(status)
+    {
+        return Some(status);
     }
     tracing::error!(
         path,
@@ -3256,6 +3488,26 @@ async fn agui_client_handler() -> impl IntoResponse {
     )
 }
 
+async fn capability_loader_handler() -> impl IntoResponse {
+    (
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/javascript; charset=utf-8"),
+        )],
+        CAPABILITY_LOADER_JS,
+    )
+}
+
+async fn extension_loader_handler() -> impl IntoResponse {
+    (
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/javascript; charset=utf-8"),
+        )],
+        EXTENSION_LOADER_JS,
+    )
+}
+
 async fn provider_settings_handler() -> impl IntoResponse {
     (
         [(
@@ -3323,6 +3575,13 @@ async fn semantic_targets_style_handler() -> impl IntoResponse {
 /// [`ClientModule`] plus its executable action vocabulary.
 async fn extensions_handler(State(st): State<RouterState>) -> Json<ExtensionManifest> {
     Json(st.extensions.as_ref().clone())
+}
+
+async fn extensions_with_activity_handler(State(st): State<RouterState>) -> Json<JsonValue> {
+    let Json(manifest) = extensions_handler(State(st.clone())).await;
+    let mut manifest = serde_json::to_value(manifest).expect("extension manifest serializes");
+    manifest["activity"] = serde_json::json!({"enabled":st.rt.activity.is_enabled(), "dropped":st.rt.activity.dropped().saturating_add(st.surface.state().activity_dropped())});
+    Json(manifest)
 }
 
 /// This runtime does not initiate server-to-client MCP messages, so it uses
@@ -3442,10 +3701,10 @@ async fn mcp_post_handler(
     let call = acting.as_ref().map(|agent| agent.liveness.call());
     let handled = with_actor(
         actor,
-        mcp::handle(
+        mcp::handle_shared(
             st.mcp_catalog.as_ref(),
             st.rt.as_ref(),
-            st.surface.as_ref(),
+            st.surface.clone(),
             message,
         ),
     )
@@ -3492,9 +3751,9 @@ async fn mcp_post_handler(
 ///
 /// The participant id is minted **here**, never taken from the client: a
 /// caller that could choose its own id could take over one already present.
-/// The label is only a display name, and it is disambiguated against everyone
-/// already in the room so that two clients both calling themselves `claude`
-/// cannot collapse into one byline.
+/// The label is only a display name. A client attaching again under the same
+/// name keeps the identity it had, so a reconnect is not a new byline; a new
+/// name is disambiguated against everyone already in the room.
 fn attach_mcp_agent(st: &RouterState, identity: mcp::ClientIdentity) -> AttachedAgent {
     let session = uuid::Uuid::new_v4().simple().to_string();
     // Roster and presence ids are public. They must reveal no session
@@ -3521,7 +3780,24 @@ fn attach_mcp_agent(st: &RouterState, identity: mcp::ClientIdentity) -> Attached
         })
         .unwrap_or_default();
     let mut attached_agents = st.rt.mcp_agents.lock();
-    let label = unique_participant_label(&proposed, &presence_labels, &attached_agents);
+    // A client that attaches again under the same name is the same agent
+    // coming back, not a new one: it keeps its participant id and label, so
+    // its bylines, presence and cursors stay one identity across reconnects
+    // instead of collecting suffixes. Two agents that want separate bylines
+    // attach under different names.
+    let returning = attached_agents
+        .values()
+        .find(|agent| {
+            agent.client_name == identity.name
+                && (agent.label == proposed || agent.label.starts_with(&format!("{proposed}-")))
+        })
+        .map(|agent| (agent.participant_id.clone(), agent.label.clone()));
+    let (participant_id, label) = returning.unwrap_or_else(|| {
+        (
+            participant_id,
+            unique_participant_label(&proposed, &presence_labels, &attached_agents),
+        )
+    });
     let agent = AttachedAgent {
         session: session.clone(),
         participant_id: participant_id.clone(),
@@ -3578,6 +3854,60 @@ fn person_cookie(port: u16) -> String {
     format!("agui_person_{port}")
 }
 
+/// How long a person's resume cookie outlives their last request.
+///
+/// Every response to a request whose cookie still resolves re-issues it with
+/// this lifetime ([`refresh_person_cookie`]), so the day counts from the last
+/// time this browser spoke to the host rather than from the join. A page left
+/// open keeps one identity for as long as it keeps talking; a tab that went a
+/// whole day without a request has lost it and rejoins on its next action.
+const PERSON_COOKIE_MAX_AGE_SECS: u32 = 86_400;
+
+fn person_cookie_header(port: u16, token: &str) -> Option<HeaderValue> {
+    HeaderValue::from_str(&format!(
+        "{}={token}; Path=/; Max-Age={PERSON_COOKIE_MAX_AGE_SECS}; SameSite=Lax; HttpOnly",
+        person_cookie(port)
+    ))
+    .ok()
+}
+
+/// The person cookie to re-issue on this response, when the request carried
+/// one that still resolves to an admitted person.
+///
+/// A cookie that does not resolve (forged, stale, or minted by a registry that
+/// is gone) is left alone: re-issuing it would keep a dead token alive, and
+/// minting a new one here would turn every request into a join.
+fn refreshed_person_cookie(st: &RouterState, headers: &HeaderMap) -> Option<HeaderValue> {
+    let token = cookie_value(headers, &person_cookie(st.rt.port))?;
+    st.rt.people.resolve(&token)?;
+    person_cookie_header(st.rt.port, &token)
+}
+
+/// Whether the handler already set this person's cookie, as the join does.
+fn sets_person_cookie(headers: &HeaderMap, port: u16) -> bool {
+    let prefix = format!("{}=", person_cookie(port));
+    headers
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .any(|value| value.to_str().is_ok_and(|value| value.starts_with(&prefix)))
+}
+
+/// Sliding expiry for the person cookie: see [`PERSON_COOKIE_MAX_AGE_SECS`].
+async fn refresh_person_cookie(
+    State(st): State<RouterState>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let refreshed = refreshed_person_cookie(&st, request.headers());
+    let mut response = next.run(request).await;
+    if let Some(value) = refreshed
+        && !sets_person_cookie(response.headers(), st.rt.port)
+    {
+        response.headers_mut().append(header::SET_COOKIE, value);
+    }
+    response
+}
+
 /// Every display name currently spoken for, by a person or by an agent.
 ///
 /// Both sources matter for the same reason `unique_participant_label` reads
@@ -3620,8 +3950,7 @@ fn human_replica_credential_is_valid(st: &RouterState, headers: &HeaderMap) -> b
         headers,
         &human_route_cookie(st.rt.port),
         st.human_route_token.as_ref(),
-    )
-        || person_from(st, headers).is_some()
+    ) || person_from(st, headers).is_some()
 }
 
 fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
@@ -3679,6 +4008,26 @@ async fn join_handler(
         .filter(|name| !name.is_empty())
         .map(str::to_string);
 
+    // A chosen name someone else already has is refused, not quietly
+    // changed to "Ana-2": the person would otherwise not know their name.
+    if let Some(name) = &proposed {
+        let mine = person_from(&st, &headers).map(|person| person.name);
+        if mine.as_deref() != Some(name.as_str())
+            && names_in_use(&st).iter().any(|taken| taken == name)
+        {
+            return (
+                StatusCode::CONFLICT,
+                Json(json!({
+                    "ok": false,
+                    "joined": mine.is_some(),
+                    "error": "name_taken",
+                    "name": name,
+                    "message": format!("{name:?} is already used on this page by someone else; choose another name."),
+                })),
+            )
+                .into_response();
+        }
+    }
     if let Some(person) = person_from(&st, &headers) {
         let Some(proposed) = proposed else {
             present_person(&st, &person);
@@ -3716,10 +4065,7 @@ async fn join_handler(
         "person joined"
     );
     let mut response = Json(person_json(&person)).into_response();
-    if let Ok(value) = HeaderValue::from_str(&format!(
-        "{}={token}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly",
-        person_cookie(st.rt.port)
-    )) {
+    if let Some(value) = person_cookie_header(st.rt.port, &token) {
         response
             .headers_mut()
             .insert(axum::http::header::SET_COOKIE, value);
@@ -3809,18 +4155,32 @@ pub(crate) fn detach_quiet_agents(rt: &runtime_state::RuntimeState) -> Vec<Strin
 /// `agentseat attached, ready` for nine minutes while nobody was reading.
 fn attached_agents_json(rt: &runtime_state::RuntimeState) -> JsonValue {
     detach_quiet_agents(rt);
-    let mut agents: Vec<JsonValue> = rt
-        .mcp_agents
-        .lock()
-        .values()
-        .map(|agent| {
-            let quiet = agent.quiet_for();
+    // One entry per participant: an agent's reconnects share its identity,
+    // and it is listening if any of its sessions is.
+    let mut by_participant: BTreeMap<String, (String, bool, Option<std::time::Duration>, usize)> =
+        BTreeMap::new();
+    for agent in rt.mcp_agents.lock().values() {
+        let quiet = agent.quiet_for();
+        let entry = by_participant
+            .entry(agent.participant_id.clone())
+            .or_insert_with(|| (agent.label.clone(), false, quiet, 0));
+        entry.1 |= agent.listening();
+        entry.2 = match (entry.2, quiet) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            _ => None,
+        };
+        entry.3 += 1;
+    }
+    let mut agents: Vec<JsonValue> = by_participant
+        .into_iter()
+        .map(|(id, (label, listening, quiet, sessions))| {
             json!({
-                "id": agent.participant_id,
-                "label": agent.label,
-                "listening": agent.listening(),
+                "id": id,
+                "label": label,
+                "listening": listening,
                 "quiet": quiet.is_some_and(|quiet| quiet >= AGENT_QUIET_AFTER),
                 "quietForMs": quiet.map(|quiet| quiet.as_millis() as u64),
+                "sessions": sessions,
             })
         })
         .collect();
@@ -4115,7 +4475,13 @@ async fn ask_handler(
         human: Some(question.clone()),
         cancel: rt.interrupt_tx.subscribe(),
     };
-    narration::begin_human_turn(rt, by, &question, Some(("surface.ask", ask_event)), Some(&question));
+    narration::begin_human_turn(
+        rt,
+        by,
+        &question,
+        Some(("surface.ask", ask_event)),
+        Some(&question),
+    );
     if rt.ask_tx.send(turn).is_err() {
         narration::fail_turn(rt, "tutor unavailable");
         return Json(json!({ "ok": false, "error": "tutor unavailable" }));
@@ -4175,7 +4541,7 @@ async fn tool_handler(
     st.surface.note_caller(&actor);
     let (result, _was_query, ok) = with_actor(
         actor,
-        turn_loop::dispatch_tool(&st.rt, st.surface.as_ref(), caller, name, &args),
+        turn_loop::dispatch_tool_shared(&st.rt, st.surface.clone(), caller, name, &args),
     )
     .await;
     // A tool that rejected its own call (`Effect::Reject` — e.g. Vellum's
@@ -4530,7 +4896,7 @@ async fn semantic_targets_focus_handler(
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "ok": false, "error": error })),
             )
-                .into_response()
+                .into_response();
         }
     };
     let message = body
@@ -4642,7 +5008,11 @@ async fn semantic_handler(State(st): State<RouterState>, Json(body): Json<JsonVa
 
 /// Read-back of the live state as plain text — `SurfaceState::describe()`.
 async fn state_describe_handler(State(st): State<RouterState>) -> Response {
-    match st.surface.state().describe() {
+    let described =
+        turn_loop::run_blocking_surface(st.surface, |surface| surface.state().describe())
+            .await
+            .and_then(|result| result);
+    match described {
         Ok(description) => description.into_response(),
         Err(error) => (StatusCode::SERVICE_UNAVAILABLE, error).into_response(),
     }
@@ -5145,14 +5515,12 @@ async fn connections_post(State(st): State<RouterState>, Json(body): Json<JsonVa
         .insert(id.clone(), connection.model.clone().unwrap_or_default());
 
     let live = *rt.provider.lock() == id;
-    if live {
-        if let Err(error) = request_provider_switch(rt, &id).await {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(json!({ "ok": false, "persisted": true, "error": error })),
-            )
-                .into_response();
-        }
+    if live && let Err(error) = request_provider_switch(rt, &id).await {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "ok": false, "persisted": true, "error": error })),
+        )
+            .into_response();
     }
     let mut snapshot = auth_snapshot(rt);
     snapshot["ok"] = json!(true);
@@ -5243,7 +5611,7 @@ async fn auth_post(State(st): State<RouterState>, Json(body): Json<JsonValue>) -
             byok_candidate.model.clone(),
         );
     } else if matches!(provider.backend, providers::Backend::OpenAi) {
-        // A `models.json` preset (OpenRouter, Groq, …): let the ⚙ form swap its
+        // A `models.json` preset (OpenRouter, Groq, …): let the settings form swap its
         // model without editing the file. Empty string clears the override
         // (reverts to the preset's shipped model). Persist it with the provider
         // credential so the selected model also survives a restart.
@@ -5378,8 +5746,11 @@ fn pending_decision_events(rt: &runtime_state::RuntimeState) -> Vec<String> {
     events.into_iter().map(|(_, event)| event).collect()
 }
 
-async fn activity_handler(State(st): State<RouterState>) -> Json<ActivitySnapshot> {
-    Json(st.rt.activity.snapshot())
+async fn activity_handler(State(st): State<RouterState>) -> Response {
+    if !st.rt.activity.is_enabled() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    Json(st.rt.activity.snapshot()).into_response()
 }
 
 /// Durable replay followed by live host-stamped activity. The journal is
@@ -5389,6 +5760,9 @@ async fn activity_events_handler(
     State(st): State<RouterState>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Response {
+    if !st.rt.activity.is_enabled() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
     let after = query
         .get("after")
         .and_then(|value| value.parse::<u64>().ok());
@@ -5447,13 +5821,20 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
     // queue, or both—never lost. Reconnect projections are full idempotent
     // state views, so duplicate delivery at this boundary is intentional and
     // clients replace state rather than append it.
-    let (rx, surface_snapshot) = match subscribe_surface_replay(&rt, surface.as_ref()) {
-        Ok(capture) => capture,
-        Err(error) => {
-            tracing::warn!(%error, "failed to build authoritative SSE state snapshot");
-            return (StatusCode::SERVICE_UNAVAILABLE, error).into_response();
-        }
-    };
+    let replay_rt = rt.clone();
+    let (rx, surface_snapshot) =
+        match turn_loop::run_blocking_surface(surface.clone(), move |surface| {
+            subscribe_surface_replay(replay_rt.as_ref(), surface)
+        })
+        .await
+        .and_then(|result| result)
+        {
+            Ok(capture) => capture,
+            Err(error) => {
+                tracing::warn!(%error, "failed to build authoritative SSE state snapshot");
+                return (StatusCode::SERVICE_UNAVAILABLE, error).into_response();
+            }
+        };
     rt.activity.record_connection(
         "connection.sse",
         ActivityOutcome::Connected,
@@ -5483,15 +5864,27 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
 
     // Restore the "your turn" state if the tutor is mid-await. The recall
     // question itself is part of the completed transcript replay below.
-    if awaiting {
-        if let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
+    if awaiting
+        && let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
             base: BaseEvent::default(),
             name: "surface.tutor".to_string(),
             value: json!({ "state": "awaiting" }),
-        })) {
-            initial.push(json);
-        }
+        }))
+    {
+        initial.push(json);
     }
+
+    let reconnect_events = match turn_loop::run_blocking_surface(surface.clone(), |surface| {
+        surface.state().reconnect_events()
+    })
+    .await
+    {
+        Ok(events) => events,
+        Err(error) => {
+            tracing::warn!(%error, "failed to build surface reconnect events");
+            return (StatusCode::SERVICE_UNAVAILABLE, error).into_response();
+        }
+    };
 
     // UI-chrome replay: the runtime doesn't know any Surface's chrome shape or
     // event names — it iterates `SurfaceState::reconnect_events()`, which each
@@ -5500,7 +5893,7 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
     // to replay (Vellum, Colab) returns an empty vec — harmless no-op. Leak 3
     // (round-3 trait review) closed here in the M5 follow-up (2026-07-10):
     // no `canvas.*` literal survives in generic runtime code.
-    for (name, value) in surface.state().reconnect_events() {
+    for (name, value) in reconnect_events {
         if let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
             base: BaseEvent::default(),
             name,
@@ -5517,14 +5910,14 @@ async fn sse_handler(State(st): State<RouterState>) -> Response {
 
     // Replay completed conversation history so the transcript survives a
     // reload.
-    if !history.is_empty() {
-        if let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
+    if !history.is_empty()
+        && let Ok(json) = serde_json::to_string(&AgUiEvent::<JsonValue>::Custom(CustomEvent {
             base: BaseEvent::default(),
             name: "surface.history".to_string(),
             value: json!({ "entries": history }),
-        })) {
-            initial.push(json);
-        }
+        }))
+    {
+        initial.push(json);
     }
 
     // A reconnect can land while a model turn is still streaming. Completed
@@ -5598,11 +5991,21 @@ async fn ws_handler(
     if !websocket_origin_allowed(&headers) {
         return (StatusCode::FORBIDDEN, "untrusted WebSocket Origin").into_response();
     }
-    // This authenticates the human replica at the door. CRDT operations remain
-    // replica-signed inside the document; this does not authenticate each op.
+    // Bind authority to this connection, never to a field in a binary frame.
     if st.human_route_cookie_enabled && !human_replica_credential_is_valid(&st, &headers) {
         return (StatusCode::FORBIDDEN, "human replica credential required").into_response();
     }
+    let person = person_from(&st, &headers);
+    if st.extensions.document.is_some() && person.is_none() {
+        return (
+            StatusCode::FORBIDDEN,
+            "joined person credential required for document frames",
+        )
+            .into_response();
+    }
+    let actor = person
+        .map(|person| Actor::person(Caller::Human, &person))
+        .unwrap_or_else(|| Actor::anonymous(Caller::Human));
 
     // Subscribe before capturing the authoritative replay so a mutation that
     // races this pre-upgrade check is present in either the replay or the
@@ -5610,7 +6013,14 @@ async fn ws_handler(
     // before returning HTTP 101: the default is an explicit error, never an
     // accepted connection whose input is discarded.
     let frames = st.rt.ws_tx.subscribe();
-    let hello = match websocket_replay_or_status(st.surface.state()) {
+    let refusals = st.surface.state().ws_refusals();
+    let hello = match turn_loop::run_blocking_surface(st.surface.clone(), |surface| {
+        websocket_replay_or_status(surface.state())
+    })
+    .await
+    .map_err(|error| (StatusCode::SERVICE_UNAVAILABLE, error))
+    .and_then(|result| result)
+    {
         Ok(hello) => hello,
         Err((status, error)) => {
             tracing::warn!(%error, "refusing websocket upgrade");
@@ -5618,7 +6028,9 @@ async fn ws_handler(
         }
     };
     upgrade
-        .on_upgrade(move |socket| ws_connection(st.rt, st.surface, socket, frames, hello))
+        .on_upgrade(move |socket| {
+            ws_connection(st.rt, st.surface, socket, frames, refusals, hello, actor)
+        })
         .into_response()
 }
 
@@ -5626,6 +6038,19 @@ fn websocket_origin_allowed(headers: &HeaderMap) -> bool {
     // Keep browser transport on the same loopback-origin policy as MCP.
     // Native clients omit Origin and remain supported.
     mcp::origin_allowed(headers)
+}
+
+fn ws_refusal_close_reason(error: &str) -> String {
+    const PREFIX: &str = "samepage.refused:";
+    let detail = error.find(PREFIX).map(|at| &error[at..]).unwrap_or(PREFIX);
+    let mut reason = String::new();
+    for ch in detail.chars() {
+        if reason.len() + ch.len_utf8() > 123 {
+            break;
+        }
+        reason.push(ch);
+    }
+    reason
 }
 
 /// The one binary transport route, fully generic: subscribe to the runtime's
@@ -5638,7 +6063,9 @@ async fn ws_connection(
     surface: Arc<dyn Surface>,
     socket: WebSocket,
     mut frames: broadcast::Receiver<Vec<u8>>,
+    mut refusals: Option<broadcast::Receiver<WsRefusal>>,
     hello: Vec<Vec<u8>>,
+    actor: Actor,
 ) {
     rt.activity.record_connection(
         "connection.websocket",
@@ -5664,6 +6091,27 @@ async fn ws_connection(
             // Prefer the state stream when both branches are ready so a busy
             // inbound peer cannot postpone a detected lag indefinitely.
             biased;
+            refusal = async {
+                match &mut refusals {
+                    Some(receiver) => Some(receiver.recv().await),
+                    None => std::future::pending().await,
+                }
+            } => {
+                match refusal {
+                    Some(Ok(notice)) if actor.participant_id.as_deref() == Some(&notice.participant_id) => {
+                        let _ = sink.send(WsMessage::Close(Some(CloseFrame {
+                            code: 4409,
+                            reason: ws_refusal_close_reason(&notice.reason).into(),
+                        }))).await;
+                        return;
+                    }
+                    Some(Err(broadcast::error::RecvError::Lagged(_))) | Some(Err(broadcast::error::RecvError::Closed)) => {
+                        let _ = sink.send(WsMessage::Close(None)).await;
+                        return;
+                    }
+                    _ => {}
+                }
+            },
             outbound = frames.recv() => match outbound {
                 Ok(frame) => {
                     if sink.send(WsMessage::Binary(frame.into())).await.is_err() {
@@ -5682,16 +6130,32 @@ async fn ws_connection(
             },
             inbound = stream.next() => match inbound {
                 Some(Ok(WsMessage::Binary(data))) => {
-                    let replies = match surface.state().ws_receive(&data) {
-                        Ok(replies) => replies,
+                    let inbound_surface = surface.clone();
+                    let inbound_actor = actor.clone();
+                    let operation_actor = actor.clone();
+                    let inbound = match with_actor(operation_actor, async move {
+                        turn_loop::run_blocking_surface(inbound_surface, move |surface| {
+                            surface.state().ws_receive_as_split(&inbound_actor, &data)
+                        })
+                        .await
+                        .and_then(|result| result)
+                    }).await {
+                        Ok(inbound) => inbound,
                         Err(error) => {
                             tracing::warn!(%error, "rejecting invalid websocket state frame");
-                            let _ = sink.send(WsMessage::Close(None)).await;
+                            let close = error.contains("samepage.refused:").then(|| CloseFrame {
+                                code: 4409,
+                                reason: ws_refusal_close_reason(&error).into(),
+                            });
+                            let _ = sink.send(WsMessage::Close(close)).await;
                             return;
                         }
                     };
-                    for reply in replies {
-                        let _ = rt.ws_tx.send(reply);
+                    for reply in inbound.replies {
+                        if sink.send(WsMessage::Binary(reply.into())).await.is_err() { return; }
+                    }
+                    for broadcast in inbound.broadcasts {
+                        let _ = rt.ws_tx.send(broadcast);
                     }
                 }
                 Some(Ok(WsMessage::Close(_))) | Some(Err(_)) | None => return,
@@ -5711,6 +6175,7 @@ mod tests {
     use super::*;
     use parking_lot::Mutex;
     use std::sync::Arc;
+    use std::time::Duration;
 
     #[test]
     fn a_labeled_actors_byline_is_its_room_label() {
@@ -5749,6 +6214,88 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn an_agent_that_reconnects_under_its_name_keeps_one_identity() {
+        let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
+            state: FocusState,
+            tools: Vec::new(),
+        });
+        let (rs, _channels) = test_router_state_with_channels(surface);
+        let identity = |name: &str| mcp::ClientIdentity {
+            name: name.to_string(),
+            title: None,
+            version: None,
+        };
+        let first = attach_mcp_agent(&rs, identity("reviewer"));
+        let again = attach_mcp_agent(&rs, identity("reviewer"));
+        let other = attach_mcp_agent(&rs, identity("writer"));
+        assert_eq!(first.participant_id, again.participant_id);
+        assert_eq!(first.label, "reviewer");
+        assert_eq!(again.label, "reviewer", "a reconnect is not reviewer-2");
+        assert_ne!(
+            first.session, again.session,
+            "each connection keeps its own credential"
+        );
+        assert_ne!(other.participant_id, first.participant_id);
+        let roster = attached_agents_json(&rs.rt).to_string();
+        assert_eq!(roster.matches(&first.participant_id).count(), 1, "{roster}");
+    }
+
+    #[tokio::test]
+    async fn a_resolving_person_cookie_is_reissued_and_a_stale_one_is_not() {
+        let state = test_router_state(websocket_surface_with_human_route());
+        let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let issued = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .expect("a join issues the person cookie")
+            .to_str()
+            .unwrap()
+            .to_string();
+        assert!(issued.contains("Max-Age=86400"), "{issued}");
+        assert!(sets_person_cookie(joined.headers(), state.rt.port));
+
+        // The browser sends back only the name=token pair.
+        let pair = issued.split(';').next().unwrap();
+        let mut headers = HeaderMap::new();
+        headers.insert(header::COOKIE, pair.parse().unwrap());
+        let refreshed = refreshed_person_cookie(&state, &headers)
+            .expect("a cookie that still resolves is re-issued");
+        assert_eq!(
+            refreshed.to_str().unwrap(),
+            issued,
+            "same token, full lifetime again"
+        );
+
+        let mut forged = HeaderMap::new();
+        forged.insert(
+            header::COOKIE,
+            format!("{}=not-host-minted", person_cookie(state.rt.port))
+                .parse()
+                .unwrap(),
+        );
+        assert!(refreshed_person_cookie(&state, &forged).is_none());
+        assert!(refreshed_person_cookie(&state, &HeaderMap::new()).is_none());
+    }
+
+    #[tokio::test]
+    async fn a_name_someone_else_holds_is_refused_not_suffixed() {
+        let state = test_router_state(websocket_surface_with_human_route());
+        let named = |name: &str| Some(Json(json!({ "name": name })));
+        let first = join_handler(State(state.clone()), HeaderMap::new(), named("Ana"))
+            .await
+            .into_response();
+        assert_eq!(first.status(), StatusCode::OK);
+        let second = join_handler(State(state.clone()), HeaderMap::new(), named("Ana"))
+            .await
+            .into_response();
+        assert_eq!(second.status(), StatusCode::CONFLICT);
+        assert_eq!(state.rt.people.everyone().len(), 1);
+        assert_eq!(state.rt.people.everyone()[0].name, "Ana");
+    }
+
+    #[tokio::test]
     async fn public_mcp_participant_ids_cannot_close_private_sessions() {
         let surface: Arc<dyn Surface> = Arc::new(FocusSurface {
             state: FocusState,
@@ -5776,13 +6323,22 @@ mod tests {
                 header::AUTHORIZATION,
                 HeaderValue::from_str(&format!("Bearer {}", rs.rt.mcp_token)).unwrap(),
             );
-            for guess in [participant_id.as_str(), participant_id.trim_start_matches("agent-")] {
-                headers.insert(mcp::SESSION_ID_HEADER, HeaderValue::from_str(guess).unwrap());
+            for guess in [
+                participant_id.as_str(),
+                participant_id.trim_start_matches("agent-"),
+            ] {
+                headers.insert(
+                    mcp::SESSION_ID_HEADER,
+                    HeaderValue::from_str(guess).unwrap(),
+                );
                 let response = mcp_delete_handler(State(rs.clone()), headers.clone()).await;
                 assert_eq!(response.status(), StatusCode::NOT_FOUND);
             }
             assert!(rs.rt.mcp_agents.lock().contains_key(session));
-            headers.insert(mcp::SESSION_ID_HEADER, HeaderValue::from_str(session).unwrap());
+            headers.insert(
+                mcp::SESSION_ID_HEADER,
+                HeaderValue::from_str(session).unwrap(),
+            );
             let response = mcp_delete_handler(State(rs.clone()), headers).await;
             assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
@@ -5824,7 +6380,10 @@ mod tests {
 
         for (path_name, entry) in [
             ("agents[0]", &body["agents"][0]),
-            ("agent_liveness.attached[0]", &body["agent_liveness"]["attached"][0]),
+            (
+                "agent_liveness.attached[0]",
+                &body["agent_liveness"]["attached"][0],
+            ),
         ] {
             for field in ["id", "label", "listening", "quiet", "quietForMs"] {
                 assert!(
@@ -6681,6 +7240,37 @@ mod tests {
         test_router_state_with_channels(surface).0
     }
 
+    #[tokio::test]
+    async fn disabled_activity_routes_return_404_and_health_reports_drops() {
+        let surface: Arc<dyn Surface> = Arc::new(WebsocketSurface {
+            state: WebsocketState,
+            tools: Vec::new(),
+        });
+        let mut state = test_router_state(surface);
+        Arc::get_mut(&mut state.rt).unwrap().activity = ActivityFeed::disabled();
+        state.rt.activity.record_lifecycle(
+            "disabled.edit",
+            activity::ActivityOutcome::Info,
+            None,
+            None,
+        );
+        assert_eq!(
+            activity_handler(State(state.clone())).await.status(),
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            activity_events_handler(State(state.clone()), Query(HashMap::new()))
+                .await
+                .status(),
+            StatusCode::NOT_FOUND
+        );
+        let Json(health) = extensions_with_activity_handler(State(state)).await;
+        assert_eq!(
+            health["activity"],
+            serde_json::json!({"enabled":false,"dropped":1})
+        );
+    }
+
     /// A router state with a real, installed semantic-target service, for the
     /// presence handlers that refuse to run without one.
     fn test_router_state_with_semantic_targets(surface: Arc<dyn Surface>) -> RouterState {
@@ -6971,6 +7561,88 @@ mod tests {
         assert_eq!(status_line, "HTTP/1.1 403 Forbidden");
     }
 
+    #[tokio::test]
+    async fn document_websocket_requires_a_joined_person_even_with_navigation_cookie() {
+        let mut state = test_router_state(websocket_surface_with_human_route());
+        let mut manifest = (*state.extensions).clone();
+        manifest.document = Some(DocumentMount {
+            pkg_name: "fixture".into(),
+            js: "/doc.js".into(),
+            js_sha256: "a".repeat(64),
+            js_bytes: 1,
+            wasm: "/doc.wasm".into(),
+            sha256: "a".repeat(64),
+            bytes: 1,
+            abi: "samepage.document.v1".into(),
+            layout_version: 1,
+        });
+        state.extensions = Arc::new(manifest);
+        let navigation_cookie = format!(
+            "{}={}",
+            human_route_cookie(state.rt.port),
+            state.human_route_token
+        );
+        assert_eq!(
+            websocket_upgrade_status_line(state.clone(), Some(navigation_cookie)).await,
+            "HTTP/1.1 403 Forbidden"
+        );
+        let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let person_cookie = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_string();
+        assert_eq!(
+            websocket_upgrade_status_line(state, Some(person_cookie)).await,
+            "HTTP/1.1 101 Switching Protocols"
+        );
+    }
+
+    #[tokio::test]
+    async fn joined_person_keeps_action_authority_after_navigation_cookie_rotation() {
+        let state = test_router_state(websocket_surface_with_human_route());
+        let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let person = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap();
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::COOKIE,
+            format!("{}=expired; {person}", human_route_cookie(state.rt.port))
+                .parse()
+                .unwrap(),
+        );
+        assert_eq!(action_route_caller(&headers, &state), Caller::Human);
+        headers.insert(
+            header::AUTHORIZATION,
+            format!("Bearer {}", state.rt.mcp_token).parse().unwrap(),
+        );
+        assert_eq!(action_route_caller(&headers, &state), Caller::Unknown);
+        headers.remove(header::AUTHORIZATION);
+        headers.insert(
+            header::COOKIE,
+            format!("{}=forged", person_cookie(state.rt.port))
+                .parse()
+                .unwrap(),
+        );
+        assert_eq!(action_route_caller(&headers, &state), Caller::Unknown);
+    }
+
     #[test]
     fn two_apps_on_one_host_do_not_share_a_credential_cookie() {
         // Browsers ignore the port when scoping cookies. One fixed name meant
@@ -6983,12 +7655,11 @@ mod tests {
     async fn websocket_upgrade_accepts_navigation_and_admitted_participant_credentials() {
         let state = test_router_state(websocket_surface_with_human_route());
 
-        let navigation_cookie =
-            format!(
-                "{}={}",
-                human_route_cookie(state.rt.port),
-                state.human_route_token.as_ref()
-            );
+        let navigation_cookie = format!(
+            "{}={}",
+            human_route_cookie(state.rt.port),
+            state.human_route_token.as_ref()
+        );
         assert_eq!(
             websocket_upgrade_status_line(state.clone(), Some(navigation_cookie)).await,
             "HTTP/1.1 101 Switching Protocols"
@@ -7012,6 +7683,170 @@ mod tests {
             websocket_upgrade_status_line(state, Some(participant_cookie)).await,
             "HTTP/1.1 101 Switching Protocols"
         );
+    }
+
+    #[test]
+    fn legacy_ws_receive_as_split_delegates_to_broadcast() {
+        struct Legacy;
+        impl SurfaceState for Legacy {
+            fn backing(&self) -> StateBacking {
+                StateBacking::Crdt
+            }
+            fn describe(&self) -> Result<String, String> {
+                Ok(String::new())
+            }
+            fn snapshot(&self) -> Result<StateSnapshot, String> {
+                Ok(StateSnapshot {
+                    backing: StateBacking::Crdt,
+                    body: json!({}),
+                    chrome: None,
+                })
+            }
+            fn ws_receive(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, String> {
+                Ok(vec![data.to_vec()])
+            }
+        }
+        let actor = Actor::anonymous(Caller::Human);
+        let result = Legacy.ws_receive_as_split(&actor, b"legacy").unwrap();
+        assert!(result.replies.is_empty());
+        assert_eq!(result.broadcasts, vec![b"legacy".to_vec()]);
+    }
+
+    #[test]
+    fn non_ascii_refusal_close_reason_is_byte_bounded() {
+        let reason = ws_refusal_close_reason(&format!(
+            "extension doc: samepage.refused: {}",
+            "é".repeat(100)
+        ));
+        assert!(reason.starts_with("samepage.refused:"));
+        assert!(reason.len() <= 123);
+        assert!(std::str::from_utf8(reason.as_bytes()).is_ok());
+    }
+
+    #[tokio::test]
+    async fn websocket_frame_receives_host_bound_person_not_payload_author() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        type CapturedFrame = (Actor, Vec<u8>);
+        struct CaptureState(Arc<Mutex<Vec<CapturedFrame>>>);
+        impl SurfaceState for CaptureState {
+            fn backing(&self) -> StateBacking {
+                StateBacking::Crdt
+            }
+            fn describe(&self) -> Result<String, String> {
+                Ok(String::new())
+            }
+            fn snapshot(&self) -> Result<StateSnapshot, String> {
+                Ok(StateSnapshot {
+                    backing: StateBacking::Crdt,
+                    body: json!({}),
+                    chrome: None,
+                })
+            }
+            fn ws_hello(&self) -> Result<Vec<Vec<u8>>, String> {
+                Ok(Vec::new())
+            }
+            fn ws_receive_as_split(&self, actor: &Actor, data: &[u8]) -> Result<WsInbound, String> {
+                self.0.lock().push((actor.clone(), data.to_vec()));
+                Ok(WsInbound {
+                    replies: Vec::new(),
+                    broadcasts: Vec::new(),
+                })
+            }
+        }
+        struct CaptureSurface {
+            state: CaptureState,
+            tools: Vec<ToolDef>,
+        }
+        impl Surface for CaptureSurface {
+            fn state(&self) -> &dyn SurfaceState {
+                &self.state
+            }
+            fn tools(&self) -> &[ToolDef] {
+                &self.tools
+            }
+            fn client_modules(&self) -> Vec<ClientModule> {
+                vec![ClientModule::host("capture", "1", "capture")]
+            }
+        }
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let human = ToolDef::new("write", "write", json!({"type":"object"}), |_| {
+            Effect::Reject("unused".into())
+        })
+        .human_only();
+        let state = test_router_state(Arc::new(CaptureSurface {
+            state: CaptureState(seen.clone()),
+            tools: vec![human],
+        }));
+        let joined = join_handler(State(state.clone()), HeaderMap::new(), None)
+            .await
+            .into_response();
+        let cookie = joined
+            .headers()
+            .get(header::SET_COOKIE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_string();
+        let expected = person_from(&state, &{
+            let mut headers = HeaderMap::new();
+            headers.insert(header::COOKIE, cookie.parse().unwrap());
+            headers
+        })
+        .unwrap();
+        let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+            .await
+            .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let app = Router::new()
+            .route("/ws", get(ws_handler))
+            .with_state(state);
+        let server = tokio::spawn(async move { axum::serve(listener, app).await });
+        let mut stream = tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
+            .await
+            .unwrap();
+        let request = format!(
+            "GET /ws HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nOrigin: http://127.0.0.1:{port}\r\nCookie: {cookie}\r\n\r\n"
+        );
+        stream.write_all(request.as_bytes()).await.unwrap();
+        let mut response = [0_u8; 512];
+        let len = stream.read(&mut response).await.unwrap();
+        assert!(
+            std::str::from_utf8(&response[..len])
+                .unwrap()
+                .starts_with("HTTP/1.1 101")
+        );
+        let payload = br#"{"author":"forged"}"#;
+        let mask = [1_u8, 2, 3, 4];
+        let mut frame = vec![0x82, 0x80 | u8::try_from(payload.len()).unwrap()];
+        frame.extend(mask);
+        frame.extend(
+            payload
+                .iter()
+                .enumerate()
+                .map(|(i, byte)| byte ^ mask[i % 4]),
+        );
+        stream.write_all(&frame).await.unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            loop {
+                if !seen.lock().is_empty() {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        let recorded = seen.lock();
+        assert_eq!(
+            recorded[0].0.participant_id.as_deref(),
+            Some(expected.participant_id.as_str())
+        );
+        assert_eq!(recorded[0].0.label.as_deref(), Some(expected.name.as_str()));
+        assert_eq!(recorded[0].1, payload);
+        server.abort();
     }
 
     #[tokio::test]
@@ -7482,7 +8317,9 @@ mod tests {
         let mut fake_cookie = HeaderMap::new();
         fake_cookie.insert(
             header::COOKIE,
-            format!("{}=forged", human_route_cookie(state.rt.port)).parse().unwrap(),
+            format!("{}=forged", human_route_cookie(state.rt.port))
+                .parse()
+                .unwrap(),
         );
         let response = action_route_request(
             state.clone(),
@@ -7503,8 +8340,8 @@ mod tests {
                 human_route_cookie(state.rt.port),
                 state.human_route_token.as_ref()
             )
-                .parse()
-                .unwrap(),
+            .parse()
+            .unwrap(),
         );
         human_headers.insert(
             header::CONTENT_TYPE,
@@ -7604,49 +8441,61 @@ mod tests {
         assert!(layout(&[route("/ws", HttpMethod::Get)], &[]).is_err());
         assert!(layout(&[route("/pkg/board.js", HttpMethod::Get)], &[]).is_err());
         assert!(layout(&[route("/_agui/alternate.js", HttpMethod::Get)], &[]).is_err());
-        assert!(layout(
-            &[
-                route("/custom", HttpMethod::Post),
-                route("/custom", HttpMethod::Post),
-            ],
-            &[],
-        )
-        .is_err());
-        assert!(layout(
-            &[route("/preview/state", HttpMethod::Get)],
-            &[("/preview".to_string(), PathBuf::from("."))],
-        )
-        .is_err());
-        assert!(layout(
-            &[],
-            &[
-                ("/preview".to_string(), PathBuf::from(".")),
-                ("/preview/assets".to_string(), PathBuf::from(".")),
-            ],
-        )
-        .is_err());
-        assert!(layout(
-            &[
-                route("/mission", HttpMethod::Get),
-                route("/mission", HttpMethod::Post),
-            ],
-            &[("/preview".to_string(), PathBuf::from("."))],
-        )
-        .is_ok());
-        assert!(layout(
-            &[],
-            &[("/extensions/board".to_string(), PathBuf::from("."))],
-        )
-        .is_ok());
+        assert!(
+            layout(
+                &[
+                    route("/custom", HttpMethod::Post),
+                    route("/custom", HttpMethod::Post),
+                ],
+                &[],
+            )
+            .is_err()
+        );
+        assert!(
+            layout(
+                &[route("/preview/state", HttpMethod::Get)],
+                &[("/preview".to_string(), PathBuf::from("."))],
+            )
+            .is_err()
+        );
+        assert!(
+            layout(
+                &[],
+                &[
+                    ("/preview".to_string(), PathBuf::from(".")),
+                    ("/preview/assets".to_string(), PathBuf::from(".")),
+                ],
+            )
+            .is_err()
+        );
+        assert!(
+            layout(
+                &[
+                    route("/mission", HttpMethod::Get),
+                    route("/mission", HttpMethod::Post),
+                ],
+                &[("/preview".to_string(), PathBuf::from("."))],
+            )
+            .is_ok()
+        );
+        assert!(
+            layout(
+                &[],
+                &[("/extensions/board".to_string(), PathBuf::from("."))],
+            )
+            .is_ok()
+        );
         assert!(layout(&[], &[("/pkg/board".to_string(), PathBuf::from("."))],).is_err());
         assert!(layout(&[], &[("/_agui/assets".to_string(), PathBuf::from("."))],).is_err());
         assert!(layout(&[], &[("/:id".to_string(), PathBuf::from("."))],).is_err());
         assert!(layout(&[], &[("/extensions/:id".to_string(), PathBuf::from("."))],).is_err());
-        assert!(layout(
-            &[route("/preview", HttpMethod::Get)],
-            &[("/preview/assets".to_string(), PathBuf::from("."))],
-        )
-        .is_ok());
+        assert!(
+            layout(
+                &[route("/preview", HttpMethod::Get)],
+                &[("/preview/assets".to_string(), PathBuf::from("."))],
+            )
+            .is_ok()
+        );
 
         fn action_route(
             path: &'static str,
@@ -7669,37 +8518,45 @@ mod tests {
             |_args| Effect::Reject("not called by layout validation".to_string()),
         )
         .human_only();
-        assert!(validate_http_layout(
-            &[],
-            &[action_route("/paper/write", HttpMethod::Post, "write")],
-            std::slice::from_ref(&action),
-            &[],
-        )
-        .is_ok());
-        assert!(validate_http_layout(
-            &[],
-            &[action_route("/paper/missing", HttpMethod::Post, "missing")],
-            std::slice::from_ref(&action),
-            &[],
-        )
-        .unwrap_err()
-        .contains("unknown action"));
-        assert!(validate_http_layout(
-            &[],
-            &[action_route("/paper/read", HttpMethod::Get, "write")],
-            std::slice::from_ref(&action),
-            &[],
-        )
-        .unwrap_err()
-        .contains("mutating HTTP method"));
-        assert!(validate_http_layout(
-            &[route("/paper/write", HttpMethod::Post)],
-            &[action_route("/paper/write", HttpMethod::Post, "write")],
-            std::slice::from_ref(&action),
-            &[],
-        )
-        .unwrap_err()
-        .contains("duplicate surface route"));
+        assert!(
+            validate_http_layout(
+                &[],
+                &[action_route("/paper/write", HttpMethod::Post, "write")],
+                std::slice::from_ref(&action),
+                &[],
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_http_layout(
+                &[],
+                &[action_route("/paper/missing", HttpMethod::Post, "missing")],
+                std::slice::from_ref(&action),
+                &[],
+            )
+            .unwrap_err()
+            .contains("unknown action")
+        );
+        assert!(
+            validate_http_layout(
+                &[],
+                &[action_route("/paper/read", HttpMethod::Get, "write")],
+                std::slice::from_ref(&action),
+                &[],
+            )
+            .unwrap_err()
+            .contains("mutating HTTP method")
+        );
+        assert!(
+            validate_http_layout(
+                &[route("/paper/write", HttpMethod::Post)],
+                &[action_route("/paper/write", HttpMethod::Post, "write")],
+                std::slice::from_ref(&action),
+                &[],
+            )
+            .unwrap_err()
+            .contains("duplicate surface route")
+        );
     }
 
     /// The new decision `App::serve` makes when the typed protocol client is
@@ -7716,7 +8573,10 @@ mod tests {
     fn an_unavailable_protocol_client_falls_back_to_a_directory_that_will_404_not_a_server_refusal()
     {
         let explicit = Path::new("/deploy/protocol");
-        assert_eq!(protocol_pkg_fallback(Some(explicit)), explicit.to_path_buf());
+        assert_eq!(
+            protocol_pkg_fallback(Some(explicit)),
+            explicit.to_path_buf()
+        );
 
         let (_crate_dir, default_dir) = protocol_pkg::default_layout();
         assert_eq!(protocol_pkg_fallback(None), default_dir);
@@ -7744,9 +8604,11 @@ mod tests {
         std::fs::write(static_dir.join("index.html"), b"<!doctype html>").unwrap();
         std::fs::write(&pkg_file, b"not a directory").unwrap();
 
-        assert!(validate_static_directories(Path::new(""), None, &[])
-            .unwrap_err()
-            .contains("must not be empty"));
+        assert!(
+            validate_static_directories(Path::new(""), None, &[])
+                .unwrap_err()
+                .contains("must not be empty")
+        );
 
         assert_eq!(
             validate_static_directories(
@@ -7756,9 +8618,11 @@ mod tests {
             ),
             Ok(())
         );
-        assert!(validate_static_directories(&empty_dir, None, &[])
-            .unwrap_err()
-            .contains("static entry"));
+        assert!(
+            validate_static_directories(&empty_dir, None, &[])
+                .unwrap_err()
+                .contains("static entry")
+        );
         assert_eq!(
             validate_static_directories(&static_dir, Some(&pkg_dir), &[]),
             Ok(())
@@ -8096,21 +8960,24 @@ mod tests {
 
         // An old waiter's Drop token cannot close a same-id replacement.
         let (old, _old_reply) = pending("old-token", "same");
-        assert!(rs
-            .rt
-            .register_pending_decision("same".to_string(), old)
-            .is_ok());
+        assert!(
+            rs.rt
+                .register_pending_decision("same".to_string(), old)
+                .is_ok()
+        );
         rs.rt
             .close_pending_decision_if_token("same", "old-token", "resolved");
         let (new, _new_reply) = pending("new-token", "same");
-        assert!(rs
-            .rt
-            .register_pending_decision("same".to_string(), new)
-            .is_ok());
-        assert!(rs
-            .rt
-            .close_pending_decision_if_token("same", "old-token", "wait_dropped")
-            .is_none());
+        assert!(
+            rs.rt
+                .register_pending_decision("same".to_string(), new)
+                .is_ok()
+        );
+        assert!(
+            rs.rt
+                .close_pending_decision_if_token("same", "old-token", "wait_dropped")
+                .is_none()
+        );
         assert_eq!(
             rs.rt
                 .decision
@@ -8135,19 +9002,20 @@ mod tests {
         for id in ["a", "b"] {
             let (reply_tx, reply_rx) = tokio::sync::oneshot::channel();
             replies.push(reply_rx);
-            assert!(rs
-                .rt
-                .register_pending_decision(
-                    id.to_string(),
-                    runtime_state::PendingDecision {
-                        token: format!("token-{id}"),
-                        reply_kind: ReplyKind::Any,
-                        on_reply: Some(Box::new(|_| Ok("resolved".to_string()))),
-                        event_json: json!({ "pending": id }).to_string(),
-                        reply_tx: Some(reply_tx),
-                    },
-                )
-                .is_ok());
+            assert!(
+                rs.rt
+                    .register_pending_decision(
+                        id.to_string(),
+                        runtime_state::PendingDecision {
+                            token: format!("token-{id}"),
+                            reply_kind: ReplyKind::Any,
+                            on_reply: Some(Box::new(|_| Ok("resolved".to_string()))),
+                            event_json: json!({ "pending": id }).to_string(),
+                            reply_tx: Some(reply_tx),
+                        },
+                    )
+                    .is_ok()
+            );
         }
         // Discard the two pending broadcasts, then observe terminal events.
         assert!(events.try_recv().is_ok());
@@ -8313,9 +9181,11 @@ mod tests {
                     .action("delete_everything"),
             ],
         };
-        assert!(ExtensionManifest::from_surface(&invalid)
-            .unwrap_err()
-            .contains("unknown or non-human action"));
+        assert!(
+            ExtensionManifest::from_surface(&invalid)
+                .unwrap_err()
+                .contains("unknown or non-human action")
+        );
     }
 
     #[test]
@@ -8353,9 +9223,11 @@ mod tests {
                     .action("agent"),
             ],
         };
-        assert!(ExtensionManifest::from_surface(&invalid)
-            .unwrap_err()
-            .contains("non-human"));
+        assert!(
+            ExtensionManifest::from_surface(&invalid)
+                .unwrap_err()
+                .contains("non-human")
+        );
     }
 
     #[tokio::test]
@@ -8398,8 +9270,8 @@ mod tests {
                 human_route_cookie(state.rt.port),
                 state.human_route_token.as_ref()
             )
-                .parse()
-                .unwrap(),
+            .parse()
+            .unwrap(),
         );
 
         let invalid = tool_handler(
@@ -8441,6 +9313,97 @@ mod tests {
         .into_response();
         assert_eq!(valid.status(), StatusCode::OK);
         assert_eq!(apply_count.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn blocked_sync_action_keeps_runtime_routes_live_and_actor_scoped() {
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release_rx = Arc::new(Mutex::new(release_rx));
+        let actors = Arc::new(Mutex::new(Vec::new()));
+        let action = ToolDef::new(
+            "blocked_write",
+            "Wait for a durable write.",
+            json!({"type":"object","additionalProperties":false,"properties":{}}),
+            {
+                let release_rx = release_rx.clone();
+                let actors = actors.clone();
+                move |_| {
+                    actors
+                        .lock()
+                        .push(current_actor().expect("factory keeps request actor"));
+                    let release_rx = release_rx.clone();
+                    let actors = actors.clone();
+                    let entered_tx = entered_tx.clone();
+                    Effect::Mutate(Box::new(move |_| {
+                        actors
+                            .lock()
+                            .push(current_actor().expect("effect keeps request actor"));
+                        entered_tx.send(()).unwrap();
+                        release_rx.lock().recv().unwrap();
+                        Ok(Some("durable write finished".to_string()))
+                    }))
+                }
+            },
+        )
+        .human_only();
+        let surface: Arc<dyn Surface> = Arc::new(MultiModuleSurface {
+            state: FocusState,
+            tools: vec![action],
+            modules: vec![
+                ClientModule::lazy("blocking", "1.0.0", "/extensions/blocking.js", "blocking")
+                    .action("blocked_write"),
+            ],
+        });
+        let state = test_router_state(surface);
+        let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+            .await
+            .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let app = Router::new()
+            .route("/surface/action", post(tool_handler))
+            .route("/debug/stats", get(stats_handler))
+            .with_state(state);
+        let server = tokio::spawn(async move { axum::serve(listener, app).await });
+        let client = reqwest::Client::new();
+        let action_client = client.clone();
+        let action_request = tokio::spawn(async move {
+            action_client
+                .post(format!("http://127.0.0.1:{port}/surface/action"))
+                .header(
+                    header::COOKIE,
+                    format!("{}=test-human-route-token", human_route_cookie(0)),
+                )
+                .json(&json!({"name":"blocked_write","args":{}}))
+                .send()
+                .await
+        });
+        tokio::task::spawn_blocking(move || entered_rx.recv_timeout(Duration::from_secs(2)))
+            .await
+            .unwrap()
+            .unwrap();
+
+        let stats = tokio::time::timeout(
+            Duration::from_millis(500),
+            client
+                .get(format!("http://127.0.0.1:{port}/debug/stats"))
+                .send(),
+        )
+        .await
+        .expect("runtime route remains scheduled while the state write waits")
+        .unwrap();
+        assert_eq!(stats.status(), reqwest::StatusCode::OK);
+        release_tx.send(()).unwrap();
+        let action_response = tokio::time::timeout(Duration::from_secs(2), action_request)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert_eq!(action_response.status(), reqwest::StatusCode::OK);
+        let actors = actors.lock();
+        assert_eq!(actors.len(), 2);
+        assert!(actors.iter().all(|actor| actor.caller == Caller::Human));
+        server.abort();
     }
 
     #[tokio::test]
@@ -8494,13 +9457,10 @@ mod tests {
         let surface: Arc<dyn Surface> = Arc::new(MultiModuleSurface {
             state: FocusState,
             tools: vec![human_action, agent_action],
-            modules: vec![ClientModule::lazy(
-                "records",
-                "1.0.0",
-                "/extensions/records.js",
-                "records",
-            )
-            .action("human_write")],
+            modules: vec![
+                ClientModule::lazy("records", "1.0.0", "/extensions/records.js", "records")
+                    .action("human_write"),
+            ],
         });
         let state = test_router_state(surface);
         let route_cookie = human_route_cookie(state.rt.port);
@@ -8866,6 +9826,8 @@ mod tests {
         let manifest = ExtensionManifest {
             schema_version: 1,
             protocol: "ag-ui".to_string(),
+            capability_schema_version: None,
+            document: None,
             extensions: vec![ExtensionDescriptor {
                 id: "board".to_string(),
                 version: "1.0.0".to_string(),
@@ -8881,6 +9843,8 @@ mod tests {
                     js: "/pkg/board.js".to_string(),
                     wasm: "/pkg/board.wasm".to_string(),
                 }),
+                artifact: None,
+                native_only: None,
             }],
         };
         assert_eq!(

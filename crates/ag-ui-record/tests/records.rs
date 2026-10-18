@@ -8,7 +8,7 @@
 
 use std::path::{Path, PathBuf};
 
-use ag_ui_record::{validate, Check, Record, RECORD_VERSION};
+use ag_ui_record::{Check, RECORD_VERSION, Record, validate};
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")

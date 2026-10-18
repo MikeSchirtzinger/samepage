@@ -6,9 +6,9 @@ use serde::Serialize;
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Record};
 use tracing::{Event, Id, Subscriber};
+use tracing_subscriber::Layer;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::Layer;
 
 const TRACE_SCHEMA: &str = "same-page-trace-v1";
 const TRACE_CAPACITY: usize = 256;
@@ -279,12 +279,12 @@ where
         if !CAPTURE_ENABLED.load(Ordering::Relaxed) {
             return;
         }
-        if let Some(span) = ctx.span(id) {
-            if let Some(state) = span.extensions_mut().get_mut::<SpanState>() {
-                let mut visitor = FieldVisitor::default();
-                values.record(&mut visitor);
-                state.fields.extend(visitor.fields);
-            }
+        if let Some(span) = ctx.span(id)
+            && let Some(state) = span.extensions_mut().get_mut::<SpanState>()
+        {
+            let mut visitor = FieldVisitor::default();
+            values.record(&mut visitor);
+            state.fields.extend(visitor.fields);
         }
     }
 
@@ -323,10 +323,10 @@ where
         if !CAPTURE_ENABLED.load(Ordering::Relaxed) {
             return;
         }
-        if let Some(span) = ctx.span(id) {
-            if let Some(state) = span.extensions_mut().get_mut::<SpanState>() {
-                state.entered_at.push(monotonic_ms());
-            }
+        if let Some(span) = ctx.span(id)
+            && let Some(state) = span.extensions_mut().get_mut::<SpanState>()
+        {
+            state.entered_at.push(monotonic_ms());
         }
     }
 
@@ -643,10 +643,12 @@ mod tests {
             snapshot.records.len() as u64 + snapshot.dropped
         );
         assert!(snapshot.dropped > 0);
-        assert!(snapshot
-            .records
-            .windows(2)
-            .all(|pair| pair[1].sequence == pair[0].sequence + 1));
+        assert!(
+            snapshot
+                .records
+                .windows(2)
+                .all(|pair| pair[1].sequence == pair[0].sequence + 1)
+        );
         let root_ids = snapshot
             .records
             .iter()

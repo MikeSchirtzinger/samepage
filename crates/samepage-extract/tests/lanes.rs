@@ -68,7 +68,8 @@ fn exact_lane_set_over_the_fixture_tree() {
     expected.sort();
 
     assert_eq!(
-        actual, expected,
+        actual,
+        expected,
         "lane set drifted from the fixture tree's checked contents\nfull report:\n{}",
         serde_json::to_string_pretty(&report).unwrap()
     );
@@ -176,7 +177,8 @@ fn finds_known_lanes_in_this_repository() {
     );
 
     let auth_spawn = report.lanes.iter().any(|l| {
-        l.kind == LaneKind::Spawn && l.evidence.path == Path::new("crates/ag-ui-surface/src/auth.rs")
+        l.kind == LaneKind::Spawn
+            && l.evidence.path == Path::new("crates/ag-ui-surface/src/auth.rs")
     });
     assert!(
         auth_spawn,
@@ -198,7 +200,11 @@ fn an_import_of_command_is_not_a_spawn() {
     let dir = std::env::temp_dir().join(format!("samepage-extract-import-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("src")).unwrap();
-    std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"imp\"\nversion = \"0.1.0\"\n").unwrap();
+    std::fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"imp\"\nversion = \"0.1.0\"\n",
+    )
+    .unwrap();
     std::fs::write(
         dir.join("src/main.rs"),
         "use std::process::Command;\nfn main() {\n    let _c = Command::new(\"node\").spawn();\n}\n",
@@ -211,7 +217,11 @@ fn an_import_of_command_is_not_a_spawn() {
         .filter(|lane| lane.kind == samepage_extract::LaneKind::Spawn)
         .map(|lane| lane.evidence.line)
         .collect();
-    assert_eq!(spawns, vec![3], "only the call is a lane, never the import: {report:?}");
+    assert_eq!(
+        spawns,
+        vec![3],
+        "only the call is a lane, never the import: {report:?}"
+    );
 }
 
 #[test]
@@ -219,7 +229,11 @@ fn a_chained_spawn_is_the_same_sidecar_as_its_construction() {
     let dir = std::env::temp_dir().join(format!("samepage-extract-chain-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("src")).unwrap();
-    std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"chain\"\nversion = \"0.1.0\"\n").unwrap();
+    std::fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"chain\"\nversion = \"0.1.0\"\n",
+    )
+    .unwrap();
     std::fs::write(
         dir.join("src/main.rs"),
         "fn main() {\n    let _side = std::process::Command::new(\"node\")\n        .arg(\"sidecar.js\")\n        .spawn()\n        .unwrap();\n    let other = std::process::Command::new(\"sh\");\n    let mut other = other;\n    let _o = other.spawn();\n}\n",
@@ -232,5 +246,9 @@ fn a_chained_spawn_is_the_same_sidecar_as_its_construction() {
         .filter(|lane| lane.kind == samepage_extract::LaneKind::Spawn)
         .map(|lane| lane.evidence.line)
         .collect();
-    assert_eq!(spawns, vec![2, 6, 8], "one lane per construction, plus a bare spawn on a command built earlier: {report:?}");
+    assert_eq!(
+        spawns,
+        vec![2, 6, 8],
+        "one lane per construction, plus a bare spawn on a command built earlier: {report:?}"
+    );
 }

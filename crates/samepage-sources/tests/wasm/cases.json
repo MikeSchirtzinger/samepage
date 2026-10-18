@@ -1,0 +1,550 @@
+{
+  "view": {
+    "revision": "r",
+    "records": [
+      {
+        "id": "n",
+        "kind": "node",
+        "props": {
+          "label": "State",
+          "path": "a.rs",
+          "lines": "1"
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "export": "descriptor"
+    },
+    {
+      "export": "project"
+    },
+    {
+      "export": "digest"
+    },
+    {
+      "export": "legend"
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "source_read",
+        "args": {
+          "path": "a.rs",
+          "lines": "1"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "source_list",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sources_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "no_action",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "source_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "source_read",
+        "args": {
+          "path": 3
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": "bad json"
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "extras": {},
+        "bindings": {
+          "n\u0001a.rs\u00011": {
+            "readable": true,
+            "current_sha256": "abc123",
+            "baseline_sha256": "abc123",
+            "error": null
+          }
+        },
+        "gates": {}
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "State",
+              "path": "a.rs",
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "extras": {},
+        "bindings": {
+          "n\u0001a.rs\u00011": {
+            "readable": true,
+            "current_sha256": "changed",
+            "baseline_sha256": "abc123",
+            "error": null
+          }
+        },
+        "gates": {}
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "State",
+              "path": "a.rs",
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "extras": {},
+        "bindings": {
+          "n\u0001a.rs\u00011": {
+            "readable": false,
+            "current_sha256": null,
+            "baseline_sha256": "abc123",
+            "error": null
+          }
+        },
+        "gates": {}
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "State",
+              "path": "a.rs",
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "extras": {},
+        "bindings": {
+          "n\u0001a.rs\u00011": {
+            "readable": false,
+            "current_sha256": null,
+            "baseline_sha256": "abc123",
+            "error": null
+          }
+        },
+        "gates": {
+          "n": {
+            "obligation_id": "GATE",
+            "met": false,
+            "reason": "checked"
+          }
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "State",
+              "path": "a.rs",
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "extras": {},
+        "bindings": {
+          "n\u0001a.rs\u00011": {
+            "readable": false,
+            "current_sha256": null,
+            "baseline_sha256": "abc123",
+            "error": null
+          }
+        },
+        "gates": {
+          "n": {
+            "obligation_id": "GATE",
+            "met": true,
+            "reason": "checked"
+          }
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "State",
+              "path": "a.rs",
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "extras": {},
+        "bindings": {
+          "n\u0001a.rs\u00011": {
+            "readable": false,
+            "current_sha256": null,
+            "baseline_sha256": "abc123",
+            "error": null
+          }
+        },
+        "gates": {
+          "n": {
+            "obligation_id": "GATE",
+            "met": true,
+            "reason": "checked"
+          }
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "State",
+              "path": "a.rs",
+              "lines": "1"
+            }
+          },
+          {
+            "id": "e",
+            "kind": "edge",
+            "props": {
+              "from": "n",
+              "to": "x",
+              "label": "replaces"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "facts": {
+        "extras": {
+          "n": [
+            {
+              "path": "a.rs",
+              "lines": "1"
+            },
+            {
+              "path": "b.rs",
+              "lines": "2"
+            },
+            {
+              "path": "b.rs",
+              "lines": "2"
+            }
+          ]
+        },
+        "bindings": {
+          "n\u0001a.rs\u00011": {
+            "readable": true,
+            "current_sha256": "abc123",
+            "baseline_sha256": "abc123",
+            "error": null
+          },
+          "n\u0001b.rs\u00012": {
+            "readable": true,
+            "current_sha256": "abc123",
+            "baseline_sha256": "abc123",
+            "error": null
+          }
+        },
+        "gates": {}
+      }
+    },
+    {
+      "export": "viewer_readback",
+      "excerpt": {
+        "path": "a.rs",
+        "lines": "1-2",
+        "first_line": 1,
+        "total_lines": 2,
+        "text": "pub enum State { Ready, Done }\npub fn run() {}\n",
+        "truncated": false,
+        "revision": ""
+      }
+    },
+    {
+      "export": "viewer_readback",
+      "excerpt": {
+        "path": "a.rs"
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "card_place",
+        "args": {
+          "label": "State",
+          "path": "a.rs",
+          "lines": "1"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "card_place",
+        "args": {
+          "label": "State",
+          "path": 3
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "card_place",
+        "args": {
+          "id": "n",
+          "lines": "2"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "card_place",
+        "args": {
+          "id": "n",
+          "path": ""
+        }
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "n"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "path": "a.rs",
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "n"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "path": "a.rs",
+              "lines": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "n"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "path": "a.rs",
+              "lines": ""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "n"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "path": "/etc/passwd",
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "n"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "path": 1,
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "n"
+        ],
+        "modified": {},
+        "deleted": []
+      },
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "path": "a.rs",
+              "lines": "1-401"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "cascade",
+      "deleted": [
+        "n"
+      ]
+    },
+    {
+      "export": "changes",
+      "before": {},
+      "after": "project"
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "n",
+            "kind": "node",
+            "props": {
+              "label": "State",
+              "path": "a.rs",
+              "lines": "1"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

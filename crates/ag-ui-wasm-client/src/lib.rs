@@ -22,13 +22,13 @@
 //! };
 //! ```
 
+use ag_ui_core::JsonValue;
 use ag_ui_core::assembly::{Anomaly, Assembler, PushError, Update};
 use ag_ui_core::event::Event as AgUiEvent;
-use ag_ui_core::JsonValue;
 use js_sys::Function;
 use serde::Serialize;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{EventSource, MessageEvent, Request, RequestInit, Response};
 
@@ -348,7 +348,7 @@ async fn raw_post(url: &str, body_str: &str) -> Result<JsValue, JsValue> {
     clippy::indexing_slicing
 )]
 mod tests {
-    use super::{parse_ag_ui_event, Frame, Refusal};
+    use super::{Frame, Refusal, parse_ag_ui_event};
     use ag_ui_core::assembly::{Assembler, PushError};
     use serde_json::json;
 
@@ -399,10 +399,12 @@ mod tests {
         let refusal = serde_json::to_value(Refusal::from(error)).unwrap();
         assert_eq!(refusal["kind"], "text-content-without-start");
         assert_eq!(refusal["messageId"], A);
-        assert!(refusal["message"]
-            .as_str()
-            .unwrap()
-            .contains("never started"));
+        assert!(
+            refusal["message"]
+                .as_str()
+                .unwrap()
+                .contains("never started")
+        );
 
         let error = assembler.push_json("{nope").unwrap_err();
         assert!(matches!(error, PushError::Parse(_)));

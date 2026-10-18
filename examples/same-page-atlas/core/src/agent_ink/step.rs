@@ -8,10 +8,10 @@ use yrs::{Any, Map, Out, Transact};
 use super::mode::AgentInkMode;
 use super::relation::variable_object_ids;
 use super::solve::{
-    solve, solve_with_options, DivergenceFault, SolveOptions, SolveState, SolveStatus, SolvedValue,
-    DIVERGENCE_TOLERANCE, KIND_SOLVE_STATE,
+    DIVERGENCE_TOLERANCE, DivergenceFault, KIND_SOLVE_STATE, SolveOptions, SolveState, SolveStatus,
+    SolvedValue, solve, solve_with_options,
 };
-use crate::{read, Atlas, AtlasError, VarState};
+use crate::{Atlas, AtlasError, VarState, number_f64, read};
 
 /// Persisted object kind for one solved point in an agent-ink timeline.
 pub const KIND_STEP: &str = "agent_ink_step";
@@ -119,9 +119,7 @@ pub fn record_current_step(
                 let props = snapshot_props(&snapshot);
                 scene
                     .set_props(&ObjectId::from(existing_id.clone()), &props)
-                    .map_err(|error| {
-                        format!("could not update agent-ink step {index}: {error}")
-                    })?;
+                    .map_err(|error| format!("could not update agent-ink step {index}: {error}"))?;
                 Ok(snapshot)
             }
         };
@@ -239,8 +237,7 @@ pub(super) fn step_recorded_by(scene: &Scene, index: u32) -> Result<String, Atla
             _ => String::new(),
         };
         let number = |key: &str| match map.get(&txn, key) {
-            Some(Out::Any(Any::Number(value))) => Some(value),
-            Some(Out::Any(Any::BigInt(value))) => Some(value as f64),
+            Some(Out::Any(Any::Number(value))) => Some(number_f64(value)),
             _ => None,
         };
         if string("kind") != KIND_STEP {
@@ -354,7 +351,9 @@ fn advance_step_inner(
     let solved = invoke_solve(scene, options, author);
     if let Err(error) = solved {
         return match restore_snapshot(scene, &previous, author) {
-            Ok(()) => Err(format!("could not solve agent-ink step {next_index}: {error}")),
+            Ok(()) => Err(format!(
+                "could not solve agent-ink step {next_index}: {error}"
+            )),
             Err(rollback) => Err(format!(
                 "could not solve agent-ink step {next_index}: {error}; could not restore step {current_index}: {rollback}"
             )),
@@ -364,7 +363,9 @@ fn advance_step_inner(
     match record_current_step(scene, index_variable, author) {
         Ok(step) => Ok(step),
         Err(error) => match restore_snapshot(scene, &previous, author) {
-            Ok(()) => Err(format!("could not record agent-ink step {next_index}: {error}")),
+            Ok(()) => Err(format!(
+                "could not record agent-ink step {next_index}: {error}"
+            )),
             Err(rollback) => Err(format!(
                 "could not record agent-ink step {next_index}: {error}; could not restore step {current_index}: {rollback}"
             )),
@@ -736,8 +737,7 @@ pub(super) fn step_entries(
             _ => String::new(),
         };
         let number = |key: &str| match map.get(&txn, key) {
-            Some(Out::Any(Any::Number(value))) => Some(value),
-            Some(Out::Any(Any::BigInt(value))) => Some(value as f64),
+            Some(Out::Any(Any::Number(value))) => Some(number_f64(value)),
             _ => None,
         };
         if string("kind") != KIND_STEP {
@@ -890,28 +890,27 @@ fn validate_step_state(state: &StepSolveState) -> Result<(), AtlasError> {
         SolveStatus::Relaxed if state.dropped.is_empty() => {
             return Err(
                 "a stored relaxed solve must name at least one dropped relation".to_string(),
-            )
+            );
         }
         SolveStatus::Converged | SolveStatus::Exhausted if !state.dropped.is_empty() => {
             return Err(format!(
                 "stored {} solve cannot carry dropped relations",
                 state.status.as_str()
-            ))
+            ));
         }
         _ => {}
     }
-    if let Some(fault) = &state.divergence {
-        if fault.variable.is_empty()
+    if let Some(fault) = &state.divergence
+        && (fault.variable.is_empty()
             || !fault.local.is_finite()
             || !fault.remote.is_finite()
             || !fault.delta.is_finite()
             || !fault.tolerance.is_finite()
             || fault.delta < 0.0
             || fault.tolerance < 0.0
-            || fault.delta <= fault.tolerance
-        {
-            return Err("stored divergence fault is incomplete or invalid".to_string());
-        }
+            || fault.delta <= fault.tolerance)
+    {
+        return Err("stored divergence fault is incomplete or invalid".to_string());
     }
     Ok(())
 }
@@ -979,7 +978,9 @@ fn decode_name(encoded: &str) -> Result<String, AtlasError> {
     }
     let bytes = encoded
         .as_bytes()
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|pair| {
             let pair = std::str::from_utf8(pair)
                 .map_err(|_| "stored step variable name is not hexadecimal".to_string())?;

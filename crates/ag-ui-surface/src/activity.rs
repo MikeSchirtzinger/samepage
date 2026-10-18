@@ -9,8 +9,8 @@
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ag_ui_core::JsonValue;
@@ -27,6 +27,7 @@ pub const SCHEMA_VERSION: u32 = 1;
 pub const EVENT_NAME: &str = "surface.activity";
 const MAX_EVENTS: usize = 800;
 const MAX_DETAIL_CHARS: usize = 2_000;
+const MAX_TARGETS: usize = 32;
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 /// The normalized classes every operational view consumes.
@@ -83,7 +84,12 @@ pub enum ActivityActorKind {
 pub struct ActivityActor {
     pub id: String,
     pub kind: ActivityActorKind,
+    /// The participant's display name when it announced one, otherwise the
+    /// caller class ("Agent", "Human").
     pub label: String,
+    /// Host-minted participant id, when the caller is a known participant.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub participant_id: Option<String>,
 }
 
 impl ActivityActor {
@@ -93,23 +99,40 @@ impl ActivityActor {
                 id: "surface-human".to_string(),
                 kind: ActivityActorKind::Human,
                 label: "Human".to_string(),
+                participant_id: None,
             },
             Caller::Agent => Self {
                 id: "surface-agent".to_string(),
                 kind: ActivityActorKind::Agent,
                 label: "Agent".to_string(),
+                participant_id: None,
             },
             Caller::Companion => Self {
                 id: "companion-agent".to_string(),
                 kind: ActivityActorKind::Agent,
                 label: "Companion agent".to_string(),
+                participant_id: None,
             },
             Caller::Unknown => Self {
                 id: "unknown-caller".to_string(),
                 kind: ActivityActorKind::Unknown,
                 label: "Unknown caller".to_string(),
+                participant_id: None,
             },
         }
+    }
+
+    /// The caller class, named by the participant who made the request when
+    /// the transport identified one. The name is attribution only.
+    fn from_actor(caller: Caller, actor: Option<&crate::Actor>) -> Self {
+        let mut stamped = Self::from_caller(caller);
+        if let Some(actor) = actor.filter(|actor| actor.caller == caller) {
+            if let Some(label) = actor.label.as_deref().filter(|l| !l.trim().is_empty()) {
+                stamped.label = label.to_string();
+            }
+            stamped.participant_id = actor.participant_id.clone();
+        }
+        stamped
     }
 
     fn host() -> Self {
@@ -117,6 +140,7 @@ impl ActivityActor {
             id: "surface-host".to_string(),
             kind: ActivityActorKind::Host,
             label: "Host".to_string(),
+            participant_id: None,
         }
     }
 }
@@ -181,6 +205,9 @@ pub struct ActivityEvent {
     pub state_revision_before: Vec<ActivityStateRevision>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub state_revision_after: Vec<ActivityStateRevision>,
+    /// Records the action created, changed, removed or addressed.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub targets: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
 }
@@ -340,7 +367,8 @@ enum ActivityStorage {
 
 /// Host-owned persistent journal and live fan-out.
 pub struct ActivityFeed {
-    inner: Mutex<PersistedActivity>,
+    inner: Option<Mutex<PersistedActivity>>,
+    dropped: AtomicU64,
     storage: ActivityStorage,
     observer_id: String,
     publish: broadcast::Sender<ActivityEvent>,
@@ -348,6 +376,25 @@ pub struct ActivityFeed {
 }
 
 impl ActivityFeed {
+    /// A counted no-op: no event collection and no persistent store.
+    pub fn disabled() -> Arc<Self> {
+        let (publish, _) = broadcast::channel(1);
+        Arc::new(Self {
+            inner: None,
+            dropped: AtomicU64::new(0),
+            storage: ActivityStorage::Memory,
+            observer_id: String::new(),
+            publish,
+            persistence_error: Mutex::new(None),
+        })
+    }
+    pub fn is_enabled(&self) -> bool {
+        self.inner.is_some()
+    }
+    pub fn dropped(&self) -> u64 {
+        self.dropped.load(Ordering::Relaxed)
+    }
+
     /// Open a durable journal. Malformed or unwritable state fails startup.
     pub fn open(path: impl Into<PathBuf>) -> Result<Arc<Self>, ActivityError> {
         let path = path.into();
@@ -379,7 +426,8 @@ impl ActivityFeed {
         };
         let (publish, _) = broadcast::channel(512);
         Ok(Arc::new(Self {
-            inner: Mutex::new(persisted),
+            inner: Some(Mutex::new(persisted)),
+            dropped: AtomicU64::new(0),
             storage: ActivityStorage::File(path),
             observer_id: format!("host-{}", uuid::Uuid::new_v4().simple()),
             publish,
@@ -392,7 +440,8 @@ impl ActivityFeed {
     pub(crate) fn memory() -> Arc<Self> {
         let (publish, _) = broadcast::channel(64);
         Arc::new(Self {
-            inner: Mutex::new(PersistedActivity::new()),
+            inner: Some(Mutex::new(PersistedActivity::new())),
+            dropped: AtomicU64::new(0),
             storage: ActivityStorage::Memory,
             observer_id: format!("host-{}", uuid::Uuid::new_v4().simple()),
             publish,
@@ -401,7 +450,11 @@ impl ActivityFeed {
     }
 
     pub fn snapshot(&self) -> ActivitySnapshot {
-        let persisted = self.inner.lock().clone();
+        let persisted = self
+            .inner
+            .as_ref()
+            .map(|inner| inner.lock().clone())
+            .unwrap_or_else(PersistedActivity::new);
         let persistence_error = self.persistence_error.lock().clone();
         let status = match (&self.storage, persistence_error.as_ref()) {
             (ActivityStorage::Memory, _) => ActivityDurabilityStatus::ProcessOnly,
@@ -427,6 +480,8 @@ impl ActivityFeed {
         let receiver = self.publish.subscribe();
         let replay = self
             .inner
+            .as_ref()
+            .expect("enabled activity feed")
             .lock()
             .events
             .iter()
@@ -447,14 +502,40 @@ impl ActivityFeed {
         after: Vec<ActivityStateRevision>,
         detail: Option<&str>,
     ) {
-        self.append(
+        self.record_action_by(
+            caller,
+            None,
+            name,
+            outcome,
+            run_id,
+            (before, after),
+            Vec::new(),
+            detail,
+        );
+    }
+
+    /// An action stamped with the requesting participant and the records it
+    /// touched. The participant name is attribution, never authority.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn record_action_by(
+        &self,
+        caller: Caller,
+        actor: Option<&crate::Actor>,
+        name: &str,
+        outcome: ActivityOutcome,
+        run_id: Option<&str>,
+        (before, after): (Vec<ActivityStateRevision>, Vec<ActivityStateRevision>),
+        targets: Vec<String>,
+        detail: Option<&str>,
+    ) {
+        self.append_targeted(
             ActivityCategory::Action,
             format!("action.{name}"),
-            ActivityActor::from_caller(caller),
+            ActivityActor::from_actor(caller, actor),
             outcome,
             correlation(run_id, None, None),
-            before,
-            after,
+            (before, after),
+            targets,
             detail,
         );
     }
@@ -607,6 +688,35 @@ impl ActivityFeed {
         after: Vec<ActivityStateRevision>,
         detail: Option<&str>,
     ) {
+        self.append_targeted(
+            category,
+            kind,
+            actor,
+            outcome,
+            correlation,
+            (before, after),
+            Vec::new(),
+            detail,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn append_targeted(
+        &self,
+        category: ActivityCategory,
+        kind: String,
+        actor: ActivityActor,
+        outcome: ActivityOutcome,
+        correlation: ActivityCorrelation,
+        (before, after): (Vec<ActivityStateRevision>, Vec<ActivityStateRevision>),
+        mut targets: Vec<String>,
+        detail: Option<&str>,
+    ) {
+        targets.truncate(MAX_TARGETS);
+        if !self.is_enabled() {
+            self.dropped.fetch_add(1, Ordering::Relaxed);
+            return;
+        }
         let at_ms = match now_ms() {
             Ok(at_ms) => at_ms,
             Err(error) => {
@@ -616,7 +726,7 @@ impl ActivityFeed {
         };
         let detail = detail.map(normalize_detail);
         let (event, persistence) = {
-            let mut persisted = self.inner.lock();
+            let mut persisted = self.inner.as_ref().expect("enabled activity feed").lock();
             let sequence = persisted.next_sequence;
             let Some(next_sequence) = sequence.checked_add(1) else {
                 tracing::error!("activity event sequence exhausted");
@@ -638,6 +748,7 @@ impl ActivityFeed {
                 outcome,
                 state_revision_before: before,
                 state_revision_after: after,
+                targets,
                 detail,
             };
             persisted.events.push(event.clone());
@@ -870,6 +981,22 @@ impl SurfaceState for HostedState {
         self.inner.state().activity_state_revision()
     }
 
+    fn activity_targets(&self, action: &str, args: &JsonValue, result: &str) -> Vec<String> {
+        self.inner.state().activity_targets(action, args, result)
+    }
+
+    fn retired_action(&self, name: &str) -> Option<String> {
+        self.inner.state().retired_action(name)
+    }
+
+    fn agent_guide(&self) -> Option<String> {
+        self.inner.state().agent_guide()
+    }
+
+    fn activity_dropped(&self) -> u64 {
+        self.inner.state().activity_dropped()
+    }
+
     fn activity_feed(&self) -> Option<&ActivityFeed> {
         Some(self.feed.as_ref())
     }
@@ -897,6 +1024,18 @@ impl SurfaceState for HostedState {
         self.inner.state().ws_receive(data)
     }
 
+    fn ws_receive_as_split(
+        &self,
+        actor: &crate::Actor,
+        data: &[u8],
+    ) -> Result<crate::WsInbound, String> {
+        self.inner.state().ws_receive_as_split(actor, data)
+    }
+
+    fn ws_refusals(&self) -> Option<broadcast::Receiver<crate::WsRefusal>> {
+        self.inner.state().ws_refusals()
+    }
+
     fn reconnect_events(&self) -> Vec<(String, JsonValue)> {
         self.inner.state().reconnect_events()
     }
@@ -918,6 +1057,10 @@ impl Surface for HostedSurface {
 
     fn client_modules(&self) -> Vec<ClientModule> {
         self.inner.client_modules()
+    }
+
+    fn document_mount(&self) -> Option<crate::DocumentMount> {
+        self.inner.document_mount()
     }
 
     fn store(&self) -> Option<&dyn SurfaceStore> {
@@ -976,6 +1119,17 @@ mod tests {
             std::process::id(),
             TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed)
         ))
+    }
+
+    #[test]
+    fn disabled_mode_has_no_ring_no_file_and_counts_unrecorded_activity() {
+        let path = temp_path("disabled");
+        let feed = ActivityFeed::disabled();
+        assert!(feed.inner.is_none());
+        feed.record_lifecycle("disabled.edit", ActivityOutcome::Info, None, None);
+        assert!(!feed.is_enabled());
+        assert_eq!(feed.dropped(), 1);
+        assert!(!path.exists());
     }
 
     #[test]

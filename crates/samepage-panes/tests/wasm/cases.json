@@ -1,0 +1,1190 @@
+{
+  "view": {
+    "revision": "r",
+    "records": [
+      {
+        "id": "p",
+        "kind": "pane",
+        "props": {
+          "pane_id": "topic",
+          "title": "Topic",
+          "tree": "{\"kind\": \"text\", \"text\": \"Hello\"}",
+          "historical": "",
+          "created_by": "Worker",
+          "touched_by": "Worker",
+          "created_by_participant": "agent",
+          "touched_by_participant": "agent"
+        }
+      },
+      {
+        "id": "g",
+        "kind": "pane-layout",
+        "props": {
+          "pane": "p",
+          "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+          "stack": 1.0,
+          "pinned": false,
+          "method": "relational",
+          "historical": ""
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "export": "descriptor"
+    },
+    {
+      "export": "project"
+    },
+    {
+      "export": "digest"
+    },
+    {
+      "export": "legend"
+    },
+    {
+      "export": "cascade",
+      "deleted": [
+        "p"
+      ]
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "changes",
+      "before": {
+        "panes": []
+      },
+      "after": "project"
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "place": "start"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "place": "end"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "place": "right of: topic"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "place": "left of: topic"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "place": "below: topic"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "place": "above: topic"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "place": "near: topic"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "place": "right of: missing"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "size": "small"
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": []
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "size": "medium"
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": []
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "size": "wide"
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": []
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "size": "tall"
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": []
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "size": "large"
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": []
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "new",
+          "title": "New",
+          "view": {
+            "kind": "text",
+            "text": "hello"
+          },
+          "size": "bad"
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": []
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "panes_arrange",
+        "args": {
+          "expected_revision": "r",
+          "panes": [
+            {
+              "id": "topic",
+              "place": "end",
+              "size": "wide",
+              "pinned": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic",
+          "spot": {
+            "x": -5,
+            "y": 10,
+            "w": 30,
+            "h": 9000
+          }
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic",
+          "raise": true
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "panes_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "panes_await",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_remove",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_annotate",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic",
+          "mark": "question",
+          "note": "Why?",
+          "pointed": "Run",
+          "pointed_path": [
+            {
+              "role": "button",
+              "name": "Run"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "panes_configure",
+        "args": {
+          "expected_revision": "r",
+          "theme": {
+            "surface": "paper",
+            "accent": "#FF6600",
+            "scale": 1.23
+          }
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "panes_configure",
+        "args": {
+          "expected_revision": "r",
+          "theme": {
+            "surface": "arbitrary"
+          }
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "old",
+          "id": "topic"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic",
+          "view": {
+            "kind": "script"
+          },
+          "title": "Bad"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic",
+          "view": {
+            "kind": "link",
+            "label": "Bad",
+            "url": "javascript:alert(1)"
+          },
+          "title": "Bad"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic",
+          "view": {
+            "kind": "diagram",
+            "nodes": [
+              {
+                "id": "a"
+              }
+            ],
+            "edges": [
+              {
+                "from": "a",
+                "to": "absent"
+              }
+            ]
+          },
+          "title": "Bad"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_annotate",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic",
+          "mark": "forged"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "absent",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "panes_import",
+        "args": {
+          "expected_revision": "r",
+          "document": {
+            "schema_version": 1,
+            "revision": 3,
+            "columns": 2,
+            "intent": "Legacy",
+            "theme": {
+              "accent": "#6ea8ff",
+              "surface": "ink",
+              "density": "cozy",
+              "radius": 12,
+              "scale": 1.0
+            },
+            "log": [
+              {
+                "revision": 3,
+                "by": "you",
+                "said": "marked earlier"
+              }
+            ],
+            "panes": [
+              {
+                "id": "old",
+                "title": "Old",
+                "author": "you",
+                "revision": 3,
+                "view": {
+                  "kind": "text",
+                  "text": "past"
+                },
+                "span": 2,
+                "height": "tall",
+                "mark": "question",
+                "note": "keep this"
+              }
+            ]
+          }
+        }
+      },
+      "view": {
+        "revision": "r",
+        "records": []
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"source\", \"path\": \"src/lib.rs\", \"from\": 1, \"to\": 2}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "facts": {
+        "[\"source\",\"src/lib.rs\",1,2]": {
+          "path": "src/lib.rs",
+          "first_line": 1,
+          "last_line": 2,
+          "total_lines": 2,
+          "text": "pub struct Actual;"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": "not JSON"
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "p",
+          "g"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "validate",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"alien\"}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "delta": {
+        "created": [
+          "p",
+          "g"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "validate",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"link\", \"label\": \"Bad\", \"url\": \"javascript:alert(1)\"}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "delta": {
+        "created": [
+          "p",
+          "g"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "validate",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"diagram\", \"nodes\": [{\"id\": \"a\"}], \"edges\": [{\"from\": \"a\", \"to\": \"ghost\"}]}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "delta": {
+        "created": [
+          "p",
+          "g"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "topic",
+          "title": "Deep",
+          "view": {
+            "kind": "stack",
+            "children": [
+              {
+                "kind": "stack",
+                "children": [
+                  {
+                    "kind": "stack",
+                    "children": [
+                      {
+                        "kind": "stack",
+                        "children": [
+                          {
+                            "kind": "stack",
+                            "children": [
+                              {
+                                "kind": "stack",
+                                "children": [
+                                  {
+                                    "kind": "stack",
+                                    "children": [
+                                      {
+                                        "kind": "stack",
+                                        "children": [
+                                          {
+                                            "kind": "text",
+                                            "text": "leaf"
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "export": "validate",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"text\", \"text\": \"Hello\"}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": -4, \"y\": 1, \"w\": 20, \"h\": 30}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "delta": {
+        "created": [
+          "p",
+          "g"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"diagram\", \"nodes\": [{\"id\": \"a\", \"label\": \"Caller\"}, {\"id\": \"b\", \"label\": \"Host\"}], \"edges\": [{\"from\": \"a\", \"to\": \"b\"}]}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"diagram\", \"nodes\": [{\"id\": \"a\", \"label\": \"Caller\"}, {\"id\": \"b\", \"label\": \"Host\"}], \"edges\": [{\"from\": \"a\", \"to\": \"b\"}]}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "call": {
+        "action": "panes_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"source\", \"path\": \"src/lib.rs\", \"from\": 1, \"to\": 2}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "facts": {
+        "[\"source\",\"src/lib.rs\",1,2]": {
+          "error": "file no longer exists"
+        }
+      }
+    },
+    {
+      "export": "project_with_facts",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"source\", \"path\": \"src/lib.rs\", \"from\": 1, \"to\": 2}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "facts": "invalid JSON"
+    },
+    {
+      "export": "changes",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"text\", \"text\": \"Hello\"}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0, \"y\": 0, \"w\": 560, \"h\": 280}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "before": {
+        "panes": [
+          {
+            "id": "topic",
+            "title": "Topic",
+            "view": {
+              "kind": "text",
+              "text": "Hello",
+              "tone": "neutral"
+            },
+            "spot": {
+              "x": 0,
+              "y": 0,
+              "w": 420,
+              "h": 280
+            },
+            "mark": "none",
+            "note": "",
+            "pointed": "",
+            "pinned": false
+          }
+        ],
+        "intent": "",
+        "theme": {
+          "accent": "#6ea8ff",
+          "surface": "ink",
+          "density": "cozy",
+          "radius": 12,
+          "scale": 1.0
+        }
+      },
+      "after": "project"
+    },
+    {
+      "export": "changes",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"text\", \"text\": \"Hello\"}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 128, \"y\": 80, \"w\": 420, \"h\": 280}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      },
+      "before": {
+        "panes": [
+          {
+            "id": "topic",
+            "title": "Topic",
+            "view": {
+              "kind": "text",
+              "text": "Hello",
+              "tone": "neutral"
+            },
+            "spot": {
+              "x": 0,
+              "y": 0,
+              "w": 420,
+              "h": 280
+            },
+            "mark": "none",
+            "note": "",
+            "pointed": "",
+            "pinned": false
+          }
+        ],
+        "intent": "",
+        "theme": {
+          "accent": "#6ea8ff",
+          "surface": "ink",
+          "density": "cozy",
+          "radius": 12,
+          "scale": 1.0
+        }
+      },
+      "after": "project"
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "pane_put",
+        "args": {
+          "expected_revision": "r",
+          "id": "pinned",
+          "title": "Pinned",
+          "view": {
+            "kind": "text",
+            "text": "Keep it"
+          },
+          "pinned": true
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "panes_present",
+        "args": {}
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "p",
+            "kind": "pane",
+            "props": {
+              "pane_id": "topic",
+              "title": "Topic",
+              "tree": "{\"kind\": \"text\", \"text\": \"Hello\"}",
+              "historical": "",
+              "created_by": "Worker",
+              "touched_by": "Worker",
+              "created_by_participant": "agent",
+              "touched_by_participant": "agent"
+            }
+          },
+          {
+            "id": "g",
+            "kind": "pane-layout",
+            "props": {
+              "pane": "p",
+              "spot": "{\"x\": 0.0, \"y\": 0.0, \"w\": 420.0, \"h\": 280.0}",
+              "stack": 1.0,
+              "pinned": false,
+              "method": "relational",
+              "historical": ""
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

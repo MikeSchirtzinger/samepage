@@ -1,7 +1,7 @@
 //! Wasmtime-backed host adapter for portable AG-UI extension components.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::Duration;
 
@@ -238,7 +238,9 @@ pub enum HostError {
     InvalidOutput { action: String, message: String },
     #[error("component query action {0:?} mutated component-owned state")]
     QueryMutatedState(String),
-    #[error("component action {action:?} failed and rollback also failed; action: {cause}; rollback: {rollback}")]
+    #[error(
+        "component action {action:?} failed and rollback also failed; action: {cause}; rollback: {rollback}"
+    )]
     RollbackFailed {
         action: String,
         cause: String,

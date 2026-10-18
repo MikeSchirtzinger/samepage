@@ -412,9 +412,11 @@ mod tests {
     fn lists_directories_first() {
         let entries = repo().list("").expect("list");
         assert!(entries.iter().any(|entry| entry.name == "Cargo.toml"));
-        assert!(entries
-            .iter()
-            .any(|entry| entry.is_dir && entry.name == "src"));
+        assert!(
+            entries
+                .iter()
+                .any(|entry| entry.is_dir && entry.name == "src")
+        );
         let first_file = entries.iter().position(|entry| !entry.is_dir).unwrap_or(0);
         let last_dir = entries.iter().rposition(|entry| entry.is_dir).unwrap_or(0);
         assert!(last_dir <= first_file || first_file == 0);

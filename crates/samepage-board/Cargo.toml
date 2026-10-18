@@ -1,0 +1,40 @@
+[package]
+name = "samepage-board"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Portable assertions, human verdict transitions and read-back for the SamePage board."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# wasm-pack's bundled wasm-opt predates the bulk-memory ops rustc emits.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[features]
+default = ["wasm-export"]
+wasm-export = []
+
+[dependencies]
+samepage-capability = { path = "../samepage-capability" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+
+# The WebAssembly artifact exports the capability ABI; native builds do not
+# carry wasm-bindgen.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+samepage-capability = { path = "../samepage-capability", features = ["wasm-export"] }
+wasm-bindgen = { workspace = true }
+
+[dev-dependencies]
+ag-ui-surface = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+sha2 = "0.10"
+
+[lints]
+workspace = true

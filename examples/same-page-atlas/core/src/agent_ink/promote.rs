@@ -90,7 +90,7 @@ use ag_ui_canvas::scene::{Author, Scene};
 use super::mode::{self, AgentInkMode};
 use super::solve::{self, SolveStatus, SolvedValue};
 use super::step::{self, StepSolveState, StoredStep};
-use crate::{read, AtlasError};
+use crate::{AtlasError, read};
 
 /// One stored step's outcome once promotion re-solved it. Always
 /// [`SolveStatus::Converged`] — see the module doc comment's convergence
@@ -257,7 +257,7 @@ fn probe_every_step(
                     promoted,
                     failures,
                     Some(format!("could not re-solve stored step {index}: {error}")),
-                )
+                );
             }
         };
         if solved.status != SolveStatus::Converged {
@@ -281,7 +281,7 @@ fn probe_every_step(
                     Some(format!(
                         "could not read the document after re-solving step {index}: {error}"
                     )),
-                )
+                );
             }
         };
         promoted.push((

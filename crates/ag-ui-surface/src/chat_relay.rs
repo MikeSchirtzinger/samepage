@@ -414,6 +414,10 @@ impl Surface for RelaySurface {
         self.inner.client_modules()
     }
 
+    fn document_mount(&self) -> Option<crate::DocumentMount> {
+        self.inner.document_mount()
+    }
+
     fn store(&self) -> Option<&dyn SurfaceStore> {
         self.inner.store()
     }

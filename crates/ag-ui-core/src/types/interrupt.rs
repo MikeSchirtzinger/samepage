@@ -1,5 +1,5 @@
-use crate::types::ids::ToolCallId;
 use crate::JsonValue;
+use crate::types::ids::ToolCallId;
 use serde::{Deserialize, Serialize};
 
 /// A human-in-the-loop interrupt raised during a run.

@@ -21,7 +21,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::assertion::{status_word, Assertion, Board, Entry, Mark, Verdict};
+use crate::assertion::{Assertion, Board, Entry, Mark, Verdict, status_word};
 
 // The escape is the runtime's now (`ag_ui_surface::html::escape`), not this
 // file's. That was the one piece of this renderer worth sharing: every

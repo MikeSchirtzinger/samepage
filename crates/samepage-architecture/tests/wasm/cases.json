@@ -1,0 +1,1445 @@
+{
+  "view": {
+    "revision": "fixture-r1",
+    "records": [
+      {
+        "id": "n1",
+        "kind": "node",
+        "props": {
+          "label": "UI"
+        }
+      },
+      {
+        "id": "n2",
+        "kind": "node",
+        "props": {
+          "label": "Host"
+        }
+      },
+      {
+        "id": "n3",
+        "kind": "node",
+        "props": {
+          "label": "Core"
+        }
+      },
+      {
+        "id": "e1",
+        "kind": "edge",
+        "props": {
+          "from": "n1",
+          "to": "n2",
+          "label": "depends on"
+        }
+      },
+      {
+        "id": "e2",
+        "kind": "edge",
+        "props": {
+          "from": "n2",
+          "to": "n3",
+          "label": "depends on"
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "export": "descriptor"
+    },
+    {
+      "export": "project"
+    },
+    {
+      "export": "digest"
+    },
+    {
+      "export": "legend"
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "remove": [
+            {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "add": [
+            {
+              "from": "n3",
+              "to": "n2",
+              "label": "calls"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "previous": "p1",
+          "add": [
+            {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          ]
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "digest",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_read",
+        "args": {}
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_decide",
+        "args": {
+          "id": "p1",
+          "verdict": "accepted"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_decide",
+        "args": {
+          "id": "p1",
+          "verdict": "rejected"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_decide",
+        "args": {
+          "id": "p1",
+          "verdict": "open"
+        }
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "p1"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      },
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "cascade",
+      "deleted": [
+        "n2"
+      ],
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "changes",
+      "before": {},
+      "after": "project",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "stale"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "previous": "missing"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "remove": [
+            {
+              "from": "n1",
+              "to": "n3",
+              "label": "absent"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "add": [
+            {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "add": [
+            {
+              "from": "n1",
+              "to": "missing",
+              "label": "bad"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "add": [
+            {
+              "from": "n1",
+              "to": "n3",
+              "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": {
+          "title": "Change host dependency",
+          "baseline_revision": "7996722877c7315c6d3f1ccc4bfda7909531cdc88f8ebfe0105a1c70e508f6b0",
+          "created_by": "human"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_propose",
+        "args": []
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "unknown",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_read",
+        "args": {
+          "extra": true
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "architecture_decide",
+        "args": {
+          "id": "missing",
+          "verdict": "accepted"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": "{"
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "bad",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "digest",
+      "view": {
+        "revision": "r",
+        "records": [
+          {
+            "id": "bad",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A",
+              "verdict": "accepted",
+              "touched_by": "Human"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A",
+              "verdict": "accepted",
+              "touched_by": "Human"
+            }
+          }
+        ]
+      },
+      "delta": {
+        "created": [
+          "p1"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A",
+              "verdict": "rejected",
+              "touched_by": "Human"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A",
+              "verdict": "rejected",
+              "touched_by": "Human"
+            }
+          }
+        ]
+      },
+      "delta": {
+        "created": [
+          "p1"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI",
+              "x": 500
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "project",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          },
+          {
+            "id": "e3",
+            "kind": "edge",
+            "props": {
+              "from": "n3",
+              "to": "n1",
+              "label": "calls"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "validate",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\":\"Change host dependency\",\"previous\":\"\",\"baseline\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"},{\"from\":\"n2\",\"to\":\"n3\",\"label\":\"depends on\"}]},\"proposed\":{\"components\":[{\"id\":\"n1\",\"label\":\"UI\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n2\",\"label\":\"Host\",\"path\":\"\",\"parent\":\"\"},{\"id\":\"n3\",\"label\":\"Core\",\"path\":\"\",\"parent\":\"\"}],\"relationships\":[{\"from\":\"n1\",\"to\":\"n2\",\"label\":\"depends on\"}]}}",
+              "created_by": "Agent A",
+              "verdict": "forged"
+            }
+          }
+        ]
+      },
+      "delta": {
+        "created": [
+          "p1"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "validate",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "p1",
+            "kind": "architecture-proposal",
+            "props": {
+              "definition": "{\"title\": \"Change host dependency\", \"previous\": \"p1\", \"baseline\": {\"components\": [{\"id\": \"n1\", \"label\": \"UI\", \"path\": \"\", \"parent\": \"\"}, {\"id\": \"n2\", \"label\": \"Host\", \"path\": \"\", \"parent\": \"\"}, {\"id\": \"n3\", \"label\": \"Core\", \"path\": \"\", \"parent\": \"\"}], \"relationships\": [{\"from\": \"n1\", \"to\": \"n2\", \"label\": \"depends on\"}, {\"from\": \"n2\", \"to\": \"n3\", \"label\": \"depends on\"}]}, \"proposed\": {\"components\": [{\"id\": \"n1\", \"label\": \"UI\", \"path\": \"\", \"parent\": \"\"}, {\"id\": \"n2\", \"label\": \"Host\", \"path\": \"\", \"parent\": \"\"}, {\"id\": \"n3\", \"label\": \"Core\", \"path\": \"\", \"parent\": \"\"}], \"relationships\": [{\"from\": \"n1\", \"to\": \"n2\", \"label\": \"depends on\"}]}}",
+              "created_by": "Agent A"
+            }
+          }
+        ]
+      },
+      "delta": {
+        "created": [
+          "p1"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "fixture-r1",
+        "records": [
+          {
+            "id": "n1",
+            "kind": "node",
+            "props": {
+              "label": "UI"
+            }
+          },
+          {
+            "id": "n2",
+            "kind": "node",
+            "props": {
+              "label": "Host"
+            }
+          },
+          {
+            "id": "n3",
+            "kind": "node",
+            "props": {
+              "label": "Core"
+            }
+          },
+          {
+            "id": "e1",
+            "kind": "edge",
+            "props": {
+              "from": "n1",
+              "to": "n2",
+              "label": "depends on"
+            }
+          },
+          {
+            "id": "e2",
+            "kind": "edge",
+            "props": {
+              "from": "n2",
+              "to": "n3",
+              "label": "depends on"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

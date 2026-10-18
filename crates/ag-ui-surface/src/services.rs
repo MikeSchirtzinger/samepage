@@ -34,7 +34,7 @@
 //! only mechanism, and an extension published with `requires_services` cannot
 //! be composed by an app that has not supplied them.
 
-use std::any::{type_name, Any};
+use std::any::{Any, type_name};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;

@@ -1,0 +1,596 @@
+{
+  "view": {
+    "revision": "fixture",
+    "records": [
+      {
+        "id": "card",
+        "kind": "node",
+        "props": {
+          "label": "Kernel",
+          "x": 400,
+          "y": 100,
+          "w": 232,
+          "h_pref": 100
+        }
+      },
+      {
+        "id": "rect",
+        "kind": "shape",
+        "props": {
+          "form": "rect",
+          "label": "Cache",
+          "x": 100,
+          "y": 100,
+          "w": 260,
+          "h": 120,
+          "ink": "blue",
+          "opacity": 100
+        }
+      },
+      {
+        "id": "arrow",
+        "kind": "shape",
+        "props": {
+          "form": "arrow",
+          "from": "rect",
+          "to": "card",
+          "head": "triangle",
+          "points": "0,0 100,0",
+          "x": 100,
+          "y": 100
+        }
+      },
+      {
+        "id": "text",
+        "kind": "shape",
+        "props": {
+          "form": "text",
+          "label": "Check this",
+          "x": 320,
+          "y": 120,
+          "w": 240,
+          "font_size": 16
+        }
+      },
+      {
+        "id": "labels",
+        "kind": "constraint",
+        "props": {
+          "op": "labels",
+          "members": "rect",
+          "text": "evidence"
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "export": "descriptor"
+    },
+    {
+      "export": "project"
+    },
+    {
+      "export": "digest"
+    },
+    {
+      "export": "legend"
+    },
+    {
+      "export": "project_with_bounds",
+      "bounds": {
+        "card": [
+          400,
+          100,
+          632,
+          240
+        ]
+      }
+    },
+    {
+      "export": "project_with_bounds",
+      "bounds": {
+        "card": [
+          400,
+          100,
+          400,
+          240
+        ]
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch_read",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch_export",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "rect",
+              "label": "Portable"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "ellipse",
+              "label": "Portable"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "diamond",
+              "label": "Portable"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "frame",
+              "label": "Portable"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "text",
+              "label": "Portable"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "ink",
+              "label": "Portable",
+              "points": "0,0 40,30 90,10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "line",
+              "label": "Portable",
+              "points": "0,0 40,30 90,10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "arrow",
+              "label": "Portable",
+              "points": "0,0 40,30 90,10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "rect",
+              "ref": "a"
+            },
+            {
+              "form": "rect",
+              "ref": "b"
+            },
+            {
+              "form": "arrow",
+              "from": "a",
+              "to": "b"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "rect",
+              "id": "rect",
+              "stroke_width": 4,
+              "stroke_style": "dotted",
+              "opacity": 40,
+              "angle": 0.5,
+              "groups": "g1 g2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "frame",
+              "ref": "holder"
+            },
+            {
+              "form": "rect",
+              "frame": "holder"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "rect",
+              "label": "kept"
+            },
+            {
+              "form": "image",
+              "ref": "skipped"
+            },
+            {
+              "form": "text",
+              "label": "not attempted"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "shape_lift",
+        "args": {
+          "id": "rect"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "shape_lift",
+        "args": {
+          "id": "arrow"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "shape_lift",
+        "args": {
+          "id": "missing"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "shape_remove",
+        "args": {
+          "id": "rect"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch_import",
+        "args": {
+          "document": "{\"elements\": [{\"type\": \"rectangle\", \"id\": \"r\", \"x\": 10, \"y\": 20, \"width\": 140, \"height\": 80}, {\"type\": \"image\", \"id\": \"unsupported\"}]}"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch_import",
+        "args": {
+          "document": "{\"elements\": [{\"type\": \"rectangle\", \"id\": \"a\", \"width\": 100, \"height\": 80}, {\"type\": \"diamond\", \"id\": \"b\", \"x\": 500, \"width\": 100, \"height\": 80}, {\"type\": \"arrow\", \"id\": \"c\", \"points\": [[0, 0], [130, -60], [250, 170], [340, 150]], \"startBinding\": {\"elementId\": \"a\"}, \"endBinding\": {\"elementId\": \"b\"}}]}"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch_import",
+        "args": {
+          "document": "{\"elements\": [{\"type\": \"frame\", \"id\": \"f\", \"width\": 600, \"height\": 500, \"name\": \"Before\"}, {\"type\": \"rectangle\", \"id\": \"r\", \"width\": 100, \"height\": 80, \"frameId\": \"f\", \"groupIds\": [\"group\"], \"strokeWidth\": 4, \"strokeStyle\": \"dashed\", \"opacity\": 30, \"roundness\": null, \"angle\": 0.5}]}"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch_import",
+        "args": {
+          "document": "not JSON"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch_import",
+        "args": {
+          "document": "{\"elements\":[{\"type\":\"image\",\"id\":\"x\"}]}"
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "unknown",
+        "args": {}
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "ink",
+              "points": "0,0 NaN,3"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": {
+        "action": "sketch",
+        "args": {
+          "shapes": [
+            {
+              "form": "text",
+              "h": 100,
+              "label": "bad"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "export": "plan",
+      "call": "not JSON"
+    },
+    {
+      "export": "validate",
+      "delta": {
+        "created": [
+          "rect"
+        ],
+        "modified": {},
+        "deleted": [],
+        "rekinded": []
+      }
+    },
+    {
+      "export": "cascade",
+      "deleted": [
+        "card"
+      ]
+    },
+    {
+      "export": "changes",
+      "before": {},
+      "after": "project"
+    },
+    {
+      "export": "detach_with_before",
+      "deleted": [
+        "card"
+      ],
+      "view": {
+        "revision": "fixture",
+        "records": [
+          {
+            "id": "rect",
+            "kind": "shape",
+            "props": {
+              "form": "rect",
+              "label": "Cache",
+              "x": 100,
+              "y": 100,
+              "w": 260,
+              "h": 120,
+              "ink": "blue",
+              "opacity": 100
+            }
+          },
+          {
+            "id": "arrow",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "rect",
+              "to": "card",
+              "head": "triangle",
+              "points": "0,0 100,0",
+              "x": 100,
+              "y": 100
+            }
+          },
+          {
+            "id": "text",
+            "kind": "shape",
+            "props": {
+              "form": "text",
+              "label": "Check this",
+              "x": 320,
+              "y": 120,
+              "w": 240,
+              "font_size": 16
+            }
+          },
+          {
+            "id": "labels",
+            "kind": "constraint",
+            "props": {
+              "op": "labels",
+              "members": "rect",
+              "text": "evidence"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "export": "detach_with_before",
+      "deleted": [
+        "card"
+      ],
+      "view": "not JSON"
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "legend-empty",
+        "records": []
+      }
+    },
+    {
+      "export": "legend",
+      "view": {
+        "revision": "fixture",
+        "records": [
+          {
+            "id": "card",
+            "kind": "node",
+            "props": {
+              "label": "Kernel",
+              "x": 400,
+              "y": 100,
+              "w": 232,
+              "h_pref": 100
+            }
+          },
+          {
+            "id": "rect",
+            "kind": "shape",
+            "props": {
+              "form": "rect",
+              "label": "Cache",
+              "x": 100,
+              "y": 100,
+              "w": 260,
+              "h": 120,
+              "ink": "blue",
+              "opacity": 100
+            }
+          },
+          {
+            "id": "arrow",
+            "kind": "shape",
+            "props": {
+              "form": "arrow",
+              "from": "rect",
+              "to": "card",
+              "head": "triangle",
+              "points": "0,0 100,0",
+              "x": 100,
+              "y": 100
+            }
+          },
+          {
+            "id": "text",
+            "kind": "shape",
+            "props": {
+              "form": "text",
+              "label": "Check this",
+              "x": 320,
+              "y": 120,
+              "w": 240,
+              "font_size": 16
+            }
+          },
+          {
+            "id": "labels",
+            "kind": "constraint",
+            "props": {
+              "op": "labels",
+              "members": "rect",
+              "text": "evidence"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

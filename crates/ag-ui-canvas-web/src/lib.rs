@@ -22,22 +22,22 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::*;
 use web_sys::{
     BinaryType, Element, HtmlCanvasElement, MessageEvent, PointerEvent, WebSocket, WheelEvent,
 };
 
 use ag_ui_canvas::blob::AlignedBytes;
-use ag_ui_canvas::codec::{decode_frame, encode_sync, Frame};
-use ag_ui_canvas::scene::{authorized_blob_color, ObjectSnapshot, PropValue, Scene};
+use ag_ui_canvas::codec::{Frame, decode_frame, encode_sync};
+use ag_ui_canvas::scene::{ObjectSnapshot, PropValue, Scene, authorized_blob_color};
 use ag_ui_canvas::sync::{greeting, handle_payload, update_message};
-use ag_ui_canvas::{events as canvas_events, ObjectId};
+use ag_ui_canvas::{ObjectId, events as canvas_events};
 use ag_ui_canvas_render::{Renderer, SceneObject, TextQuad};
-use ag_ui_core::event::Event as AgUiEvent;
 use ag_ui_core::JsonValue;
-use pretext::backend::fixed::FixedWidthBackend;
+use ag_ui_core::event::Event as AgUiEvent;
 use pretext::backend::FontSpec;
+use pretext::backend::fixed::FixedWidthBackend;
 use pretext::gpu_layout::{GlyphAtlas, GpuTextLayout, TextAlign, TextLayoutConfig, VerticalAlign};
 
 type ReconnectCallback = Rc<dyn Fn()>;
@@ -584,7 +584,7 @@ pub async fn start(
                 let (wx, wy) = app.renderer.screen_to_world(sx, sy);
                 let (nx, ny) = (wx - grab.0, wy - grab.1);
                 app.user_camera = true; // manual interaction: stop auto-framing
-                                        // Optimistic local mutation; ships over WS via on_update.
+                // Optimistic local mutation; ships over WS via on_update.
                 if let Err(error) = app.scene.set_props(
                     &id,
                     &[

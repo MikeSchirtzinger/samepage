@@ -1,7 +1,7 @@
 //! One read-only architecture review for the browser and attached agents.
 use crate::source::Repo;
 use same_page_atlas_core::Atlas;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
@@ -148,7 +148,7 @@ fn project_facts(repo: &Repo) -> Value {
 mod tests {
     use super::*;
     use ag_ui_canvas::scene::{Author, Scene};
-    use same_page_atlas_core::{place_node, read, NodePatch};
+    use same_page_atlas_core::{NodePatch, place_node, read};
 
     #[test]
     fn source_deletion_is_visible_and_readability_is_not_claim_verification() {

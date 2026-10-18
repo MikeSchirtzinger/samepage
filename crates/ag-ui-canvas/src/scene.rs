@@ -19,15 +19,47 @@
 //! this API surfaces as `SceneError::Txn` instead of a panic. Never mutate the
 //! scene from inside an observer.
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::{
-    Any, Doc, Map, MapPrelim, MapRef, Out, ReadTxn, StateVector, Subscription, Transact, Update,
-};
+use yrs::{Any, Doc, Map, MapPrelim, MapRef, Number, Out, ReadTxn, StateVector, Transact, Update};
 
 use crate::blob::DType;
 use crate::codec::BlobHeader;
-use crate::ids::{mint_object_id, ObjectId};
+use crate::ids::{ObjectId, mint_object_id};
+
+/// A registered update observer. Dropping it unregisters the callback.
+pub struct UpdateSubscription {
+    doc: Doc,
+    key: String,
+}
+
+impl UpdateSubscription {
+    fn next_key() -> String {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        format!(
+            "ag-ui-canvas.on_update.{}",
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        )
+    }
+}
+
+impl Drop for UpdateSubscription {
+    fn drop(&mut self) {
+        // Fails only while a write transaction is open on this document; the
+        // callback then stays registered for the life of the document.
+        let _ = self.doc.unobserve_update_v1(self.key.as_str());
+    }
+}
+
+/// The number a stored value reads as. Whole values are stored as integers.
+pub(crate) fn number_f64(number: Number) -> f64 {
+    match number {
+        Number::Int(value) => value as f64,
+        Number::Float(value) => value,
+    }
+}
 
 /// Who authored an object / a mutation. Stored as plain strings so the
 /// vocabulary can grow (e.g. named agent runs) without schema changes.
@@ -74,7 +106,7 @@ impl PropValue {
 
     fn to_any(&self) -> Any {
         match self {
-            PropValue::Num(n) => Any::Number(*n),
+            PropValue::Num(n) => Any::Number(Number::try_i64(*n)),
             PropValue::Str(s) => Any::from(s.as_str()),
             PropValue::Bool(b) => Any::Bool(*b),
         }
@@ -82,8 +114,7 @@ impl PropValue {
 
     fn from_any(any: &Any) -> Option<PropValue> {
         match any {
-            Any::Number(n) => Some(PropValue::Num(*n)),
-            Any::BigInt(n) => Some(PropValue::Num(*n as f64)),
+            Any::Number(n) => Some(PropValue::Num(number_f64(*n))),
             Any::String(s) => Some(PropValue::Str(s.to_string())),
             Any::Bool(b) => Some(PropValue::Bool(*b)),
             _ => None,
@@ -504,21 +535,23 @@ impl Scene {
             _ => {
                 return Err(SceneError::InvalidData(format!(
                     "object `{object_id}` blob id must be a 16-digit hexadecimal string"
-                )))
+                )));
             }
         };
         let exact_u32 = |index: usize, key: &str| -> Result<u32, SceneError> {
             let value = match get_any(index, key)? {
-                Any::Number(number) => *number,
-                Any::BigInt(number) => u32::try_from(*number).map(f64::from).map_err(|_| {
-                    SceneError::InvalidData(format!(
-                        "object `{object_id}` blob field `{key}` is outside u32"
-                    ))
-                })?,
+                Any::Number(Number::Float(number)) => *number,
+                Any::Number(Number::Int(number)) => {
+                    u32::try_from(*number).map(f64::from).map_err(|_| {
+                        SceneError::InvalidData(format!(
+                            "object `{object_id}` blob field `{key}` is outside u32"
+                        ))
+                    })?
+                }
                 _ => {
                     return Err(SceneError::InvalidData(format!(
                         "object `{object_id}` blob field `{key}` must be an exact u32"
-                    )))
+                    )));
                 }
             };
             (value.is_finite()
@@ -601,7 +634,7 @@ impl Scene {
                     _ => {
                         return Err(SceneError::InvalidData(format!(
                             "object `{key}` is not a map"
-                        )))
+                        )));
                     }
                 };
                 let invalid_field = |field: &str, expected: &str| {
@@ -619,8 +652,7 @@ impl Scene {
                 let num_of = |field: &str| -> Result<Option<f64>, SceneError> {
                     let value = match obj.get(&txn, field) {
                         None => return Ok(None),
-                        Some(Out::Any(Any::Number(value))) => value,
-                        Some(Out::Any(Any::BigInt(value))) => value as f64,
+                        Some(Out::Any(Any::Number(value))) => number_f64(value),
                         Some(_) => return Err(invalid_field(field, "a finite number")),
                     };
                     value
@@ -723,18 +755,31 @@ impl Scene {
     pub fn on_update(
         &self,
         cb: impl Fn(&[u8]) + Send + Sync + 'static,
-    ) -> Result<Subscription, SceneError> {
+    ) -> Result<UpdateSubscription, SceneError> {
+        let key = UpdateSubscription::next_key();
         self.doc
-            .observe_update_v1(move |_txn, event| cb(&event.update))
-            .map_err(|e| SceneError::Txn(e.to_string()))
+            .observe_update_v1(key.as_str(), move |_txn, event| cb(&event.update))
+            .map_err(|e| SceneError::Txn(e.to_string()))?;
+        Ok(UpdateSubscription {
+            doc: self.doc.clone(),
+            key,
+        })
     }
 
     /// See the native variant; wasm drops the `Send + Sync` bounds.
     #[cfg(target_arch = "wasm32")]
-    pub fn on_update(&self, cb: impl Fn(&[u8]) + 'static) -> Result<Subscription, SceneError> {
+    pub fn on_update(
+        &self,
+        cb: impl Fn(&[u8]) + 'static,
+    ) -> Result<UpdateSubscription, SceneError> {
+        let key = UpdateSubscription::next_key();
         self.doc
-            .observe_update_v1(move |_txn, event| cb(&event.update))
-            .map_err(|e| SceneError::Txn(e.to_string()))
+            .observe_update_v1(key.as_str(), move |_txn, event| cb(&event.update))
+            .map_err(|e| SceneError::Txn(e.to_string()))?;
+        Ok(UpdateSubscription {
+            doc: self.doc.clone(),
+            key,
+        })
     }
 
     /// Long-session hygiene: full-state snapshot for rebasing into a fresh

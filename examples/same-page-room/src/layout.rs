@@ -107,11 +107,7 @@ impl Spot {
 
 /// NaN and infinity are the two ways a JSON number ruins a layout silently.
 fn sane(value: f64) -> f64 {
-    if value.is_finite() {
-        value
-    } else {
-        0.0
-    }
+    if value.is_finite() { value } else { 0.0 }
 }
 
 fn span_overlap(a_low: f64, a_high: f64, b_low: f64, b_high: f64) -> f64 {

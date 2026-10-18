@@ -14,13 +14,13 @@
 //! [`crate::App`], not the presence contract.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 use crate::{
     ActionRouteDef, Actor, Caller, ClientModule, Effect, RouteDef, SnapshotPngFuture, StateBacking,
@@ -439,9 +439,9 @@ impl SemanticTargetService {
     pub fn with_resolver(
         namespaces: impl IntoIterator<Item = String>,
         resolver: impl Fn(&SemanticTargetRef) -> Result<Option<SemanticTarget>, String>
-            + Send
-            + Sync
-            + 'static,
+        + Send
+        + Sync
+        + 'static,
         publish: impl Fn(AttentionSnapshot) + Send + Sync + 'static,
     ) -> Result<Self, String> {
         Self::new(namespaces, Arc::new(resolver), Arc::new(publish))
@@ -1082,6 +1082,22 @@ impl SurfaceState for HostedState {
         self.inner.state().activity_state_revision()
     }
 
+    fn activity_targets(&self, action: &str, args: &JsonValue, result: &str) -> Vec<String> {
+        self.inner.state().activity_targets(action, args, result)
+    }
+
+    fn retired_action(&self, name: &str) -> Option<String> {
+        self.inner.state().retired_action(name)
+    }
+
+    fn agent_guide(&self) -> Option<String> {
+        self.inner.state().agent_guide()
+    }
+
+    fn activity_dropped(&self) -> u64 {
+        self.inner.state().activity_dropped()
+    }
+
     fn activity_feed(&self) -> Option<&crate::ActivityFeed> {
         self.inner.state().activity_feed()
     }
@@ -1107,6 +1123,18 @@ impl SurfaceState for HostedState {
 
     fn ws_receive(&self, data: &[u8]) -> Result<Vec<Vec<u8>>, String> {
         self.inner.state().ws_receive(data)
+    }
+
+    fn ws_receive_as_split(
+        &self,
+        actor: &crate::Actor,
+        data: &[u8],
+    ) -> Result<crate::WsInbound, String> {
+        self.inner.state().ws_receive_as_split(actor, data)
+    }
+
+    fn ws_refusals(&self) -> Option<tokio::sync::broadcast::Receiver<crate::WsRefusal>> {
+        self.inner.state().ws_refusals()
     }
 
     fn reconnect_events(&self) -> Vec<(String, JsonValue)> {
@@ -1137,6 +1165,10 @@ impl Surface for HostedSurface {
 
     fn client_modules(&self) -> Vec<ClientModule> {
         self.inner.client_modules()
+    }
+
+    fn document_mount(&self) -> Option<crate::DocumentMount> {
+        self.inner.document_mount()
     }
 
     fn store(&self) -> Option<&dyn SurfaceStore> {

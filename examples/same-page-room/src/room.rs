@@ -18,7 +18,7 @@ use ag_ui_surface::{
 };
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 use crate::catalog::Workspace;
 use crate::layout::{self, Placement, Sited, Spot};
@@ -2229,16 +2229,16 @@ fn merge_theme(current: &Theme, args: &JsonValue) -> Result<Theme, String> {
         }
         theme.radius = radius as u8;
     }
-    if let Some(scale) = args.get("scale") {
-        if !scale.is_null() {
-            let scale = scale
-                .as_f64()
-                .ok_or_else(|| "scale must be a number".to_string())?;
-            if !(0.8..=1.4).contains(&scale) {
-                return Err("scale must be between 0.8 and 1.4".to_string());
-            }
-            theme.scale = (scale * 100.0).round() / 100.0;
+    if let Some(scale) = args.get("scale")
+        && !scale.is_null()
+    {
+        let scale = scale
+            .as_f64()
+            .ok_or_else(|| "scale must be a number".to_string())?;
+        if !(0.8..=1.4).contains(&scale) {
+            return Err("scale must be between 0.8 and 1.4".to_string());
         }
+        theme.scale = (scale * 100.0).round() / 100.0;
     }
     Ok(theme)
 }
@@ -2449,10 +2449,10 @@ const ENCLOSURE_SHOWN: usize = 2;
 /// reads as two separate things having been touched.
 fn enclosure(path: &[PointLevel]) -> String {
     let mut parts = Vec::new();
-    if let Some(first) = path.first() {
-        if !first.role.is_empty() {
-            parts.push(format!("a {}", first.role));
-        }
+    if let Some(first) = path.first()
+        && !first.role.is_empty()
+    {
+        parts.push(format!("a {}", first.role));
     }
     for level in path.iter().skip(1).take(ENCLOSURE_SHOWN) {
         let described = level.describe();

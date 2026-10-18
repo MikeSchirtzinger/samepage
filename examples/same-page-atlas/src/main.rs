@@ -52,8 +52,33 @@ const SEGMENT_DECODER_SHA256: &str =
 const ORT_WEBGPU_SHA256: &str = "46988a5a025f49449850f39f95eb0d21e40e67b3beb13a0b54efd3ab5d83f60e";
 const ORT_WASM_SHA256: &str = "78feeeb3d08f6bcee94d938ed322f69073bb8076b5f9d34697a574ffba8deb48";
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // The MCP attach token: pinned by `AGUI_MCP_TOKEN` when an outside
+    // terminal agent needs to read it, otherwise generated here and pinned
+    // into the process environment so the recipe and the runtime's `/mcp`
+    // route accept the exact same value. It is written before the async
+    // runtime exists, so no other thread can be reading the environment.
+    let (mcp_token, mcp_token_source) = resolve_mcp_token(
+        std::env::var("AGUI_MCP_TOKEN")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty()),
+    );
+    if matches!(mcp_token_source, McpTokenSource::Random) {
+        // SAFETY: this process is still single-threaded; the runtime that
+        // starts worker threads is built after this write.
+        unsafe { std::env::set_var("AGUI_MCP_TOKEN", &mcp_token) };
+    }
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(run(mcp_token, mcp_token_source))
+}
+
+async fn run(
+    mcp_token: String,
+    mcp_token_source: McpTokenSource,
+) -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -248,20 +273,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut services = ServiceRegistry::new();
     services.provide("repository", repo)?;
 
-    // The MCP attach token: pinned by `AGUI_MCP_TOKEN` when an outside
-    // terminal agent needs to read it, otherwise generated here and pinned
-    // into the process environment so the recipe below and the runtime's
-    // `/mcp` route accept the exact same value.
-    let (mcp_token, mcp_token_source) = resolve_mcp_token(
-        std::env::var("AGUI_MCP_TOKEN")
-            .ok()
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty()),
-    );
-    if matches!(mcp_token_source, McpTokenSource::Random) {
-        std::env::set_var("AGUI_MCP_TOKEN", &mcp_token);
-    }
-
     let recipe = AppRecipe::from_file(&recipe_path)?;
     let mut app = App::new()
         .try_surface(move |transport| {
@@ -386,15 +397,15 @@ fn verify_pinned_asset(
         )
         .into());
     }
-    if let Some(expected_bytes) = expected_bytes {
-        if metadata.len() != expected_bytes {
-            return Err(format!(
-                "required semantic-import asset {} has {} bytes, expected {expected_bytes}",
-                path.display(),
-                metadata.len()
-            )
-            .into());
-        }
+    if let Some(expected_bytes) = expected_bytes
+        && metadata.len() != expected_bytes
+    {
+        return Err(format!(
+            "required semantic-import asset {} has {} bytes, expected {expected_bytes}",
+            path.display(),
+            metadata.len()
+        )
+        .into());
     }
     let bytes = std::fs::read(path).map_err(|error| {
         format!(

@@ -11,11 +11,11 @@
 //! JSON's redundancy) — parse/alloc cost is. Each routine starts from a
 //! fresh receiver so repeated iterations don't no-op.
 
-use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
+use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use std::time::Duration;
 
 use ag_ui_canvas::blob::AlignedBytes;
-use ag_ui_canvas::codec::{decode_frame, encode_blob, BlobHeader, Frame};
+use ag_ui_canvas::codec::{BlobHeader, Frame, decode_frame, encode_blob};
 use ag_ui_canvas::scene::{Author, PropValue, Scene};
 use ag_ui_canvas::{DType, ObjectId};
 

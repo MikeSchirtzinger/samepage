@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 const MAX_EXCERPT_LINES: usize = 400;
 const MAX_EXCERPT_BYTES: u64 = 512 * 1024;
@@ -237,10 +237,10 @@ impl Workspace {
 
     fn listening(&self, port: u16) -> bool {
         let now = Instant::now();
-        if let Some((at, value)) = self.probes.lock().get(&port) {
-            if now.duration_since(*at) < PROBE_TTL {
-                return *value;
-            }
+        if let Some((at, value)) = self.probes.lock().get(&port)
+            && now.duration_since(*at) < PROBE_TTL
+        {
+            return *value;
         }
         let address = SocketAddr::from(([127, 0, 0, 1], port));
         let open = match TcpStream::connect_timeout(&address, PROBE_TIMEOUT) {
@@ -413,32 +413,28 @@ fn manifest_value(manifest: &str, key: &str) -> Option<String> {
 /// — which reads as *not runnable* rather than as *not parsed*.
 fn default_port(source: &str) -> Option<(String, u16)> {
     // config::string_or("AGUI_ADDR", "127.0.0.1:8100")
-    if let Some(rest) = after(source, "\"AGUI_ADDR\"") {
-        if let Some(literal) = until(rest, ')') {
-            if let Some(host) = after(literal, "127.0.0.1:") {
-                if let Some(port) = leading_port(host) {
-                    return Some(("AGUI_ADDR".to_string(), port));
-                }
-            }
-        }
+    if let Some(rest) = after(source, "\"AGUI_ADDR\"")
+        && let Some(literal) = until(rest, ')')
+        && let Some(host) = after(literal, "127.0.0.1:")
+        && let Some(port) = leading_port(host)
+    {
+        return Some(("AGUI_ADDR".to_string(), port));
     }
     // config::port_or("CANVAS_PORT", 8091)
-    if let Some(rest) = after(source, "port_or(\"") {
-        if let Some(literal) = until(rest, ')') {
-            if let Some((name, default)) = literal.split_once(',') {
-                if let Some(port) = leading_port(default.trim()) {
-                    return Some((name.trim_matches('"').to_string(), port));
-                }
-            }
-        }
+    if let Some(rest) = after(source, "port_or(\"")
+        && let Some(literal) = until(rest, ')')
+        && let Some((name, default)) = literal.split_once(',')
+        && let Some(port) = leading_port(default.trim())
+    {
+        return Some((name.trim_matches('"').to_string(), port));
     }
     // let raw = configured.unwrap_or("8092");
-    if let Some(rest) = after(source, "unwrap_or(\"") {
-        if let Some(port) = leading_port(rest) {
-            if rest.starts_with(&port.to_string()) && (1024..=65535).contains(&(port as u32)) {
-                return Some((String::new(), port));
-            }
-        }
+    if let Some(rest) = after(source, "unwrap_or(\"")
+        && let Some(port) = leading_port(rest)
+        && rest.starts_with(&port.to_string())
+        && (1024..=65535).contains(&(port as u32))
+    {
+        return Some((String::new(), port));
     }
     None
 }
@@ -469,12 +465,11 @@ fn recipe_extensions(path: &Path) -> Vec<String> {
             in_extension = line.starts_with("[[extensions]]");
             continue;
         }
-        if in_extension {
-            if let Some(value) = line.strip_prefix("id") {
-                if let Some((_, id)) = value.split_once('=') {
-                    ids.push(id.trim().trim_matches('"').to_string());
-                }
-            }
+        if in_extension
+            && let Some(value) = line.strip_prefix("id")
+            && let Some((_, id)) = value.split_once('=')
+        {
+            ids.push(id.trim().trim_matches('"').to_string());
         }
     }
     ids
@@ -513,7 +508,12 @@ mod tests {
         fs::create_dir_all(dir.join("src")).expect("src");
         fs::write(dir.join("src/main.rs"), "fn main() {}\n").expect("main");
         let workspace = Workspace::open(&dir).expect("open");
-        assert_eq!(workspace.option_count(), 1, "{}", workspace.describe_options());
+        assert_eq!(
+            workspace.option_count(),
+            1,
+            "{}",
+            workspace.describe_options()
+        );
         let text = workspace.describe_options();
         assert!(text.contains("lonely"), "{text}");
         assert!(text.contains("cargo run -p lonely"), "{text}");
@@ -639,11 +639,13 @@ mod tests {
             .expect("the room discovers itself");
         assert_eq!(room["port"], 8100);
         assert_eq!(room["command"], "cargo run -p same-page-room");
-        assert!(room["extensions"]
-            .as_array()
-            .expect("extensions")
-            .iter()
-            .any(|id| id == "room"));
+        assert!(
+            room["extensions"]
+                .as_array()
+                .expect("extensions")
+                .iter()
+                .any(|id| id == "room")
+        );
     }
 
     #[test]
@@ -651,10 +653,12 @@ mod tests {
         let workspace = workspace();
         let catalog = workspace.catalog(Some("atlas")).expect("catalog builds");
         let options = catalog["options"].as_array().expect("options array");
-        assert!(options.iter().all(|option| option["package"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("atlas")));
+        assert!(options.iter().all(|option| {
+            option["package"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("atlas")
+        }));
     }
 
     #[test]

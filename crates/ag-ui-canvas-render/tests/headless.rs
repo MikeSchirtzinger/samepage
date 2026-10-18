@@ -3,7 +3,7 @@
 //! correctness gate — it validates the full wgpu pipeline (shaders, instance
 //! layout, camera, blob upload) without a browser.
 
-use ag_ui_canvas_render::{text, Renderer, SceneObject, TextQuad};
+use ag_ui_canvas_render::{Renderer, SceneObject, TextQuad, text};
 
 const W: u32 = 256;
 const H: u32 = 256;
@@ -244,7 +244,9 @@ fn renders_text_label_ink_to_framebuffer() {
 
     // Count bright (white-ish) pixels — glyph ink on the dark clear color.
     let bright = pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0] > 120 && p[1] > 120 && p[2] > 120)
         .count();
     assert!(

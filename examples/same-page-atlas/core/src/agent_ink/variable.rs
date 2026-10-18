@@ -1,9 +1,9 @@
 use ag_ui_canvas::scene::{Author, PropValue, Scene};
 use serde::{Deserialize, Serialize};
 
-use super::geometry::{is_represented_property, object_exists, REPRESENTED_PROPERTIES};
+use super::geometry::{REPRESENTED_PROPERTIES, is_represented_property, object_exists};
 use super::measure::Measure;
-use crate::{capacity, read, text, AtlasError, KIND_VARIABLE, MAX_LABEL, MAX_PATH};
+use crate::{AtlasError, KIND_VARIABLE, MAX_LABEL, MAX_PATH, capacity, read, text};
 
 const K_NAME: &str = "name";
 const K_VALUE: &str = "value";
@@ -298,7 +298,7 @@ pub(super) fn project(
             return Err(
                 "variable represents fields must contain both object and property, or neither"
                     .to_string(),
-            )
+            );
         }
     };
     let unit = match string(K_UNIT) {
@@ -325,7 +325,7 @@ pub(super) fn project(
         (VarState::Measured, false) => {
             return Err(format!(
                 "stored variable {name:?} has state \"measured\" but no measure descriptor"
-            ))
+            ));
         }
         (VarState::Measured, true) | (_, false) => {}
         (_, true) => {

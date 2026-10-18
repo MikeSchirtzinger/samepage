@@ -7,7 +7,10 @@ use std::path::Path;
 use regex::Regex;
 use serde_json::Value;
 
-use crate::util::{depth_at, line_at, line_number_at, sha256_hex, blank_string_literals, strip_line_comment, trimmed_snippet};
+use crate::util::{
+    blank_string_literals, depth_at, line_at, line_number_at, sha256_hex, strip_line_comment,
+    trimmed_snippet,
+};
 use crate::walk::Walked;
 use crate::{Evidence, Lane, LaneKind, ScanError};
 
@@ -53,11 +56,7 @@ pub fn binary_lanes(_root: &Path, walked: &Walked) -> Result<Vec<Lane>, ScanErro
         match value.get("bin") {
             Some(Value::String(path)) => {
                 let label = package_name.clone().unwrap_or_else(|| path.clone());
-                push_binary(
-                    label,
-                    format!("package.json \"bin\": \"{path}\""),
-                    path,
-                );
+                push_binary(label, format!("package.json \"bin\": \"{path}\""), path);
             }
             Some(Value::Object(map)) => {
                 for (name, v) in map {
@@ -167,15 +166,24 @@ pub fn extract_js(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<La
         let head = stripped.trim_start();
         if head.starts_with("import ")
             || head.starts_with("export ")
-            || (head.contains("require(") && (head.starts_with("const ") || head.starts_with("let ") || head.starts_with("var ")))
+            || (head.contains("require(")
+                && (head.starts_with("const ")
+                    || head.starts_with("let ")
+                    || head.starts_with("var ")))
         {
             continue;
         }
         if listener_re.is_match(stripped) {
-            push(LaneKind::Listener, ".listen()/createServer()/Bun.serve()/Deno.serve()");
+            push(
+                LaneKind::Listener,
+                ".listen()/createServer()/Bun.serve()/Deno.serve()",
+            );
         }
         if spawn_re.is_match(stripped) {
-            push(LaneKind::Spawn, "child_process spawn/exec/execFile/fork or Worker");
+            push(
+                LaneKind::Spawn,
+                "child_process spawn/exec/execFile/fork or Worker",
+            );
         }
         if outbound_re.is_match(stripped) {
             push(LaneKind::Outbound, "WebSocket/http.request/axios call");
@@ -189,11 +197,17 @@ pub fn extract_js(root: &Path, rel_path: &Path, contents: &str) -> Result<Vec<La
                 .map(|lit| lit.as_str().starts_with('/') || lit.as_str().starts_with('.'))
                 .unwrap_or(false);
             if !is_relative {
-                push(LaneKind::Outbound, "fetch() to an absolute URL or a variable");
+                push(
+                    LaneKind::Outbound,
+                    "fetch() to an absolute URL or a variable",
+                );
             }
         }
         if background_misc_re.is_match(stripped) {
-            push(LaneKind::Background, "cron / queue.process() background task");
+            push(
+                LaneKind::Background,
+                "cron / queue.process() background task",
+            );
         }
         if let Some(m) = interval_re.find(stripped) {
             let abs_offset = line_start + m.start();

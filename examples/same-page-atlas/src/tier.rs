@@ -31,7 +31,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use sha2::{Digest, Sha256};
 
 use crate::source::Repo;
@@ -246,7 +246,9 @@ pub enum G8Status {
     Unreadable(#[allow(dead_code)] String),
     /// Ran cleanly. An obligation id in `clean` passed *and* cleared the
     /// enforcement rigor floor; anything else cemented is gate-unmet.
-    Ran { clean: std::collections::HashSet<String> },
+    Ran {
+        clean: std::collections::HashSet<String>,
+    },
 }
 
 impl G8Status {
@@ -298,7 +300,12 @@ pub fn read_g8_status(project_root: &Path) -> G8Status {
 /// replacement, and which card that targets (and should draw struck
 /// through). A `replaces` edge is an ordinary authored edge with that exact
 /// label; nothing in the CRDT schema changed to add this relation.
-fn replaces_edges(atlas: &Atlas) -> (std::collections::HashSet<String>, std::collections::HashSet<String>) {
+fn replaces_edges(
+    atlas: &Atlas,
+) -> (
+    std::collections::HashSet<String>,
+    std::collections::HashSet<String>,
+) {
     let mut proposing = std::collections::HashSet::new();
     let mut struck = std::collections::HashSet::new();
     for edge in &atlas.edges {
@@ -372,12 +379,30 @@ pub fn annotate(
             }
         } else if let Some(obligation_id) = registry.cemented.get(&node.id).cloned() {
             if g8.gate_met(&obligation_id) {
-                NodeTier { tier: Tier::GateMet, chip: "GATE met".to_string(), sha256_prefix: None, struck, bindings }
+                NodeTier {
+                    tier: Tier::GateMet,
+                    chip: "GATE met".to_string(),
+                    sha256_prefix: None,
+                    struck,
+                    bindings,
+                }
             } else {
-                NodeTier { tier: Tier::GateUnmet, chip: "GATE unmet".to_string(), sha256_prefix: None, struck, bindings }
+                NodeTier {
+                    tier: Tier::GateUnmet,
+                    chip: "GATE unmet".to_string(),
+                    sha256_prefix: None,
+                    struck,
+                    bindings,
+                }
             }
         } else if bindings.is_empty() {
-            NodeTier { tier: Tier::Claimed, chip: "claimed".to_string(), sha256_prefix: None, struck, bindings }
+            NodeTier {
+                tier: Tier::Claimed,
+                chip: "claimed".to_string(),
+                sha256_prefix: None,
+                struck,
+                bindings,
+            }
         } else {
             let mut any_unreadable = false;
             let mut any_drifted = false;
@@ -389,17 +414,33 @@ pub fn annotate(
                 }
             }
             if any_unreadable {
-                NodeTier { tier: Tier::Claimed, chip: "claimed".to_string(), sha256_prefix: None, struck, bindings }
+                NodeTier {
+                    tier: Tier::Claimed,
+                    chip: "claimed".to_string(),
+                    sha256_prefix: None,
+                    struck,
+                    bindings,
+                }
             } else if any_drifted {
                 let chip = if bindings.len() > 1 {
                     format!("DRIFTED ({} lanes)", bindings.len())
                 } else {
                     "DRIFTED".to_string()
                 };
-                NodeTier { tier: Tier::Drifted, chip, sha256_prefix: None, struck, bindings }
+                NodeTier {
+                    tier: Tier::Drifted,
+                    chip,
+                    sha256_prefix: None,
+                    struck,
+                    bindings,
+                }
             } else if bindings.len() == 1 {
                 let key = binding_key(&node.id, &bindings[0]);
-                let hash = registry.binding_hashes.get(&key).cloned().unwrap_or_default();
+                let hash = registry
+                    .binding_hashes
+                    .get(&key)
+                    .cloned()
+                    .unwrap_or_default();
                 let prefix = hash.get(..6).unwrap_or(&hash).to_string();
                 NodeTier {
                     tier: Tier::Verified,
@@ -445,14 +486,19 @@ pub fn record_claim(
         path: path.to_string(),
         lines: lines.to_string(),
     };
-    let entry = registry.extra_bindings.entry(node_id.to_string()).or_default();
+    let entry = registry
+        .extra_bindings
+        .entry(node_id.to_string())
+        .or_default();
     if !entry.contains(&binding) {
         entry.push(binding.clone());
     }
     registry
         .binding_hashes
         .insert(binding_key(node_id, &binding), sha256.to_string());
-    registry.lane_claims.insert(lane_id.to_string(), node_id.to_string());
+    registry
+        .lane_claims
+        .insert(lane_id.to_string(), node_id.to_string());
     registry.save(registry_path)
 }
 
@@ -473,23 +519,37 @@ mod tests {
 
     #[test]
     fn registry_round_trips_through_its_sidecar_file() {
-        let dir = std::env::temp_dir().join(format!("atlas-tier-registry-{}", uuid::Uuid::new_v4()));
+        let dir =
+            std::env::temp_dir().join(format!("atlas-tier-registry-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("atlas-tiers.json");
         let mut registry = TierRegistry {
             mode: "map".to_string(),
             ..TierRegistry::default()
         };
-        registry
-            .binding_hashes
-            .insert(binding_key("n1", &Binding { path: "a.rs".into(), lines: "1".into() }), "abc123".into());
+        registry.binding_hashes.insert(
+            binding_key(
+                "n1",
+                &Binding {
+                    path: "a.rs".into(),
+                    lines: "1".into(),
+                },
+            ),
+            "abc123".into(),
+        );
         registry.save(&path).unwrap();
         let reloaded = TierRegistry::load(&path);
         assert_eq!(reloaded.mode, "map");
         assert_eq!(
             reloaded
                 .binding_hashes
-                .get(&binding_key("n1", &Binding { path: "a.rs".into(), lines: "1".into() }))
+                .get(&binding_key(
+                    "n1",
+                    &Binding {
+                        path: "a.rs".into(),
+                        lines: "1".into()
+                    }
+                ))
                 .map(String::as_str),
             Some("abc123")
         );
@@ -546,20 +606,35 @@ mod tests {
         let mut registry = TierRegistry::default();
         assert_eq!(
             effective_bindings(&node, &registry),
-            vec![Binding { path: "src/main.rs".into(), lines: "4".into() }]
+            vec![Binding {
+                path: "src/main.rs".into(),
+                lines: "4".into()
+            }]
         );
         registry.extra_bindings.insert(
             "n1".to_string(),
             vec![
-                Binding { path: "src/main.rs".into(), lines: "12".into() },
-                Binding { path: "src/main.rs".into(), lines: "4".into() }, // duplicate of primary
+                Binding {
+                    path: "src/main.rs".into(),
+                    lines: "12".into(),
+                },
+                Binding {
+                    path: "src/main.rs".into(),
+                    lines: "4".into(),
+                }, // duplicate of primary
             ],
         );
         assert_eq!(
             effective_bindings(&node, &registry),
             vec![
-                Binding { path: "src/main.rs".into(), lines: "4".into() },
-                Binding { path: "src/main.rs".into(), lines: "12".into() },
+                Binding {
+                    path: "src/main.rs".into(),
+                    lines: "4".into()
+                },
+                Binding {
+                    path: "src/main.rs".into(),
+                    lines: "12".into()
+                },
             ]
         );
     }

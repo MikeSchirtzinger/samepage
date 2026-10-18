@@ -8,23 +8,23 @@
 use std::collections::{HashMap, HashSet};
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use ag_ui_core::types::MessageId;
 use parking_lot::Mutex;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::io::{AsyncBufRead, AsyncWriteExt, BufReader};
 use tokio::process::ChildStdin;
-use tokio::sync::{broadcast, mpsc, oneshot, Mutex as AsyncMutex};
+use tokio::sync::{Mutex as AsyncMutex, broadcast, mpsc, oneshot};
 use tracing::{info, warn};
 
-use super::acp::{isolate_process_group, ManagedAgentProcess};
-use super::{build_context, Outcome, Prompts};
+use super::acp::{ManagedAgentProcess, isolate_process_group};
+use super::{Outcome, Prompts, build_context};
+use crate::Surface;
 use crate::narration::{finish_turn, narrate_cancel, narrate_flush, reset_narration};
 use crate::runtime_state::{RuntimeState, TurnRequest};
-use crate::Surface;
 
 const BRIDGE_SOURCE: &str = include_str!("pi_bridge.mjs");
 const MAX_STDOUT_LINE_BYTES: usize = 1024 * 1024;
@@ -494,10 +494,10 @@ async fn wait_for_settled(
             match event.get("type").and_then(Value::as_str) {
                 Some("agent_start") => started = true,
                 Some("agent_settled") if started => {
-                    if let Some(error) = model_error {
-                        if !allow_abort {
-                            return Err(error);
-                        }
+                    if let Some(error) = model_error
+                        && !allow_abort
+                    {
+                        return Err(error);
                     }
                     return Ok(text);
                 }
@@ -979,17 +979,20 @@ mod tests {
             }),
         )
         .expect("syntactically valid response");
-        assert!(rx
-            .blocking_recv()
-            .expect("response delivered")
-            .expect_err("mismatched command must fail")
-            .contains("did not match"));
+        assert!(
+            rx.blocking_recv()
+                .expect("response delivered")
+                .expect_err("mismatched command must fail")
+                .contains("did not match")
+        );
 
-        assert!(dispatch_response(
-            &Mutex::new(HashMap::new()),
-            &json!({"type":"response","command":"prompt","success":true})
-        )
-        .is_err());
+        assert!(
+            dispatch_response(
+                &Mutex::new(HashMap::new()),
+                &json!({"type":"response","command":"prompt","success":true})
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1010,13 +1013,15 @@ mod tests {
         });
         assert_eq!(model_identity(&state), Ok("example/real-model".to_string()));
         assert!(model_identity(&json!({"data":{"model":null,"isStreaming":false}})).is_err());
-        assert!(model_identity(&json!({
-            "data": {
-                "model": { "provider": "example", "id": "real-model" },
-                "isStreaming": true
-            }
-        }))
-        .is_err());
+        assert!(
+            model_identity(&json!({
+                "data": {
+                    "model": { "provider": "example", "id": "real-model" },
+                    "isStreaming": true
+                }
+            }))
+            .is_err()
+        );
     }
 
     #[test]

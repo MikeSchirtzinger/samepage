@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use yrs::{Any, Map, Out, Transact};
 
 use super::{dimension, formula};
-use crate::{capacity, one_of, read, text, Atlas, AtlasError, VarState, KIND_VARIABLE, MAX_PATH};
+use crate::{Atlas, AtlasError, KIND_VARIABLE, MAX_PATH, VarState, capacity, one_of, read, text};
 
 pub const KIND_RELATION: &str = "relation";
 pub const RELATION_OPS: &[&str] = &["distance", "angle", "equal", "linear", "formula"];
@@ -61,7 +61,7 @@ fn validate_arity(op: &str, members: &[String]) -> Result<(), AtlasError> {
         "equal" | "linear" => 2,
         "formula" if !members.is_empty() => return Ok(()),
         "formula" => {
-            return Err("relation op \"formula\" needs at least one member; got 0".to_string())
+            return Err("relation op \"formula\" needs at least one member; got 0".to_string());
         }
         _ => return Err(format!("unknown relation op {op:?}")),
     };
@@ -383,24 +383,24 @@ pub fn create_relation(
         .create_object_with_props(KIND_RELATION, author.clone(), &props)
         .map_err(|error| format!("could not create relation: {error}"))?;
 
-    if let Some((dependent_id, dependent_name, value)) = derived_update {
-        if let Err(error) = scene.set_props(
+    if let Some((dependent_id, dependent_name, value)) = derived_update
+        && let Err(error) = scene.set_props(
             &dependent_id,
             &[
                 ("state", PropValue::Str("derived".to_string())),
                 ("value", PropValue::Num(value)),
             ],
-        ) {
-            let cleanup = scene.delete_object(&id);
-            return match cleanup {
-                Ok(()) => Err(format!(
-                    "could not make variable {dependent_name:?} derived: {error}"
-                )),
-                Err(cleanup_error) => Err(format!(
-                    "could not make variable {dependent_name:?} derived: {error}; could not remove the incomplete relation: {cleanup_error}"
-                )),
-            };
-        }
+        )
+    {
+        let cleanup = scene.delete_object(&id);
+        return match cleanup {
+            Ok(()) => Err(format!(
+                "could not make variable {dependent_name:?} derived: {error}"
+            )),
+            Err(cleanup_error) => Err(format!(
+                "could not make variable {dependent_name:?} derived: {error}; could not remove the incomplete relation: {cleanup_error}"
+            )),
+        };
     }
 
     Ok(id.into_string())

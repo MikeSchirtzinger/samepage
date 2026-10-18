@@ -280,10 +280,11 @@ pub fn opening(
     if whole.camera.scale >= readable_scale {
         return Some(whole);
     }
-    if let Some(floor) = cohesion_floor {
-        if floor.is_finite() && whole.camera.scale >= floor {
-            return Some(whole);
-        }
+    if let Some(floor) = cohesion_floor
+        && floor.is_finite()
+        && whole.camera.scale >= floor
+    {
+        return Some(whole);
     }
     let candidates: Vec<WorldBox> = cluster_boxes
         .iter()
@@ -623,17 +624,19 @@ mod tests {
     #[test]
     fn an_empty_document_has_no_fit() {
         assert!(fit(&[], PANE, 40.0, 0.0, 1.0).is_none());
-        assert!(fit(
-            &[boxed(0.0, 0.0, 10.0, 10.0)],
-            Viewport {
-                width: 0.0,
-                height: 0.0
-            },
-            40.0,
-            0.0,
-            1.0
-        )
-        .is_none());
+        assert!(
+            fit(
+                &[boxed(0.0, 0.0, 10.0, 10.0)],
+                Viewport {
+                    width: 0.0,
+                    height: 0.0
+                },
+                40.0,
+                0.0,
+                1.0
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -818,31 +821,37 @@ mod tests {
 
     #[test]
     fn an_empty_or_impossible_minimap_declines_rather_than_drawing_nonsense() {
-        assert!(minimap_view(
-            boxed(0.0, 0.0, 100.0, 100.0),
-            boxed(0.0, 0.0, 10.0, 10.0),
-            0.0,
-            0.0,
-            6.0
-        )
-        .is_none());
-        assert!(minimap_view(
-            boxed(f64::NAN, 0.0, 100.0, 100.0),
-            boxed(0.0, 0.0, 10.0, 10.0),
-            200.0,
-            200.0,
-            6.0
-        )
-        .is_none());
+        assert!(
+            minimap_view(
+                boxed(0.0, 0.0, 100.0, 100.0),
+                boxed(0.0, 0.0, 10.0, 10.0),
+                0.0,
+                0.0,
+                6.0
+            )
+            .is_none()
+        );
+        assert!(
+            minimap_view(
+                boxed(f64::NAN, 0.0, 100.0, 100.0),
+                boxed(0.0, 0.0, 10.0, 10.0),
+                200.0,
+                200.0,
+                6.0
+            )
+            .is_none()
+        );
         // A minimap smaller than twice its own margin has no room for content.
-        assert!(minimap_view(
-            boxed(0.0, 0.0, 100.0, 100.0),
-            boxed(0.0, 0.0, 10.0, 10.0),
-            8.0,
-            8.0,
-            6.0
-        )
-        .is_none());
+        assert!(
+            minimap_view(
+                boxed(0.0, 0.0, 100.0, 100.0),
+                boxed(0.0, 0.0, 10.0, 10.0),
+                8.0,
+                8.0,
+                6.0
+            )
+            .is_none()
+        );
     }
 
     #[test]

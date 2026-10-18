@@ -918,11 +918,13 @@ fn ranks(n: usize, edges: &[(usize, usize)]) -> Vec<usize> {
     let mut adj: Vec<Vec<usize>> = vec![Vec::new(); n];
     let mut indeg = vec![0usize; n];
     for &(u, v) in edges {
-        if u != v && u < n && v < n {
-            if let (Some(neighbors), Some(degree)) = (adj.get_mut(u), indeg.get_mut(v)) {
-                neighbors.push(v);
-                *degree += 1;
-            }
+        if u != v
+            && u < n
+            && v < n
+            && let (Some(neighbors), Some(degree)) = (adj.get_mut(u), indeg.get_mut(v))
+        {
+            neighbors.push(v);
+            *degree += 1;
         }
     }
     let mut rank = vec![0usize; n];
@@ -2055,8 +2057,8 @@ mod tests {
     }
 
     #[test]
-    fn a_three_level_hierarchy_lays_out_with_no_container_overlap_and_every_child_inside_its_parent(
-    ) {
+    fn a_three_level_hierarchy_lays_out_with_no_container_overlap_and_every_child_inside_its_parent()
+     {
         let layout = layout_hierarchy(
             &[(180.0, 80.0), (160.0, 70.0), (140.0, 60.0), (150.0, 70.0)],
             &[Some(0), Some(1), Some(2), Some(3)],
@@ -2121,7 +2123,7 @@ mod tests {
                 {
                     return false;
                 }
-                let use_x = (left.1 .0 - left.0 .0).abs() >= (left.1 .1 - left.0 .1).abs();
+                let use_x = (left.1.0 - left.0.0).abs() >= (left.1.1 - left.0.1).abs();
                 let axis = |point: (f64, f64)| if use_x { point.0 } else { point.1 };
                 let (left_min, left_max) = {
                     let a = axis(left.0);

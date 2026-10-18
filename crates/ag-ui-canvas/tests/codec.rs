@@ -1,14 +1,14 @@
 //! Frame codec tests — the alignment invariant is the whole point of the
 //! binary channel, so it gets asserted from several directions.
 
-use ag_ui_canvas::blob::AlignedBytes;
-use ag_ui_canvas::codec::{
-    decode_frame, encode_blob, encode_blob_ack, encode_blob_request, encode_sync, BlobHeader,
-    CodecError, Frame, BLOB_ACK_LEN, BLOB_HEADER_LEN, BLOB_REQUEST_LEN, FRAME_MAGIC,
-};
-use ag_ui_canvas::scene::{authorized_blob_color, BlobRef, ObjectSnapshot};
 use ag_ui_canvas::DType;
 use ag_ui_canvas::ObjectId;
+use ag_ui_canvas::blob::AlignedBytes;
+use ag_ui_canvas::codec::{
+    BLOB_ACK_LEN, BLOB_HEADER_LEN, BLOB_REQUEST_LEN, BlobHeader, CodecError, FRAME_MAGIC, Frame,
+    decode_frame, encode_blob, encode_blob_ack, encode_blob_request, encode_sync,
+};
+use ag_ui_canvas::scene::{BlobRef, ObjectSnapshot, authorized_blob_color};
 
 fn f32_payload(n: usize) -> Vec<f32> {
     (0..n).map(|i| i as f32 * 0.5 - 100.0).collect()

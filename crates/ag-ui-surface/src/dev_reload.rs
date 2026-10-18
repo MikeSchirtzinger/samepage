@@ -90,7 +90,9 @@ impl Snapshot {
 /// Why the watcher did not start.
 #[derive(Debug, thiserror::Error)]
 pub enum WatchError {
-    #[error("dev reload refused: {files} files under the served directories exceeds the {MAX_FILES} cap; narrow App::mount(...) or leave dev_reload off")]
+    #[error(
+        "dev reload refused: {files} files under the served directories exceeds the {MAX_FILES} cap; narrow App::mount(...) or leave dev_reload off"
+    )]
     TooManyFiles { files: usize },
 }
 
@@ -120,12 +122,12 @@ fn walk(dir: &Path, into: &mut BTreeMap<PathBuf, SystemTime>) -> Result<(), Watc
         let path = entry.path();
         if file_type.is_dir() {
             walk(&path, into)?;
-        } else if file_type.is_file() {
-            if let Ok(modified) = entry.metadata().and_then(|m| m.modified()) {
-                into.insert(path, modified);
-                if into.len() > MAX_FILES {
-                    return Err(WatchError::TooManyFiles { files: into.len() });
-                }
+        } else if file_type.is_file()
+            && let Ok(modified) = entry.metadata().and_then(|m| m.modified())
+        {
+            into.insert(path, modified);
+            if into.len() > MAX_FILES {
+                return Err(WatchError::TooManyFiles { files: into.len() });
             }
         }
     }

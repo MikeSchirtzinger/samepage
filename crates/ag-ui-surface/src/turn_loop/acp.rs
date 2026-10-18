@@ -24,21 +24,21 @@
 use std::collections::HashMap;
 #[cfg(unix)]
 use std::io;
-use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::Duration;
 
 use parking_lot::Mutex;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::io::{AsyncBufRead, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin};
-use tokio::sync::{broadcast, mpsc, oneshot, Mutex as AsyncMutex};
+use tokio::sync::{Mutex as AsyncMutex, broadcast, mpsc, oneshot};
 use tracing::{info, warn};
 
+use crate::Surface;
 use crate::narration::{finish_turn, narrate_cancel, narrate_flush, reset_narration};
 use crate::runtime_state::{RuntimeState, TurnRequest};
-use crate::turn_loop::{build_context, McpBridge, Outcome, Prompts};
-use crate::Surface;
+use crate::turn_loop::{McpBridge, Outcome, Prompts, build_context};
 
 /// An in-flight JSON-RPC client over the agent's stdio. Requests are
 /// correlated by integer id; notifications and agent→client requests are
@@ -299,27 +299,27 @@ impl ManagedAgentProcess {
 
     pub(super) async fn shutdown(&mut self) {
         #[cfg(unix)]
-        if let Some(process_group) = self.process_group {
-            if process_group_exists(process_group) {
-                if let Err(error) = signal_process_group(process_group, libc::SIGTERM) {
-                    warn!(process_group, %error, "failed to terminate managed-agent process group");
-                }
+        if let Some(process_group) = self.process_group
+            && process_group_exists(process_group)
+        {
+            if let Err(error) = signal_process_group(process_group, libc::SIGTERM) {
+                warn!(process_group, %error, "failed to terminate managed-agent process group");
+            }
 
-                if !self
-                    .wait_for_process_group_exit(process_group, PROCESS_TERM_GRACE)
-                    .await
-                {
-                    warn!(
-                        process_group,
-                        "managed-agent process group ignored SIGTERM; sending SIGKILL"
-                    );
-                    if let Err(error) = signal_process_group(process_group, libc::SIGKILL) {
-                        warn!(process_group, %error, "failed to kill managed-agent process group");
-                    }
-                    let _ = self
-                        .wait_for_process_group_exit(process_group, PROCESS_KILL_GRACE)
-                        .await;
+            if !self
+                .wait_for_process_group_exit(process_group, PROCESS_TERM_GRACE)
+                .await
+            {
+                warn!(
+                    process_group,
+                    "managed-agent process group ignored SIGTERM; sending SIGKILL"
+                );
+                if let Err(error) = signal_process_group(process_group, libc::SIGKILL) {
+                    warn!(process_group, %error, "failed to kill managed-agent process group");
                 }
+                let _ = self
+                    .wait_for_process_group_exit(process_group, PROCESS_KILL_GRACE)
+                    .await;
             }
         }
 
@@ -330,14 +330,13 @@ impl ManagedAgentProcess {
 
         // Explicitly wait for the direct child. Tokio's kill-on-drop is only a
         // best-effort reaper and cannot provide this guarantee by itself.
-        if let Some(mut child) = self.child.take() {
-            if tokio::time::timeout(PROCESS_KILL_GRACE, child.wait())
+        if let Some(mut child) = self.child.take()
+            && tokio::time::timeout(PROCESS_KILL_GRACE, child.wait())
                 .await
                 .is_err()
-            {
-                warn!("managed-agent direct child did not exit; forcing shutdown");
-                let _ = child.kill().await;
-            }
+        {
+            warn!("managed-agent direct child did not exit; forcing shutdown");
+            let _ = child.kill().await;
         }
 
         #[cfg(unix)]
@@ -1016,12 +1015,12 @@ fn handle_tool_call_notification(
 
     // ACP delivers `rawInput` whole rather than as a token stream, so this is
     // a single delta followed immediately by END.
-    if !call.arguments_sent {
-        if let Some(raw_input) = update.get("rawInput") {
-            super::emit_tool_call_args(rt, tool_call_id, &raw_input.to_string());
-            super::emit_tool_call_end(rt, tool_call_id);
-            call.arguments_sent = true;
-        }
+    if !call.arguments_sent
+        && let Some(raw_input) = update.get("rawInput")
+    {
+        super::emit_tool_call_args(rt, tool_call_id, &raw_input.to_string());
+        super::emit_tool_call_end(rt, tool_call_id);
+        call.arguments_sent = true;
     }
 
     if terminal {
@@ -1566,12 +1565,14 @@ mod response_tests {
             .expect("pre-start cancellation should settle cleanly");
         assert!(!rt.busy.load(Ordering::SeqCst));
         let mut stdout = BufReader::new(stdout);
-        assert!(tokio::time::timeout(
-            Duration::from_millis(100),
-            read_bounded_line(&mut stdout, MAX_ACP_STDOUT_LINE_BYTES),
-        )
-        .await
-        .is_err());
+        assert!(
+            tokio::time::timeout(
+                Duration::from_millis(100),
+                read_bounded_line(&mut stdout, MAX_ACP_STDOUT_LINE_BYTES),
+            )
+            .await
+            .is_err()
+        );
 
         child.kill().await.expect("stop echo fixture");
         let _ = child.wait().await;

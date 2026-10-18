@@ -15,12 +15,12 @@
 mod trace;
 
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
 
-use ag_ui_canvas::codec::{decode_frame, encode_sync, Frame};
-use ag_ui_canvas::scene::{Author, Scene};
+use ag_ui_canvas::codec::{Frame, decode_frame, encode_sync};
+use ag_ui_canvas::scene::{Author, Scene, UpdateSubscription};
 use ag_ui_canvas::sync::{greeting, handle_payload, update_message};
 use same_page_atlas_core as atlas;
 use same_page_atlas_core::anchor;
@@ -281,7 +281,7 @@ pub struct AtlasDoc {
     /// Any committed transaction (local or remote) marks the projection stale
     /// so the renderer redraws exactly once per frame instead of per edit.
     dirty: Arc<AtomicBool>,
-    _updates: yrs::Subscription,
+    _updates: UpdateSubscription,
 }
 
 #[wasm_bindgen]

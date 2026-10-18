@@ -63,23 +63,33 @@ pub enum AuthStoreError {
 /// any token material.
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ClaudeCodeOauthError {
+    #[cfg(target_os = "macos")]
     #[error(
         "Claude subscription unavailable: the USER account name is missing, so macOS Keychain item \"Claude Code-credentials\" cannot be read"
     )]
+    #[cfg(target_os = "macos")]
     MissingAccount,
+    #[cfg(target_os = "macos")]
     #[error("Claude subscription unavailable: failed to start /usr/bin/security: {0}")]
+    #[cfg(target_os = "macos")]
     StartKeychain(#[source] std::io::Error),
+    #[cfg(target_os = "macos")]
     #[error(
         "Claude subscription unavailable: macOS Keychain lookup for \"Claude Code-credentials\" exceeded the 5 second timeout"
     )]
+    #[cfg(target_os = "macos")]
     KeychainTimeout,
+    #[cfg(target_os = "macos")]
     #[error(
         "Claude subscription unavailable: macOS Keychain item \"Claude Code-credentials\" was not found for account {account}; run `claude` to sign in"
     )]
+    #[cfg(target_os = "macos")]
     KeychainItemMissing { account: String },
+    #[cfg(target_os = "macos")]
     #[error(
         "Claude subscription unavailable: macOS Keychain item \"Claude Code-credentials\" could not be read for account {account}: {detail}"
     )]
+    #[cfg(target_os = "macos")]
     KeychainRead { account: String, detail: String },
     #[error(
         "Claude subscription unavailable: macOS Keychain item \"Claude Code-credentials\" contains invalid JSON: {0}"
@@ -485,10 +495,10 @@ impl AuthStore {
         }
 
         // 1. runtime override (in-memory, never persisted)
-        if let Some(k) = self.runtime.lock().get(&provider.id) {
-            if !k.is_empty() {
-                return Resolved::found(k.clone(), "runtime", None);
-            }
+        if let Some(k) = self.runtime.lock().get(&provider.id)
+            && !k.is_empty()
+        {
+            return Resolved::found(k.clone(), "runtime", None);
         }
         // 2. stored credential (auth.json)
         let stored = self.creds.lock().get(&provider.id).cloned();
@@ -507,11 +517,11 @@ impl AuthStore {
             }
         }
         // 3. models.json key source (`$VAR` / `!cmd` / literal)
-        if let Some(src) = provider.key_source.as_deref() {
-            if let Some(v) = resolve_config_value(src) {
-                let (source, label) = source_of(src);
-                return Resolved::found(v, source, label);
-            }
+        if let Some(src) = provider.key_source.as_deref()
+            && let Some(v) = resolve_config_value(src)
+        {
+            let (source, label) = source_of(src);
+            return Resolved::found(v, source, label);
         }
         // 4. environment fallback
         for var in &provider.env_vars {
@@ -1260,9 +1270,11 @@ mod tests {
             missing_error,
             ClaudeCodeOauthError::MissingAccessToken
         ));
-        assert!(missing_error
-            .to_string()
-            .contains("claudeAiOauth.accessToken"));
+        assert!(
+            missing_error
+                .to_string()
+                .contains("claudeAiOauth.accessToken")
+        );
 
         let expired = r#"{"claudeAiOauth":{"accessToken":"expired-token","expiresAt":999}}"#;
         let expired_error = parse_claude_code_oauth_token(expired, 1000)
@@ -1368,9 +1380,11 @@ mod tests {
         std::fs::write(&parent, b"not-a-directory")
             .expect("blocking parent fixture should be created");
 
-        assert!(store
-            .set_api_key("openai", "must-not-stick".into())
-            .is_err());
+        assert!(
+            store
+                .set_api_key("openai", "must-not-stick".into())
+                .is_err()
+        );
         assert!(!store.creds.lock().contains_key("openai"));
 
         let _ = std::fs::remove_file(parent);
@@ -1396,13 +1410,15 @@ mod tests {
         std::fs::remove_dir(&parent).expect("remove temporary parent");
         std::fs::write(&parent, b"not-a-directory").expect("block persistence parent");
         let changed_env = HashMap::from([("model".to_string(), "model-after".to_string())]);
-        assert!(store
-            .update_api_key_entry(
-                "openai",
-                changed_env,
-                ApiKeyUpdate::Set("key-after".to_string()),
-            )
-            .is_err());
+        assert!(
+            store
+                .update_api_key_entry(
+                    "openai",
+                    changed_env,
+                    ApiKeyUpdate::Set("key-after".to_string()),
+                )
+                .is_err()
+        );
         assert_eq!(store.api_key_env("openai"), initial_env);
         match store.creds.lock().get("openai") {
             Some(Credential::ApiKey { key, .. }) => assert_eq!(key, "key-before"),

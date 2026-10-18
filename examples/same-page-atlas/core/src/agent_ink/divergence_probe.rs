@@ -122,17 +122,17 @@ fn trace_digest() -> u64 {
     digest
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn agent_ink_probe_steps() -> u32 {
     STEPS
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn agent_ink_probe_values() -> u32 {
     VALUES as u32
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn agent_ink_probe_bits(step: u32, index: u32) -> u64 {
     state_at(step)
         .get(index as usize)
@@ -141,17 +141,17 @@ pub extern "C" fn agent_ink_probe_bits(step: u32, index: u32) -> u64 {
         .to_bits()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn agent_ink_probe_step_digest(step: u32) -> u64 {
     step_digest(&state_at(step))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn agent_ink_probe_trace_digest() -> u64 {
     trace_digest()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn agent_ink_probe_objective_bits(step: u32) -> u64 {
     objective(&state_at(step)).to_bits()
 }

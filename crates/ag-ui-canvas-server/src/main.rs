@@ -15,12 +15,12 @@
 use parking_lot::Mutex;
 use std::net::{IpAddr, SocketAddr};
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
-use axum::http::{header, HeaderMap, StatusCode, Uri};
+use axum::extract::ws::{Message as WsMessage, WebSocket, WebSocketUpgrade};
+use axum::http::{HeaderMap, StatusCode, Uri, header};
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -30,13 +30,13 @@ use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 use tracing::{info, warn};
 
+use ag_ui_canvas::ObjectId;
 use ag_ui_canvas::blob::BlobStore;
-use ag_ui_canvas::codec::{decode_frame, encode_blob, encode_sync, BlobHeader, Frame};
+use ag_ui_canvas::codec::{BlobHeader, Frame, decode_frame, encode_blob, encode_sync};
 use ag_ui_canvas::scene::{Author, PropValue, Scene, SceneError};
 use ag_ui_canvas::sync::{authoritative_replay, handle_payload_validated};
-use ag_ui_canvas::ObjectId;
-use ag_ui_core::event::Event as AgUiEvent;
 use ag_ui_core::JsonValue;
+use ag_ui_core::event::Event as AgUiEvent;
 
 struct AppState {
     scene: Mutex<Scene>,
