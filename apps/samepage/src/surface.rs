@@ -883,18 +883,8 @@ impl SamePageState {
                 .chain(&commit.modified)
                 .chain(&commit.deleted)
                 .collect();
-            let (caused, standing): (Vec<Value>, Vec<Value>) = validation["errors"]
-                .as_array()
-                .cloned()
-                .unwrap_or_default()
-                .into_iter()
-                .partition(|error| {
-                    error["ids"].as_array().is_some_and(|ids| {
-                        ids.iter()
-                            .filter_map(Value::as_str)
-                            .any(|id| applied.iter().any(|a| a.as_str() == id))
-                    })
-                });
+            let applied_ids: Vec<&str> = applied.iter().map(|id| id.as_str()).collect();
+            let (caused, standing) = split_problems(&validation, &applied_ids);
             if !caused.is_empty() {
                 return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":invoked.action,"ids":invoked.ids,"applied_ids":applied,"revision":self.host.revision(),
                     "errors":caused,"warnings":standing,
@@ -1666,6 +1656,7 @@ impl SamePageState {
     fn page_draw(&self, actor: &SurfaceActor, args: &Value) -> Result<String, String> {
         let mut names: BTreeMap<String, String> = BTreeMap::new();
         let mut landed: Vec<String> = Vec::new();
+        let mut applied: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
         let resolve = |value: &mut Value, names: &BTreeMap<String, String>, keys: &[&str]| {
             for key in keys {
                 if let Some(id) = value[*key]
@@ -1681,7 +1672,8 @@ impl SamePageState {
                    action: &str,
                    mut call: Value,
                    names: &BTreeMap<String, String>,
-                   landed: &mut Vec<String>|
+                   landed: &mut Vec<String>,
+                   applied: &mut std::collections::BTreeSet<String>|
          -> Result<Value, String> {
             if let Some(object) = call.as_object_mut() {
                 object.remove("ref");
@@ -1698,6 +1690,21 @@ impl SamePageState {
                     }
                 },
             };
+            // Every id this step created, changed or removed, so the call can
+            // tell the problems it caused from the ones already standing.
+            let touched = reply["touched"].as_array().into_iter().flatten();
+            let applied_now = reply["applied_ids"].as_array().into_iter().flatten();
+            let named = reply["ids"]
+                .as_object()
+                .into_iter()
+                .flat_map(|ids| ids.values());
+            for id in touched
+                .chain(applied_now)
+                .chain(named)
+                .filter_map(Value::as_str)
+            {
+                applied.insert(id.to_string());
+            }
             landed.push(step);
             Ok(reply)
         };
@@ -1713,6 +1720,7 @@ impl SamePageState {
                 json!({"shapes":shapes}),
                 &names,
                 &mut landed,
+                &mut applied,
             )?;
             for (key, id) in reply["ids"].as_object().into_iter().flatten() {
                 names.insert(key.clone(), id.as_str().unwrap_or_default().to_string());
@@ -1736,6 +1744,7 @@ impl SamePageState {
                 card,
                 &names,
                 &mut landed,
+                &mut applied,
             )?;
             if let (Some(name), Some(id)) = (name, reply["ids"]["card"].as_str()) {
                 names.insert(name, id.to_string());
@@ -1753,6 +1762,7 @@ impl SamePageState {
                 link,
                 &names,
                 &mut landed,
+                &mut applied,
             )?;
         }
         if let Some(n) = args["links"].as_array().map(Vec::len).filter(|n| *n > 0) {
@@ -1765,6 +1775,7 @@ impl SamePageState {
                 diagram.clone(),
                 &names,
                 &mut landed,
+                &mut applied,
             )?;
             for (key, id) in reply["ids"].as_object().into_iter().flatten() {
                 names
@@ -1782,6 +1793,7 @@ impl SamePageState {
                 claim,
                 &names,
                 &mut landed,
+                &mut applied,
             )?;
         }
         if let Some(n) = args["claims"].as_array().map(Vec::len).filter(|n| *n > 0) {
@@ -1792,11 +1804,35 @@ impl SamePageState {
             &view,
             &self.validation.measured(&view),
         ));
-        let validation = self.validation.report(&view)?;
-        let touched: Vec<&String> = names.values().collect();
-        serde_json::to_string(&json!({"action":"page_draw","ids":names,"touched":touched,"landed":landed,"readback":readback,
-            "validation":validation_text(&validation),"revision":self.host.revision()}))
-            .map_err(|e| e.to_string())
+        let mut validation = self.validation.report(&view)?;
+        let touched: Vec<&String> = applied.iter().collect();
+        let applied_ids: Vec<&str> = applied.iter().map(String::as_str).collect();
+        let (caused, standing) = if validation["status"] == "failed" {
+            split_problems(&validation, &applied_ids)
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        if !caused.is_empty() {
+            // The same receipt a single card_place gives: every step landed,
+            // the problems this call made are errors, the rest are warnings.
+            return Err(json!({"code":"PAGE_VALIDATION_FAILED","operation_applied":true,"action":"page_draw","ids":names,"landed":landed,"touched":touched,"revision":self.host.revision(),
+                "errors":caused,"warnings":standing,
+                "next":"Every listed step landed and is on the page. Repair the ids named in errors with card_move, card_resize or object_remove; do not repeat the call.",
+                "readback":readback,"validation":validation_text(&validation)}).to_string());
+        }
+        if !standing.is_empty() {
+            validation["errors"] = json!([]);
+            validation["status"] = json!("passed_for_this_call");
+        }
+        let mut reply = json!({"action":"page_draw","ids":names,"touched":touched,"landed":landed,"readback":readback,
+            "validation":validation_text(&validation),"revision":self.host.revision()});
+        if !standing.is_empty() {
+            reply["warnings"] = json!(standing);
+            reply["next"] = json!(
+                "These page problems were there before this call and do not involve what it drew. Repair them only if they are yours."
+            );
+        }
+        serde_json::to_string(&reply).map_err(|e| e.to_string())
     }
 }
 
@@ -2097,6 +2133,25 @@ pub(crate) fn validation_signature(report: &Value) -> String {
 }
 
 /// Page validation as text: status and one line per problem with its ids.
+/// Split a failed validation report into the problems a write caused, which
+/// name an id the write created, changed or removed, and the problems that
+/// were already standing. A write fails only for what it caused; the rest
+/// travel as warnings, so an unrelated write is neither failed nor retried.
+pub(crate) fn split_problems(validation: &Value, applied: &[&str]) -> (Vec<Value>, Vec<Value>) {
+    validation["errors"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .partition(|error| {
+            error["ids"].as_array().is_some_and(|ids| {
+                ids.iter()
+                    .filter_map(Value::as_str)
+                    .any(|id| applied.contains(&id))
+            })
+        })
+}
+
 pub(crate) fn validation_text(report: &Value) -> String {
     let status = report["status"].as_str().unwrap_or("pending");
     let empty = Vec::new();

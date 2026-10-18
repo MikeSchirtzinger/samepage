@@ -14,4 +14,5 @@ exec "$(dirname "${BASH_SOURCE[0]}")/run.sh" full "$1" \
   panes=crates/samepage-panes=apps/samepage/modules/panes.js \
   sources=crates/samepage-sources=apps/samepage/modules/sources.js \
   lanes=crates/samepage-lanes=apps/samepage/modules/lanes.js \
-  cement=crates/samepage-cement=apps/samepage/modules/cement.js
+  cement=crates/samepage-cement=apps/samepage/modules/cement.js \
+  explain=crates/samepage-explain=apps/samepage/modules/explain.js

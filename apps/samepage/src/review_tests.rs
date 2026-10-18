@@ -41,6 +41,51 @@ fn place(s: &SamePageState, label: &str, x: f64, y: f64) -> String {
     v["ids"]["card"].as_str().unwrap().into()
 }
 #[test]
+fn page_draw_reports_the_overlap_it_caused_and_carries_older_ones_as_warnings() {
+    let root = root();
+    let s = state(&root);
+    let first = place(&s, "first", 0., 0.);
+    // A whole-picture call that lands a card on top of an existing one gets
+    // the same receipt a single card_place does: applied, landed, and failed
+    // for the problem it caused.
+    let error = s
+        .page_draw(
+            &agent(),
+            &json!({"cards":[{"ref":"second","label":"second","x":40.,"y":20.}]}),
+        )
+        .unwrap_err();
+    let receipt: Value = serde_json::from_str(&error).unwrap();
+    assert_eq!(receipt["code"], "PAGE_VALIDATION_FAILED");
+    assert_eq!(receipt["operation_applied"], true);
+    assert_eq!(receipt["landed"], json!(["cards[0]"]));
+    assert_eq!(receipt["errors"].as_array().unwrap().len(), 1);
+    assert_eq!(receipt["errors"][0]["code"], "card_overlap");
+    let second = receipt["ids"]["second"].as_str().unwrap();
+    let named = receipt["errors"][0]["ids"].to_string();
+    assert!(named.contains(&first) && named.contains(second), "{named}");
+    assert!(receipt["next"].as_str().unwrap().contains("do not repeat"));
+    assert_eq!(s.host.view().records().count(), 2);
+    // A later call that draws clear of both succeeds and carries the standing
+    // overlap as a warning, not as its own failure.
+    let ok: Value = serde_json::from_str(
+        &s.page_draw(
+            &agent(),
+            &json!({"cards":[{"label":"third","x":900.,"y":0.}]}),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(ok["landed"], json!(["cards[0]"]));
+    assert_eq!(ok["warnings"][0]["code"], "card_overlap");
+    assert!(
+        ok["validation"]
+            .as_str()
+            .unwrap()
+            .starts_with("VALIDATION: passed_for_this_call")
+    );
+    assert_eq!(s.host.view().records().count(), 3);
+}
+#[test]
 fn page_validation_returns_post_write_errors_with_applied_ids() {
     let root = root();
     let s = state(&root);
