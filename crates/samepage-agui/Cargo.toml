@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+publish = false
 description = "AG-UI protocol event, message and state types for SamePage, derived from the ag-ui-core crate of the AG-UI Rust SDK."
 
 [dependencies]
