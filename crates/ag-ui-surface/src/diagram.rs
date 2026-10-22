@@ -36,7 +36,7 @@
 
 use std::collections::VecDeque;
 
-use ag_ui_core::JsonValue;
+use samepage_agui::JsonValue;
 
 /// Which way ranks flow. `Right` = roots on the left, edges point right (reads
 /// like a pipeline / computation graph). `Down` = roots on top, edges point down.

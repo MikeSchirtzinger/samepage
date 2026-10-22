@@ -499,7 +499,7 @@ mod tests {
 
     use crate::auth::AuthStore;
     use crate::turn_loop::openai::ByokConfig;
-    use ag_ui_core::event::BaseEvent;
+    use samepage_agui::event::BaseEvent;
 
     use crate::{
         ActionAudience, CustomEvent, Effect, ReplyKind, StateBacking, StateSnapshot, SurfaceState,

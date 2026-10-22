@@ -50,7 +50,7 @@ they see.
 ```text
 crates/
   samepage                 public crate-name placeholder
-  ag-ui-core               AG-UI protocol types
+  samepage-agui            AG-UI protocol types
   ag-ui-surface            application runtime, actions, identity, and MCP
   ag-ui-record             session-record shape validator
   ag-ui-canvas*            shared canvas state and rendering
@@ -290,4 +290,8 @@ public API consolidates under SamePage.
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE). `crates/samepage-agui` is derived from the
+`ag-ui-core` crate of the AG-UI Rust SDK and also carries that project's MIT
+notice, in [its LICENSE](crates/samepage-agui/LICENSE). The bundled DejaVu Sans
+Mono font keeps its own license, in
+[DejaVuSansMono.LICENSE.md](crates/ag-ui-canvas-render/assets/DejaVuSansMono.LICENSE.md).

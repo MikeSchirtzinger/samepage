@@ -2,8 +2,8 @@
 //!
 //! - [`Protocol`]: the typed protocol client the runtime's shared browser
 //!   core (`/_agui/client.js`) drives. It owns one
-//!   `ag_ui_core::assembly::Assembler`; every SSE `data:` payload goes through
-//!   [`Protocol::push`], which parses it as `ag_ui_core::Event`, runs the
+//!   `samepage_agui::assembly::Assembler`; every SSE `data:` payload goes through
+//!   [`Protocol::push`], which parses it as `samepage_agui::Event`, runs the
 //!   lifecycle state machine, and hands JavaScript one frame: the validated
 //!   event, the assembled transcript updates, and any anomalies it repaired.
 //!   JavaScript never interprets an event type string again.
@@ -22,10 +22,10 @@
 //! };
 //! ```
 
-use ag_ui_core::JsonValue;
-use ag_ui_core::assembly::{Anomaly, Assembler, PushError, Update};
-use ag_ui_core::event::Event as AgUiEvent;
 use js_sys::Function;
+use samepage_agui::JsonValue;
+use samepage_agui::assembly::{Anomaly, Assembler, PushError, Update};
+use samepage_agui::event::Event as AgUiEvent;
 use serde::Serialize;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
@@ -202,7 +202,7 @@ impl Drop for Subscription {
 
 /// Subscribe to an SSE endpoint emitting AG-UI events as type-tagged JSON
 /// (one `data: {...}` per message; no named SSE events). The callback is
-/// invoked only for a valid, known `ag_ui_core::Event` converted to a JS
+/// invoked only for a valid, known `samepage_agui::Event` converted to a JS
 /// object. A malformed payload or callback exception closes the subscription;
 /// continuing after a missed state transition would leave the client divergent.
 ///
@@ -349,7 +349,7 @@ async fn raw_post(url: &str, body_str: &str) -> Result<JsValue, JsValue> {
 )]
 mod tests {
     use super::{Frame, Refusal, parse_ag_ui_event};
-    use ag_ui_core::assembly::{Assembler, PushError};
+    use samepage_agui::assembly::{Assembler, PushError};
     use serde_json::json;
 
     const A: &str = "00000000-0000-0000-0000-00000000000a";

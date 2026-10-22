@@ -21,12 +21,12 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt};
 use tokio::sync::{mpsc, oneshot};
 use tracing::warn;
 
-use ag_ui_core::JsonValue;
-use ag_ui_core::event::{
+use samepage_agui::JsonValue;
+use samepage_agui::event::{
     BaseEvent, Event as AgUiEvent, ToolCallArgsEvent, ToolCallEndEvent, ToolCallResultEvent,
     ToolCallStartEvent,
 };
-use ag_ui_core::types::{MessageId, Role, ToolCallId};
+use samepage_agui::types::{MessageId, Role, ToolCallId};
 
 use crate::runtime_state::{PendingDecision, RuntimeState, TurnRequest};
 use crate::{Caller, Effect, Surface, providers};
@@ -864,8 +864,8 @@ mod cancellation_tests {
     use std::sync::{Arc, mpsc as std_mpsc};
     use std::time::Duration;
 
-    use ag_ui_core::event::BaseEvent;
     use parking_lot::Mutex;
+    use samepage_agui::event::BaseEvent;
     use serde_json::json;
 
     use super::*;

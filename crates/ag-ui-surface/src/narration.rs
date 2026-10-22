@@ -25,12 +25,12 @@ use std::sync::atomic::Ordering;
 use tokio::sync::mpsc;
 use tracing::warn;
 
-use ag_ui_core::JsonValue;
-use ag_ui_core::event::{
+use samepage_agui::JsonValue;
+use samepage_agui::event::{
     BaseEvent, CustomEvent, Event as AgUiEvent, TextMessageContentEvent, TextMessageEndEvent,
     TextMessageStartEvent,
 };
-use ag_ui_core::types::MessageId;
+use samepage_agui::types::MessageId;
 
 use crate::runtime_state::{ActiveMessage, RuntimeState};
 use crate::{ActivityOutcome, Caller};

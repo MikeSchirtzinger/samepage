@@ -21,11 +21,11 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 name = "ag-ui-canvas"
 version = "0.1.0"
 dependencies = [
- "ag-ui-core",
  "bytemuck",
  "criterion",
  "fastrand",
  "json-patch",
+ "samepage-agui",
  "serde_json",
  "thiserror",
  "yrs",
@@ -51,11 +51,11 @@ name = "ag-ui-canvas-server"
 version = "0.1.0"
 dependencies = [
  "ag-ui-canvas",
- "ag-ui-core",
  "axum",
  "bytemuck",
  "futures-util",
  "parking_lot",
+ "samepage-agui",
  "serde",
  "serde_json",
  "tokio",
@@ -72,11 +72,11 @@ version = "0.1.0"
 dependencies = [
  "ag-ui-canvas",
  "ag-ui-canvas-render",
- "ag-ui-core",
  "ag-ui-wasm-client",
  "console_error_panic_hook",
  "js-sys",
  "pretext",
+ "samepage-agui",
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -109,17 +109,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ag-ui-core"
-version = "0.1.0-brevity-extracted"
-dependencies = [
- "convergence-attrs",
- "serde",
- "serde_json",
- "thiserror",
- "uuid",
-]
-
-[[package]]
 name = "ag-ui-eval"
 version = "0.1.0"
 dependencies = [
@@ -142,7 +131,6 @@ dependencies = [
 name = "ag-ui-surface"
 version = "0.1.0"
 dependencies = [
- "ag-ui-core",
  "axum",
  "base64 0.22.1",
  "form_urlencoded",
@@ -151,6 +139,7 @@ dependencies = [
  "libc",
  "parking_lot",
  "reqwest",
+ "samepage-agui",
  "serde",
  "serde_json",
  "thiserror",
@@ -166,9 +155,9 @@ dependencies = [
 name = "ag-ui-wasm-client"
 version = "0.1.0"
 dependencies = [
- "ag-ui-core",
  "console_error_panic_hook",
  "js-sys",
+ "samepage-agui",
  "serde",
  "serde_json",
  "wasm-bindgen",
@@ -2815,6 +2804,17 @@ dependencies = [
 [[package]]
 name = "samepage"
 version = "0.0.0"
+
+[[package]]
+name = "samepage-agui"
+version = "0.1.0"
+dependencies = [
+ "convergence-attrs",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "uuid",
+]
 
 [[package]]
 name = "samepage-app"

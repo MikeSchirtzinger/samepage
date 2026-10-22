@@ -3,7 +3,7 @@
 //! fast path.
 //!
 //! Three channels:
-//! 1. **Semantic events** — JSON AG-UI over SSE (`ag-ui-core`, unchanged);
+//! 1. **Semantic events** — JSON AG-UI over SSE (`samepage-agui`, unchanged);
 //!    builders in [`events`].
 //! 2. **Scene mutations** — yrs binary updates ([`scene`], [`sync`]).
 //! 3. **Bulk geometry** — generation-versioned blobs outside the CRDT

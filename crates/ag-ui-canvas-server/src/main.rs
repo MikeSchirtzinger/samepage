@@ -35,8 +35,8 @@ use ag_ui_canvas::blob::BlobStore;
 use ag_ui_canvas::codec::{BlobHeader, Frame, decode_frame, encode_blob, encode_sync};
 use ag_ui_canvas::scene::{Author, PropValue, Scene, SceneError};
 use ag_ui_canvas::sync::{authoritative_replay, handle_payload_validated};
-use ag_ui_core::JsonValue;
-use ag_ui_core::event::Event as AgUiEvent;
+use samepage_agui::JsonValue;
+use samepage_agui::event::Event as AgUiEvent;
 
 struct AppState {
     scene: Mutex<Scene>,

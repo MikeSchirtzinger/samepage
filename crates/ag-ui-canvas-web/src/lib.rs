@@ -34,11 +34,11 @@ use ag_ui_canvas::scene::{ObjectSnapshot, PropValue, Scene, authorized_blob_colo
 use ag_ui_canvas::sync::{greeting, handle_payload, update_message};
 use ag_ui_canvas::{ObjectId, events as canvas_events};
 use ag_ui_canvas_render::{Renderer, SceneObject, TextQuad};
-use ag_ui_core::JsonValue;
-use ag_ui_core::event::Event as AgUiEvent;
 use pretext::backend::FontSpec;
 use pretext::backend::fixed::FixedWidthBackend;
 use pretext::gpu_layout::{GlyphAtlas, GpuTextLayout, TextAlign, TextLayoutConfig, VerticalAlign};
+use samepage_agui::JsonValue;
+use samepage_agui::event::Event as AgUiEvent;
 
 type ReconnectCallback = Rc<dyn Fn()>;
 type ReconnectSlot = Rc<RefCell<Option<ReconnectCallback>>>;

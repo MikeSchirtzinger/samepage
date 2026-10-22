@@ -12,15 +12,15 @@
 
 #[cfg(test)]
 mod tests {
-    use ag_ui_core::JsonValue;
-    use ag_ui_core::event::{
+    use samepage_agui::JsonValue;
+    use samepage_agui::event::{
         ActivityDeltaEvent, ActivitySnapshotEvent, BaseEvent, Event as AgUiEvent, EventType,
         ReasoningEncryptedValueEvent, ReasoningEncryptedValueSubtype, ReasoningEndEvent,
         ReasoningMessageChunkEvent, ReasoningMessageContentEvent, ReasoningMessageEndEvent,
         ReasoningMessageStartEvent, ReasoningStartEvent, RunFinishedEvent, RunFinishedOutcome,
         RunStartedEvent, TextMessageChunkEvent, TextMessageStartEvent,
     };
-    use ag_ui_core::types::{Interrupt, MessageId, Role, RunId, ThreadId};
+    use samepage_agui::types::{Interrupt, MessageId, Role, RunId, ThreadId};
     use serde_json::json;
 
     // ---------------------------------------------------------------
