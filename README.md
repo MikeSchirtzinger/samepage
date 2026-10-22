@@ -290,4 +290,8 @@ public API consolidates under SamePage.
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE). `crates/samepage-agui` is derived from the
+`ag-ui-core` crate of the AG-UI Rust SDK and also carries that project's MIT
+notice, in [its LICENSE](crates/samepage-agui/LICENSE). The bundled DejaVu Sans
+Mono font keeps its own license, in
+[DejaVuSansMono.LICENSE.md](crates/ag-ui-canvas-render/assets/DejaVuSansMono.LICENSE.md).
