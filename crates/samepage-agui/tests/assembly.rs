@@ -1,6 +1,6 @@
 //! Stream assembly contract tests.
 //!
-//! These drive `ag_ui_core::assembly::Assembler` with wire-shaped JSON (the
+//! These drive `samepage_agui::assembly::Assembler` with wire-shaped JSON (the
 //! exact `data:` payloads the runtime emits) so they double as the contract
 //! the browser client relies on: which events produce which updates, which
 //! spec violations are repaired and reported, and which are refused.
@@ -15,11 +15,11 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use ag_ui_core::assembly::{
+use samepage_agui::assembly::{
     Anomaly, Assembler, AssemblyError, Outcome, PushError, RunPhase, Update,
 };
-use ag_ui_core::event::{Event, EventType};
-use ag_ui_core::types::{MessageId, Role, ToolCallId};
+use samepage_agui::event::{Event, EventType};
+use samepage_agui::types::{MessageId, Role, ToolCallId};
 use serde_json::json;
 
 const A: &str = "00000000-0000-0000-0000-00000000000a";

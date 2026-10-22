@@ -5,10 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "The reusable shell for putting an agent in your browser: transport, provider-agnostic agent loop, and shared-state sync above the AG-UI protocol (ag-ui-core). See docs/ag-ui-surface-spec.md."
+description = "The reusable shell for putting an agent in your browser: transport, provider-agnostic agent loop, and shared-state sync above the AG-UI protocol (samepage-agui). See docs/ag-ui-surface-spec.md."
 
 [dependencies]
-ag-ui-core = { workspace = true }
+samepage-agui = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

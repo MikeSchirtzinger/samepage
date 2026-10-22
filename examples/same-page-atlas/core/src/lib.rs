@@ -12826,7 +12826,7 @@ mod tests {
             &mut scene,
             &[
                 draft("runtime", "ag-ui-surface"),
-                draft("core", "ag-ui-core"),
+                draft("core", "samepage-agui"),
             ],
             &[edge("runtime", "core")],
             &Author::Agent,
@@ -12960,8 +12960,8 @@ mod tests {
         let id = place_node(
             &mut scene,
             &NodePatch {
-                label: Some("ag-ui-core".into()),
-                path: Some("crates/ag-ui-core/src/event.rs".into()),
+                label: Some("samepage-agui".into()),
+                path: Some("crates/samepage-agui/src/event.rs".into()),
                 lines: Some("1-40".into()),
                 tone: Some("crate".into()),
                 note: Some("the protocol event enum".into()),
@@ -12973,12 +12973,15 @@ mod tests {
 
         let atlas = read(&scene).expect("read");
         let placed = atlas.node(&id).expect("node exists");
-        assert_eq!(placed.label, "ag-ui-core");
-        assert_eq!(placed.source_ref(), "crates/ag-ui-core/src/event.rs:1-40");
+        assert_eq!(placed.label, "samepage-agui");
+        assert_eq!(
+            placed.source_ref(),
+            "crates/samepage-agui/src/event.rs:1-40"
+        );
         assert_eq!(placed.tone, "crate");
         assert_eq!(placed.status, "open");
         assert_eq!(placed.created_by, "agent");
-        assert!(atlas.describe().contains("ag-ui-core"));
+        assert!(atlas.describe().contains("samepage-agui"));
     }
 
     #[test]

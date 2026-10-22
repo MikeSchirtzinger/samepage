@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use ag_ui_core::error::AgUiError;
-    use ag_ui_core::types::{
+    use samepage_agui::error::AgUiError;
+    use samepage_agui::types::{
         AssistantMessage, Context, DeveloperMessage, FunctionCall, Message, MessageId, Role,
         RunAgentInput, RunId, SystemMessage, ThreadId, Tool, ToolCall, ToolCallId, ToolMessage,
         UserMessage,

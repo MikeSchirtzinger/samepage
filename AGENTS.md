@@ -15,7 +15,7 @@ The root `Cargo.toml` is the authority for workspace membership. The important
 paths are:
 
 - `crates/samepage`: Placeholder for the public crate API.
-- `crates/ag-ui-core`: AG-UI protocol types and fixtures.
+- `crates/samepage-agui`: AG-UI protocol types and fixtures.
 - `crates/ag-ui-surface`: Runtime, action dispatch, identity, provider, and
   authenticated MCP behavior.
 - `crates/ag-ui-canvas*`: Shared canvas state, renderer, and browser or server

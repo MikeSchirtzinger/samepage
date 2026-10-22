@@ -50,7 +50,7 @@ they see.
 ```text
 crates/
   samepage                 public crate-name placeholder
-  ag-ui-core               AG-UI protocol types
+  samepage-agui            AG-UI protocol types
   ag-ui-surface            application runtime, actions, identity, and MCP
   ag-ui-record             session-record shape validator
   ag-ui-canvas*            shared canvas state and rendering

@@ -30,7 +30,7 @@ Every one of them re-implements an estimated 80%: a WS/SSE server speaking AG-UI
 
 ## 2. The thesis: you have the protocol, you're missing the shell
 
-- **Protocol** = AG-UI (`ag-ui-core` events: `STATE_SNAPSHOT`, `TEXT_MESSAGE_*`, `CUSTOM`, `TOOL_CALL_*`). Done. Not re-litigating this: the request is explicitly *not* a new protocol.
+- **Protocol** = AG-UI (`samepage-agui` events: `STATE_SNAPSHOT`, `TEXT_MESSAGE_*`, `CUSTOM`, `TOOL_CALL_*`). Done. Not re-litigating this: the request is explicitly *not* a new protocol.
 - **Shell** = the opinionated default runtime that turns the protocol into a working app. Missing. That's this project.
 
 The runtime executes exactly one **Surface**. A single-capability app can
@@ -370,7 +370,7 @@ Every runtime capability already exists in `teaching-canvas`: extraction, not in
 | Provider layer + auth | `providers.rs`, `models.json`, `auth.rs`: **M1 DONE, verbatim** (re-exported as `ag_ui_surface::{providers, auth}`) |
 | Agent turn loop + `openai.rs`/`acp.rs` adapters | `openai.rs`, `acp.rs`, `main.rs` (turn loop): **M2** (coupled to the surface via tools/render/memory. See `ag-ui-surface-m2-handoff.md` for the full symbol-level map) |
 | MCP projection (ACP → actions) | Runtime-owned `POST /mcp`, generated from the effective agent-visible `Surface::tools()` after recipe composition. App-local bridge binaries and schema allowlists are gone. Custom `McpBridge` is only an optional stdio fallback. |
-| CRDT scene + WS sync + AG-UI events | `main.rs` + `crates/ag-ui-canvas`, `crates/ag-ui-core` |
+| CRDT scene + WS sync + AG-UI events | `main.rs` + `crates/ag-ui-canvas`, `crates/samepage-agui` |
 | Text read-back | `describe_scene` (`main.rs`) |
 | Pixel render (browser-free) | `render.rs` (`RenderService`, `png_to_data_uri`) |
 | Barge-in | `main.rs:102` |

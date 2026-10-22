@@ -8,7 +8,7 @@ repository.workspace = true
 description = "CRDT scene graph (yrs) + aligned binary frame codec for the AG-UI shared canvas. Compiles native and wasm32."
 
 [dependencies]
-ag-ui-core = { workspace = true }
+samepage-agui = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 yrs = { workspace = true }

@@ -5,7 +5,7 @@
 //! Low volume by design: a drag emits ONE `canvas.dragged` at drag-end, while
 //! the per-frame positions ride the CRDT channel.
 
-use ag_ui_core::event::{BaseEvent, CustomEvent};
+use samepage_agui::event::{BaseEvent, CustomEvent};
 use serde_json::json;
 
 pub const EV_SELECTED: &str = "canvas.selected";

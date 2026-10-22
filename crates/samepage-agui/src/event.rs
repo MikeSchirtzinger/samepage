@@ -109,8 +109,8 @@ pub enum EventType {
 ///
 /// ```rust,ignore
 /// // Migration example (when official-types feature is enabled):
-/// use ag_ui_core::event::BaseEvent;
-/// use ag_ui_core::compat; // Conversion traits
+/// use samepage_agui::event::BaseEvent;
+/// use samepage_agui::compat; // Conversion traits
 ///
 /// let helper_event = BaseEvent { timestamp: Some(1.0), raw_event: None };
 /// // With official-types feature: let official_event = helper_event.into();

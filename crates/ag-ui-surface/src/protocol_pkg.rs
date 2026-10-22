@@ -2,7 +2,7 @@
 //!
 //! The browser core (`/_agui/client.js`) does not interpret AG-UI events; it
 //! hands every SSE payload to `ag-ui-wasm-client`'s `Protocol`, which is
-//! `ag_ui_core::assembly` compiled to wasm32. That package has to come from
+//! `samepage_agui::assembly` compiled to wasm32. That package has to come from
 //! somewhere, and this module decides where:
 //!
 //! - [`App::protocol_pkg_dir`](crate::App::protocol_pkg_dir) names a built
@@ -11,7 +11,7 @@
 //! - Left unset, the runtime uses the workspace checkout it was compiled from
 //!   (`crates/ag-ui-wasm-client/pkg`) and rebuilds it with `wasm-pack` at
 //!   startup when the package is missing or older than the sources it is
-//!   built from (`ag-ui-wasm-client` and `ag-ui-core`), the same way
+//!   built from (`ag-ui-wasm-client` and `samepage-agui`), the same way
 //!   `same-page-atlas` builds its own replica. A package that is already
 //!   current costs one stat walk, which matters when several hosts start at
 //!   once (the meeting-room tests spawn a handful). A cold build is logged
@@ -163,7 +163,7 @@ fn newest_mtime(path: &Path) -> Option<SystemTime> {
 }
 
 /// Whether the built package predates any source it is built from: the
-/// client crate and `ag-ui-core`, sources and manifests.
+/// client crate and `samepage-agui`, sources and manifests.
 pub fn is_stale(dir: &Path, crate_dir: &Path) -> bool {
     let Some(built) = std::fs::metadata(dir.join(WASM_FILE))
         .and_then(|m| m.modified())
@@ -171,7 +171,7 @@ pub fn is_stale(dir: &Path, crate_dir: &Path) -> bool {
     else {
         return true;
     };
-    let core_dir = crate_dir.join("../ag-ui-core");
+    let core_dir = crate_dir.join("../samepage-agui");
     [
         crate_dir.join("src"),
         crate_dir.join("Cargo.toml"),
@@ -367,7 +367,7 @@ mod tests {
                 .as_nanos()
         ));
         let crate_dir = root.join("crates/ag-ui-wasm-client");
-        let core_dir = root.join("crates/ag-ui-core");
+        let core_dir = root.join("crates/samepage-agui");
         let pkg = crate_dir.join("pkg");
         std::fs::create_dir_all(crate_dir.join("src")).unwrap();
         std::fs::create_dir_all(core_dir.join("src")).unwrap();

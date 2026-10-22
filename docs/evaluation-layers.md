@@ -68,7 +68,7 @@ label, so a port cannot satisfy the check with one hard-coded receipt.
 
 The existing deterministic example is
 `specs/evals/conformance/ag-ui-core-fixture-roundtrip.json`. It classifies
-`ag-ui-core`'s existing canonical event-fixture round-trip test as
+`samepage-agui`'s existing canonical event-fixture round-trip test as
 **CONFORMANCE** without rewriting the test.
 
 Run them from the repository root:
