@@ -3,7 +3,7 @@
 # and call every export from Node. Proves the export mechanics of
 # `export_capability!`; it is not a product capability.
 #
-#   WASM_BINDGEN  wasm-bindgen CLI matching the pinned crate (0.2.126)
+#   WASM_BINDGEN  wasm-bindgen CLI matching the pinned crate in Cargo.lock
 #   OUT           output directory for the generated package (default: a temp dir)
 set -euo pipefail
 
@@ -11,9 +11,10 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bindgen="${WASM_BINDGEN:-wasm-bindgen}"
 out="${OUT:-$(mktemp -d)}"
 
+want="wasm-bindgen $(awk '/^name = "wasm-bindgen"$/ { getline; gsub(/version = |"/, ""); print; exit }' "$here/Cargo.lock")"
 version="$("$bindgen" --version)"
-if [[ "$version" != "wasm-bindgen 0.2.126" ]]; then
-  echo "need wasm-bindgen 0.2.126 to match the pinned crate, found: $version" >&2
+if [[ "$version" != "$want" ]]; then
+  echo "need $want to match Cargo.lock, found: $version" >&2
   exit 1
 fi
 
