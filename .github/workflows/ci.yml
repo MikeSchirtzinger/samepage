@@ -87,7 +87,16 @@ jobs:
           fetch-depth: 0
       # The renderer's headless tests need a Vulkan device; the runner has no
       # GPU, so Mesa's software lavapipe provides one.
-      - run: sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers
+      # The cement tests run the real g8 gate and search sources with ripgrep.
+      - run: sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers ripgrep
+      - name: Install g8
+        run: |
+          set -euo pipefail
+          tarball=g8-x86_64-unknown-linux-gnu.tar.xz
+          curl -fsSLO "https://github.com/MikeSchirtzinger/g8/releases/download/v0.1.5/$tarball"
+          echo "fb74862cc36a77f83545e4d2be5c90ee190c8f89539dd6c4b2b26403f938385a  $tarball" | sha256sum -c
+          tar -xJf "$tarball" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/g8-x86_64-unknown-linux-gnu" >> "$GITHUB_PATH"
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
