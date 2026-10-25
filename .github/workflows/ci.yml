@@ -81,7 +81,10 @@ jobs:
     # Every native test passes.
     runs-on: ubuntu-24.04
     steps:
+      # Full history: the atlas tests check claims pinned to past commits.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       # The renderer's headless tests need a Vulkan device; the runner has no
       # GPU, so Mesa's software lavapipe provides one.
       - run: sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers
