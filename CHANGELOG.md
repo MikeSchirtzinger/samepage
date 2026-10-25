@@ -44,6 +44,7 @@ The first release, 0.1.0. Nothing has been published to crates.io yet; the
 
 - `ag-ui-core` is now `samepage-agui`; the old name belongs to the upstream SDK.
 - Rust 1.99 and edition 2024.
+- Cement runs g8 0.1.5, and refuses any other version.
 - The renderer draws through Vulkan on Linux, where it had no backend before.
 
 ### Removed
