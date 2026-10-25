@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "samepage-agui-fixture-roundtrip",
+  "layer": "conformance",
+  "subject": {
+    "kind": "protocol",
+    "id": "samepage-agui",
+    "capability": "Every checked-in canonical AG-UI event fixture round-trips without changing its JSON value"
+  },
+  "execution": {
+    "command": "cargo",
+    "args": [
+      "test",
+      "-p",
+      "samepage-agui",
+      "--test",
+      "spec_conformance",
+      "tests::fixture_round_trips",
+      "--",
+      "--exact"
+    ],
+    "cwd": ".",
+    "timeout_seconds": 300,
+    "required_commands": [
+      "cargo"
+    ]
+  },
+  "scorers": [
+    {
+      "id": "test-process-succeeds",
+      "source": {
+        "kind": "exit_code"
+      },
+      "threshold": {
+        "op": "eq",
+        "value": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "layer": "run_scoring",
+  "contract_id": "illustrative-extension-session-sample-v1",
+  "sampling": {
+    "population": "Completed opted-in sessions that invoked at least one extension action",
+    "method": "Uniform without replacement within each extension id",
+    "window_start": "2026-07-20T00:00:00Z",
+    "window_end": "2026-07-27T00:00:00Z",
+    "sampler_version": "not-implemented-v1",
+    "inclusion_rule": "Include only sessions with a persisted trace and host-owned outcome receipt"
+  },
+  "sessions": [
+    {
+      "session_id": "illustrative-session-pass",
+      "selected_at": "2026-07-27T00:05:00Z",
+      "selection_probability": 0.25,
+      "source_ref": "example://not-a-real-session/pass",
+      "extension_id": "atlas",
+      "capabilities": [
+        "companion agent creates a node through shared dispatch"
+      ],
+      "provider": {
+        "adapter": "example-adapter",
+        "name": "example-provider",
+        "model": "example-model"
+      },
+      "outcome": {
+        "status": "pass"
+      },
+      "scorers": [
+        {
+          "id": "host-receipt-recorded-action",
+          "observed": true,
+          "threshold": {
+            "op": "eq",
+            "value": true
+          },
+          "passed": true
+        }
+      ]
+    },
+    {
+      "session_id": "illustrative-session-skipped",
+      "selected_at": "2026-07-27T00:05:10Z",
+      "selection_probability": 0.25,
+      "source_ref": "example://not-a-real-session/skipped",
+      "extension_id": "atlas",
+      "capabilities": [
+        "companion agent creates a node through shared dispatch"
+      ],
+      "provider": {
+        "adapter": "example-adapter",
+        "name": "example-provider",
+        "model": "example-model"
+      },
+      "outcome": {
+        "status": "skipped",
+        "reason": "Illustrative source receipt is unavailable; no score was inferred"
+      },
+      "scorers": []
+    }
+  ],
+  "summary": {
+    "sampled": 2,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 1
+  }
+}
