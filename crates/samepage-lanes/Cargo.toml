@@ -1,6 +1,7 @@
 [package]
 name = "samepage-lanes"
 version.workspace = true
+description = "The SamePage lanes capability: reconciles what a source scan finds with the cards people placed, and reports the found-in-the-code strip."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

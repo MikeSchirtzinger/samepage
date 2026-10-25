@@ -1,6 +1,7 @@
 [package]
 name = "samepage-app"
 version.workspace = true
+description = "The SamePage host: serves the shared page to people in the browser and to coding agents over MCP."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

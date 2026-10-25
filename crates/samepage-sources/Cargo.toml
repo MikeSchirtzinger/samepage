@@ -1,6 +1,7 @@
 [package]
 name = "samepage-sources"
 version.workspace = true
+description = "The SamePage sources capability: binds cards to source files and line ranges, and checks each binding against the file before it is committed."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
