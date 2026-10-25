@@ -19,6 +19,8 @@ wasm-pack build "$root/crates/ag-ui-wasm-client" --release --target web --out-di
 cargo build --locked -p samepage-app
 cp "$root/apps/samepage/web/"* "$run/assets/web/"
 cp "$root/apps/samepage/models.json" "$run/assets/models.json"
+# CI builds every recipe artifact without starting the host.
+if [[ -n "${SAMEPAGE_RECIPE_BUILD_ONLY:-}" ]]; then echo "built $recipe in $run"; exit 0; fi
 export SAMEPAGE_STATE_DIR="${SAMEPAGE_STATE_DIR:-$run/state}"
 export SAMEPAGE_CAPABILITIES_DIR="$run/capabilities"
 export SAMEPAGE_APP_ASSETS_DIR="$run/assets"
