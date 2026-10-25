@@ -95,7 +95,7 @@ The SamePage build also runs Node.js, Python 3 and ripgrep (`rg`). The room
 starts without the WebAssembly tools but reports its protocol client as
 unavailable. The atlas refuses to start without both.
 Cementing a decision runs g8 0.1.5, exactly that version, from your `PATH`:
-`cargo install g8 --version =0.1.5 --locked`.
+`cargo install g8 --version 0.1.5 --locked`.
 
 ## Run SamePage
 
