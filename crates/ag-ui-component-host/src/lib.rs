@@ -69,7 +69,7 @@ const INERT_WASI_INTERFACES: &[&str] = &[
 
 mod bindings {
     wasmtime::component::bindgen!({
-        path: "../ag-ui-component/wit",
+        path: "wit",
         world: "extension-component",
     });
 }
