@@ -1,6 +1,6 @@
 [package]
 name = "samepage-lanes"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -18,13 +18,13 @@ default = ["wasm-export"]
 wasm-export = []
 
 [dependencies]
-samepage-capability = { path = "../samepage-capability" }
-samepage-sources = { path = "../samepage-sources", default-features = false }
+samepage-capability = { version = "=0.1.0", path = "../samepage-capability" }
+samepage-sources = { version = "=0.1.0", path = "../samepage-sources", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-samepage-capability = { path = "../samepage-capability", features = ["wasm-export"] }
+samepage-capability = { version = "=0.1.0", path = "../samepage-capability", features = ["wasm-export"] }
 wasm-bindgen.workspace = true
 
 [dev-dependencies]

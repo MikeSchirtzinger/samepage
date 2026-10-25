@@ -1,6 +1,6 @@
 [package]
 name = "same-page-atlas"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -19,8 +19,8 @@ ag-ui-canvas = { workspace = true }
 # `sync` adds the Send/Sync bounds that let the Scene live behind a Mutex
 # shared across tokio worker threads (same reason teaching-canvas carries it).
 yrs = { workspace = true, features = ["sync"] }
-same-page-atlas-core = { path = "core" }
-samepage-extract = { path = "../../crates/samepage-extract" }
+same-page-atlas-core = { version = "=0.1.0", path = "core" }
+samepage-extract = { version = "=0.1.0", path = "../../crates/samepage-extract" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
 name = "samepage-app"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -13,27 +13,27 @@ path = "src/main.rs"
 
 [dependencies]
 ag-ui-surface = { workspace = true }
-samepage-capability = { path = "../../crates/samepage-capability" }
-samepage-doc = { path = "../../crates/samepage-doc" }
-samepage-map = { path = "../../crates/samepage-map" }
-samepage-diagrams = { path = "../../crates/samepage-diagrams" }
-samepage-review = { path = "../../crates/samepage-review" }
-samepage-architecture = { path = "../../crates/samepage-architecture" }
-samepage-board = { path = "../../crates/samepage-board" }
-samepage-sketch = { path = "../../crates/samepage-sketch" }
-samepage-explain = { path = "../../crates/samepage-explain" }
+samepage-capability = { version = "=0.1.0", path = "../../crates/samepage-capability" }
+samepage-doc = { version = "=0.1.0", path = "../../crates/samepage-doc" }
+samepage-map = { version = "=0.1.0", path = "../../crates/samepage-map" }
+samepage-diagrams = { version = "=0.1.0", path = "../../crates/samepage-diagrams" }
+samepage-review = { version = "=0.1.0", path = "../../crates/samepage-review" }
+samepage-architecture = { version = "=0.1.0", path = "../../crates/samepage-architecture" }
+samepage-board = { version = "=0.1.0", path = "../../crates/samepage-board" }
+samepage-sketch = { version = "=0.1.0", path = "../../crates/samepage-sketch" }
+samepage-explain = { version = "=0.1.0", path = "../../crates/samepage-explain" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal"] }
 sha2 = "0.10"
-samepage-sources = { path = "../../crates/samepage-sources", default-features = false }
+samepage-sources = { version = "=0.1.0", path = "../../crates/samepage-sources", default-features = false }
 toml = "0.8"
-samepage-lanes = { path = "../../crates/samepage-lanes", default-features = false }
-samepage-cement = { path = "../../crates/samepage-cement", default-features = false }
-samepage-extract = { path = "../../crates/samepage-extract" }
+samepage-lanes = { version = "=0.1.0", path = "../../crates/samepage-lanes", default-features = false }
+samepage-cement = { version = "=0.1.0", path = "../../crates/samepage-cement", default-features = false }
+samepage-extract = { version = "=0.1.0", path = "../../crates/samepage-extract" }
 
-samepage-trace = { path = "../../crates/samepage-trace" }
-samepage-panes = { path = "../../crates/samepage-panes", default-features = false }
+samepage-trace = { version = "=0.1.0", path = "../../crates/samepage-trace" }
+samepage-panes = { version = "=0.1.0", path = "../../crates/samepage-panes", default-features = false }
 parking_lot = { workspace = true }
 
 [lints]

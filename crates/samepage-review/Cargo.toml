@@ -1,6 +1,6 @@
 [package]
 name = "samepage-review"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -20,15 +20,15 @@ default = ["wasm-export"]
 wasm-export = []
 
 [dependencies]
-samepage-capability = { path = "../samepage-capability" }
-samepage-map = { path = "../samepage-map", default-features = false }
+samepage-capability = { version = "=0.1.0", path = "../samepage-capability" }
+samepage-map = { version = "=0.1.0", path = "../samepage-map", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 # The WebAssembly artifact exports the capability ABI; native builds do not
 # carry wasm-bindgen.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-samepage-capability = { path = "../samepage-capability", features = ["wasm-export"] }
+samepage-capability = { version = "=0.1.0", path = "../samepage-capability", features = ["wasm-export"] }
 wasm-bindgen = { workspace = true }
 
 [dev-dependencies]

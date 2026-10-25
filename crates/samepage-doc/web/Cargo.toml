@@ -1,6 +1,6 @@
 [package]
 name = "samepage-doc-web"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -17,8 +17,8 @@ crate-type = ["cdylib", "rlib"]
 wasm-opt = false
 
 [dependencies]
-samepage-doc = { path = "..", default-features = false }
-samepage-capability = { path = "../../samepage-capability" }
+samepage-doc = { version = "=0.1.0", path = "..", default-features = false }
+samepage-capability = { version = "=0.1.0", path = "../../samepage-capability" }
 serde_json = { workspace = true }
 wasm-bindgen = { workspace = true }
 js-sys = { workspace = true }
