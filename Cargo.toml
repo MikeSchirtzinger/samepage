@@ -2,7 +2,6 @@
 resolver = "3"
 members = [
   "crates/samepage",
-  "crates/convergence-attrs",
   "crates/ag-ui-eval",
   "crates/samepage-agui",
   "crates/ag-ui-component",
@@ -44,7 +43,6 @@ license = "MIT"
 repository = "https://github.com/MikeSchirtzinger/samepage"
 
 [workspace.dependencies]
-convergence-attrs = { version = "0.0.0-stub", path = "crates/convergence-attrs" }
 samepage-agui = { version = "=0.1.0", path = "crates/samepage-agui" }
 ag-ui-component = { version = "=0.1.0", path = "crates/ag-ui-component" }
 ag-ui-component-host = { version = "=0.1.0", path = "crates/ag-ui-component-host" }

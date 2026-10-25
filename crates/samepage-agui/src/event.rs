@@ -1,5 +1,3 @@
-use convergence_attrs::substrate;
-
 use crate::JsonValue;
 use crate::state::AgentState;
 use crate::types::{Interrupt, MessageId, RunAgentInput, RunId, ThreadId, ToolCallId};
@@ -7,7 +5,6 @@ use crate::types::{Message, Role};
 use serde::{Deserialize, Serialize};
 
 /// Event type discriminant for the AG-UI protocol; consumed by all event routing and serialization.
-#[substrate(name = "EventType", since = "0.1.0", domain = "ui")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EventType {
@@ -361,7 +358,6 @@ pub struct CustomEvent {
 ///   as-is; `RunAgentInput` itself has its own separate spec drift
 ///   (`parentRunId`, `resume`) not addressed in this pass — see the
 ///   crate-level catch-up notes.
-#[substrate(name = "RunStartedEvent", since = "0.1.0", domain = "ui")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RunStartedEvent {
     #[serde(flatten)]
@@ -383,7 +379,6 @@ pub struct RunStartedEvent {
 /// - `outcome` — new optional field distinguishing a normal completion from
 ///   a run paused on one or more human-in-the-loop [`Interrupt`]s. See
 ///   [`RunFinishedOutcome`].
-#[substrate(name = "RunFinishedEvent", since = "0.1.0", domain = "ui")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RunFinishedEvent {
     #[serde(flatten)]
@@ -810,7 +805,6 @@ impl TimeTravelEvent {
 /// for 2 releases (through v0.4.0) to allow gradual migration.
 ///
 /// See `crate::compat::events` for bidirectional conversion support.
-#[substrate(name = "Event", since = "0.1.0", domain = "ui")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(
     tag = "type",

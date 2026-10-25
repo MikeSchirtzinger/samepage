@@ -624,10 +624,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "convergence-attrs"
-version = "0.0.0-stub"
-
-[[package]]
 name = "core_detect"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2893,7 +2889,6 @@ version = "0.0.0"
 name = "samepage-agui"
 version = "0.1.0"
 dependencies = [
- "convergence-attrs",
  "serde",
  "serde_json",
  "thiserror",
