@@ -561,10 +561,10 @@ pub async fn start(
                     app.rebuild_instances();
                 }
             }
-            if let Some(target) = e.target() {
-                if let Ok(el) = target.dyn_into::<Element>() {
-                    let _ = el.set_pointer_capture(e.pointer_id());
-                }
+            if let Some(target) = e.target()
+                && let Ok(el) = target.dyn_into::<Element>()
+            {
+                let _ = el.set_pointer_capture(e.pointer_id());
             }
         }) as Box<dyn FnMut(_)>);
         canvas.set_onpointerdown(Some(on_down.as_ref().unchecked_ref()));
@@ -824,7 +824,6 @@ fn wire_and_reconnect(
                             if let Err(error) = app.refresh_objects() {
                                 report_refresh_error(&error);
                                 let _ = ws_reply.close();
-                                return;
                             }
                         }
                         Ok(Frame::Blob { header, payload }) => {
@@ -849,7 +848,6 @@ fn wire_and_reconnect(
                                     header.blob_id, header.generation
                                 )));
                                 let _ = ws_reply.close();
-                                return;
                             }
                         }
                         Ok(_) => {
@@ -964,24 +962,24 @@ fn spawn_raf_loop(app: Rc<RefCell<App>>) -> Result<(), JsValue> {
             // further mouse move, then latched via `dwell_sent`.
             if !app.dwell_sent {
                 let hover = app.hover_id.clone();
-                if let Some(id) = hover {
-                    if now - app.hover_since >= DWELL_MS {
-                        app.dwell_sent = true;
-                        let found = app
-                            .objects
-                            .iter()
-                            .find(|o| o.id.as_str() == id.as_str())
-                            .map(|o| (o.kind.clone(), (o.x as f64, o.y as f64)));
-                        if let Some((kind, world)) = found {
-                            dwell_url = app.semantic_url.clone();
-                            dwell_post = Some(AgUiEvent::Custom(canvas_events::focus(
-                                id.as_str(),
-                                &kind,
-                                world,
-                                "dwell",
-                                "human",
-                            )));
-                        }
+                if let Some(id) = hover
+                    && now - app.hover_since >= DWELL_MS
+                {
+                    app.dwell_sent = true;
+                    let found = app
+                        .objects
+                        .iter()
+                        .find(|o| o.id.as_str() == id.as_str())
+                        .map(|o| (o.kind.clone(), (o.x as f64, o.y as f64)));
+                    if let Some((kind, world)) = found {
+                        dwell_url = app.semantic_url.clone();
+                        dwell_post = Some(AgUiEvent::Custom(canvas_events::focus(
+                            id.as_str(),
+                            &kind,
+                            world,
+                            "dwell",
+                            "human",
+                        )));
                     }
                 }
             }

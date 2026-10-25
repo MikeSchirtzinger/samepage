@@ -1,0 +1,190 @@
+# Every pull request and every push to main must pass each job below.
+# Each job is one rule about what may land; the comment above it says which.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Every job builds with the toolchain named by rust-version in Cargo.toml,
+  # so every job also proves that field. Moving it is a deliberate change.
+  RUST_TOOLCHAIN: "1.99.0"
+
+jobs:
+  fmt:
+    # Code is formatted the way rustfmt formats it for edition 2024.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy-native:
+    # No clippy warning on the host target, in libraries, binaries or tests.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  clippy-wasm32:
+    # No clippy warning in code the browser loads. Linted one crate at a time:
+    # the workspace as a whole cannot build for wasm32 because the host crates
+    # depend on tokio's networking, and features unified across the whole
+    # workspace are not the features any one browser build uses.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Lint every workspace crate a browser build depends on
+        run: |
+          set -euo pipefail
+          for crate in \
+            ag-ui-canvas ag-ui-canvas-render ag-ui-canvas-web ag-ui-wasm-client \
+            convergence-attrs same-page-atlas-core same-page-atlas-web \
+            samepage-agui samepage-architecture samepage-board samepage-capability \
+            samepage-cement samepage-diagrams samepage-doc samepage-doc-web \
+            samepage-explain samepage-lanes samepage-map samepage-panes \
+            samepage-review samepage-sketch samepage-sources samepage-trace
+          do
+            echo "::group::$crate"
+            cargo clippy -p "$crate" --lib --target wasm32-unknown-unknown --locked -- -D warnings
+            echo "::endgroup::"
+          done
+          # The full recipe builds diagrams with sources integrated.
+          cargo clippy -p samepage-diagrams --features integrated-sources --lib \
+            --target wasm32-unknown-unknown --locked -- -D warnings
+
+  test:
+    # Every native test passes.
+    runs-on: ubuntu-24.04
+    steps:
+      # Full history: the atlas tests check claims pinned to past commits.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # The renderer's headless tests need a Vulkan device; the runner has no
+      # GPU, so Mesa's software lavapipe provides one.
+      # The cement tests run the real g8 gate and search sources with ripgrep.
+      - run: sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers ripgrep
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      # The cement adapter was reviewed against g8 0.1.5 and refuses any other
+      # version.
+      - name: Install g8
+        run: |
+          set -euo pipefail
+          tarball=g8-x86_64-unknown-linux-gnu.tar.xz
+          curl -fsSLO "https://github.com/MikeSchirtzinger/g8/releases/download/v0.1.5/$tarball"
+          echo "fb74862cc36a77f83545e4d2be5c90ee190c8f89539dd6c4b2b26403f938385a  $tarball" | sha256sum -c
+          tar -xJf "$tarball" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/g8-x86_64-unknown-linux-gnu" >> "$GITHUB_PATH"
+      - run: cargo test --workspace --locked
+
+  wasm-equivalence:
+    # Each capability compiled to WASM answers every shared case byte for byte
+    # the way the native build does.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Install the wasm-bindgen CLI each lock file pins
+        run: |
+          set -euo pipefail
+          pinned() { awk '/^name = "wasm-bindgen"$/ { getline; gsub(/version = |"/, ""); print; exit }' "$1"; }
+          install() {
+            curl -fsSL "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/$1/wasm-bindgen-$1-x86_64-unknown-linux-musl.tar.gz" \
+              | tar -xz -C "$RUNNER_TEMP"
+            echo "$RUNNER_TEMP/wasm-bindgen-$1-x86_64-unknown-linux-musl/wasm-bindgen"
+          }
+          echo "WORKSPACE_BINDGEN=$(install "$(pinned Cargo.lock)")" >> "$GITHUB_ENV"
+          echo "FIXTURE_BINDGEN=$(install "$(pinned crates/samepage-capability/fixtures/wasm-consumer/Cargo.lock)")" >> "$GITHUB_ENV"
+      - name: Run every equivalence check
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target
+        run: |
+          set -euo pipefail
+          for check in crates/*/tests/wasm/run-check.sh crates/samepage-doc/web/run-check.sh; do
+            echo "::group::$check"
+            WASM_BINDGEN="$WORKSPACE_BINDGEN" bash "$check"
+            echo "::endgroup::"
+          done
+          echo "::group::capability fixture"
+          WASM_BINDGEN="$FIXTURE_BINDGEN" CARGO_TARGET_DIR="$RUNNER_TEMP/fixture-target" \
+            bash crates/samepage-capability/fixtures/wasm-consumer/run-check.sh
+          echo "::endgroup::"
+
+  recipe-build:
+    # The full recipe builds: every capability package, the protocol client
+    # and the host, through the same script a person runs.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: wasm-pack@0.13.1
+      - name: Install wasm-opt and ripgrep
+        run: |
+          set -euo pipefail
+          curl -fsSL https://github.com/WebAssembly/binaryen/releases/download/version_116/binaryen-version_116-x86_64-linux.tar.gz \
+            | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/binaryen-version_116/bin" >> "$GITHUB_PATH"
+          sudo apt-get install -y --no-install-recommends ripgrep
+      - name: Build the full recipe
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target
+          SAMEPAGE_RECIPE_DIR: ${{ runner.temp }}/recipe
+          SAMEPAGE_RECIPE_BUILD_ONLY: "1"
+        run: bash apps/samepage/recipes/full.sh "$GITHUB_WORKSPACE"
+
+  deny:
+    # No known vulnerability, no license outside deny.toml, no unlisted source.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-deny@0.19.7
+      - run: cargo deny check

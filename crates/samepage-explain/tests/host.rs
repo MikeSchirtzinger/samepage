@@ -348,8 +348,7 @@ fn explanation_control_and_replica_restore_preserve_one_coherent_cursor() {
     }
     let replica = peer(&h);
     assert_eq!(flows(&replica.view()).unwrap(), flows(&h.view()).unwrap());
-    let path = std::path::PathBuf::from(std::env::var("TMPDIR").unwrap())
-        .join(format!("restore-{}.json", std::process::id()));
+    let path = std::env::temp_dir().join(format!("restore-{}.json", std::process::id()));
     let disk = Host::open(
         &path,
         Composition::new(descriptors()).unwrap(),
