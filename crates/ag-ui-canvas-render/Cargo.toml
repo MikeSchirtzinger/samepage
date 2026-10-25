@@ -35,6 +35,11 @@ wgpu = { version = "29", default-features = false, features = [
   "metal",
 ] }
 
+# Linux renders through Vulkan: a real GPU, or Mesa's software lavapipe on a
+# machine without one, such as a CI runner.
+[target.'cfg(target_os = "linux")'.dependencies]
+wgpu = { version = "29", default-features = false, features = ["vulkan"] }
+
 [dev-dependencies]
 pollster = "0.4"
 image = { version = "0.25", default-features = false, features = ["png"] }
