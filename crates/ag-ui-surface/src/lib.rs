@@ -2,7 +2,7 @@
 //!
 //! **One line:** the reusable shell for "put an agent in your browser and
 //! talk to it," where the agent can *see and touch the same live surface
-//! you're looking at* — over any provider. AG-UI (`ag-ui-core`) is the
+//! you're looking at* — over any provider. AG-UI (`samepage-agui`) is the
 //! protocol; this crate is the application layer above it that everyone
 //! currently rebuilds by hand.
 //!
@@ -39,13 +39,13 @@ use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
-use ag_ui_core::JsonValue;
-use ag_ui_core::event::{BaseEvent, Event as AgUiEvent, StateSnapshotEvent};
+use samepage_agui::JsonValue;
+use samepage_agui::event::{BaseEvent, Event as AgUiEvent, StateSnapshotEvent};
 
-// Re-exported from ag-ui-core: `CustomEvent` (name/value payload on
+// Re-exported from samepage-agui: `CustomEvent` (name/value payload on
 // `BaseEvent`) is exactly the type `Effect::EmitAndAwait` needs — no reason
 // to redefine it here.
-pub use ag_ui_core::event::CustomEvent;
+pub use samepage_agui::event::CustomEvent;
 
 /// M1 Phase 1: the provider registry (ACP + OpenAI-compatible BYOK/subscription)
 /// extracted verbatim from teaching-canvas's `providers.rs`. See its module docs
@@ -96,7 +96,7 @@ pub mod semantic_targets;
 pub mod chat_relay;
 
 /// Serving the typed protocol client (`ag-ui-wasm-client`'s `Protocol`,
-/// `ag_ui_core::assembly` compiled to wasm).
+/// `samepage_agui::assembly` compiled to wasm).
 pub mod protocol_pkg;
 
 /// Development auto-reload: poll served directories, broadcast changes.
@@ -1913,7 +1913,7 @@ impl Transport {
     /// `add_note` tool → a `surface.board` event its `web/index.html` renders).
     /// This is the same custom-event wire shape the runtime uses for
     /// `surface.tutor`, exposed so a Surface can speak the same protocol
-    /// without reaching into `ag-ui-core`. Assistant text itself uses AG-UI's
+    /// without reaching into `samepage-agui`. Assistant text itself uses AG-UI's
     /// standard `TEXT_MESSAGE_*` lifecycle. A
     /// Surface with a wasm renderer syncs pixels through `/ws` instead and
     /// won't need this; a Surface that carries reload state also lists it in
@@ -8405,7 +8405,7 @@ mod tests {
         let query = HashMap::from([
             (
                 "path".to_string(),
-                "crates/ag-ui-core/src/event.rs".to_string(),
+                "crates/samepage-agui/src/event.rs".to_string(),
             ),
             ("lines".to_string(), "1-40".to_string()),
         ]);
@@ -8415,7 +8415,7 @@ mod tests {
             .await
             .expect("read body");
         let body: JsonValue = serde_json::from_slice(&body).expect("json body");
-        assert_eq!(body["path"], "crates/ag-ui-core/src/event.rs");
+        assert_eq!(body["path"], "crates/samepage-agui/src/event.rs");
         assert_eq!(body["lines"], "1-40");
     }
 
@@ -9734,7 +9734,7 @@ mod tests {
     }
 
     /// The shipped browser assets name AG-UI events as bare strings, while
-    /// `ag_ui_core::EventType` is what those names actually mean. Nothing made
+    /// `samepage_agui::EventType` is what those names actually mean. Nothing made
     /// the two agree: rename a variant in Rust and the page goes on listening
     /// for an event that no longer exists — silently, at runtime, in the one
     /// place nobody is watching.
@@ -9749,13 +9749,13 @@ mod tests {
         let mut checked = 0;
         for asset in [AGUI_CLIENT_JS, CONVERSATION_JS, PROVIDER_SETTINGS_JS] {
             for name in event_names_in(asset) {
-                serde_json::from_value::<ag_ui_core::event::EventType>(JsonValue::String(
+                serde_json::from_value::<samepage_agui::event::EventType>(JsonValue::String(
                     name.clone(),
                 ))
                 .unwrap_or_else(|_| {
                     panic!(
                         "a shipped browser asset listens for {name:?}, which \
-                         ag_ui_core::EventType no longer defines"
+                         samepage_agui::EventType no longer defines"
                     )
                 });
                 checked += 1;

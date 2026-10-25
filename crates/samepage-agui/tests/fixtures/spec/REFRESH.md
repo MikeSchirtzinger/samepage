@@ -15,7 +15,7 @@ without a TypeScript toolchain. The test compares the Rust `EventType` enum
 ## When to refresh
 
 Whenever the upstream AG-UI spec's `events.ts` changes — periodically, or
-whenever doing a spec catch-up pass on `ag-ui-core` (see `event.rs`'s
+whenever doing a spec catch-up pass on `samepage-agui` (see `event.rs`'s
 "spec catch-up" doc comments for the last one).
 
 ## How to refresh
@@ -39,7 +39,7 @@ whenever doing a spec catch-up pass on `ag-ui-core` (see `event.rs`'s
 3. Replace `event_types.snapshot.json`'s `event_types` array with that list,
    and update `upstream_commit` / `fetched`.
 
-4. Run `cargo test -p ag-ui-core --test spec_conformance`.
+4. Run `cargo test -p samepage-agui --test spec_conformance`.
    - **Fails** → `EventType` (and likely `event.rs`'s structs) have drifted
      from the spec; that's the alarm doing its job. Do a real catch-up pass —
      add/rename/remove the affected `EventType` variants, `Event` variants,
@@ -49,7 +49,7 @@ whenever doing a spec catch-up pass on `ag-ui-core` (see `event.rs`'s
 
 ## Design note
 
-This file is intentionally not fetched live in CI: `ag-ui-core` has no
+This file is intentionally not fetched live in CI: `samepage-agui` has no
 TypeScript toolchain dependency, and a live network fetch inside a test isn't
 reproducible. Committing the snapshot turns drift into a *visible, deliberate*
 refresh step instead of a silent, invisible one — which is the point of this

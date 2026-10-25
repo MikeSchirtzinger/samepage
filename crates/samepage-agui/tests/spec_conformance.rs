@@ -1,6 +1,6 @@
-//! Spec-conformance / drift-detection tests for `ag_ui_core::event`.
+//! Spec-conformance / drift-detection tests for `samepage_agui::event`.
 //!
-//! `ag-ui-core` is a hand-maintained Rust port of the AG-UI protocol, whose
+//! `samepage-agui` is a hand-maintained Rust port of the AG-UI protocol, whose
 //! canonical source of truth is the Zod schemas in the TypeScript SDK
 //! (`sdks/typescript/packages/core/src/events.ts` + `types.ts`, upstream repo
 //! `ag-ui-protocol/ag-ui`). There's no mechanical link between the two, so
@@ -11,7 +11,7 @@
 //! 1. **Fixture round-trip conformance** (`fixture_round_trips`): one
 //!    canonical JSON fixture per AG-UI spec event type, checked in under
 //!    `tests/fixtures/events/`. Each fixture deserializes into
-//!    `ag_ui_core::event::Event` and must re-serialize back to an
+//!    `samepage_agui::event::Event` and must re-serialize back to an
 //!    order-insensitive-equal JSON value. This catches field renames, type
 //!    changes, and missing/extra fields — including the shapes covered by
 //!    the 2026-07 catch-up (`TEXT_MESSAGE_START`, `TEXT_MESSAGE_CHUNK`,
@@ -35,8 +35,8 @@
 
 #[cfg(test)]
 mod tests {
-    use ag_ui_core::JsonValue;
-    use ag_ui_core::event::{Event as AgUiEvent, EventType};
+    use samepage_agui::JsonValue;
+    use samepage_agui::event::{Event as AgUiEvent, EventType};
     use std::collections::BTreeSet;
 
     /// One `(name, fixture json)` pair per canonical AG-UI event fixture.
@@ -312,7 +312,9 @@ mod tests {
             let original: JsonValue = serde_json::from_str(raw)
                 .unwrap_or_else(|e| panic!("fixture `{name}` is not valid JSON: {e}"));
             let event: AgUiEvent = serde_json::from_str(raw).unwrap_or_else(|e| {
-                panic!("fixture `{name}` failed to deserialize into ag_ui_core::event::Event: {e}")
+                panic!(
+                    "fixture `{name}` failed to deserialize into samepage_agui::event::Event: {e}"
+                )
             });
             let round_tripped = serde_json::to_value(&event)
                 .unwrap_or_else(|e| panic!("fixture `{name}` failed to re-serialize: {e}"));

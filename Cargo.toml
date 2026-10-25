@@ -4,7 +4,7 @@ members = [
   "crates/samepage",
   "crates/convergence-attrs",
   "crates/ag-ui-eval",
-  "crates/ag-ui-core",
+  "crates/samepage-agui",
   "crates/ag-ui-component",
   "crates/ag-ui-component-host",
   "crates/ag-ui-wasm-client",
@@ -45,7 +45,7 @@ repository = "https://github.com/MikeSchirtzinger/samepage"
 
 [workspace.dependencies]
 convergence-attrs = { version = "0.0.0-stub", path = "crates/convergence-attrs" }
-ag-ui-core = { version = "=0.1.0-brevity-extracted", path = "crates/ag-ui-core" }
+samepage-agui = { version = "=0.1.0", path = "crates/samepage-agui" }
 ag-ui-component = { version = "=0.1.0", path = "crates/ag-ui-component" }
 ag-ui-component-host = { version = "=0.1.0", path = "crates/ag-ui-component-host" }
 ag-ui-wasm-client = { version = "=0.1.0", path = "crates/ag-ui-wasm-client" }

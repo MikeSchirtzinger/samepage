@@ -9,7 +9,7 @@ description = "Transport-only demo server for the AG-UI shared canvas: static ho
 publish = false
 
 [dependencies]
-ag-ui-core = { workspace = true }
+samepage-agui = { workspace = true }
 ag-ui-canvas = { workspace = true }
 # `sync` adds Send/Sync bounds on yrs types so the Scene can live behind
 # Arc<Mutex> inside axum's Send futures. Native-only crate, so this feature

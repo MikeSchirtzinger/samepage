@@ -12,8 +12,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use ag_ui_core::types::MessageId;
 use parking_lot::Mutex;
+use samepage_agui::types::MessageId;
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufRead, AsyncWriteExt, BufReader};
 use tokio::process::ChildStdin;

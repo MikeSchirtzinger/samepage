@@ -3,7 +3,7 @@
 // subscribe to the same event stream without copying transport logic.
 //
 // This file does not know what an AG-UI event means. Every `data:` payload
-// goes through the typed protocol client (`ag_ui_core::assembly` compiled to
+// goes through the typed protocol client (`samepage_agui::assembly` compiled to
 // wasm, served at `/_agui/protocol/`), which validates it and assembles the
 // streamed lifecycle into transcript updates. Subscribers get both: the
 // validated event by its type (`RUN_STARTED`, a CUSTOM event by its name) and
@@ -60,7 +60,7 @@ export class AgUiRequestError extends Error {
   }
 }
 
-/// The typed protocol client, `ag_ui_core::assembly` compiled to wasm and
+/// The typed protocol client, `samepage_agui::assembly` compiled to wasm and
 /// served by the runtime. Loaded once per page and shared: instantiating the
 /// module is the expensive part, and every `AgUiClient` gets its own
 /// `Protocol` (its own assembler) from it.
