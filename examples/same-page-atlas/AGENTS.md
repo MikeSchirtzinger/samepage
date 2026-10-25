@@ -92,8 +92,7 @@ compiles.
   the lifted shape and a consumed title text leave the drawn layer. A region
   holding two texts is refused as ambiguous rather than guessed at. The
   promotion is human-authored: the node lands `created_by=human` and the next
-  `atlas_read` reports it in the delta. Replay:
-  `docs/register-lift/lift.sh`.
+  `atlas_read` reports it in the delta.
 - **An ambiguous drawing is reported as ambiguous.** Enclosure is measured as
   *coverage* of a card's box, not tested at its centre: three quarters in
   counts as grouped, and anything between a sixth and three quarters is
@@ -191,8 +190,8 @@ compiles.
   worker may attach mask pixels. Human movement uses the browser replica.
   Agent movement and regeneration address the Atlas ID, never a mask index.
   Generation, graph digests, source digest, RLE extent, execution location,
-  and no-fallback fields fail closed in the shared core. This remains a
-  bounded Phase 2 learning test and is not runtime governance.
+  and no-fallback fields fail closed in the shared core. This is a
+  bounded learning test, not runtime governance.
 - **Human image selection is a CRDT write, not a calibration surface.** The
   first trusted positive point produces a real Worker mask. Positive and
   negative refinement points are optional. **Create object** must call the
@@ -282,8 +281,7 @@ compiles.
   drops the clause when none does, because picking one would invent a history
   nobody recorded. A bound variable's value is enforced in the shared setter,
   not only at bind time: a fractional or out-of-range write is refused there,
-  so the document cannot hold a machine whose cursor points at nothing. Proven
-  live in `fixtures/typed-diagrams/PROOF.md` section `8`.
+  so the document cannot hold a machine whose cursor points at nothing.
 - **The renderer paints only the shared current-state projection.** The browser
   WASM adapter resolves the shared core's canonical `CURRENT STATE` sentence to
   paintable ids. JavaScript never derives a state from variable values or node

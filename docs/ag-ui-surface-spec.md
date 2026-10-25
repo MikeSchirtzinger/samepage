@@ -2,12 +2,16 @@
 
 > **One line:** the reusable shell for "put an agent in your browser and talk to it," where the agent can *see and touch the same live surface you're looking at*: over any provider. AG-UI is the protocol. This is the application layer above it that everyone currently rebuilds by hand.
 
-**Status:** implemented through M4.4. Teaching, Vellum, Colab, and the starter
-compile against the runtime. Typed server composition and the pinned app recipe
-are live, and the runtime owns the agent-facing MCP projection. Later
-capability/package gates remain open.
+**Status:** implemented through M4.4. Typed server composition and the pinned
+app recipe are live, and the runtime owns the agent-facing MCP projection.
+Later capability and package gates remain open.
 **Packaging (decided):** a thin runtime crate + a cloneable template (Next.js / create-next-app split).
-**Audience (decided):** internal reuse first, hardened for public later.
+
+> **About this record.** It was written while the runtime was extracted from
+> applications that are not in this repository: teaching-canvas, vellum-canvas,
+> Colab and the create-ag-ui-app starter. They appear below as the cases that
+> shaped the API. In this repository the runtime is used by `apps/samepage`,
+> `examples/same-page-room` and `examples/same-page-atlas`.
 
 ---
 
@@ -19,7 +23,7 @@ Three apps in this repo are the *same shell* wearing different hats, plus a four
 |---|---|---|
 | `examples/teaching-canvas` | live AI tutor drawing on a shared canvas | own `main.rs` (estimated 85k) |
 | `examples/vellum-canvas` | collaborative architecture / decision tool | own `main.rs` |
-| Colab (`~/.claude/skills/Colab`) | agent↔human visual iteration loop | own JS server |
+| Colab | agent↔human visual iteration loop | own JS server |
 | `crates/ag-ui-canvas-server` | demo server, used by nobody | standalone bin |
 
 Every one of them re-implements an estimated 80%: a WS/SSE server speaking AG-UI events, a provider-agnostic agent loop, chat/voice, tool dispatch, and a shared-state document. Only the last estimated 20%, meaning *what's on the surface and what the agent can do to it*, is actually unique. That part is the product. The rest is tax we keep paying.

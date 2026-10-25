@@ -1,5 +1,11 @@
 # AG-UI app template: core and extension architecture
 
+> **About this record.** It was written while the runtime was extracted from
+> applications that are not in this repository: teaching-canvas, vellum-canvas,
+> Colab and the create-ag-ui-app starter. They appear below as the cases that
+> shaped the API. In this repository the runtime is used by `apps/samepage`,
+> `examples/same-page-room` and `examples/same-page-atlas`.
+
 ## Decision
 
 Build one small browser shell around standard AG-UI, then compose capabilities

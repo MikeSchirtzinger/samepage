@@ -457,13 +457,6 @@ moves between beats. The default event clock runs visual actions on beat entry.
 A browser speech renderer can instead report a spoken character cursor against
 optional cue spans. An audio interruption never advances the lesson.
 
-`dev/atlas-evidence-loop` is the second-topic falsifier. It segments a different
-generated infographic with real browser MobileSAM, authors a new flow as data,
-and drives the same panel through Observe, Segment, Act, and Verify. It proves
-trusted pause, resume, and continue inputs, stale-transition refusal, speech
-cursor gating, one-shot visual motion, no specialist model resource load during
-playback, host and browser equality, and restart persistence.
-
 ## Epsilon hypersphere lesson gate
 
 Run the complete isolated lesson with one command:
