@@ -20,9 +20,11 @@ crate, so any surface can adopt it. Trust labels are part of the schema: a
 claim the host cannot verify stays labeled as claimed instead of hardening
 into fact.
 
-The room example below is one surface built this way. The general case is any
-place a person and an agent need to look at the same thing and settle what
-they see.
+The SamePage app in `apps/samepage` is that surface for a software project: a
+shared map of cards, links and drawings bound to the project's real files. The
+room and atlas examples below are the earlier surfaces it grew from. The
+general case is any place a person and an agent need to look at the same thing
+and settle what they see.
 
 ## The surface
 
@@ -48,8 +50,16 @@ they see.
 ## Repository layout
 
 ```text
+apps/
+  samepage                 the SamePage host and its build recipes
 crates/
   samepage                 public crate-name placeholder
+  samepage-doc             the shared document: one replica, host authority
+  samepage-capability      the capability contract every module implements
+  samepage-map, -diagrams, -review, -architecture, -board, -sketch,
+  -sources, -lanes, -cement, -explain, -trace, -panes
+                           capabilities, each loaded only when a page uses it
+  samepage-extract         lane extraction for Rust and JavaScript
   samepage-agui            AG-UI protocol types
   ag-ui-surface            application runtime, actions, identity, and MCP
   ag-ui-record             session-record shape validator
@@ -57,8 +67,8 @@ crates/
   ag-ui-component*         portable component contract and host
   ag-ui-eval               deterministic and real-agent evaluation runner
 examples/
-  same-page-room           runnable shared room on port 8100
-  same-page-atlas          runnable shared map of a project on port 8098
+  same-page-room           earlier shared room on port 8100
+  same-page-atlas          earlier all-in-one map on port 8098
 docs/
   ag-ui-surface-spec.md
   ag-ui-extension-architecture.md
@@ -71,8 +81,8 @@ The root `Cargo.toml` is the source of truth for workspace members.
 
 ## Before you start
 
-Both apps compile part of themselves to WebAssembly on first run. Install the
-three pieces once:
+SamePage and both examples compile part of themselves to WebAssembly. Install
+the three pieces once:
 
 ```bash
 rustup target add wasm32-unknown-unknown
@@ -81,10 +91,32 @@ cargo install wasm-opt --locked
 ```
 
 Check they are on your `PATH` with `wasm-pack --version && wasm-opt --version`.
-The room starts without them but reports its protocol client as unavailable.
-The map refuses to start without both.
+The SamePage build also runs Node.js, Python 3 and ripgrep (`rg`). The room
+starts without the WebAssembly tools but reports its protocol client as
+unavailable. The atlas refuses to start without both.
+Cementing a decision runs g8 0.1.5, exactly that version, from your `PATH`:
+`cargo install g8 --version 0.1.5 --locked`.
 
-## Run the room
+## Run SamePage
+
+From the repository root, point the full recipe at a project you know:
+
+```bash
+apps/samepage/recipes/full.sh /path/to/your/project
+```
+
+It builds every capability, the protocol client and the host, then serves the
+page at <http://127.0.0.1:8190>. Build output and page state live under
+`.local/recipes/full` in this checkout. `apps/samepage/recipes/map-only.sh`
+builds only the document and the map.
+
+Attach your coding agent to `http://127.0.0.1:8190/mcp` with a bearer token.
+The recipe uses `local-samepage-token` unless you set `AGUI_MCP_TOKEN` to a
+value you choose. The page's first run shows the endpoint and a first request
+to give the agent. [`apps/samepage/README.md`](apps/samepage/README.md) covers
+choosing your own set of capabilities and every setting.
+
+## Run the room example
 
 From the repository root:
 
@@ -122,7 +154,7 @@ Read [AGENTS.md](AGENTS.md) for the attachment contract and repository rules.
 The room agent's standing contract is
 [`examples/same-page-room/prompt.md`](examples/same-page-room/prompt.md).
 
-## Run the map
+## Run the atlas example
 
 The room is one shared surface. The atlas is another: instead of panes it
 draws a map of a project, agent and person editing the same CRDT document.
@@ -229,49 +261,24 @@ blocks on it. The recipe for an agent is:
 The person looks at the browser. The agent looks at `read_room`. That is the
 whole point: two seats, one artifact.
 
-## Roadmap
+## Status
 
-This section is informational. It describes planned work, not shipped
-behavior.
-
-The map above is an example application from before the capability split.
-It carries everything built so far, including parts that will not ship by
-default, such as image segmentation and agent ink. Its browser
-replica is one WebAssembly binary with all of it inside: 1,501,801 bytes
-(`stat -f %z examples/same-page-atlas/web/pkg/same_page_atlas_web_bg.wasm`
-after a first run on macOS).
-
-The plan is to break it apart:
-
-1. **Composable primitives.** The pieces every capability relies on stay in
-   the host and load for every page: identity and authority, actions and MCP
-   attach, the shared CRDT document, and the record of who did what.
-2. **Capabilities with plain names.** Each capability becomes its own module
-   that registers against those primitives and does not depend on the others:
-   `map` (cards, links, containers, layout, page checks), `sources` (binding a
-   card to file lines, drift, trust tiers, the legend), `lanes` (the
-   found-in-the-code strip), `cement` (Explain, Map, Cement and the handoff to
-   G8), `sketch` (shapes, arrows, text, `.excalidraw` in and out), and `panes`
-   (the room's view vocabulary).
-3. **Lazy loading.** Each capability ships as a separate WebAssembly module
-   that loads only when a page uses it, so a user downloads the capabilities
-   their task needs instead of one binary with everything.
-4. **One default.** A single SamePage app, not a set of examples, whose first
-   run looks like the demo: `map`, `sources`, `lanes`, `cement`, and `sketch`
-   on the user's own project. Image segmentation stays out of SamePage as a
-   separate crate. Agent ink is out of the default until it earns a place.
-
-When that lands, the two examples here are replaced by the one app, and this
-README changes to match.
+The capability split is done: the pieces every page needs stay in the host,
+each capability is its own crate and its own WebAssembly module, and a page
+downloads only the modules it uses. The atlas example still carries everything
+in one binary, including image segmentation and agent ink, which SamePage
+leaves out.
 
 ## Proof commands
 
+CI runs these on every pull request; `.github/workflows/ci.yml` has the full
+set, including wasm32 clippy and the WASM equivalence checks.
+
 ```bash
-cargo check --workspace
-cargo clippy --workspace --all-targets
-cargo test -p same-page-room
-cargo test -p same-page-atlas
-cargo test -p ag-ui-record
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+cargo deny check
 ```
 
 Compiler and test success do not prove browser rendering or a real agent loop.

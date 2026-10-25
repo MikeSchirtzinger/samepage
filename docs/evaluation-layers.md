@@ -10,11 +10,9 @@ label.
 | **AGENT EVAL** | Can a real provider/model still produce one named extension capability outcome on the real surface? | Required | Host-owned state or action receipt after the fixed scenario |
 | **RUN SCORING** | How did sampled real sessions perform after the fact? | Optional scorer, never the acting session | Versioned sample metadata, source receipts, and post-hoc scorer results |
 
-The runner lives in `crates/ag-ui-eval`. It is an external proof producer. The
-runtime kernel does not depend on it, its files, or its results. This follows
-ADR 0006's checker boundary and does not introduce Phase 4 preflight,
-postconditions, or runtime governance. Those broader Phase 4 concerns remain
-separate.
+The runner lives in `crates/ag-ui-eval` and its suites in
+`crates/ag-ui-eval/suites`. It is an external proof producer. The runtime does
+not depend on it, its files, or its results.
 
 The enforcement layer is [G8](https://github.com/MikeSchirtzinger/g8),
 pronounced "gate". It turns what people and agents agreed on here into
@@ -45,7 +43,7 @@ machine-readable `configuration_error` receipt and exit 2.
 ## Executable scenario format
 
 The v1 schema is
-`specs/evals/schema/scenario-v1.schema.json`. Each scenario names:
+`crates/ag-ui-eval/suites/schema/scenario-v1.schema.json`. Each scenario names:
 
 - one layer: `conformance` or `agent_eval`.
 - one subject id and one atomic capability statement.
@@ -58,32 +56,26 @@ Supported observations are the process exit code and values selected from the
 command's stdout JSON using a JSON Pointer. Supported thresholds are `eq`,
 `contains`, `gte`, and `lte`. Any miss makes the scenario and suite fail.
 
-The real per-extension example is
-`specs/evals/agent-eval/atlas-companion-place-node.json`. It drives Pi through
-OpenRouter using a real model. That model must call the running `atlas`
-extension through `/surface/action` as a companion agent. The model's prose is
-not the acceptance surface: scorers inspect the host's `/atlas/describe`
-read-back and require exactly one node carrying the driver's per-run fixture
-label, so a port cannot satisfy the check with one hard-coded receipt.
-
-The existing deterministic example is
-`specs/evals/conformance/ag-ui-core-fixture-roundtrip.json`. It classifies
-`samepage-agui`'s existing canonical event-fixture round-trip test as
+The deterministic example is
+`crates/ag-ui-eval/suites/conformance/samepage-agui-fixture-roundtrip.json`. It
+classifies `samepage-agui`'s canonical event-fixture round-trip test as
 **CONFORMANCE** without rewriting the test.
 
-Run them from the repository root:
+No **AGENT EVAL** suite ships in this repository: each one needs a real
+provider, model and credentials. A useful one inspects the host's read-back,
+not the model's prose, and requires a per-run fixture value, so a port cannot
+satisfy the check with one hard-coded receipt.
+
+Run it from the repository root:
 
 ```bash
 cargo run -p ag-ui-eval -- run \
   --layer conformance \
-  --suite specs/evals/conformance \
+  --suite crates/ag-ui-eval/suites/conformance \
   --output artifacts/conformance.json
-
-cargo run -p ag-ui-eval -- run \
-  --layer agent_eval \
-  --suite specs/evals/agent-eval \
-  --output artifacts/agent-eval.json
 ```
+
+An **AGENT EVAL** suite runs the same way with `--layer agent_eval`.
 
 ## Gating extension distillation
 
@@ -108,7 +100,7 @@ behaviors into separate files and scorers.
 
 ## RUN SCORING contract
 
-`specs/evals/run-scoring/contract-v1.schema.json` defines the post-hoc receipt.
+`crates/ag-ui-eval/suites/run-scoring/contract-v1.schema.json` defines the post-hoc receipt.
 Every batch records:
 
 - the population, window, sampling method, inclusion rule, sampler version, and
@@ -119,14 +111,14 @@ Every batch records:
 - each scorer's observed value, threshold, and recomputed pass state.
 - separate pass, fail, and reason-bearing skipped counts.
 
-`specs/evals/run-scoring/example-v1.json` is explicitly illustrative, not a
+`crates/ag-ui-eval/suites/run-scoring/example-v1.json` is explicitly illustrative, not a
 real-session receipt. The command below validates its contract and emits a
 machine-readable contract-validation receipt with
 `"sampler_implemented": false`:
 
 ```bash
 cargo run -p ag-ui-eval -- validate-run-scoring \
-  --contract specs/evals/run-scoring/example-v1.json \
+  --contract crates/ag-ui-eval/suites/run-scoring/example-v1.json \
   --output artifacts/run-scoring-contract.json
 ```
 
@@ -134,17 +126,3 @@ Selecting production sessions, retrieving traces, and executing post-hoc
 scorers are out of scope for this layer's first landing. Contract validation
 must not be reported as sampled-session scoring.
 
-## CI
-
-`.github/workflows/evaluation.yml` runs all three distinct jobs on a nightly or
-manual invocation:
-
-- `conformance`.
-- `agent-eval-real-provider`.
-- `run-scoring-contract`.
-
-Each job uploads its JSON receipt with `if: always()`. The real-provider job is
-allowed to go red with exit 3 when the provider is unavailable. Its receipt
-still states why. The Rust runner has no Node or React dependency. Pi is only
-installed in the targeted **AGENT EVAL** job as the selected external provider
-adapter.

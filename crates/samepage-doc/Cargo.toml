@@ -1,6 +1,6 @@
 [package]
 name = "samepage-doc"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -15,7 +15,7 @@ default = ["host"]
 host = ["dep:base64"]
 
 [dependencies]
-samepage-capability = { path = "../samepage-capability" }
+samepage-capability = { version = "=0.1.0", path = "../samepage-capability" }
 yrs = { workspace = true, features = ["sync"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

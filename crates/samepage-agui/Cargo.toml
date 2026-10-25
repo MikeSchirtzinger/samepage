@@ -1,6 +1,6 @@
 [package]
 name = "samepage-agui"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -9,7 +9,6 @@ publish = false
 description = "AG-UI protocol event, message and state types for SamePage, derived from the ag-ui-core crate of the AG-UI Rust SDK."
 
 [dependencies]
-convergence-attrs = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

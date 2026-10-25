@@ -788,7 +788,7 @@ fn pinned_source_resolves_inside_a_git_subdirectory_project() {
     let h = host().with_verifier("review", native.clone()).unwrap();
     let n = node(&h);
     h.invoke(&agent(),"claim_add",json!({"about":n,"text":"Package metadata","basis":"verified","path":"Cargo.toml","lines":"1-3","revision":revision.trim()})).unwrap();
-    let expected = "[package]\nname = \"samepage-app\"\nversion = \"0.1.0\"\n";
+    let expected = "[package]\nname = \"samepage-app\"\nversion.workspace = true\n";
     let report = native.inspect(&h.view()).unwrap();
     assert_eq!(
         report["nodes"][0]["evidence"][0]["sha256"],

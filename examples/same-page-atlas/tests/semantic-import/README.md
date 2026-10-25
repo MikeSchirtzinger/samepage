@@ -1,7 +1,7 @@
 # Atlas semantic import learning tests
 
-This is a bounded product learning test during roadmap Phase 2. It does not
-open Phase 3 package extraction or Phase 4 runtime governance.
+This is a bounded product learning test. It does not add package extraction
+or runtime governance.
 
 ## Human product flow
 

@@ -1,5 +1,3 @@
-use convergence_attrs::substrate;
-
 use crate::types::ids::{MessageId, ToolCallId};
 use crate::types::tool::ToolCall;
 use serde::{Deserialize, Serialize};
@@ -222,7 +220,6 @@ impl ToolMessage {
 }
 
 /// The canonical AG-UI message union; consumed by event construction, RunAgentInput, and MessagesSnapshot.
-#[substrate(name = "Message", since = "0.1.0", domain = "ui")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "role", rename_all = "lowercase")]
 pub enum Message {

@@ -1,6 +1,7 @@
 [package]
 name = "samepage-sources"
-version = "0.1.0"
+version.workspace = true
+description = "The SamePage sources capability: binds cards to source files and line ranges, and checks each binding against the file before it is committed."
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -18,13 +19,13 @@ default = ["wasm-export"]
 wasm-export = []
 
 [dependencies]
-samepage-capability = { path = "../samepage-capability" }
-samepage-map = { path = "../samepage-map", default-features = false }
+samepage-capability = { version = "=0.1.0", path = "../samepage-capability" }
+samepage-map = { version = "=0.1.0", path = "../samepage-map", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-samepage-capability = { path = "../samepage-capability", features = ["wasm-export"] }
+samepage-capability = { version = "=0.1.0", path = "../samepage-capability", features = ["wasm-export"] }
 wasm-bindgen.workspace = true
 
 [dev-dependencies]

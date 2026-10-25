@@ -1,5 +1,3 @@
-use convergence_attrs::substrate;
-
 use crate::JsonValue;
 use crate::types::context::Context;
 use crate::types::ids::{RunId, ThreadId};
@@ -8,7 +6,6 @@ use crate::types::tool::Tool;
 use serde::{Deserialize, Serialize};
 
 /// The complete input payload for an agent run; consumed by every AG-UI agent runner.
-#[substrate(name = "RunAgentInput", since = "0.1.0", domain = "ui")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RunAgentInput<StateT = JsonValue, FwdPropsT = JsonValue> {
     #[serde(rename = "threadId")]

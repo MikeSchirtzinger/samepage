@@ -1,6 +1,6 @@
 [package]
 name = "same-page-atlas-web"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -22,7 +22,7 @@ wasm-opt = false
 
 [dependencies]
 ag-ui-canvas = { workspace = true }
-same-page-atlas-core = { path = "../core" }
+same-page-atlas-core = { version = "=0.1.0", path = "../core" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 wasm-bindgen = { workspace = true }

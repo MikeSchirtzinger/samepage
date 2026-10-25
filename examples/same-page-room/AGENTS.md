@@ -1,6 +1,6 @@
 # Same Page Room
 
-An example-local Phase 2 composition, and the least mature app tier in this
+An example composition, and the least mature app tier in this
 repository: an open surface for thinking with a person, not a finished
 application. Read `README.md` for what it is and `workspace/AGENTS.md` for how
 to behave while you are in a room. Read this file before changing the example

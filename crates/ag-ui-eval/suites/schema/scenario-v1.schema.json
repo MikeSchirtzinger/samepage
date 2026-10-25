@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MikeSchirtzinger/samepage/tree/main/crates/ag-ui-eval/suites/schema/scenario-v1.schema.json",
+  "title": "AG-UI executable evaluation scenario v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "layer",
+    "subject",
+    "execution",
+    "scorers"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layer": {
+      "enum": [
+        "conformance",
+        "agent_eval"
+      ]
+    },
+    "subject": {
+      "type": "object",
+      "required": [
+        "kind",
+        "id",
+        "capability"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "protocol",
+            "extension"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capability": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "provider": {
+      "$ref": "#/$defs/provider"
+    },
+    "execution": {
+      "$ref": "#/$defs/execution"
+    },
+    "scorers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/scorer"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "layer": {
+            "const": "agent_eval"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "provider"
+        ],
+        "properties": {
+          "subject": {
+            "properties": {
+              "kind": {
+                "const": "extension"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "required": [
+            "provider"
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "provider": {
+      "type": "object",
+      "required": [
+        "adapter",
+        "name",
+        "model"
+      ],
+      "properties": {
+        "adapter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "command",
+        "timeout_seconds"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "required_commands": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "required_env": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "skip_exit_codes": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "default": []
+        },
+        "skip_reason_pointer": {
+          "type": "string",
+          "pattern": "^/"
+        }
+      },
+      "additionalProperties": false
+    },
+    "scorer": {
+      "type": "object",
+      "required": [
+        "id",
+        "source",
+        "threshold"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "exit_code"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "kind",
+                "pointer"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "stdout_json"
+                },
+                "pointer": {
+                  "type": "string",
+                  "pattern": "^/"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "threshold": {
+          "type": "object",
+          "required": [
+            "op",
+            "value"
+          ],
+          "properties": {
+            "op": {
+              "enum": [
+                "eq",
+                "contains",
+                "gte",
+                "lte"
+              ]
+            },
+            "value": true
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

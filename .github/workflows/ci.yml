@@ -63,7 +63,7 @@ jobs:
           set -euo pipefail
           for crate in \
             ag-ui-canvas ag-ui-canvas-render ag-ui-canvas-web ag-ui-wasm-client \
-            convergence-attrs same-page-atlas-core same-page-atlas-web \
+            same-page-atlas-core same-page-atlas-web \
             samepage-agui samepage-architecture samepage-board samepage-capability \
             samepage-cement samepage-diagrams samepage-doc samepage-doc-web \
             samepage-explain samepage-lanes samepage-map samepage-panes \
