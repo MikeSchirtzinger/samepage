@@ -119,7 +119,7 @@ is present. See [Lanes](../../crates/samepage-lanes/README.md).
 
 Cement is optional: add `cement=crates/samepage-cement=apps/samepage/modules/cement.js`
 to the selected build, alongside Sources, Lanes and Review. Its native adapter
-requires real `g8` 0.1.4 from PATH and the selected Git project root. Agents draft
+requires real `g8` 0.1.5 from PATH and the selected Git project root. Agents draft
 and propose decisions; the person previews and publishes from the Cement strip.
 Current gates and their reasons refresh together on Sources cards without reload.
 
@@ -136,7 +136,7 @@ and scoped drawing. `walkthrough_read` exposes the same cursor to agents;
 
 From a clean shell with Rust (including `wasm32-unknown-unknown`), wasm-pack,
 wasm-opt, Node, Python 3 and ripgrep installed, run either recipe with a project
-directory. The full recipe also needs real `g8` 0.1.4 on PATH and a Git project.
+directory. The full recipe also needs real `g8` 0.1.5 on PATH and a Git project.
 Both use the existing capability build script, build the typed protocol client
 and native app, copy this checkout's web assets, and run the one SamePage host:
 

@@ -93,9 +93,16 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      # The cement adapter was reviewed against g8 0.1.4 and refuses any other
-      # version. That release has no Linux binary, so it builds from crates.io.
-      - run: cargo install g8 --version =0.1.4 --locked
+      # The cement adapter was reviewed against g8 0.1.5 and refuses any other
+      # version.
+      - name: Install g8
+        run: |
+          set -euo pipefail
+          tarball=g8-x86_64-unknown-linux-gnu.tar.xz
+          curl -fsSLO "https://github.com/MikeSchirtzinger/g8/releases/download/v0.1.5/$tarball"
+          echo "fb74862cc36a77f83545e4d2be5c90ee190c8f89539dd6c4b2b26403f938385a  $tarball" | sha256sum -c
+          tar -xJf "$tarball" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/g8-x86_64-unknown-linux-gnu" >> "$GITHUB_PATH"
       - run: cargo test --workspace --locked
 
   wasm-equivalence:

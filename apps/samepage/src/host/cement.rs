@@ -114,8 +114,8 @@ impl CementHost {
                 String::from_utf8_lossy(&o.stderr)
             )
         })?;
-        if value["g8_version"] != "0.1.4" {
-            return Err("reviewed adapter requires g8 0.1.4".into());
+        if value["g8_version"] != "0.1.5" {
+            return Err("reviewed adapter requires g8 0.1.5".into());
         }
         if value["errors"].as_array().is_some_and(|a| !a.is_empty())
             || value["obligations"]

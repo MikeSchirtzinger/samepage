@@ -8,7 +8,7 @@ Geometry and edits outside the selection do not invalidate existing coverage.
 
 The native adapter verifies source claims and the Git project root, pins reviewed
 repository files, stages file writes, backs up G8 publication files, runs real
-`g8` 0.1.4 from PATH, and parses its result. It invokes `init`, `ratify`, `attest`
+`g8` 0.1.5 from PATH, and parses its result. It invokes `init`, `ratify`, `attest`
 and `check --enforce --json`. CLI execution/protocol errors and CRDT refusal roll
 publication back. Structural failure publishes an `active_blocked` receipt;
 it never becomes a met gate. The human CRDT stamp follows successful reviewed
